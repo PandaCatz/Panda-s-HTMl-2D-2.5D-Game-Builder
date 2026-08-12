@@ -2305,10 +2305,17 @@ const ensureBrowser2DProject = (project: GameProject, options: { migrateLegacyRe
   };
 };
 
-const uid = () =>
-  typeof crypto !== "undefined" && "randomUUID" in crypto
-    ? crypto.randomUUID()
-    : `object-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+let browserGeneratedIdCounter = 0;
+const browserUniqueId = () => {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") return crypto.randomUUID();
+  if (typeof crypto !== "undefined" && typeof crypto.getRandomValues === "function") {
+    const values = crypto.getRandomValues(new Uint32Array(4));
+    return [...values].map((value) => value.toString(16).padStart(8, "0")).join("");
+  }
+  browserGeneratedIdCounter += 1;
+  return `${Date.now().toString(36)}-${browserGeneratedIdCounter.toString(36)}`;
+};
+const uid = () => `object-${browserUniqueId()}`;
 
 const formatBytes = (bytes: number) => bytes < 1024 ? `${bytes} B` : bytes < 1024 * 1024 ? `${(bytes / 1024).toFixed(1)} KiB` : `${(bytes / 1024 / 1024).toFixed(2)} MiB`;
 const TUNING_FEEL_METRICS = [
@@ -2445,9 +2452,7 @@ const SHARED_PROJECT_ID_PATTERN = /^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$/;
 const sharedProjectLibraryId = (id: string) => `shared:${id}`;
 const projectLibraryId = (name: string): string => {
   const slug = name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 48) || "project";
-  const suffix = typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
-    ? crypto.randomUUID().slice(0, 8)
-    : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
+  const suffix = browserUniqueId().replace(/[^a-z0-9]/gi, "").slice(-12).toLowerCase();
   return `${slug}-${suffix}`;
 };
 
@@ -10945,7 +10950,7 @@ export default function Home() {
     companionEndpoints: { agentPresence: `${COMPANION_URL}/agent-presence`, promptDrafts: `${COMPANION_URL}/prompt-drafts`, generation: `${COMPANION_URL}/jobs`, research: `${COMPANION_URL}/research-jobs`, visualCritique: `${COMPANION_URL}/visual-critique-jobs`, releaseVerification: `${COMPANION_URL}/release-verification-jobs` },
   }).replace(/</g, "\\u003c");
   const serializedAgentPresenceState = JSON.stringify(agentPresenceView ?? { schemaVersion: "looplab-agent-presence/v1", generatedAt: null, count: 0, expiredPruned: 0, recommendedHeartbeatSeconds: 15, presences: [], policy: { storage: "companion-memory-only", authority: "Durable ownership lives in the shared work ledger." } }).replace(/</g, "\\u003c");
-  const serializedPreferenceMemoryState = JSON.stringify({ memory: preferenceMemoryView(preferenceMemory), appliedContext: appliedPreferenceContext }).replace(/</g, "\u003c");
+  const serializedPreferenceMemoryState = JSON.stringify({ memory: preferenceMemoryView(preferenceMemory), appliedContext: appliedPreferenceContext }).replace(/</g, "\\u003c");
   const serializedPlaytestObservationState = JSON.stringify({ ...playtestLedgerView(playtestLedger, null, { currentSourceDigest: doctorReport.sourceDigest }), activeSession: activePlaytestView, replayPreview: playtestReplayPreview }).replace(/</g, "\\u003c");
   const serializedResearchState = JSON.stringify({ selectedEngine: researchEngine, selectedProvider: aiProvider, depth: researchDepth, running: researchRunning, reports: researchReports }).replace(/</g, "\\u003c");
   const serializedAssetCatalogState = JSON.stringify({ policy: CC0_ASSET_POLICY, categories: CC0_ASSET_CATEGORIES, packs: assetPackManifest?.packs ?? CC0_ASSET_PACKS, manifestUrl: "/asset-packs/manifest.json" }).replace(/</g, "\\u003c");

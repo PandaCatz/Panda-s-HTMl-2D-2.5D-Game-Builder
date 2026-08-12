@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { access, mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { basename, dirname, resolve } from "node:path";
 import { createInterface } from "node:readline";
@@ -1029,7 +1029,7 @@ async function main() {
     let asset = null;
     let placedObject = null;
     if (attach) {
-      const assetId = `${generated.kind}-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+      const assetId = `${generated.kind}-${randomUUID()}`;
       asset = {
         id: assetId,
         name: label,

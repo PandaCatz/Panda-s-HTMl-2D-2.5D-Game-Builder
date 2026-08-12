@@ -2526,6 +2526,17 @@ function setImage(file) {
 /* ------------------------------------------------------- HTML backdrop -- */
 
 let htmlUrl = null;
+let htmlLoadVersion = 0;
+const HTML_PREVIEW_CSP = "default-src 'none'; img-src data: blob:; media-src data: blob:; font-src data:; style-src 'unsafe-inline'; script-src 'unsafe-inline' blob:; connect-src 'none'; worker-src 'none'; child-src 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; navigate-to 'none'";
+
+function isolatedHtmlPreview(source) {
+  const meta = `<meta http-equiv="Content-Security-Policy" content="${HTML_PREVIEW_CSP}">`;
+  const text = String(source || '');
+  if (/<head\b[^>]*>/i.test(text)) return text.replace(/<head\b[^>]*>/i, match => `${match}${meta}`);
+  if (/<body\b[^>]*>/i.test(text)) return text.replace(/<body\b[^>]*>/i, match => `<head>${meta}</head>${match}`);
+  if (/<html\b[^>]*>/i.test(text)) return text.replace(/<html\b[^>]*>/i, match => `${match}<head>${meta}</head>`);
+  return `<head>${meta}</head>${text}`;
+}
 
 /**
  * Rebuild the backdrop iframe with a given sandbox.
@@ -2541,6 +2552,8 @@ function makeBackdropFrame(sandbox, measuring) {
   f.id = 'htmlMap';
   f.title = 'map backdrop';
   f.setAttribute('sandbox', sandbox);
+  f.setAttribute('referrerpolicy', 'no-referrer');
+  f.setAttribute('allow', '');
   // A measuring frame must keep the size it was given; syncBackdrop skips it.
   if (measuring) f.dataset.measuring = '1';
   stage.insertBefore(f, stage.firstChild);
@@ -2548,6 +2561,7 @@ function makeBackdropFrame(sandbox, measuring) {
 }
 
 function clearHtmlBackdrop() {
+  htmlLoadVersion += 1;
   const f = $('htmlMap');
   if (f) { f.classList.remove('on'); f.removeAttribute('src'); f.onload = null; }
   if (htmlUrl) { URL.revokeObjectURL(htmlUrl); htmlUrl = null; }
@@ -2557,20 +2571,25 @@ function clearHtmlBackdrop() {
  * Load an HTML map and render it live behind the canvas at 1:1, so paths can
  * be traced over the real thing rather than a screenshot of it.
  *
- * Measured first, then rendered. The measuring pass needs to read the page's
- * layout, so it runs same-origin; the render pass does not, so it does not get
- * that and is isolated. Withholding it there is free.
- *
- * Measuring runs the map's own scripts, because plenty of maps build their
- * layout in JavaScript and report no size without them. An earlier version
- * measured with scripts disabled first and only re-ran them if that came up
- * empty — correct, but it logged a "Blocked script execution" console error on
- * every single load, which is a bad trade for a tool loading your own files.
+ * Measured first without script execution, then rendered in an opaque-origin
+ * scripts-only sandbox. The preview copy receives a restrictive CSP before it
+ * is loaded, so imported games cannot read the editor, send network requests,
+ * use workers/child frames, submit forms, or inherit the editor's origin.
  */
-function setHtmlBackdrop(file, onReady) {
+async function setHtmlBackdrop(file, onReady) {
   clearHtmlBackdrop();
+  const loadVersion = htmlLoadVersion;
   img = null;
-  htmlUrl = URL.createObjectURL(file);
+  let source;
+  try {
+    source = await file.text();
+  } catch (error) {
+    if (loadVersion === htmlLoadVersion) toast('Could not read that HTML file');
+    return;
+  }
+  if (loadVersion !== htmlLoadVersion) return;
+  const isolated = isolatedHtmlPreview(source);
+  htmlUrl = URL.createObjectURL(new Blob([isolated], { type: 'text/html' }));
 
   const usable = (w, h) => w > 50 && h > 50;
 
@@ -2618,7 +2637,7 @@ function setHtmlBackdrop(file, onReady) {
     live.src = htmlUrl;
   }
 
-  measureWith('allow-scripts allow-same-origin', render);
+  measureWith('allow-same-origin', render);
 }
 
 /* ------------------------------------------------- round-trip with a game */

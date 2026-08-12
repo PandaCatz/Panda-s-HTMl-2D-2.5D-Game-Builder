@@ -8,6 +8,10 @@ test("the publish set contains no tracked private state or unredacted secret-sha
   const report = runPublicAudit();
   assert.equal(report.ok, true, JSON.stringify(report.findings));
   assert.deepEqual(report.findings, []);
+  assert.ok(report.historyCommitCount >= 1);
+  assert.ok(report.historyCandidateFiles >= report.trackedFiles);
+  assert.ok(report.historyScannedTextFiles >= 1);
+  assert.deepEqual(report.binaryCredentialSignatureScan, { tracked: true, history: true, publishCandidates: true });
   assert.match(report.disclosurePolicy, /never printed/i);
 });
 
