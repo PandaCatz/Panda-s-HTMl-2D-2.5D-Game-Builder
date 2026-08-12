@@ -141,11 +141,19 @@ function lineNumberAt(text, index) {
   return line;
 }
 
-function scanText({ text, path, findings, revision = null }) {
+function dependabotBodyStart(text) {
+  const headerEnd = text.indexOf("\n\n");
+  if (headerEnd < 0) return null;
+  const headers = text.slice(0, headerEnd);
+  return /^author\s+dependabot\[bot\]\s+<[^>]+@users\.noreply\.github\.com>\s+/mi.test(headers) ? headerEnd + 2 : null;
+}
+
+function scanText({ text, path, findings, revision = null, allowedEmailBodyStart = null }) {
   for (const rule of contentRules) {
     rule.pattern.lastIndex = 0;
     for (const match of text.matchAll(rule.pattern)) {
       if (rule.allow?.(match[0], path)) continue;
+      if (rule.id === "email-address" && Number.isInteger(allowedEmailBodyStart) && (match.index ?? -1) >= allowedEmailBodyStart) continue;
       findings.push({ category: rule.id, path, line: lineNumberAt(text, match.index ?? 0), ...(revision ? { revision } : {}) });
     }
   }
@@ -223,11 +231,13 @@ export function runPublicAudit() {
   for (const commit of history.commits) {
     const buffer = historyObjects.get(commit);
     if (!buffer) continue;
+    const text = buffer.toString("utf8");
     scanText({
-      text: buffer.toString("utf8"),
+      text,
       path: `git/commits/${commit.slice(0, 12)}.txt`,
       findings,
       revision: commit.slice(0, 12),
+      allowedEmailBodyStart: dependabotBodyStart(text),
     });
   }
 
