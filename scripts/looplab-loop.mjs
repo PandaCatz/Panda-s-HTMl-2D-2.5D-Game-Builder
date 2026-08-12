@@ -28,6 +28,7 @@ import {
   publicProviderPassPlan,
   selectProviderPass,
 } from "../lib/looplab-provider-context.mjs";
+import { assertProviderPayloadPrivacy } from "../lib/looplab-project-privacy.mjs";
 import { buildOpenAiResponsesRequest, requireOpenAiStructuredResult } from "../lib/looplab-openai-request.mjs";
 import { requestProviderJson } from "../lib/looplab-provider-http.mjs";
 import { boundedProviderDiagnostic, parseProviderJson, runProviderProcess } from "../lib/looplab-provider-process.mjs";
@@ -206,6 +207,10 @@ async function invokeProvider({ provider, context, schemaPath, responseFile, res
     return { proposal: selected, receipt: createUsageReceipt({ provider: "file", model: "fixture", usage: { input_tokens: 0, output_tokens: 0, total_tokens: 0 }, source: "fixture" }) };
   }
 
+  assertProviderPayloadPrivacy({ instructions: ITERATION_PROMPT, context }, {
+    label: "game-iteration provider payload",
+    sourceDigest: context?.sourceDigest ?? context?.project?.sourceDigest ?? null,
+  });
   const input = JSON.stringify(context);
   if (provider === "openai") {
     const apiKey = process.env.OPENAI_API_KEY;
@@ -681,6 +686,18 @@ async function main() {
         });
         break;
       }
+      const privacyPreflight = assertProviderPayloadPrivacy({ instructions: ITERATION_PROMPT, context }, {
+        label: "game-iteration provider payload",
+        sourceDigest: context?.sourceDigest ?? context?.project?.sourceDigest ?? null,
+      });
+      emit("provider.privacy.checked", {
+        iteration: candidateNumber,
+        sourceDigest: privacyPreflight.sourceDigest,
+        reportDigest: privacyPreflight.digest,
+        status: privacyPreflight.status,
+        findingCount: privacyPreflight.findingCount,
+        message: "The exact outbound iteration context passed LoopLab's value-free privacy preflight.",
+      });
       emit("specialist.roster.planned", {
         iteration: candidateNumber,
         message: `Planned ${context.capabilityRoute.agentPlan.length} specialist role reviews inside one provider request; a transport failure may move the unchanged request to the next verified path`,

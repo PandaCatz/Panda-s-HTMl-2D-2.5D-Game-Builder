@@ -97,6 +97,7 @@ function usage() {
       validate: "npm run agent -- validate <project.loop.json>",
       completion: "npm run agent -- completion <project.loop.json> [prototype|production]",
       doctor: "npm run agent -- doctor <project.loop.json> [prototype|production]",
+      privacy: "npm run agent -- privacy <project.loop.json> [prototype|production]",
       acceptancePlan: "npm run agent -- acceptance-plan <project.loop.json>",
       acceptance: "npm run agent -- acceptance <project.loop.json> [test-id]",
       replay: "npm run agent -- replay <project.loop.json> [case-id]",
@@ -863,6 +864,14 @@ async function main() {
     const doctor = analyzeProject(project, { profile });
     print({ ok: !doctor.gate.blocking, operation, path: projectPath, doctor });
     if (doctor.gate.blocking) process.exitCode = 2;
+    return;
+  }
+
+  if (operation === "privacy") {
+    const profile = args[1] ?? project.doctorProfile ?? "production";
+    const privacy = applyAgentCommand(project, { op: "get_privacy_report", profile }).result;
+    print({ ok: privacy.status === "clear", operation, path: projectPath, profile, privacy });
+    if (privacy.status !== "clear") process.exitCode = 2;
     return;
   }
 

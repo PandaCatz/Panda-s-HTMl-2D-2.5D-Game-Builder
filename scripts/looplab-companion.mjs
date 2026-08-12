@@ -843,13 +843,13 @@ async function startReservedAssetJob(payload, reservation) {
 
   void (async () => {
     try {
+      const providerRequest = createAiArtProviderRequest(request, apiKey);
       pushEvent(job, {
         type: "asset.provider.requested", provider: "openai", model: request.model, operation: request.providerOperation,
         quality: request.quality, size: "1024x1024", background: request.background,
         imageReferenceCount: request.visualIdentity.imageReferenceCount, imageReferenceBytes: request.visualIdentity.imageReferenceBytes,
         message: request.providerOperation === "edit" ? "Generating one complete game-art sheet with explicitly authorized project references" : "Generating one complete game-art sheet",
       });
-      const providerRequest = createAiArtProviderRequest(request, apiKey);
       const response = await fetch(providerRequest.url, {
         ...providerRequest.init,
         signal: controller.signal,

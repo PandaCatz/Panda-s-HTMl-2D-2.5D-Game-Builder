@@ -340,7 +340,7 @@ test("headless commands, Doctor, replay hashes, manifest, and one-file export sh
   assert.match(html, /version:'2\.27\.0'/);
 
   const manifest = getAgentManifest();
-  assert.equal(manifest.protocolVersion, "1.99.0");
+  assert.equal(manifest.protocolVersion, "1.100.0");
   assert.equal(manifest.exportedRuntime.version, "2.27.0");
   assert.deepEqual(manifest.gameplayRules.policy, LOOPLAB_GAMEPLAY_RULE_POLICY);
   assert.equal(manifest.commands.includes("set_gameplay_program"), true);

@@ -113,7 +113,7 @@ test("portable save codes are deterministic, source-bound, corruption-detecting,
 test("strict artifacts contain no storage capability while hosted artifacts contain exactly one authenticated wrapper", () => {
   const strictArtifact = buildStandaloneArtifact(createTemplate("platformer"));
   assert.equal(strictArtifact.audit.valid, true);
-  assert.equal(strictArtifact.receipt.schemaVersion, "looplab-export-receipt/v4");
+  assert.equal(strictArtifact.receipt.schemaVersion, "looplab-export-receipt/v5");
   assert.equal(strictArtifact.receipt.release.exportProfile, "strict");
   assert.equal(strictArtifact.receipt.release.persistence.portableCodes, true);
   assert.deepEqual(strictArtifact.audit.runtimeCapabilities, []);

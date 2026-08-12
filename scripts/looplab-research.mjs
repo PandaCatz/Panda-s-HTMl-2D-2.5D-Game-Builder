@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import { buildOpenAiResponsesRequest, requireOpenAiStructuredResult } from "../lib/looplab-openai-request.mjs";
 import { isUnsupportedCodexSearchOption, requestProviderJson } from "../lib/looplab-provider-http.mjs";
 import { parseProviderJson, runProviderProcess } from "../lib/looplab-provider-process.mjs";
+import { assertProviderPayloadPrivacy } from "../lib/looplab-project-privacy.mjs";
 import { buildClaudeCliArgs, inspectClaudeCliOutput, requireClaudeCliStructuredResult } from "../lib/looplab-claude-cli.mjs";
 import { attachUsageReceipt, createUsageReceipt, readCodexConfiguredModel, usageFromCliOutput, usageReceiptSummary } from "../lib/looplab-provider-usage.mjs";
 
@@ -88,13 +89,22 @@ Use current web research. Prefer primary sources, official documentation, develo
 
 Return only one JSON object matching the supplied schema. Suggestions must include a concise promptAddition that can be explicitly added to a later Looplab game-generation brief.`;
 
+function researchProviderPayload(input) {
+  return {
+    instructions: `${RESEARCH_PROMPT}\n\nSELECTED RESEARCH SKILL / PLUGIN:\n${input.engine}\n${input.engineRule}`,
+    request: input,
+  };
+}
+
 async function invokeProvider({ provider, input, schema, schemaPath, responseFile, responsePath, cwd }) {
-  const payload = JSON.stringify(input);
-  const providerPrompt = `${RESEARCH_PROMPT}\n\nSELECTED RESEARCH SKILL / PLUGIN:\n${input.engine}\n${input.engineRule}`;
   if (provider === "file") {
     if (!responsePath) throw new Error("The file research provider requires --response.");
     return { report: JSON.parse(await readFile(resolve(responsePath), "utf8")), sources: [], receipt: createUsageReceipt({ provider: "file", model: "fixture", usage: { input_tokens: 0, output_tokens: 0, total_tokens: 0 }, source: "fixture" }) };
   }
+  const providerPayload = researchProviderPayload(input);
+  assertProviderPayloadPrivacy(providerPayload, { label: "research provider payload" });
+  const providerPrompt = providerPayload.instructions;
+  const payload = JSON.stringify(providerPayload.request);
   if (provider === "openai") {
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) throw new Error("OPENAI_API_KEY is not configured for research.");
@@ -273,7 +283,9 @@ async function main() {
     gameBrief: clampText(input.gameBrief, 20_000),
     successCriteria: "Return current, game-design-relevant evidence; verify contradictions; make implementation-neutral suggestions; cite every claim.",
   };
-  emit("research.started", { provider, depth, preset: context.preset, message: `Researching ${query}` });
+  const privacyPreflight = provider === "file" ? null : assertProviderPayloadPrivacy(researchProviderPayload(context), { label: "research provider payload" });
+  if (privacyPreflight) emit("research.privacy.checked", { reportDigest: privacyPreflight.digest, status: privacyPreflight.status, findingCount: privacyPreflight.findingCount });
+  emit("research.started", { provider, depth, preset: context.preset, privacyReportDigest: privacyPreflight?.digest ?? null, queryCharacters: query.length, message: "Research request accepted" });
   emit("research.planned", { message: `Adaptive ${depth} plan ready`, detail: DEPTH_RULES[depth].hops });
   emit("research.searching", { message: "Searching and following evidence chains" });
   const responseFile = join(dirname(outputPath), "provider-research-response.json");

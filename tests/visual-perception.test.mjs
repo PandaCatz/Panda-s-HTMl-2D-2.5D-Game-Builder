@@ -115,7 +115,7 @@ test("the published browser contracts expose truthful, opt-in visual payload con
   assert.equal(select.inputSchema.properties.includeAnnotatedImage.type, "boolean");
 
   const manifest = getAgentManifest();
-  assert.equal(manifest.protocolVersion, "1.99.0");
+  assert.equal(manifest.protocolVersion, "1.100.0");
   assert.equal(manifest.verification.visualPerception.schemaVersion, LOOPLAB_VISUAL_PERCEPTION_SCHEMA_VERSION);
   assert.match(manifest.verification.visualPerception.claimBoundary, /only identifies changed regions/);
   assert.match(manifest.verification.visualPerception.visualOnlyPolicy, /collect_verification_evidence remains strict/);
