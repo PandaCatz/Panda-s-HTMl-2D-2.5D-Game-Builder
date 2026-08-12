@@ -71,6 +71,15 @@ test("artifact audit rejects linked scripts, modules, network calls, and browser
   assert.throws(() => assertStandaloneHtml(html), /Single-file artifact gate blocked HTML export/);
 });
 
+test("malformed closing script tags cannot evade one-file inspection", () => {
+  const html = validArtifact().replace("</body>", '<script>fetch("https://example.com/private")</script\n data-evasion></body>');
+  const audit = auditStandaloneHtml(html);
+  const codes = new Set(audit.errors.map((issue) => issue.code));
+  assert.equal(audit.valid, false);
+  assert.ok(codes.has("malformed-script-close-tag"));
+  assert.ok(codes.has("network-fetch"));
+});
+
 test("artifact audit rejects service workers and Cache API dependencies", () => {
   const html = validArtifact().replace(
     "</body>",

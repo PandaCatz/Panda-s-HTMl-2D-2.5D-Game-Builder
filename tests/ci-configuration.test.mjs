@@ -7,6 +7,8 @@ test("CI treats Windows as the supported builder host with enough heap for the c
 
   assert.match(workflow, /name:\s*windows-latest\s+runs-on:\s*windows-latest/);
   assert.doesNotMatch(workflow, /ubuntu-latest/);
+  assert.match(workflow, /uses: actions\/checkout@[a-f0-9]+[\s\S]*?fetch-depth: 0[\s\S]*?persist-credentials: false/);
+  assert.match(workflow, /- name: Audit publish set\s+run: node scripts\/looplab-public-audit\.mjs/);
   assert.match(workflow, /- name: Lint\s+env:\s+NODE_OPTIONS: --max-old-space-size=4096\s+run: npm run lint/);
   assert.match(workflow, /- name: Run unit and rendered verification\s+run: npm test/);
 });

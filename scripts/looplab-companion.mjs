@@ -28,6 +28,7 @@ import { createAiArtProviderRequest, createAiArtUsageReceipt, normalizeAiArtRequ
 import { inspectLocalCopilot, normalizeLocalCopilotRequest, runLocalCopilot } from "../lib/looplab-local-copilot.mjs";
 import { normalizeVisualCritiqueRequest, publicVisualCritiqueRequest } from "../lib/looplab-visual-critique.mjs";
 import { terminateProcessTree } from "../lib/looplab-process-tree.mjs";
+import { sanitizePublicDiagnostic, sanitizePublicDiagnosticValue } from "../lib/looplab-public-diagnostics.mjs";
 import {
   appendRetainedEvent,
   companionRetentionOptions,
@@ -98,8 +99,8 @@ let localCopilotOperationActive = false;
 let providerRuntimeEnv = { ...process.env };
 let promptGenerationActive = false;
 let activeAiOperation = null;
-const ANSI_SGR_PATTERN = new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*m`, "g");
 const LOOPBACK_BROWSER_ORIGIN = /^http:\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?$/;
+const publicRequestErrors = new WeakMap();
 
 function corsHeaders(request) {
   const origin = request.headers.origin;
@@ -125,10 +126,32 @@ function sendJson(response, status, value, headers = {}) {
 }
 
 function requestError(statusCode, message, details = {}) {
-  const error = new Error(message);
+  const error = new Error("LoopLab request rejected.");
   error.statusCode = statusCode;
   Object.assign(error, details);
+  publicRequestErrors.set(error, {
+    statusCode,
+    body: publicErrorBody(message, details),
+  });
   return error;
+}
+
+function publicErrorBody(message, details = {}) {
+  const safe = sanitizePublicDiagnosticValue(details) ?? {};
+  return {
+    ok: false,
+    error: sanitizePublicDiagnostic(message) || "The request was rejected.",
+    ...(typeof safe.code === "string" ? { code: safe.code } : {}),
+    ...(typeof safe.path === "string" ? { path: safe.path } : {}),
+    ...(safe.expected !== undefined && safe.expected !== null ? { expected: safe.expected } : {}),
+    ...(safe.got !== undefined ? { got: safe.got } : {}),
+    ...(typeof safe.repairAction === "string" ? { repairAction: safe.repairAction } : {}),
+    ...(safe.current && typeof safe.current === "object" ? { current: safe.current } : {}),
+    ...(safe.providerRoute && typeof safe.providerRoute === "object" ? { providerRoute: safe.providerRoute } : {}),
+    ...(safe.providerFailover && typeof safe.providerFailover === "object" ? { providerFailover: safe.providerFailover } : {}),
+    ...(safe.usage && typeof safe.usage === "object" ? { usage: safe.usage } : {}),
+    ...(Number.isInteger(safe.retryAfterSeconds) && safe.retryAfterSeconds > 0 ? { retryAfterSeconds: safe.retryAfterSeconds } : {}),
+  };
 }
 
 function conditionalRevisionDigest(value, field) {
@@ -281,14 +304,7 @@ function providerRouteFailureError(error, { requestedProvider, mode, route, atte
 }
 
 function sanitizeConnectionLine(value) {
-  return String(value ?? "")
-    .replace(ANSI_SGR_PATTERN, "")
-    .replace(/\bsk-[A-Za-z0-9_-]{8,}\b/g, "[secret redacted]")
-    .replace(/\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b/g, "[token redacted]")
-    .replace(/\bBearer\s+[A-Za-z0-9._~+/=-]{8,}\b/gi, "Bearer [secret redacted]")
-    .replace(/\b((?:OPENAI|ANTHROPIC)_API_KEY\s*[=:]\s*)[^\s,;]+/gi, "$1[secret redacted]")
-    .trim()
-    .slice(0, 4_000);
+  return sanitizePublicDiagnostic(value);
 }
 
 function sanitizeRetainedEvent(event) {
@@ -1046,8 +1062,8 @@ async function startReservedJob(payload, reservation) {
         });
       } catch (error) {
         job.status = "failed";
-        job.error = error.message;
-        pushEvent(job, { type: "companion.failed", error: error.message });
+        job.error = sanitizeConnectionLine(error.message);
+        pushEvent(job, { type: "companion.failed", error: job.error });
       }
     } else if (job.status !== "cancelled") {
       job.status = "failed";
@@ -1154,7 +1170,7 @@ async function startReservedResearchJob(payload, reservation) {
       let failureReason = launchError ? sanitizeConnectionLine(launchError.message) : "";
       if (!launchError && code === 0) {
         try { result = JSON.parse(await readFile(outputPath, "utf8")); }
-        catch (error) { failureReason = `Research provider returned invalid JSON: ${error.message}`; }
+        catch (error) { failureReason = sanitizeConnectionLine(`Research provider returned invalid JSON: ${error.message}`); }
       } else if (!failureReason) {
         const diagnostic = providerFailureFromProcessOutput(stderrBuffer || stdoutBuffer);
         failureReason = diagnostic.message || `Research exited with code ${code}`;
@@ -1307,7 +1323,7 @@ async function startVisualCritiqueJob(payload) {
         let failureReason = launchError ? sanitizeConnectionLine(launchError.message) : "";
         if (!launchError && code === 0) {
           try { result = JSON.parse(await readFile(outputPath, "utf8")); }
-          catch (error) { failureReason = `Visual-critique provider returned invalid JSON: ${error.message}`; }
+          catch (error) { failureReason = sanitizeConnectionLine(`Visual-critique provider returned invalid JSON: ${error.message}`); }
         } else if (!failureReason) {
           const diagnostic = providerFailureFromProcessOutput(stderrBuffer || stdoutBuffer);
           failureReason = diagnostic.message || `Visual critique exited with code ${code}`;
@@ -1731,22 +1747,15 @@ const server = createServer(async (request, response) => {
     }
     return sendJson(response, 404, { ok: false, error: "Not found." }, cors.headers);
   } catch (error) {
-    const statusCode = Number.isInteger(error?.statusCode) ? error.statusCode : 400;
-    const retryAfterSeconds = Number.isInteger(error?.retryAfterSeconds) ? error.retryAfterSeconds : null;
-    return sendJson(response, statusCode, {
-      ok: false,
-      error: error instanceof Error ? error.message : String(error),
-      ...(typeof error?.code === "string" ? { code: error.code } : {}),
-      ...(typeof error?.path === "string" ? { path: error.path } : {}),
-      ...(error?.expected !== undefined && error?.expected !== null ? { expected: error.expected } : {}),
-      ...(error?.got !== undefined ? { got: error.got } : {}),
-      ...(typeof error?.repairAction === "string" ? { repairAction: error.repairAction } : {}),
-      ...(error?.current && typeof error.current === "object" ? { current: error.current } : {}),
-      ...(error?.providerRoute && typeof error.providerRoute === "object" ? { providerRoute: error.providerRoute } : {}),
-      ...(error?.providerFailover && typeof error.providerFailover === "object" ? { providerFailover: error.providerFailover } : {}),
-      ...(error?.usage && typeof error.usage === "object" ? { usage: error.usage } : {}),
-      ...(retryAfterSeconds ? { retryAfterSeconds } : {}),
-    }, { ...cors.headers, ...(retryAfterSeconds ? { "Retry-After": String(retryAfterSeconds) } : {}) });
+    const prepared = publicRequestErrors.get(error);
+    const statusCode = prepared?.statusCode
+      ?? (Number.isInteger(error?.statusCode) && error.statusCode >= 400 && error.statusCode < 500 ? error.statusCode : 500);
+    const body = prepared?.body ?? publicErrorBody(
+      statusCode < 500 ? "The request was rejected." : "The local companion could not complete the request.",
+      error && typeof error === "object" ? error : {},
+    );
+    const retryAfterSeconds = Number.isInteger(body.retryAfterSeconds) ? body.retryAfterSeconds : null;
+    return sendJson(response, statusCode, body, { ...cors.headers, ...(retryAfterSeconds ? { "Retry-After": String(retryAfterSeconds) } : {}) });
   }
 });
 

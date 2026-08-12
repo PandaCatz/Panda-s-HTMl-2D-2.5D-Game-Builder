@@ -10,6 +10,11 @@ import { inspectProviders, loadProviderEnvironment, providerStatusDigest, resolv
 
 const ok = (stdout = "") => ({ ok: true, exitCode: 0, stdout, stderr: "", errorCode: "", timedOut: false });
 const fail = ({ stderr = "", errorCode = "", exitCode = 1, timedOut = false } = {}) => ({ ok: false, exitCode, stdout: "", stderr, errorCode, timedOut });
+const respondsOnlyForHost = (expectedHost) => async (url) => {
+  const target = new URL(String(url));
+  const accepted = target.protocol === "https:" && target.hostname === expectedHost;
+  return { ok: accepted, status: accepted ? 200 : 401 };
+};
 
 test("candidate API keys verify without mutating the existing provider environment", async () => {
   const baseEnv = { OPENAI_API_KEY: "existing-secret-that-must-remain" };
@@ -256,7 +261,7 @@ test("Codex/OpenAI and Claude/Anthropic paths remain independently usable", asyn
       if (command === "claude") return ok("Authenticated through Claude account");
       return fail({ errorCode: "ENOENT", exitCode: null });
     },
-    fetcher: async (url) => ({ ok: String(url).includes("api.openai.com"), status: String(url).includes("api.openai.com") ? 200 : 401 }),
+    fetcher: respondsOnlyForHost("api.openai.com"),
   });
   assert.equal(claudeAndOpenAi.providers.codex.ready, false);
   assert.equal(claudeAndOpenAi.providers.claude.ready, true);
@@ -274,7 +279,7 @@ test("Codex/OpenAI and Claude/Anthropic paths remain independently usable", asyn
       if (command === "claude") return fail({ errorCode: "EACCES", exitCode: null });
       return fail({ errorCode: "ENOENT", exitCode: null });
     },
-    fetcher: async (url) => ({ ok: String(url).includes("api.anthropic.com"), status: String(url).includes("api.anthropic.com") ? 200 : 401 }),
+    fetcher: respondsOnlyForHost("api.anthropic.com"),
   });
   assert.equal(codexAndAnthropic.providers.codex.ready, true);
   assert.equal(codexAndAnthropic.providers.claude.ready, false);
@@ -296,7 +301,7 @@ test("an unexpected CLI inspection exception blocks only that path", async () =>
       if (command === "claude") return ok("Authenticated through Claude account");
       return fail({ errorCode: "ENOENT", exitCode: null });
     },
-    fetcher: async (url) => ({ ok: String(url).includes("api.openai.com"), status: String(url).includes("api.openai.com") ? 200 : 401 }),
+    fetcher: respondsOnlyForHost("api.openai.com"),
   });
   assert.equal(scanWithBrokenCodexProbe.providers.codex.state, "blocked");
   assert.equal(scanWithBrokenCodexProbe.providers.claude.ready, true);
@@ -312,7 +317,7 @@ test("an unexpected CLI inspection exception blocks only that path", async () =>
       if (command === "codex") return ok("Logged in using ChatGPT");
       return fail({ errorCode: "ENOENT", exitCode: null });
     },
-    fetcher: async (url) => ({ ok: String(url).includes("api.anthropic.com"), status: String(url).includes("api.anthropic.com") ? 200 : 401 }),
+    fetcher: respondsOnlyForHost("api.anthropic.com"),
   });
   assert.equal(scanWithBrokenClaudeProbe.providers.claude.state, "blocked");
   assert.equal(scanWithBrokenClaudeProbe.providers.codex.ready, true);
