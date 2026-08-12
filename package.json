@@ -1,0 +1,71 @@
+{
+  "name": "looplab-game-builder",
+  "version": "0.1.0",
+  "private": true,
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "scripts": {
+    "dev": "node scripts/looplab-launch.mjs dev",
+    "open": "node scripts/looplab-launch.mjs dev --open",
+    "dev:web": "vinext dev",
+    "build": "vinext build",
+    "start": "node scripts/looplab-launch.mjs start",
+    "start:web": "vinext start",
+    "agent": "node scripts/looplab-agent.mjs",
+    "mcp": "node scripts/looplab-mcp.mjs",
+    "manifest:generate": "node scripts/generate-agent-manifest.mjs",
+    "runtime-bundles:generate": "node scripts/generate-runtime-bundles.mjs",
+    "runtime-bundles:check": "node scripts/generate-runtime-bundles.mjs --check",
+    "loop": "node scripts/looplab-loop.mjs",
+    "companion": "node scripts/looplab-companion.mjs",
+    "providers:check": "node scripts/looplab-providers.mjs",
+    "claude:status": "node scripts/looplab-claude-setup.mjs status",
+    "claude:setup": "node scripts/looplab-claude-setup.mjs install",
+    "claude:smoke": "node scripts/looplab-claude-smoke.mjs",
+    "harness:platform": "node scripts/looplab-platform-harness.mjs",
+    "harness:browser": "node scripts/looplab-platform-harness.mjs --visual",
+    "preview:browser": "node scripts/looplab-browser-preview.mjs",
+    "test": "npm run test:unit && npm run test:rendered",
+    "test:unit": "node scripts/run-tests.mjs tests",
+    "test:rendered": "npm run build && node scripts/run-tests.mjs tests-build",
+    "lint": "node --max-old-space-size=8192 node_modules/eslint/bin/eslint.js . --ignore-pattern dist --ignore-pattern .next",
+    "public:audit": "node scripts/looplab-public-audit.mjs"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/server": "2.0.0",
+    "phaser": "3.90.0",
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
+  },
+  "devDependencies": {
+    "@cloudflare/vite-plugin": "1.52.0",
+    "@cloudflare/workers-types": "5.20260812.1",
+    "@eslint/js": "9.39.4",
+    "@modelcontextprotocol/client": "2.0.0",
+    "@next/eslint-plugin-next": "16.2.6",
+    "@tailwindcss/postcss": "4.2.1",
+    "@types/node": "22.19.19",
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.4",
+    "@vitejs/plugin-react": "6.0.5",
+    "@vitejs/plugin-rsc": "0.5.34",
+    "eslint": "9.39.4",
+    "eslint-plugin-jsx-a11y": "6.10.2",
+    "eslint-plugin-react": "7.37.5",
+    "eslint-plugin-react-hooks": "7.1.1",
+    "globals": "16.4.0",
+    "playwright-core": "1.62.1",
+    "react-server-dom-webpack": "19.2.8",
+    "tailwindcss": "4.2.1",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.59.3",
+    "vinext": "1.0.0-beta.5",
+    "vite": "8.2.1",
+    "wrangler": "4.122.0"
+  },
+  "type": "module",
+  "optionalDependencies": {
+    "@openai/codex": "0.147.0"
+  }
+}

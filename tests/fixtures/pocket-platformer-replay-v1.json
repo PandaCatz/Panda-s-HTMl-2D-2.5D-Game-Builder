@@ -1,0 +1,483 @@
+{
+  "width": 960,
+  "height": 540,
+  "gravity": 1500,
+  "grid": 20,
+  "controlMode": "platformer",
+  "projection": {
+    "type": "orthographic",
+    "tileWidth": 20,
+    "tileHeight": 20
+  },
+  "movementTuning": {
+    "maxRunSpeed": 260,
+    "groundAcceleration": 2200,
+    "airAcceleration": 1200,
+    "groundFriction": 2600,
+    "jumpVelocity": 570,
+    "coyoteTicks": 6,
+    "jumpBufferTicks": 8,
+    "jumpCutVelocity": 235,
+    "apexGravityScale": 0.6,
+    "fallGravityScale": 1.45,
+    "apexThreshold": 86
+  },
+  "inputActions": [
+    {
+      "id": "move-left",
+      "label": "Move left",
+      "bindings": [
+        "ArrowLeft",
+        "KeyA"
+      ],
+      "animationState": "run",
+      "onboarding": true,
+      "replayEvent": true
+    },
+    {
+      "id": "move-right",
+      "label": "Move right",
+      "bindings": [
+        "ArrowRight",
+        "KeyD"
+      ],
+      "animationState": "run",
+      "onboarding": true,
+      "replayEvent": true
+    },
+    {
+      "id": "jump",
+      "label": "Jump",
+      "bindings": [
+        "Space",
+        "ArrowUp",
+        "KeyW"
+      ],
+      "animationState": "jump",
+      "onboarding": true,
+      "replayEvent": true
+    },
+    {
+      "id": "interact",
+      "label": "Interact / lock",
+      "bindings": [
+        "KeyE"
+      ],
+      "animationState": "interact",
+      "onboarding": true,
+      "replayEvent": true
+    }
+  ],
+  "activeMapId": "map-main",
+  "startMapId": "map-main",
+  "maps": [
+    {
+      "id": "map-main",
+      "name": "Main map",
+      "width": 960,
+      "height": 540,
+      "gravity": 1500,
+      "grid": 20,
+      "controlMode": "platformer",
+      "projection": {
+        "type": "orthographic",
+        "tileWidth": 20,
+        "tileHeight": 20
+      },
+      "navigation": {
+        "version": 1,
+        "activeLayerId": "",
+        "layers": [],
+        "nodes": [],
+        "links": [],
+        "areas": []
+      },
+      "objects": [
+        {
+          "id": "255c341f-4be1-48d0-98e5-39a2493bf5d1",
+          "x": 76,
+          "y": 88,
+          "z": 0,
+          "supportZ": 0,
+          "anchorMode": "ground",
+          "collisionOwner": "authored-map",
+          "name": "Mint cloud",
+          "kind": "decor",
+          "width": 116,
+          "height": 52,
+          "color": "#96e6d2",
+          "solid": false,
+          "collider": {
+            "enabled": false,
+            "offsetX": 0,
+            "offsetY": 0,
+            "width": 116,
+            "height": 52,
+            "trigger": false,
+            "oneWay": false,
+            "zMin": 0,
+            "zMax": 1
+          }
+        },
+        {
+          "id": "018aa563-ae5c-43ee-b12d-42c833513b77",
+          "x": 718,
+          "y": 126,
+          "z": 0,
+          "supportZ": 0,
+          "anchorMode": "ground",
+          "collisionOwner": "authored-map",
+          "name": "Sun block",
+          "kind": "decor",
+          "width": 68,
+          "height": 68,
+          "color": "#ffca2e",
+          "solid": false,
+          "collider": {
+            "enabled": false,
+            "offsetX": 0,
+            "offsetY": 0,
+            "width": 68,
+            "height": 68,
+            "trigger": false,
+            "oneWay": false,
+            "zMin": 0,
+            "zMax": 1
+          }
+        },
+        {
+          "id": "fe5438b6-8e37-425d-aefe-ae9a31bf1338",
+          "x": 110,
+          "y": 378,
+          "z": 0,
+          "supportZ": 0,
+          "anchorMode": "ground",
+          "collisionOwner": "authored-map",
+          "name": "Hero",
+          "kind": "player",
+          "width": 44,
+          "height": 58,
+          "color": "#5b5cf0",
+          "solid": false,
+          "collider": {
+            "enabled": true,
+            "offsetX": 6,
+            "offsetY": 3,
+            "width": 32,
+            "height": 55,
+            "trigger": false,
+            "oneWay": false,
+            "zMin": 0,
+            "zMax": 1
+          }
+        },
+        {
+          "id": "7c7bad65-c04c-4497-8316-0fe7c78783a6",
+          "x": 58,
+          "y": 466,
+          "z": 0,
+          "supportZ": 0,
+          "anchorMode": "ground",
+          "collisionOwner": "authored-map",
+          "name": "Start floor",
+          "kind": "platform",
+          "width": 310,
+          "height": 28,
+          "color": "#202018",
+          "solid": true,
+          "collider": {
+            "enabled": true,
+            "offsetX": 0,
+            "offsetY": 0,
+            "width": 310,
+            "height": 28,
+            "trigger": false,
+            "oneWay": true,
+            "zMin": 0,
+            "zMax": 1
+          }
+        },
+        {
+          "id": "7d34bf4f-b368-4dea-a01b-23dfbd3f2e91",
+          "x": 430,
+          "y": 398,
+          "z": 0,
+          "supportZ": 0,
+          "anchorMode": "ground",
+          "collisionOwner": "authored-map",
+          "name": "Middle ledge",
+          "kind": "platform",
+          "width": 190,
+          "height": 28,
+          "color": "#202018",
+          "solid": true,
+          "collider": {
+            "enabled": true,
+            "offsetX": 0,
+            "offsetY": 0,
+            "width": 190,
+            "height": 28,
+            "trigger": false,
+            "oneWay": true,
+            "zMin": 0,
+            "zMax": 1
+          }
+        },
+        {
+          "id": "b6309202-e21a-401e-8b3f-eab540863bfd",
+          "x": 702,
+          "y": 314,
+          "z": 0,
+          "supportZ": 0,
+          "anchorMode": "ground",
+          "collisionOwner": "authored-map",
+          "name": "High ledge",
+          "kind": "platform",
+          "width": 180,
+          "height": 28,
+          "color": "#202018",
+          "solid": true,
+          "collider": {
+            "enabled": true,
+            "offsetX": 0,
+            "offsetY": 0,
+            "width": 180,
+            "height": 28,
+            "trigger": false,
+            "oneWay": true,
+            "zMin": 0,
+            "zMax": 1
+          }
+        },
+        {
+          "id": "4ea6840f-fe0d-4d94-9077-8b98c9b6c159",
+          "x": 0,
+          "y": 520,
+          "z": 0,
+          "supportZ": 0,
+          "anchorMode": "ground",
+          "collisionOwner": "authored-map",
+          "name": "World floor",
+          "kind": "platform",
+          "width": 960,
+          "height": 20,
+          "color": "#202018",
+          "solid": true,
+          "collider": {
+            "enabled": true,
+            "offsetX": 0,
+            "offsetY": 0,
+            "width": 960,
+            "height": 20,
+            "trigger": false,
+            "oneWay": true,
+            "zMin": 0,
+            "zMax": 1
+          }
+        },
+        {
+          "id": "5df3655d-a5ce-44be-8ab6-869f1bf28149",
+          "x": 490,
+          "y": 348,
+          "z": 0,
+          "supportZ": 0,
+          "anchorMode": "ground",
+          "collisionOwner": "authored-map",
+          "name": "Coin A",
+          "kind": "coin",
+          "width": 30,
+          "height": 30,
+          "color": "#ffc928",
+          "solid": false,
+          "collider": {
+            "enabled": true,
+            "offsetX": 2,
+            "offsetY": 2,
+            "width": 26,
+            "height": 26,
+            "trigger": true,
+            "oneWay": false,
+            "zMin": 0,
+            "zMax": 1
+          }
+        },
+        {
+          "id": "5cd2092a-f3a3-49be-895a-fdad149aa722",
+          "x": 548,
+          "y": 348,
+          "z": 0,
+          "supportZ": 0,
+          "anchorMode": "ground",
+          "collisionOwner": "authored-map",
+          "name": "Coin B",
+          "kind": "coin",
+          "width": 30,
+          "height": 30,
+          "color": "#ffc928",
+          "solid": false,
+          "collider": {
+            "enabled": true,
+            "offsetX": 2,
+            "offsetY": 2,
+            "width": 26,
+            "height": 26,
+            "trigger": true,
+            "oneWay": false,
+            "zMin": 0,
+            "zMax": 1
+          }
+        },
+        {
+          "id": "9ef272ab-9530-4f1d-b822-871b7201f428",
+          "x": 770,
+          "y": 264,
+          "z": 0,
+          "supportZ": 0,
+          "anchorMode": "ground",
+          "collisionOwner": "authored-map",
+          "name": "Coin C",
+          "kind": "coin",
+          "width": 30,
+          "height": 30,
+          "color": "#ffc928",
+          "solid": false,
+          "collider": {
+            "enabled": true,
+            "offsetX": 2,
+            "offsetY": 2,
+            "width": 26,
+            "height": 26,
+            "trigger": true,
+            "oneWay": false,
+            "zMin": 0,
+            "zMax": 1
+          }
+        },
+        {
+          "id": "232e2844-5e6f-4e0f-bf0b-04dfc7444c2f",
+          "x": 354,
+          "y": 492,
+          "z": 0,
+          "supportZ": 0,
+          "anchorMode": "ground",
+          "collisionOwner": "authored-map",
+          "name": "Floor spikes",
+          "kind": "hazard",
+          "width": 72,
+          "height": 28,
+          "color": "#ff5c3b",
+          "solid": false,
+          "collider": {
+            "enabled": true,
+            "offsetX": 0,
+            "offsetY": 0,
+            "width": 72,
+            "height": 28,
+            "trigger": true,
+            "oneWay": false,
+            "zMin": 0,
+            "zMax": 1
+          }
+        },
+        {
+          "id": "291360c2-c49f-449b-8dad-96d1b459a29a",
+          "x": 82,
+          "y": 398,
+          "z": 0,
+          "supportZ": 0,
+          "anchorMode": "ground",
+          "collisionOwner": "authored-map",
+          "name": "Checkpoint",
+          "kind": "spawn",
+          "width": 42,
+          "height": 64,
+          "color": "#c8ff4d",
+          "solid": false,
+          "collider": {
+            "enabled": false,
+            "offsetX": 0,
+            "offsetY": 0,
+            "width": 42,
+            "height": 64,
+            "trigger": false,
+            "oneWay": false,
+            "zMin": 0,
+            "zMax": 1
+          }
+        },
+        {
+          "id": "451dea03-9b5d-40b9-9bb9-35de6bd63e6a",
+          "x": 820,
+          "y": 242,
+          "z": 0,
+          "supportZ": 0,
+          "anchorMode": "ground",
+          "collisionOwner": "authored-map",
+          "name": "Exit flag",
+          "kind": "goal",
+          "width": 48,
+          "height": 72,
+          "color": "#c8ff4d",
+          "solid": false,
+          "collider": {
+            "enabled": true,
+            "offsetX": 4,
+            "offsetY": 4,
+            "width": 40,
+            "height": 68,
+            "trigger": true,
+            "oneWay": false,
+            "zMin": 0,
+            "zMax": 1
+          }
+        }
+      ],
+      "traversalPaths": []
+    }
+  ],
+  "replay": {
+    "version": "1",
+    "tickRate": 60,
+    "seed": 1,
+    "cases": [
+      {
+        "id": "browser-opening-run",
+        "name": "Browser opening run remains deterministic",
+        "revision": 1,
+        "changeReason": "Initial deterministic fixture",
+        "tickRate": 60,
+        "seed": 1,
+        "tickCount": 90,
+        "inputs": [
+          {
+            "tick": 0,
+            "action": "move-right",
+            "pressed": true
+          },
+          {
+            "tick": 24,
+            "action": "jump",
+            "pressed": true
+          },
+          {
+            "tick": 30,
+            "action": "jump",
+            "pressed": false
+          },
+          {
+            "tick": 72,
+            "action": "move-right",
+            "pressed": false
+          }
+        ],
+        "expectedHash": "replay-e3f6bd29",
+        "checkpoints": [
+          {
+            "tick": 1,
+            "hash": "replay-04a07489"
+          }
+        ]
+      }
+    ]
+  }
+}

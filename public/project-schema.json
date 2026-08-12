@@ -1,0 +1,1657 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://looplab.local/project-schema/1.0.0",
+  "title": "Looplab 2D game project",
+  "type": "object",
+  "required": ["schemaVersion", "name", "width", "height", "background", "gravity", "grid", "controlMode", "objects"],
+  "properties": {
+    "schemaVersion": { "const": "1.0.0" },
+    "name": { "type": "string", "minLength": 1 },
+    "width": { "type": "number", "minimum": 64, "maximum": 8192 },
+    "height": { "type": "number", "minimum": 64, "maximum": 8192 },
+    "background": { "type": "string" },
+    "gravity": { "type": "number" },
+    "grid": { "type": "number", "exclusiveMinimum": 0 },
+    "controlMode": { "enum": ["platformer", "topdown"] },
+    "inputActions": { "type": "array", "maxItems": 64, "items": { "$ref": "#/$defs/inputAction" } },
+    "projection": { "$ref": "#/$defs/projection" },
+    "navigation": { "$ref": "#/$defs/navigation" },
+    "objects": { "type": "array", "items": { "$ref": "#/$defs/object" } },
+    "traversalPaths": { "type": "array", "items": { "$ref": "#/$defs/traversalPath" } },
+    "maps": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/map" } },
+    "activeMapId": { "type": "string", "minLength": 1 },
+    "startMapId": { "type": "string", "minLength": 1 },
+    "featureContracts": { "type": "array", "maxItems": 128, "items": { "$ref": "#/$defs/featureContract" } },
+    "acceptanceTests": { "type": "array", "maxItems": 256, "items": { "$ref": "#/$defs/acceptanceTest" } },
+    "replay": { "$ref": "#/$defs/replay" },
+    "gameplayProgram": { "$ref": "#/$defs/gameplayProgram" },
+    "combatProgram": { "$ref": "#/$defs/combatProgram" },
+    "actorProgram": { "$ref": "#/$defs/actorProgram" },
+    "collisionGeometry": { "$ref": "#/$defs/collisionGeometry" },
+    "tileProgram": { "$ref": "#/$defs/tileProgram" },
+    "narrativeContract": { "$ref": "#/$defs/narrativeContract" },
+    "presentationProgram": { "$ref": "#/$defs/presentationProgram" },
+    "gameShell": { "$ref": "#/$defs/gameShell" },
+    "saveProgram": { "$ref": "#/$defs/saveProgram" },
+    "spatialLayoutContract": { "$ref": "#/$defs/spatialLayoutContract" },
+    "verbArchitecture": { "$ref": "#/$defs/verbArchitecture" },
+    "templateProvenance": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "version": { "type": "integer", "minimum": 1 },
+        "semanticMode": { "enum": ["neutral", "directed"] },
+        "adaptationStatus": { "enum": ["starter", "adapted"] },
+        "neutralRuntimeIds": { "type": "array", "items": { "type": "string" }, "uniqueItems": true }
+      },
+      "additionalProperties": true
+    },
+    "movementTuning": {
+      "type": "object",
+      "required": ["maxRunSpeed", "groundAcceleration", "airAcceleration", "groundFriction", "jumpVelocity", "coyoteTicks", "jumpBufferTicks", "jumpCutVelocity", "apexGravityScale", "fallGravityScale", "apexThreshold"],
+      "properties": {
+        "maxRunSpeed": { "type": "number", "exclusiveMinimum": 0 },
+        "groundAcceleration": { "type": "number", "exclusiveMinimum": 0 },
+        "airAcceleration": { "type": "number", "exclusiveMinimum": 0 },
+        "groundFriction": { "type": "number", "minimum": 0 },
+        "jumpVelocity": { "type": "number", "exclusiveMinimum": 0 },
+        "coyoteTicks": { "type": "integer", "minimum": 0, "maximum": 30 },
+        "jumpBufferTicks": { "type": "integer", "minimum": 0, "maximum": 30 },
+        "jumpCutVelocity": { "type": "number", "minimum": 0 },
+        "apexGravityScale": { "type": "number", "exclusiveMinimum": 0 },
+        "fallGravityScale": { "type": "number", "exclusiveMinimum": 0 },
+        "apexThreshold": { "type": "number", "minimum": 0 }
+      },
+      "additionalProperties": true
+    },
+    "runtimeProfile": {
+      "type": "object",
+      "properties": {
+        "dimension": { "const": "2d" },
+        "framework": { "enum": ["standalone", "canvas", "phaser", "pixi", "melon"] }
+      },
+      "required": ["dimension", "framework"],
+      "additionalProperties": true
+    },
+    "release": {
+      "type": "object",
+      "properties": {
+        "exportProfile": { "enum": ["strict", "hosted"] },
+        "singleFile": { "const": true },
+        "networkFree": { "const": true },
+        "allowNetwork": { "const": false },
+        "storageFree": { "type": "boolean" },
+        "allowStorage": { "type": "boolean" },
+        "storageWrapper": { "type": "string" },
+        "serviceWorker": { "not": { "const": true } },
+        "pwa": { "not": { "const": true } },
+        "cacheApiRequired": { "not": { "const": true } },
+        "moduleImports": { "type": "array", "maxItems": 0 },
+        "externalRequests": { "type": "array", "maxItems": 0 }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "exportProfile": { "const": "hosted" } }, "required": ["exportProfile"] },
+          "then": {
+            "properties": {
+              "storageFree": { "const": false },
+              "allowStorage": { "const": true },
+              "storageWrapper": { "const": "looplab-hosted-storage/v1" }
+            },
+            "required": ["storageFree", "allowStorage", "storageWrapper"]
+          },
+          "else": {
+            "properties": {
+              "storageFree": { "const": true },
+              "allowStorage": { "const": false }
+            },
+            "not": { "required": ["storageWrapper"] }
+          }
+        }
+      ],
+      "additionalProperties": true
+    },
+    "qualityContracts": {
+      "type": "object",
+      "properties": {
+        "verbArchitectureRequired": { "type": "boolean" },
+        "gameplayProgramRequired": { "type": "boolean" },
+        "narrativeContractRequired": { "type": "boolean" },
+        "presentationProgramRequired": { "type": "boolean" },
+        "gameShellRequired": { "type": "boolean" },
+        "architecture": {
+          "type": "object",
+          "properties": {
+            "simulationStateSerializable": { "const": true },
+            "rendererDisposableAdapter": { "const": true },
+            "semanticInputActions": { "const": true },
+            "fixedStepHz": { "type": "number", "exclusiveMinimum": 0 },
+            "maximumCatchUpSteps": { "type": "integer", "minimum": 1, "maximum": 8 },
+            "cameraPresentationOnly": { "const": true },
+            "generatedArtOwnsCollision": { "const": false }
+          },
+          "additionalProperties": true
+        },
+        "collision2d": {
+          "type": "object",
+          "properties": {
+            "authority": { "const": "authored-map" },
+            "highSpeedPolicy": { "enum": ["fixed-step", "substeps", "swept-aabb"] }
+          },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    }
+  },
+  "$defs": {
+    "gameShell": {
+      "type": "object",
+      "required": ["schemaVersion", "status", "enabled", "startMode", "restartMode", "labels", "settings", "terminal", "waiver"],
+      "properties": {
+        "schemaVersion": { "const": "looplab-game-shell/v1" },
+        "status": { "enum": ["draft", "approved"] },
+        "enabled": { "type": "boolean" },
+        "startMode": { "enum": ["title", "play"] },
+        "restartMode": { "enum": ["title", "play"] },
+        "labels": {
+          "type": "object",
+          "required": ["gameTitle", "tagline", "play", "pause", "resume", "restart", "settings", "settingsTitle", "closeSettings", "winTitle", "winMessage", "loseTitle", "loseMessage"],
+          "properties": {
+            "gameTitle": { "type": "string", "minLength": 1, "maxLength": 96 },
+            "tagline": { "type": "string", "minLength": 1, "maxLength": 320 },
+            "play": { "type": "string", "minLength": 1, "maxLength": 96 },
+            "pause": { "type": "string", "minLength": 1, "maxLength": 96 },
+            "resume": { "type": "string", "minLength": 1, "maxLength": 96 },
+            "restart": { "type": "string", "minLength": 1, "maxLength": 96 },
+            "settings": { "type": "string", "minLength": 1, "maxLength": 96 },
+            "settingsTitle": { "type": "string", "minLength": 1, "maxLength": 96 },
+            "closeSettings": { "type": "string", "minLength": 1, "maxLength": 96 },
+            "winTitle": { "type": "string", "minLength": 1, "maxLength": 96 },
+            "winMessage": { "type": "string", "minLength": 1, "maxLength": 320 },
+            "loseTitle": { "type": "string", "minLength": 1, "maxLength": 96 },
+            "loseMessage": { "type": "string", "minLength": 1, "maxLength": 320 }
+          },
+          "additionalProperties": false
+        },
+        "settings": {
+          "type": "object",
+          "required": ["enabled", "audio", "reducedMotion", "touchControlSize", "defaultMuted", "defaultVolume", "defaultReducedMotion", "defaultTouchControlSize"],
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "audio": { "type": "boolean" },
+            "reducedMotion": { "type": "boolean" },
+            "touchControlSize": { "type": "boolean" },
+            "defaultMuted": { "type": "boolean" },
+            "defaultVolume": { "type": "number", "minimum": 0, "maximum": 1 },
+            "defaultReducedMotion": { "enum": ["system", "reduce", "full"] },
+            "defaultTouchControlSize": { "type": "integer", "minimum": 44, "maximum": 80 }
+          },
+          "additionalProperties": false
+        },
+        "terminal": {
+          "type": "object",
+          "required": ["win", "lose"],
+          "properties": {
+            "win": {
+              "type": "object",
+              "required": ["enabled", "source"],
+              "properties": { "enabled": { "type": "boolean" }, "source": { "const": "runtime-won" } },
+              "additionalProperties": false
+            },
+            "lose": {
+              "type": "object",
+              "required": ["enabled", "source", "variableId", "expected"],
+              "properties": {
+                "enabled": { "type": "boolean" },
+                "source": { "enum": ["none", "player-health-depleted", "boolean-variable"] },
+                "variableId": { "type": ["string", "null"], "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" },
+                "expected": { "type": "boolean" }
+              },
+              "allOf": [
+                { "if": { "properties": { "source": { "const": "boolean-variable" } }, "required": ["source"] }, "then": { "properties": { "variableId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" } } } }
+              ],
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        "waiver": {
+          "oneOf": [
+            { "type": "null" },
+            { "type": "object", "required": ["reason"], "properties": { "reason": { "type": "string", "minLength": 1, "maxLength": 320 } }, "additionalProperties": false }
+          ]
+        }
+      },
+      "allOf": [
+        { "if": { "properties": { "enabled": { "const": false } }, "required": ["enabled"] }, "then": { "properties": { "waiver": { "type": "object", "required": ["reason"], "properties": { "reason": { "type": "string", "minLength": 1, "maxLength": 320 } }, "additionalProperties": false } } }, "else": { "properties": { "waiver": { "type": "null" } } } }
+      ],
+      "additionalProperties": false
+    },
+    "spatialLayoutContract": {
+      "type": "object",
+      "required": ["schemaVersion", "status", "intent", "mapId", "families", "pinnedObjectIds", "constraints", "search"],
+      "properties": {
+        "schemaVersion": { "const": "looplab-spatial-layout-contract/v1" },
+        "status": { "enum": ["draft", "approved"] },
+        "intent": { "type": "string", "minLength": 1, "maxLength": 600 },
+        "mapId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" },
+        "families": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1,
+          "uniqueItems": true,
+          "items": { "enum": ["sideview-route", "topdown-route", "dimetric-layered-route"] }
+        },
+        "pinnedObjectIds": {
+          "type": "array",
+          "maxItems": 64,
+          "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" }
+        },
+        "constraints": {
+          "type": "object",
+          "required": ["minimumRouteBeats", "maximumRouteBeats", "minimumBranches", "maximumBranches", "cyclePolicy", "elevationPolicy", "minimumClearance", "replacementPolicy"],
+          "properties": {
+            "minimumRouteBeats": { "type": "integer", "minimum": 2, "maximum": 12 },
+            "maximumRouteBeats": { "type": "integer", "minimum": 2, "maximum": 12 },
+            "minimumBranches": { "type": "integer", "minimum": 0, "maximum": 4 },
+            "maximumBranches": { "type": "integer", "minimum": 0, "maximum": 4 },
+            "cyclePolicy": { "enum": ["allow", "forbid", "required"] },
+            "elevationPolicy": { "enum": ["ground-only", "allow", "required"] },
+            "minimumClearance": { "type": "integer", "minimum": 16, "maximum": 128 },
+            "replacementPolicy": { "enum": ["preserve-existing", "replace-explicit"] }
+          },
+          "additionalProperties": false
+        },
+        "search": {
+          "type": "object",
+          "required": ["maxCandidates", "descriptorAxes"],
+          "properties": {
+            "maxCandidates": { "type": "integer", "minimum": 2, "maximum": 6 },
+            "descriptorAxes": {
+              "type": "array",
+              "minItems": 2,
+              "maxItems": 4,
+              "uniqueItems": true,
+              "items": { "enum": ["topology", "route-beats", "branches", "elevation-layers", "density"] }
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "saveProgram": {
+      "type": "object",
+      "required": ["schemaVersion", "version", "enabled", "portableCodes", "hosted"],
+      "properties": {
+        "schemaVersion": { "const": "looplab-save-program/v1" },
+        "version": { "const": 1 },
+        "enabled": { "type": "boolean" },
+        "portableCodes": { "type": "boolean" },
+        "hosted": {
+          "type": "object",
+          "required": ["autoSave", "restoreOnBoot"],
+          "properties": {
+            "autoSave": { "type": "boolean" },
+            "restoreOnBoot": { "type": "boolean" }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "contractLink": {
+      "oneOf": [
+        { "type": "string", "minLength": 1 },
+        { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 }, "uniqueItems": true },
+        { "type": "object", "minProperties": 1 }
+      ]
+    },
+    "featureContract": {
+      "type": "object",
+      "required": ["id", "name", "visual", "collision", "inputAction", "animationState", "feedbackEvent", "placementRules", "responsiveRules", "acceptanceTests"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" },
+        "name": { "type": "string", "minLength": 1 },
+        "visual": { "$ref": "#/$defs/contractLink" },
+        "collision": { "$ref": "#/$defs/contractLink" },
+        "inputAction": { "$ref": "#/$defs/contractLink" },
+        "animationState": { "$ref": "#/$defs/contractLink" },
+        "feedbackEvent": { "$ref": "#/$defs/contractLink" },
+        "placementRules": { "$ref": "#/$defs/contractLink" },
+        "responsiveRules": { "$ref": "#/$defs/contractLink" },
+        "acceptanceTests": { "type": "array", "minItems": 1, "items": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" }, "uniqueItems": true },
+        "dirtyDependencies": { "type": "array", "items": { "type": "string", "minLength": 1 }, "uniqueItems": true }
+      },
+      "additionalProperties": true
+    },
+    "acceptanceTest": {
+      "type": "object",
+      "required": ["id", "name", "assertion"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" },
+        "name": { "type": "string", "minLength": 1 },
+        "featureId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" },
+        "ownerId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" },
+        "assertion": { "type": "string", "minLength": 1 },
+        "expected": {},
+        "buildId": { "type": "string", "minLength": 1 },
+        "runner": { "const": "looplab-deterministic-runtime" },
+        "driver": { "$ref": "#/$defs/acceptanceDriver" },
+        "assertions": { "type": "array", "minItems": 1, "maxItems": 64, "items": { "$ref": "#/$defs/acceptanceAssertion" } }
+      },
+      "anyOf": [{ "required": ["featureId"] }, { "required": ["ownerId"] }],
+      "additionalProperties": true
+    },
+    "acceptanceDriver": {
+      "type": "object",
+      "required": ["tickCount", "inputs"],
+      "properties": {
+        "tickRate": { "type": "number", "exclusiveMinimum": 0, "maximum": 240 },
+        "tickCount": { "type": "integer", "minimum": 1, "maximum": 36000 },
+        "startMapId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" },
+        "startSpawnId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" },
+        "inputs": {
+          "type": "array",
+          "maxItems": 4096,
+          "items": {
+            "type": "object",
+            "required": ["tick", "pressed"],
+            "properties": {
+              "tick": { "type": "integer", "minimum": 0 },
+              "pressed": { "type": "boolean" },
+              "action": { "type": "string", "minLength": 1 },
+              "actionId": { "type": "string", "minLength": 1 },
+              "code": { "type": "string", "minLength": 1 }
+            },
+            "anyOf": [{ "required": ["action"] }, { "required": ["actionId"] }, { "required": ["code"] }],
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "acceptanceAssertion": {
+      "type": "object",
+      "required": ["id", "target", "operator"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" },
+        "target": { "enum": ["gameplay-variable", "completed-rule", "event-emitted", "object-property", "runtime-state", "traversal-path"] },
+        "targetId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" },
+        "property": { "enum": ["activeMapId", "activeTraversalPathId", "activeChoicePageId", "active", "collected", "collectedCount", "colliderEnabled", "enabled", "grounded", "hidden", "locked", "open", "runtimeState", "solid", "vx", "vy", "won", "x", "y", "z"] },
+        "operator": { "enum": ["equals", "not-equals", "greater-than", "greater-or-equal", "less-than", "less-or-equal", "contains", "truthy", "falsy"] },
+        "expected": {},
+        "atTick": { "type": "integer", "minimum": 1 }
+      },
+      "additionalProperties": false
+    },
+    "inputAction": {
+      "type": "object",
+      "required": ["id", "label", "bindings"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "label": { "type": "string", "minLength": 1 },
+        "bindings": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 }, "uniqueItems": true },
+        "animationState": { "type": "string", "minLength": 1 },
+        "onboarding": { "type": "boolean" },
+        "replayEvent": { "type": "boolean" }
+      },
+      "additionalProperties": true
+    },
+    "point": {
+      "type": "object",
+      "required": ["x", "y"],
+      "properties": {
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "z": { "type": "number" }
+      },
+      "additionalProperties": false
+    },
+    "vector": {
+      "type": "object",
+      "properties": {
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "z": { "type": "number" }
+      },
+      "minProperties": 1,
+      "additionalProperties": false
+    },
+    "projection": {
+      "type": "object",
+      "required": ["type", "tileWidth", "tileHeight"],
+      "properties": {
+        "type": { "enum": ["orthographic", "dimetric-2:1"] },
+        "tileWidth": { "type": "number", "exclusiveMinimum": 0 },
+        "tileHeight": { "type": "number", "exclusiveMinimum": 0 },
+        "elevationStep": { "type": "number", "exclusiveMinimum": 0 },
+        "originX": { "type": "number" },
+        "originY": { "type": "number" },
+        "worldUnitsPerTile": { "type": "number", "exclusiveMinimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "navigationLayer": {
+      "type": "object",
+      "required": ["id", "name", "zMin", "zMax"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "name": { "type": "string", "minLength": 1 },
+        "color": { "type": "string" },
+        "visible": { "type": "boolean" },
+        "locked": { "type": "boolean" },
+        "zMin": { "type": "number" },
+        "zMax": { "type": "number" }
+      },
+      "additionalProperties": false
+    },
+    "navigationNode": {
+      "type": "object",
+      "required": ["id", "x", "y", "z"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "z": { "type": "number" },
+        "layerId": { "type": "string", "minLength": 1 },
+        "destinationId": { "type": "string", "minLength": 1 },
+        "tags": { "type": "array", "items": { "type": "string" }, "uniqueItems": true }
+      },
+      "additionalProperties": false
+    },
+    "navigationLink": {
+      "type": "object",
+      "required": ["id", "a", "b", "cost", "oneWay"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "a": { "type": "string", "minLength": 1 },
+        "b": { "type": "string", "minLength": 1 },
+        "cost": { "type": "number", "exclusiveMinimum": 0 },
+        "oneWay": { "type": "boolean" },
+        "layerId": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "navigationArea": {
+      "type": "object",
+      "required": ["id", "name", "kind", "points", "zMin", "zMax"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "name": { "type": "string", "minLength": 1 },
+        "kind": { "enum": ["walkable", "blocked"] },
+        "points": { "type": "array", "minItems": 3, "items": { "$ref": "#/$defs/point" } },
+        "zMin": { "type": "number" },
+        "zMax": { "type": "number" },
+        "layerId": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "navigation": {
+      "type": "object",
+      "required": ["version", "layers", "nodes", "links", "areas"],
+      "properties": {
+        "version": { "type": "integer", "minimum": 1 },
+        "activeLayerId": { "type": "string", "minLength": 1 },
+        "layers": { "type": "array", "items": { "$ref": "#/$defs/navigationLayer" } },
+        "nodes": { "type": "array", "items": { "$ref": "#/$defs/navigationNode" } },
+        "links": { "type": "array", "items": { "$ref": "#/$defs/navigationLink" } },
+        "areas": { "type": "array", "items": { "$ref": "#/$defs/navigationArea" } },
+        "authoredRoute": { "$ref": "#/$defs/authoredRoute" },
+        "testRoute": { "type": "object" }
+      },
+      "additionalProperties": false
+    },
+    "authoredRoute": {
+      "type": "object",
+      "required": ["version", "sourceFormat", "coordinateSpace", "data", "integrity"],
+      "properties": {
+        "version": { "const": 1 },
+        "sourceFormat": { "type": "string", "minLength": 1 },
+        "coordinateSpace": { "enum": ["world", "percent", "source-pixels"] },
+        "data": { "type": "object" },
+        "integrity": {
+          "type": "object",
+          "required": ["revision", "digestAlgorithm", "sourceDigest", "currentDigest", "hashStatus", "hashes"],
+          "properties": {
+            "revision": { "type": "integer", "minimum": 0 },
+            "digestAlgorithm": { "const": "sha256-jcs-v1" },
+            "sourceDigest": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+            "currentDigest": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+            "hashStatus": { "enum": ["unverified", "preserved", "verified", "stale"] },
+            "hashes": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["path", "value"],
+                "properties": {
+                  "path": { "type": "string", "minLength": 1 },
+                  "value": { "type": "string", "minLength": 1 },
+                  "source": { "type": "string", "minLength": 1 }
+                },
+                "additionalProperties": true
+              }
+            },
+            "verifiedDigest": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+            "verifiedAt": { "type": "string", "minLength": 1 },
+            "verificationKind": { "enum": ["deterministic-replay", "render-capture", "runtime-probe", "combined"] },
+            "simVersion": { "type": "string", "minLength": 1 },
+            "staleReasons": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+            "versionLog": { "type": "array", "items": { "type": "object" } },
+            "legacyDigests": { "type": "array", "items": { "type": "string", "pattern": "^route-[a-f0-9]{8}$" }, "uniqueItems": true }
+          },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "replayInput": {
+      "type": "object",
+      "required": ["tick", "pressed"],
+      "properties": {
+        "tick": { "type": "integer", "minimum": 0 },
+        "action": { "type": "string", "minLength": 1 },
+        "actionId": { "type": "string", "minLength": 1 },
+        "code": { "type": "string", "minLength": 1 },
+        "pressed": { "type": "boolean" }
+      },
+      "anyOf": [
+        { "required": ["action"] },
+        { "required": ["actionId"] },
+        { "required": ["code"] }
+      ],
+      "additionalProperties": false
+    },
+    "replayCheckpoint": {
+      "type": "object",
+      "required": ["tick", "hash"],
+      "properties": {
+        "tick": { "type": "integer", "minimum": 1 },
+        "hash": { "type": "string", "pattern": "^(?:replay-[0-9a-f]{8}|replay-sha256-[0-9a-f]{64})$" }
+      },
+      "additionalProperties": false
+    },
+    "replayCase": {
+      "type": "object",
+      "required": ["id", "tickCount", "inputs"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "name": { "type": "string", "minLength": 1 },
+        "revision": { "type": "integer", "minimum": 1 },
+        "changeReason": { "type": "string", "minLength": 1 },
+        "tickRate": { "type": "number", "exclusiveMinimum": 0, "maximum": 240 },
+        "seed": { "type": "number" },
+        "tickCount": { "type": "integer", "minimum": 1, "maximum": 36000 },
+        "startMapId": { "type": "string", "minLength": 1 },
+        "startSpawnId": { "type": "string", "minLength": 1 },
+        "inputs": { "type": "array", "items": { "$ref": "#/$defs/replayInput" } },
+        "checkpoints": { "type": "array", "items": { "$ref": "#/$defs/replayCheckpoint" } },
+        "expectedHash": { "type": "string", "pattern": "^(?:replay-[0-9a-f]{8}|replay-sha256-[0-9a-f]{64})$" },
+        "legacyExpectedHash": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "replay": {
+      "type": "object",
+      "required": ["version", "tickRate", "seed", "cases"],
+      "properties": {
+        "version": { "type": "string", "minLength": 1 },
+        "tickRate": { "type": "number", "exclusiveMinimum": 0, "maximum": 240 },
+        "seed": { "type": "number" },
+        "cases": { "type": "array", "maxItems": 32, "items": { "$ref": "#/$defs/replayCase" } }
+      },
+      "additionalProperties": false
+    },
+    "narrativeContract": {
+      "type": "object",
+      "required": ["version", "status", "entryPageIds", "characters", "lines", "beats", "endings"],
+      "properties": {
+        "version": { "const": 1 },
+        "status": { "enum": ["draft", "implemented", "verified"] },
+        "premise": { "type": "string" },
+        "entryPageIds": {
+          "type": "array",
+          "maxItems": 128,
+          "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" }
+        },
+        "continuityTerms": {
+          "type": "array",
+          "maxItems": 128,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "characters": {
+          "type": "array",
+          "maxItems": 64,
+          "items": {
+            "type": "object",
+            "required": ["id", "name"],
+            "properties": {
+              "id": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" },
+              "name": { "type": "string", "minLength": 1 },
+              "role": { "type": "string" },
+              "description": { "type": "string" }
+            },
+            "additionalProperties": true
+          }
+        },
+        "lines": {
+          "type": "array",
+          "maxItems": 512,
+          "items": {
+            "type": "object",
+            "required": ["id", "voiceRole", "text", "delivery", "essential"],
+            "properties": {
+              "id": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" },
+              "speakerId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" },
+              "voiceRole": { "enum": ["narrator", "character", "system", "environment"] },
+              "text": { "type": "string" },
+              "textEquivalent": { "type": "string" },
+              "audioAssetId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" },
+              "delivery": { "enum": ["text", "audio", "text-and-audio", "environmental", "visual"] },
+              "essential": { "type": "boolean" }
+            },
+            "additionalProperties": true
+          }
+        },
+        "beats": {
+          "type": "array",
+          "maxItems": 256,
+          "items": {
+            "type": "object",
+            "required": ["id", "label", "kind", "required", "essential", "delivery", "variableIds", "lineIds", "acceptanceTestIds"],
+            "properties": {
+              "id": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" },
+              "label": { "type": "string", "minLength": 1 },
+              "kind": { "enum": ["setup", "character", "quest", "reveal", "choice", "consequence", "tutorial", "climax", "ending", "ambient", "custom"] },
+              "required": { "type": "boolean" },
+              "essential": { "type": "boolean" },
+              "delivery": { "enum": ["text", "audio", "text-and-audio", "environmental", "visual"] },
+              "pageId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" },
+              "choiceId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" },
+              "ruleId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" },
+              "event": { "type": "string", "minLength": 1 },
+              "mapId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" },
+              "objectId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" },
+              "featureId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" },
+              "variableIds": { "type": "array", "uniqueItems": true, "items": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" } },
+              "lineIds": { "type": "array", "uniqueItems": true, "items": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" } },
+              "acceptanceTestIds": { "type": "array", "uniqueItems": true, "items": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" } }
+            },
+            "additionalProperties": true
+          }
+        },
+        "endings": {
+          "type": "array",
+          "maxItems": 32,
+          "items": {
+            "type": "object",
+            "required": ["id", "label", "kind", "acceptanceTestIds"],
+            "properties": {
+              "id": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" },
+              "label": { "type": "string", "minLength": 1 },
+              "kind": { "enum": ["success", "failure", "alternate", "open"] },
+              "pageId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" },
+              "choiceId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" },
+              "ruleId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" },
+              "beatId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" },
+              "acceptanceTestIds": { "type": "array", "uniqueItems": true, "items": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" } }
+            },
+            "additionalProperties": true
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "presentationProgram": {
+      "type": "object",
+      "required": ["version", "status", "enabled", "reducedMotion", "audio", "motion"],
+      "properties": {
+        "version": { "const": 1 },
+        "status": { "enum": ["draft", "approved"] },
+        "enabled": { "type": "boolean" },
+        "reducedMotion": { "enum": ["respect", "always-reduce", "ignore"] },
+        "audio": {
+          "type": "object",
+          "required": ["enabled", "masterVolume", "maxVoices", "debounceMs", "cues"],
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "masterVolume": { "type": "number", "minimum": 0, "maximum": 1 },
+            "maxVoices": { "type": "integer", "minimum": 1, "maximum": 24 },
+            "debounceMs": { "type": "integer", "minimum": 0, "maximum": 500 },
+            "cues": { "type": "array", "maxItems": 32, "items": { "$ref": "#/$defs/presentationAudioCue" } }
+          },
+          "additionalProperties": false
+        },
+        "motion": {
+          "type": "object",
+          "required": ["enabled", "maxParticles", "cues"],
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "maxParticles": { "type": "integer", "minimum": 0, "maximum": 320 },
+            "cues": { "type": "array", "maxItems": 32, "items": { "$ref": "#/$defs/presentationMotionCue" } }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "presentationAudioCue": {
+      "type": "object",
+      "required": ["id", "event", "enabled", "kind", "waveform", "frequency", "endFrequency", "filterFrequency", "durationMs", "attackMs", "releaseMs", "volume", "pitchVariationCents"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" },
+        "event": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" },
+        "enabled": { "type": "boolean" },
+        "kind": { "enum": ["tone", "noise"] },
+        "waveform": { "enum": ["sine", "square", "sawtooth", "triangle"] },
+        "frequency": { "type": "number", "minimum": 40, "maximum": 4000 },
+        "endFrequency": { "type": "number", "minimum": 40, "maximum": 4000 },
+        "filterFrequency": { "type": "number", "minimum": 80, "maximum": 12000 },
+        "durationMs": { "type": "integer", "minimum": 20, "maximum": 2000 },
+        "attackMs": { "type": "integer", "minimum": 1, "maximum": 250 },
+        "releaseMs": { "type": "integer", "minimum": 5, "maximum": 1000 },
+        "volume": { "type": "number", "minimum": 0, "maximum": 1 },
+        "pitchVariationCents": { "type": "integer", "minimum": 0, "maximum": 120 }
+      },
+      "additionalProperties": false
+    },
+    "presentationMotionCue": {
+      "type": "object",
+      "required": ["id", "event", "enabled", "target", "effects"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" },
+        "event": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" },
+        "enabled": { "type": "boolean" },
+        "target": { "enum": ["event-object", "player", "center"] },
+        "effects": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 6,
+          "items": {
+            "oneOf": [
+              { "$ref": "#/$defs/presentationParticles" },
+              { "$ref": "#/$defs/presentationShake" },
+              { "$ref": "#/$defs/presentationFlash" },
+              { "$ref": "#/$defs/presentationSquash" }
+            ]
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "presentationParticles": {
+      "type": "object",
+      "required": ["type", "count", "color", "secondaryColor", "speed", "spread", "direction", "lifetimeMs", "size", "gravity"],
+      "properties": {
+        "type": { "const": "particles" },
+        "count": { "type": "integer", "minimum": 1, "maximum": 64 },
+        "color": { "type": "string", "minLength": 1 },
+        "secondaryColor": { "type": "string", "minLength": 1 },
+        "speed": { "type": "number", "minimum": 0, "maximum": 1200 },
+        "spread": { "type": "number", "minimum": 0, "maximum": 6.283185307179586 },
+        "direction": { "type": "number", "minimum": -6.283185307179586, "maximum": 6.283185307179586 },
+        "lifetimeMs": { "type": "integer", "minimum": 40, "maximum": 2000 },
+        "size": { "type": "number", "minimum": 1, "maximum": 32 },
+        "gravity": { "type": "number", "minimum": -2000, "maximum": 2000 }
+      },
+      "additionalProperties": false
+    },
+    "presentationShake": {
+      "type": "object",
+      "required": ["type", "intensity", "durationMs"],
+      "properties": {
+        "type": { "const": "shake" },
+        "intensity": { "type": "number", "minimum": 0, "maximum": 24 },
+        "durationMs": { "type": "integer", "minimum": 20, "maximum": 1000 }
+      },
+      "additionalProperties": false
+    },
+    "presentationFlash": {
+      "type": "object",
+      "required": ["type", "color", "opacity", "durationMs"],
+      "properties": {
+        "type": { "const": "flash" },
+        "color": { "type": "string", "minLength": 1 },
+        "opacity": { "type": "number", "minimum": 0, "maximum": 0.9 },
+        "durationMs": { "type": "integer", "minimum": 20, "maximum": 800 }
+      },
+      "additionalProperties": false
+    },
+    "presentationSquash": {
+      "type": "object",
+      "required": ["type", "scaleX", "scaleY", "durationMs"],
+      "properties": {
+        "type": { "const": "squash" },
+        "scaleX": { "type": "number", "minimum": 0.55, "maximum": 1.8 },
+        "scaleY": { "type": "number", "minimum": 0.55, "maximum": 1.8 },
+        "durationMs": { "type": "integer", "minimum": 20, "maximum": 800 }
+      },
+      "additionalProperties": false
+    },
+    "combatProgram": {
+      "type": "object",
+      "required": ["schemaVersion", "enabled", "maxProjectiles", "teams", "actors", "emitters", "acceptanceTestIds"],
+      "properties": {
+        "schemaVersion": { "const": "looplab-combat-program/v1" },
+        "enabled": { "type": "boolean" },
+        "maxProjectiles": { "type": "integer", "minimum": 1, "maximum": 512 },
+        "teams": {
+          "type": "array", "maxItems": 32,
+          "items": {
+            "type": "object", "required": ["id", "targetTeamIds"],
+            "properties": {
+              "id": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" },
+              "targetTeamIds": { "type": "array", "maxItems": 32, "uniqueItems": true, "items": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" } }
+            },
+            "additionalProperties": false
+          }
+        },
+        "actors": {
+          "type": "array", "maxItems": 128,
+          "items": {
+            "type": "object", "required": ["id", "mapId", "objectId", "teamId", "maxHp", "initialHp", "invulnerabilityTicks", "deathBehavior"],
+            "properties": {
+              "id": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" },
+              "mapId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" },
+              "objectId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" },
+              "teamId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" },
+              "maxHp": { "type": "integer", "minimum": 1, "maximum": 1000000 },
+              "initialHp": { "type": "integer", "minimum": 0, "maximum": 1000000 },
+              "invulnerabilityTicks": { "type": "integer", "minimum": 0, "maximum": 1200 },
+              "deathBehavior": { "enum": ["event-only", "hide", "respawn"] }
+            },
+            "additionalProperties": false
+          }
+        },
+        "emitters": {
+          "type": "array", "maxItems": 64,
+          "items": {
+            "type": "object", "required": ["id", "mapId", "ownerObjectId", "teamId", "trigger", "cooldownTicks", "poolSize", "muzzle", "aim", "projectile"],
+            "properties": {
+              "id": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" },
+              "mapId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" },
+              "ownerObjectId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" },
+              "teamId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" },
+              "trigger": { "enum": ["pressed", "held", "automatic"] },
+              "actionId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" },
+              "cooldownTicks": { "type": "integer", "minimum": 1, "maximum": 3600 },
+              "poolSize": { "type": "integer", "minimum": 1, "maximum": 128 },
+              "muzzle": {
+                "type": "object", "required": ["offsetX", "offsetY", "distance"],
+                "properties": { "offsetX": { "type": "number", "minimum": -256, "maximum": 256 }, "offsetY": { "type": "number", "minimum": -256, "maximum": 256 }, "distance": { "type": "number", "minimum": 0, "maximum": 256 } },
+                "additionalProperties": false
+              },
+              "aim": {
+                "type": "object", "required": ["mode", "x", "y", "range"],
+                "properties": { "mode": { "enum": ["fixed", "movement", "nearest"] }, "x": { "type": "number", "minimum": -1, "maximum": 1 }, "y": { "type": "number", "minimum": -1, "maximum": 1 }, "range": { "type": "number", "minimum": 1, "maximum": 16384 } },
+                "additionalProperties": false
+              },
+              "projectile": {
+                "type": "object", "required": ["speed", "width", "height", "zHeight", "lifetimeTicks", "damage", "pierce", "worldCollision", "color", "opacity"],
+                "properties": {
+                  "speed": { "type": "number", "exclusiveMinimum": 0, "maximum": 8192 }, "width": { "type": "number", "exclusiveMinimum": 0, "maximum": 256 }, "height": { "type": "number", "exclusiveMinimum": 0, "maximum": 256 }, "zHeight": { "type": "number", "exclusiveMinimum": 0, "maximum": 256 },
+                  "lifetimeTicks": { "type": "integer", "minimum": 1, "maximum": 7200 }, "damage": { "type": "integer", "minimum": 1, "maximum": 1000000 }, "pierce": { "type": "integer", "minimum": 0, "maximum": 64 }, "worldCollision": { "type": "boolean" }, "color": { "type": "string", "minLength": 1 }, "opacity": { "type": "number", "minimum": 0, "maximum": 1 }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "acceptanceTestIds": { "type": "array", "maxItems": 64, "uniqueItems": true, "items": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" } }
+      },
+      "additionalProperties": false
+    },
+    "actorProgram": {
+      "type": "object",
+      "required": ["schemaVersion", "enabled", "actors", "acceptanceTestIds"],
+      "properties": {
+        "schemaVersion": { "const": "looplab-actor-program/v1" },
+        "enabled": { "type": "boolean" },
+        "actors": {
+          "type": "array", "maxItems": 128,
+          "items": {
+            "type": "object",
+            "required": ["id", "mapId", "objectId", "baseMode", "detectionMode", "target", "speed", "arrivalRadius", "stopDistance", "safeDistance", "detectionRadius", "fieldOfViewDegrees", "memoryTicks", "repathTicks", "routeBehavior", "patrolNodeIds", "homeNodeId", "initialFacing", "cutscene"],
+            "properties": {
+              "id": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" },
+              "mapId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" },
+              "objectId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" },
+              "baseMode": { "enum": ["hold", "patrol"] },
+              "detectionMode": { "enum": ["none", "chase", "flee"] },
+              "target": {
+                "oneOf": [
+                  { "type": "null" },
+                  {
+                    "type": "object", "required": ["kind"],
+                    "properties": { "kind": { "enum": ["player", "actor", "object"] }, "id": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" } },
+                    "additionalProperties": false
+                  }
+                ]
+              },
+              "speed": { "type": "number", "exclusiveMinimum": 0, "maximum": 4096 },
+              "arrivalRadius": { "type": "number", "minimum": 0, "maximum": 16384 },
+              "stopDistance": { "type": "number", "minimum": 0, "maximum": 16384 },
+              "safeDistance": { "type": "number", "minimum": 0, "maximum": 16384 },
+              "detectionRadius": { "type": "number", "minimum": 0, "maximum": 16384 },
+              "fieldOfViewDegrees": { "type": "number", "minimum": 0, "maximum": 360 },
+              "memoryTicks": { "type": "integer", "minimum": 0, "maximum": 7200 },
+              "repathTicks": { "type": "integer", "minimum": 1, "maximum": 600 },
+              "routeBehavior": { "enum": ["loop", "ping-pong", "stop"] },
+              "patrolNodeIds": { "type": "array", "maxItems": 256, "uniqueItems": true, "items": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" } },
+              "homeNodeId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" },
+              "initialFacing": {
+                "type": "object", "required": ["x", "y"],
+                "properties": { "x": { "type": "number", "minimum": -1, "maximum": 1 }, "y": { "type": "number", "minimum": -1, "maximum": 1 } },
+                "additionalProperties": false
+              },
+              "cutscene": {
+                "oneOf": [
+                  { "type": "null" },
+                  {
+                    "type": "object", "required": ["variableId", "operator", "value", "nodeIds", "routeBehavior"],
+                    "properties": {
+                      "variableId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" },
+                      "operator": { "enum": ["eq", "ne", "gt", "gte", "lt", "lte", "truthy", "falsy"] },
+                      "value": { "type": ["null", "boolean", "number", "string"] },
+                      "nodeIds": { "type": "array", "minItems": 2, "maxItems": 256, "uniqueItems": true, "items": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" } },
+                      "routeBehavior": { "enum": ["loop", "ping-pong", "stop"] }
+                    },
+                    "additionalProperties": false
+                  }
+                ]
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "acceptanceTestIds": { "type": "array", "maxItems": 64, "uniqueItems": true, "items": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" } }
+      },
+      "additionalProperties": false
+    },
+    "gameplayProgram": {
+      "type": "object",
+      "required": ["version", "variables", "rules"],
+      "properties": {
+        "version": { "const": 1 },
+        "variables": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "label", "type", "initial"],
+            "properties": {
+              "id": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" },
+              "label": { "type": "string", "minLength": 1 },
+              "type": { "enum": ["number", "boolean", "string"] },
+              "initial": { "type": ["number", "boolean", "string"] },
+              "min": { "type": "number" },
+              "max": { "type": "number" },
+              "visible": { "type": "boolean" }
+            },
+            "additionalProperties": true
+          }
+        },
+        "initialChoicePageId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" },
+        "choicePages": {
+          "type": "array",
+          "maxItems": 128,
+          "items": {
+            "type": "object",
+            "required": ["id", "title", "body", "modal", "choices"],
+            "properties": {
+              "id": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" },
+              "title": { "type": "string" },
+              "body": { "type": "string" },
+              "modal": { "type": "boolean" },
+              "choices": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 16,
+                "items": {
+                  "type": "object",
+                  "required": ["id", "label", "actionId", "visibleWhen", "enabledWhen", "effects", "close"],
+                  "properties": {
+                    "id": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" },
+                    "label": { "type": "string", "minLength": 1 },
+                    "actionId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" },
+                    "visibleWhen": { "type": "array", "items": { "$ref": "#/$defs/gameplayCondition" } },
+                    "enabledWhen": { "type": "array", "items": { "$ref": "#/$defs/gameplayCondition" } },
+                    "effects": { "type": "array", "items": { "$ref": "#/$defs/gameplayEffect" } },
+                    "nextPageId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" },
+                    "close": { "type": "boolean" }
+                  },
+                  "additionalProperties": true
+                }
+              }
+            },
+            "additionalProperties": true
+          }
+        },
+        "clocks": {
+          "type": "array",
+          "maxItems": 32,
+          "items": {
+            "type": "object",
+            "required": ["id", "label", "variableId", "unit", "step"],
+            "properties": {
+              "id": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" },
+              "label": { "type": "string", "minLength": 1 },
+              "variableId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" },
+              "unit": { "type": "string", "minLength": 1 },
+              "step": { "type": "integer", "minimum": 1 }
+            },
+            "additionalProperties": true
+          }
+        },
+        "hudBindings": {
+          "type": "array",
+          "maxItems": 64,
+          "items": {
+            "type": "object",
+            "required": ["id", "text", "region", "visibleWhen"],
+            "properties": {
+              "id": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" },
+              "text": { "type": "string", "minLength": 1 },
+              "ariaLabel": { "type": "string", "minLength": 1 },
+              "region": { "enum": ["primary", "secondary", "ticker"] },
+              "visibleWhen": { "type": "array", "items": { "$ref": "#/$defs/gameplayCondition" } }
+            },
+            "additionalProperties": true
+          }
+        },
+        "rules": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "name", "enabled", "trigger", "conditions", "once", "effects"],
+            "properties": {
+              "id": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" },
+              "name": { "type": "string", "minLength": 1 },
+              "enabled": { "type": "boolean" },
+              "once": { "enum": ["never", "map", "run"] },
+              "trigger": {
+                "type": "object",
+                "required": ["type"],
+                "properties": {
+                  "type": { "enum": ["event", "input", "overlap", "state"] },
+                  "event": { "type": "string", "minLength": 1 },
+                  "actionId": { "type": "string", "minLength": 1 },
+                  "phase": { "enum": ["pressed", "held", "released"] },
+                  "objectId": { "type": "string", "minLength": 1 },
+                  "mapId": { "type": "string", "minLength": 1 },
+                  "edge": { "enum": ["enter", "stay", "exit"] },
+                  "variableId": { "type": "string", "minLength": 1 },
+                  "operator": { "enum": ["eq", "ne", "gt", "gte", "lt", "lte", "truthy", "falsy"] },
+                  "value": { "type": ["number", "boolean", "string", "null"] }
+                },
+                "additionalProperties": false
+              },
+              "conditions": {
+                "type": "array",
+                "items": { "$ref": "#/$defs/gameplayCondition" }
+              },
+              "effects": {
+                "type": "array",
+                "minItems": 1,
+                "items": { "$ref": "#/$defs/gameplayEffect" }
+              }
+            },
+            "additionalProperties": true
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "gameplayCondition": {
+      "type": "object",
+      "required": ["variableId", "operator"],
+      "properties": {
+        "variableId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" },
+        "operator": { "enum": ["eq", "ne", "gt", "gte", "lt", "lte", "truthy", "falsy"] },
+        "value": { "type": ["number", "boolean", "string", "null"] }
+      },
+      "additionalProperties": false
+    },
+    "gameplayIntegerExpression": {
+      "oneOf": [
+        { "type": "integer", "minimum": -9007199254740991, "maximum": 9007199254740991 },
+        {
+          "type": "object",
+          "required": ["variableId"],
+          "properties": { "variableId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" } },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["operator", "operands"],
+          "properties": {
+            "operator": { "enum": ["add", "subtract", "multiply", "divide", "modulo", "min", "max", "clamp", "abs", "negate"] },
+            "operands": { "type": "array", "minItems": 1, "maxItems": 8, "items": { "$ref": "#/$defs/gameplayIntegerExpression" } }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "gameplayEffect": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": { "enum": ["set-variable", "add-variable", "set-variable-expression", "toggle-variable", "set-object", "set-path", "emit", "load-map", "respawn", "win", "impulse-player", "collect-object", "open-choice-page", "close-choice-page", "advance-clock"] },
+        "variableId": { "type": "string" },
+        "value": { "type": ["number", "boolean", "string"] },
+        "expression": { "$ref": "#/$defs/gameplayIntegerExpression" },
+        "objectId": { "type": "string" },
+        "pathId": { "type": "string" },
+        "pageId": { "type": "string" },
+        "clockId": { "type": "string" },
+        "steps": { "type": "integer", "minimum": -9007199254740991, "maximum": 9007199254740991 },
+        "mapId": { "type": "string" },
+        "spawnId": { "type": "string" },
+        "event": { "type": "string" },
+        "detail": { "type": "object" },
+        "changes": { "type": "object" },
+        "x": { "type": "number" },
+        "y": { "type": "number" }
+      },
+      "additionalProperties": false
+    },
+    "verbArchitecture": {
+      "type": "object",
+      "required": ["version", "status", "verbs", "pairEvaluations", "combinations", "progression"],
+      "properties": {
+        "version": { "enum": [1, 2] },
+        "status": { "enum": ["draft", "implemented", "verified"] },
+        "hypothesis": { "type": "string" },
+        "verbs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "label", "category", "status", "inputActionIds", "stateChanges", "implementationIds", "testIds"],
+            "properties": {
+              "id": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" },
+              "label": { "type": "string", "minLength": 1 },
+              "category": { "enum": ["movement", "interaction", "combat", "world-state", "resource", "recovery", "expression", "utility"] },
+              "status": { "enum": ["core", "supporting", "cut"] },
+              "description": { "type": "string" },
+              "purpose": { "type": "string" },
+              "role": { "enum": ["primary", "supporting", "contextual", "recovery", "expression"] },
+              "activation": { "enum": ["press", "hold", "release", "contextual"] },
+              "standalone": { "type": "boolean" },
+              "dependsOnVerbIds": { "type": "array", "uniqueItems": true, "items": { "type": "string" } },
+              "inputActionIds": { "type": "array", "uniqueItems": true, "items": { "type": "string" } },
+              "affordanceIds": { "type": "array", "uniqueItems": true, "items": { "type": "string" } },
+              "stateChanges": { "type": "array", "items": { "type": "string" } },
+              "feedbackIds": { "type": "array", "uniqueItems": true, "items": { "type": "string" } },
+              "implementationIds": { "type": "array", "uniqueItems": true, "items": { "type": "string" } },
+              "testIds": { "type": "array", "uniqueItems": true, "items": { "type": "string" } }
+            },
+            "additionalProperties": true
+          }
+        },
+        "pairEvaluations": {
+          "type": "array",
+          "description": "Legacy version 1 all-pairs design matrix. Version 2 uses intentional relationships instead.",
+          "items": {
+            "type": "object",
+            "required": ["id", "verbIds", "synergy", "redundancy", "readability", "implementationCost", "decision", "rationale"],
+            "properties": {
+              "id": { "type": "string", "minLength": 1 },
+              "verbIds": { "type": "array", "minItems": 2, "maxItems": 2, "uniqueItems": true, "items": { "type": "string" } },
+              "synergy": { "type": "number", "minimum": 0, "maximum": 10 },
+              "redundancy": { "type": "number", "minimum": 0, "maximum": 10 },
+              "readability": { "type": "number", "minimum": 0, "maximum": 10 },
+              "implementationCost": { "type": "number", "minimum": 0, "maximum": 10 },
+              "decision": { "enum": ["keep", "cut", "defer"] },
+              "rationale": { "type": "string" }
+            },
+            "additionalProperties": true
+          }
+        },
+        "combinations": {
+          "type": "array",
+          "description": "Legacy version 1 combinations. Version 2 uses relationships plus authored applications.",
+          "items": { "type": "object", "required": ["id", "verbIds", "contexts", "consequence", "implementationIds", "testIds"], "additionalProperties": true }
+        },
+        "relationships": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "verbIds", "operator", "contexts", "consequence", "cadence", "implementationIds", "testIds"],
+            "properties": {
+              "id": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" },
+              "verbIds": { "type": "array", "minItems": 2, "uniqueItems": true, "items": { "type": "string" } },
+              "operator": { "enum": ["sequence", "simultaneous", "modifier", "state-gate", "resource-loop", "counterplay", "substitution"] },
+              "contexts": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "enum": ["traversal", "encounter", "puzzle", "progression", "recovery", "expression"] } },
+              "consequence": { "type": "string", "minLength": 1 },
+              "cadence": { "enum": ["recurring", "situational", "mastery"] },
+              "rationale": { "type": "string" },
+              "implementationIds": { "type": "array", "uniqueItems": true, "items": { "type": "string" } },
+              "testIds": { "type": "array", "uniqueItems": true, "items": { "type": "string" } }
+            },
+            "additionalProperties": true
+          }
+        },
+        "applications": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "label", "mapId", "stage", "verbIds", "relationshipIds", "setup", "success", "failure", "recovery", "implementationIds", "testIds"],
+            "properties": {
+              "id": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" },
+              "label": { "type": "string", "minLength": 1 },
+              "mapId": { "type": ["string", "null"] },
+              "stage": { "enum": ["teach", "practice", "combine", "pressure", "mastery", "recovery", "expression"] },
+              "verbIds": { "type": "array", "uniqueItems": true, "items": { "type": "string" } },
+              "relationshipIds": { "type": "array", "uniqueItems": true, "items": { "type": "string" } },
+              "setup": { "type": "string" },
+              "success": { "type": "string" },
+              "failure": { "type": "string" },
+              "recovery": { "type": "string" },
+              "implementationIds": { "type": "array", "uniqueItems": true, "items": { "type": "string" } },
+              "testIds": { "type": "array", "uniqueItems": true, "items": { "type": "string" } }
+            },
+            "additionalProperties": true
+          }
+        },
+        "coreLoop": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "phase", "verbIds", "relationshipIds", "stateChanges", "implementationIds", "testIds"],
+            "properties": {
+              "id": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" },
+              "phase": { "enum": ["observe", "decide", "act", "resolve", "feedback", "recover", "progress"] },
+              "verbIds": { "type": "array", "uniqueItems": true, "items": { "type": "string" } },
+              "relationshipIds": { "type": "array", "uniqueItems": true, "items": { "type": "string" } },
+              "stateChanges": { "type": "array", "items": { "type": "string" } },
+              "implementationIds": { "type": "array", "uniqueItems": true, "items": { "type": "string" } },
+              "testIds": { "type": "array", "uniqueItems": true, "items": { "type": "string" } }
+            },
+            "additionalProperties": true
+          }
+        },
+        "resources": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "label", "stateId", "gainedByVerbIds", "spentByVerbIds", "pressure", "recovery", "implementationIds", "testIds"],
+            "properties": {
+              "id": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" },
+              "label": { "type": "string", "minLength": 1 },
+              "stateId": { "type": "string", "minLength": 1 },
+              "gainedByVerbIds": { "type": "array", "uniqueItems": true, "items": { "type": "string" } },
+              "spentByVerbIds": { "type": "array", "uniqueItems": true, "items": { "type": "string" } },
+              "pressure": { "type": "string" },
+              "recovery": { "type": "string" },
+              "implementationIds": { "type": "array", "uniqueItems": true, "items": { "type": "string" } },
+              "testIds": { "type": "array", "uniqueItems": true, "items": { "type": "string" } }
+            },
+            "additionalProperties": true
+          }
+        },
+        "progression": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "unlocksVerbIds", "modifiesVerbIds", "implementationIds", "testIds"],
+            "properties": {
+              "id": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" },
+              "label": { "type": "string" },
+              "requiresIds": { "type": "array", "uniqueItems": true, "items": { "type": "string" } },
+              "unlocksVerbIds": { "type": "array", "uniqueItems": true, "items": { "type": "string" } },
+              "modifiesVerbIds": { "type": "array", "uniqueItems": true, "items": { "type": "string" } },
+              "relationshipIds": { "type": "array", "uniqueItems": true, "items": { "type": "string" } },
+              "applicationIds": { "type": "array", "uniqueItems": true, "items": { "type": "string" } },
+              "implementationIds": { "type": "array", "uniqueItems": true, "items": { "type": "string" } },
+              "testIds": { "type": "array", "uniqueItems": true, "items": { "type": "string" } }
+            },
+            "additionalProperties": true
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "version": { "const": 2 } }, "required": ["version"] },
+          "then": { "required": ["relationships", "applications", "coreLoop", "resources"] }
+        }
+      ],
+      "additionalProperties": true
+    },    "traversalPath": {
+      "type": "object",
+      "required": ["id", "name", "kind", "collisionOwner", "points", "entryRadius", "minimumEntrySpeed", "direction"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "name": { "type": "string", "minLength": 1 },
+        "kind": { "enum": ["rail", "grind", "zipline", "route"] },
+        "collisionOwner": { "const": "authored-map" },
+        "points": { "type": "array", "minItems": 2, "items": { "$ref": "#/$defs/point" } },
+        "entryRadius": { "type": "number", "exclusiveMinimum": 0 },
+        "minimumEntrySpeed": { "type": "number", "minimum": 0 },
+        "direction": { "enum": ["both", "forward", "reverse"] },
+        "enabled": { "type": "boolean" },
+        "acceleration": { "type": "number" },
+        "maximumSpeed": { "type": "number", "exclusiveMinimum": 0 },
+        "exitImpulse": { "$ref": "#/$defs/vector" },
+        "transferPathIds": { "type": "array", "items": { "type": "string", "minLength": 1 }, "uniqueItems": true },
+        "bailBehavior": { "enum": ["drop", "launch", "reset", "continue"] },
+        "visualObjectId": { "type": "string" },
+        "routeLayer": { "type": "string", "minLength": 1 },
+        "entryZTolerance": { "type": "number", "minimum": 0 },
+        "acceptanceTestId": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "collisionGeometryTuning": {
+      "type": "object",
+      "required": ["minimumFloorNormalY", "floorSnapDistance", "maximumStepUp", "stopOnSlope", "slopeSlideAcceleration", "maximumSlideSpeed", "contactEpsilon"],
+      "properties": {
+        "minimumFloorNormalY": { "type": "number", "minimum": 0, "maximum": 1 },
+        "floorSnapDistance": { "type": "number", "minimum": 0, "maximum": 64 },
+        "maximumStepUp": { "type": "number", "minimum": 0, "maximum": 64 },
+        "stopOnSlope": { "type": "boolean" },
+        "slopeSlideAcceleration": { "type": "number", "minimum": 0, "maximum": 4096 },
+        "maximumSlideSpeed": { "type": "number", "exclusiveMinimum": 0, "maximum": 4096 },
+        "contactEpsilon": { "type": "number", "exclusiveMinimum": 0, "maximum": 1 }
+      },
+      "additionalProperties": false
+    },
+    "collisionGeometryPoint": {
+      "type": "object",
+      "required": ["id", "x", "y"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" },
+        "x": { "type": "number", "minimum": -65536, "maximum": 65536 },
+        "y": { "type": "number", "minimum": -65536, "maximum": 65536 }
+      },
+      "additionalProperties": false
+    },
+    "collisionGeometryChain": {
+      "type": "object",
+      "required": ["id", "name", "enabled", "role", "oneWay", "frontFace", "zMin", "zMax", "points"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" },
+        "name": { "type": "string", "minLength": 1 },
+        "enabled": { "type": "boolean" },
+        "role": { "enum": ["auto", "floor", "boundary"] },
+        "oneWay": { "type": "boolean" },
+        "frontFace": { "const": "right" },
+        "zMin": { "type": "number", "minimum": -1024, "maximum": 1024 },
+        "zMax": { "type": "number", "minimum": -1024, "maximum": 1024 },
+        "sourceObjectId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" },
+        "points": { "type": "array", "minItems": 2, "maxItems": 256, "items": { "$ref": "#/$defs/collisionGeometryPoint" } }
+      },
+      "additionalProperties": false
+    },
+    "collisionGeometry": {
+      "type": "object",
+      "required": ["schemaVersion", "collisionOwner", "tuning", "chains"],
+      "properties": {
+        "schemaVersion": { "const": "looplab-collision-geometry/v1" },
+        "collisionOwner": { "const": "authored-map" },
+        "tuning": { "$ref": "#/$defs/collisionGeometryTuning" },
+        "chains": { "type": "array", "maxItems": 128, "items": { "$ref": "#/$defs/collisionGeometryChain" } }
+      },
+      "additionalProperties": false
+    },
+    "tileChunk": {
+      "type": "object",
+      "required": ["x", "y", "width", "height", "cells"],
+      "properties": {
+        "x": { "type": "integer", "minimum": 0, "maximum": 8191 },
+        "y": { "type": "integer", "minimum": 0, "maximum": 8191 },
+        "width": { "type": "integer", "minimum": 1, "maximum": 16 },
+        "height": { "type": "integer", "minimum": 1, "maximum": 16 },
+        "cells": { "type": "array", "minItems": 1, "maxItems": 256, "items": { "type": "integer", "minimum": 0, "maximum": 4294967295 } }
+      },
+      "additionalProperties": false
+    },
+    "tileTransform": {
+      "type": "object",
+      "required": ["horizontal", "vertical", "diagonal"],
+      "properties": {
+        "horizontal": { "type": "boolean" },
+        "vertical": { "type": "boolean" },
+        "diagonal": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "tilePaletteEntry": {
+      "type": "object",
+      "required": ["id", "name", "assetId", "frame", "drawOffsetX", "drawOffsetY", "anchor", "probability", "transforms"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" },
+        "name": { "type": "string", "minLength": 1 },
+        "assetId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" },
+        "frame": { "type": "integer", "minimum": 0 },
+        "drawOffsetX": { "type": "integer", "minimum": -8192, "maximum": 8192 },
+        "drawOffsetY": { "type": "integer", "minimum": -8192, "maximum": 8192 },
+        "anchor": { "enum": ["top-left", "bottom-left", "bottom-center", "center"] },
+        "probability": { "type": "number", "minimum": 0, "maximum": 1000000 },
+        "transforms": { "$ref": "#/$defs/tileTransform" }
+      },
+      "additionalProperties": false
+    },
+    "tileTerrainVariant": {
+      "type": "object",
+      "required": ["id", "tileId", "centerTerrainId", "signature", "probability"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" },
+        "tileId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" },
+        "centerTerrainId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" },
+        "signature": {
+          "type": "array",
+          "minItems": 8,
+          "maxItems": 8,
+          "items": { "anyOf": [{ "type": "null" }, { "const": "*" }, { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" }] }
+        },
+        "probability": { "type": "number", "minimum": 0, "maximum": 1000000 }
+      },
+      "additionalProperties": false
+    },
+    "tileTerrainSet": {
+      "type": "object",
+      "required": ["id", "name", "kind", "terrainIds", "variants"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" },
+        "name": { "type": "string", "minLength": 1 },
+        "kind": { "enum": ["corner", "edge", "mixed"] },
+        "terrainIds": { "type": "array", "minItems": 1, "maxItems": 254, "uniqueItems": true, "items": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" } },
+        "variants": { "type": "array", "maxItems": 4096, "items": { "$ref": "#/$defs/tileTerrainVariant" } }
+      },
+      "additionalProperties": false
+    },
+    "tileCollisionProfile": {
+      "type": "object",
+      "required": ["id", "name", "shape"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" },
+        "name": { "type": "string", "minLength": 1 },
+        "shape": { "enum": ["solid-full", "one-way-top"] }
+      },
+      "additionalProperties": false
+    },
+    "tileLayer": {
+      "type": "object",
+      "required": ["id", "name", "role", "visible", "locked", "opacity", "blendMode", "parallaxX", "parallaxY", "supportZ", "chunks", "terrainChunks"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" },
+        "name": { "type": "string", "minLength": 1 },
+        "role": { "enum": ["ground-static", "interleaved", "foreground"] },
+        "visible": { "type": "boolean" },
+        "locked": { "type": "boolean" },
+        "opacity": { "type": "number", "minimum": 0, "maximum": 1 },
+        "blendMode": { "enum": ["normal", "multiply", "screen", "overlay", "darken", "lighten"] },
+        "parallaxX": { "type": "number", "minimum": 0, "maximum": 8 },
+        "parallaxY": { "type": "number", "minimum": 0, "maximum": 8 },
+        "supportZ": { "type": "number", "minimum": -1024, "maximum": 1024 },
+        "navigationLayerId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" },
+        "terrainSetId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" },
+        "chunks": { "type": "array", "maxItems": 4096, "items": { "$ref": "#/$defs/tileChunk" } },
+        "terrainChunks": { "type": "array", "maxItems": 4096, "items": { "$ref": "#/$defs/tileChunk" } }
+      },
+      "additionalProperties": false
+    },
+    "tileCollisionLayer": {
+      "type": "object",
+      "required": ["id", "name", "visible", "locked", "zMin", "zMax", "chunks"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" },
+        "name": { "type": "string", "minLength": 1 },
+        "visible": { "type": "boolean" },
+        "locked": { "type": "boolean" },
+        "zMin": { "type": "number", "minimum": -1024, "maximum": 1024 },
+        "zMax": { "type": "number", "minimum": -1024, "maximum": 1024 },
+        "navigationLayerId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" },
+        "chunks": { "type": "array", "maxItems": 4096, "items": { "$ref": "#/$defs/tileChunk" } }
+      },
+      "additionalProperties": false
+    },
+    "tileProgram": {
+      "type": "object",
+      "required": ["schemaVersion", "collisionOwner", "cellWidth", "cellHeight", "columns", "rows", "chunkSize", "variationSeed", "palette", "terrainSets", "collisionProfiles", "layers", "collisionLayers"],
+      "properties": {
+        "schemaVersion": { "const": "looplab-tile-program/v1" },
+        "collisionOwner": { "const": "authored-map" },
+        "cellWidth": { "type": "integer", "minimum": 1, "maximum": 512 },
+        "cellHeight": { "type": "integer", "minimum": 1, "maximum": 512 },
+        "columns": { "type": "integer", "minimum": 1, "maximum": 8192 },
+        "rows": { "type": "integer", "minimum": 1, "maximum": 8192 },
+        "chunkSize": { "const": 16 },
+        "variationSeed": { "type": "integer", "minimum": 0, "maximum": 2147483647 },
+        "palette": { "type": "array", "maxItems": 4096, "items": { "$ref": "#/$defs/tilePaletteEntry" } },
+        "terrainSets": { "type": "array", "maxItems": 64, "items": { "$ref": "#/$defs/tileTerrainSet" } },
+        "collisionProfiles": { "type": "array", "maxItems": 256, "items": { "$ref": "#/$defs/tileCollisionProfile" } },
+        "layers": { "type": "array", "maxItems": 64, "items": { "$ref": "#/$defs/tileLayer" } },
+        "collisionLayers": { "type": "array", "maxItems": 64, "items": { "$ref": "#/$defs/tileCollisionLayer" } }
+      },
+      "additionalProperties": false
+    },
+    "collider": {
+      "type": "object",
+      "required": ["enabled", "offsetX", "offsetY", "width", "height"],
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "offsetX": { "type": "number" },
+        "offsetY": { "type": "number" },
+        "width": { "type": "number", "exclusiveMinimum": 0 },
+        "height": { "type": "number", "exclusiveMinimum": 0 },
+        "trigger": { "type": "boolean" },
+        "oneWay": { "type": "boolean" },
+        "zMin": { "type": "number" },
+        "zMax": { "type": "number" }
+      },
+      "additionalProperties": true
+    },
+    "runtimeJoin": {
+      "type": "object",
+      "required": ["enabled"],
+      "properties": {
+        "version": { "const": 1 },
+        "enabled": { "type": "boolean" },
+        "mode": { "enum": ["portal", "continuous"] },
+        "sourceEdge": { "enum": ["left", "right", "top", "bottom"] },
+        "targetEdge": { "enum": ["left", "right", "top", "bottom"] },
+        "overlapPixels": { "type": "integer", "minimum": 0 },
+        "sampleDepth": { "type": "integer", "minimum": 1 },
+        "minimumUniquePixelRatio": { "type": "number", "minimum": 0, "maximum": 1 },
+        "maximumBoundaryColorDelta": { "type": "number", "minimum": 0, "maximum": 1 },
+        "requireExactSpawn": { "type": "boolean" },
+        "requireClearLanding": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "motionBody": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["schemaVersion", "enabled", "driver", "pathId", "initialDirection", "endBehavior", "maxSpeed", "acceleration", "deceleration", "collisionResponse", "snapTolerance"],
+          "properties": {
+            "schemaVersion": { "const": "looplab-motion-body/v1" },
+            "enabled": { "type": "boolean" },
+            "driver": { "enum": ["input", "automatic"] },
+            "pathId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" },
+            "actionId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" },
+            "initialDirection": { "enum": ["forward", "reverse"] },
+            "endBehavior": { "enum": ["stop", "loop", "ping-pong"] },
+            "maxSpeed": { "type": "number", "exclusiveMinimum": 0, "maximum": 4096 },
+            "acceleration": { "type": "number", "minimum": 0, "maximum": 100000 },
+            "deceleration": { "type": "number", "minimum": 0, "maximum": 100000 },
+            "collisionResponse": { "const": "stop" },
+            "snapTolerance": { "type": "number", "minimum": 0, "maximum": 128 },
+            "acceptanceTestId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["schemaVersion", "enabled", "driver", "pathId", "initialDirection", "endBehavior", "maxSpeed", "acceleration", "deceleration", "collisionResponse", "snapTolerance", "riderMode", "carryTolerance", "crushResponse"],
+          "properties": {
+            "schemaVersion": { "const": "looplab-motion-body/v2" },
+            "enabled": { "type": "boolean" },
+            "driver": { "enum": ["input", "automatic"] },
+            "pathId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" },
+            "actionId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" },
+            "initialDirection": { "enum": ["forward", "reverse"] },
+            "endBehavior": { "enum": ["stop", "loop", "ping-pong"] },
+            "maxSpeed": { "type": "number", "exclusiveMinimum": 0, "maximum": 4096 },
+            "acceleration": { "type": "number", "minimum": 0, "maximum": 100000 },
+            "deceleration": { "type": "number", "minimum": 0, "maximum": 100000 },
+            "collisionResponse": { "const": "stop" },
+            "snapTolerance": { "type": "number", "minimum": 0, "maximum": 128 },
+            "riderMode": { "enum": ["block", "carry-player"] },
+            "carryTolerance": { "type": "number", "minimum": 0, "maximum": 32 },
+            "crushResponse": { "enum": ["stop", "respawn"] },
+            "acceptanceTestId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "object": {
+      "type": "object",
+      "required": ["id", "kind", "name", "x", "y", "width", "height", "collisionOwner"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "kind": { "enum": ["player", "platform", "coin", "hazard", "decor", "spawn", "portal", "goal"] },
+        "name": { "type": "string", "minLength": 1 },
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "z": { "type": "number" },
+        "supportZ": { "type": "number" },
+        "width": { "type": "number", "exclusiveMinimum": 0 },
+        "height": { "type": "number", "exclusiveMinimum": 0 },
+        "collisionOwner": { "const": "authored-map" },
+        "collider": { "$ref": "#/$defs/collider" },
+        "runtimeJoin": { "$ref": "#/$defs/runtimeJoin" },
+        "motionBody": { "$ref": "#/$defs/motionBody" }
+      },
+      "additionalProperties": true
+    },
+    "map": {
+      "type": "object",
+      "required": ["id", "name", "width", "height", "background", "gravity", "grid", "controlMode", "objects"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "name": { "type": "string", "minLength": 1 },
+        "width": { "type": "number", "minimum": 64, "maximum": 8192 },
+        "height": { "type": "number", "minimum": 64, "maximum": 8192 },
+        "background": { "type": "string" },
+        "gravity": { "type": "number" },
+        "grid": { "type": "number", "exclusiveMinimum": 0 },
+        "controlMode": { "enum": ["platformer", "topdown"] },
+        "projection": { "$ref": "#/$defs/projection" },
+        "navigation": { "$ref": "#/$defs/navigation" },
+        "objects": { "type": "array", "items": { "$ref": "#/$defs/object" } },
+        "traversalPaths": { "type": "array", "items": { "$ref": "#/$defs/traversalPath" } },
+        "collisionGeometry": { "$ref": "#/$defs/collisionGeometry" },
+        "tileProgram": { "$ref": "#/$defs/tileProgram" }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

@@ -1,0 +1,121 @@
+{
+  "source": "kinetic-courier-strip-dark-gray.png",
+  "frames": 4,
+  "frameWidth": 80,
+  "frameHeight": 90,
+  "atlasWidth": 320,
+  "atlasHeight": 90,
+  "byteLength": 11460,
+  "decodedRgbaBytes": 115200,
+  "sha256": "484579362856ba804dc7f022c06aeb99fb36dafb38c432c5f86a7e2ffd6e1019",
+  "removedBackgroundPixels": 1465418,
+  "sourcePixelCount": 1572516,
+  "sharedScale": 0.2724014336917563,
+  "anchor": "bottom-center",
+  "anchorVariance": 0,
+  "palette": [
+    "#080b1f",
+    "#15182f",
+    "#191d3f",
+    "#242858",
+    "#163c68",
+    "#7084a8",
+    "#4c46e5",
+    "#8b5cf6",
+    "#b8b7ff",
+    "#31d7f4",
+    "#78efff",
+    "#fff5d6",
+    "#ffc47d"
+  ],
+  "paletteUsageByFrame": [
+    {
+      "#080b1f": 365,
+      "#15182f": 298,
+      "#163c68": 328,
+      "#191d3f": 319,
+      "#242858": 513,
+      "#31d7f4": 22,
+      "#4c46e5": 139,
+      "#7084a8": 220,
+      "#8b5cf6": 8,
+      "#b8b7ff": 474,
+      "#ffc47d": 21
+    },
+    {
+      "#080b1f": 420,
+      "#15182f": 290,
+      "#163c68": 337,
+      "#191d3f": 314,
+      "#242858": 554,
+      "#31d7f4": 28,
+      "#4c46e5": 170,
+      "#7084a8": 214,
+      "#8b5cf6": 5,
+      "#b8b7ff": 565,
+      "#ffc47d": 22,
+      "#fff5d6": 1
+    },
+    {
+      "#080b1f": 391,
+      "#15182f": 211,
+      "#163c68": 273,
+      "#191d3f": 235,
+      "#242858": 381,
+      "#31d7f4": 15,
+      "#4c46e5": 137,
+      "#7084a8": 156,
+      "#78efff": 3,
+      "#8b5cf6": 2,
+      "#b8b7ff": 309,
+      "#ffc47d": 19,
+      "#fff5d6": 2
+    },
+    {
+      "#080b1f": 372,
+      "#15182f": 240,
+      "#163c68": 285,
+      "#191d3f": 274,
+      "#242858": 413,
+      "#31d7f4": 12,
+      "#4c46e5": 146,
+      "#7084a8": 164,
+      "#8b5cf6": 4,
+      "#b8b7ff": 368,
+      "#ffc47d": 22
+    }
+  ],
+  "sourceBoundsByFrame": [
+    [
+      60,
+      479,
+      314,
+      778
+    ],
+    [
+      0,
+      507,
+      279,
+      779
+    ],
+    [
+      73,
+      458,
+      224,
+      716
+    ],
+    [
+      2,
+      586,
+      277,
+      780
+    ]
+  ],
+  "onPalette": true,
+  "backgroundPolicy": "border-connected-dark-neutral-gray",
+  "reviewBackground": "#d9d9d9",
+  "finalOutput": "transparent",
+  "outlineColor": "#b8b7ff",
+  "minimumComponentPixels": 6,
+  "removedSpeckPixels": 2
+}

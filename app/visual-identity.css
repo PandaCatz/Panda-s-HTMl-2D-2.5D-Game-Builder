@@ -1,0 +1,77 @@
+.visual-identity-panel {
+  border: 1px solid #a7a49a;
+  background: #e6e5e1;
+  color: #252522;
+}
+
+.visual-identity-panel > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  cursor: pointer;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .045em;
+}
+
+.visual-identity-panel > summary span,
+.visual-identity-panel > summary small { display: flex; align-items: center; gap: 8px; }
+.visual-identity-panel > summary i { width: 8px; height: 8px; background: #3d3d38; border-radius: 50%; }
+.visual-identity-panel > summary small { color: #6d6b63; font-size: 10px; text-align: right; }
+.visual-identity-panel[data-status="invalid"] > summary i,
+.visual-identity-panel[data-status="missing"] > summary i { background: #cf5f51; }
+.visual-identity-panel[data-status="adopted"] > summary i { background: #6558c5; }
+
+.visual-identity-body { display: grid; gap: 14px; padding: 14px; border-top: 1px solid #a7a49a; }
+.visual-identity-body > header,
+.visual-identity-section > header,
+.visual-identity-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.visual-identity-body > header > div,
+.visual-identity-section > header > div { display: grid; gap: 3px; }
+.visual-identity-body code { padding: 5px 7px; background: #d1d0cb; font-size: 10px; }
+.visual-identity-boundary { margin: 0; padding: 10px 12px; border-left: 4px solid #3d3d38; background: #d7d6d1; color: #4f4e48; font-size: 11px; line-height: 1.5; }
+.visual-identity-grid { display: grid; grid-template-columns: minmax(130px,.35fr) 1fr; gap: 9px; }
+.visual-identity-grid label { display: grid; align-content: start; gap: 5px; font-size: 10px; font-weight: 800; text-transform: uppercase; }
+.visual-identity-grid label.wide { grid-column: 2; }
+.visual-identity-grid select,
+.visual-identity-grid textarea,
+.visual-identity-row select,
+.visual-identity-row input { width: 100%; min-width: 0; border: 1px solid #7a786f; background: #f5f4f0; color: #20201e; padding: 8px; font: 600 11px/1.35 inherit; }
+.visual-identity-grid textarea { resize: vertical; text-transform: none; }
+
+.visual-identity-section { display: grid; gap: 8px; padding: 11px; border: 1px solid #b9b7af; background: #deddd8; }
+.visual-identity-section header strong { font-size: 12px; text-transform: uppercase; }
+.visual-identity-section header small,
+.visual-identity-section > p { margin: 0; color: #6b6962; font-size: 10px; line-height: 1.45; }
+.visual-identity-section button,
+.visual-identity-actions button { min-height: 34px; border: 1px solid #4d4c47; background: transparent; color: #292926; padding: 6px 9px; cursor: pointer; font: 800 10px/1 inherit; text-transform: uppercase; }
+.visual-identity-section button:disabled,
+.visual-identity-actions button:disabled { cursor: not-allowed; opacity: .45; }
+.visual-identity-actions button.primary { background: #3d3d38; color: #fff; }
+.visual-identity-row { display: grid; align-items: center; gap: 6px; }
+.visual-identity-row.directive { grid-template-columns: 100px 95px 88px minmax(140px,1fr) 34px; }
+.visual-identity-row.reference { grid-template-columns: 145px 85px 90px 135px minmax(150px,1fr) 34px; }
+.visual-identity-row.exclusion { grid-template-columns: 100px minmax(160px,1fr) 34px; }
+.visual-identity-row > button { padding: 0; font-size: 17px; }
+.visual-identity-findings { display: grid; gap: 5px; }
+.visual-identity-findings span { padding: 7px 9px; border-left: 4px solid #817d73; background: #d5d4cf; font-size: 10px; line-height: 1.4; }
+.visual-identity-findings span.error { border-color: #cf5f51; }
+.visual-identity-findings span.warning { border-color: #a47a36; }
+
+.asset-identity-options { display: grid; gap: 5px; padding: 10px; border: 1px solid #aaa79e; background: #d9d8d3; color: #33332f; }
+.asset-identity-options label { display: flex; align-items: center; gap: 7px; font-size: 11px; font-weight: 800; }
+.asset-identity-options small { color: #66645e; font-size: 9px; line-height: 1.4; }
+.asset-identity-options .reference-consent { margin-top: 4px; padding-top: 8px; border-top: 1px solid #aaa79e; color: #713f38; }
+
+@media (max-width: 900px) {
+  .visual-identity-grid,
+  .visual-identity-row.directive,
+  .visual-identity-row.reference,
+  .visual-identity-row.exclusion { grid-template-columns: 1fr; }
+  .visual-identity-grid label.wide { grid-column: auto; }
+  .visual-identity-body > header,
+  .visual-identity-section > header { align-items: flex-start; flex-direction: column; }
+  .visual-identity-row > button { width: 100%; }
+}

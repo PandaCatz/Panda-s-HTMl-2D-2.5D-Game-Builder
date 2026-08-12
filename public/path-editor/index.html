@@ -1,0 +1,2908 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Path editor</title>
+<style>
+  :root{
+    --bg:#0a0e1a; --panel:#111827; --panel2:#0d1424; --line:#1f2a44;
+    --ink:#e8edf7; --dim:#8b9ac0; --accent:#8b5cf6;
+    --node:#fbbf24; --walk:#22c55e; --block:#f43f5e;
+    --loc:#38bdf8; --char:#f472b6; --test:#22d3ee;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0;background:var(--bg);color:var(--ink);
+    font:13px/1.4 ui-sans-serif,system-ui,"Segoe UI",Roboto,sans-serif;
+    display:flex;flex-direction:column;overflow:hidden;user-select:none;
+  }
+  .bar{
+    display:flex;align-items:center;gap:8px;padding:8px 12px;flex-wrap:wrap;
+    background:var(--panel);border-bottom:1px solid var(--line);flex:0 0 auto;
+  }
+  .brand{font-weight:600;letter-spacing:.2px;margin-right:6px;white-space:nowrap}
+  .sep{width:1px;height:22px;background:var(--line);margin:0 2px}
+  .spring{flex:1 1 auto}
+  button,.btn{
+    background:var(--panel2);color:var(--ink);border:1px solid var(--line);
+    border-radius:7px;padding:6px 11px;font:inherit;cursor:pointer;white-space:nowrap;
+  }
+  button:hover,.btn:hover{background:#182338;border-color:#2c3a5c}
+  button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+  button.go{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+  button.go:hover{background:#7c4ded}
+  button:disabled{opacity:.35;cursor:default}
+  button:disabled:hover{background:var(--panel2);border-color:var(--line)}
+  button.walk{border-color:#1c5c37;color:#86efac}
+  button.block{border-color:#6b1f34;color:#fda4af}
+  button.small{padding:4px 8px;font-size:12px}
+  button.danger{border-color:#6b1f34;color:#fda4af}
+  label.chk{display:flex;align-items:center;gap:6px;cursor:pointer;color:var(--dim)}
+  label.chk input{accent-color:var(--accent);cursor:pointer}
+  .coord{
+    font-family:ui-monospace,"Cascadia Mono",Consolas,monospace;font-size:12px;color:#f0a742;
+    background:var(--panel2);border:1px solid var(--line);border-radius:7px;
+    padding:6px 10px;min-width:104px;text-align:center;
+  }
+  /* ---- layer strip ---- */
+  .layerbar{
+    display:flex;align-items:center;gap:7px;padding:6px 12px;flex-wrap:wrap;
+    background:var(--panel2);border-bottom:1px solid var(--line);flex:0 0 auto;
+  }
+  .layerbar .lbl{color:var(--dim);font-size:11px;text-transform:uppercase;letter-spacing:.6px;margin-right:2px}
+  .lyr{
+    display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);
+    border-radius:7px;padding:3px 5px 3px 8px;font-size:12px;cursor:pointer;background:#0a0f1c;
+  }
+  .lyr:hover{border-color:#2c3a5c}
+  .lyr.active{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}
+  .lyr.hidden{opacity:.45}
+  .lyr .dot{width:9px;height:9px;border-radius:50%;flex:0 0 auto}
+  .lyr .eye,.lyr .x{
+    border:0;background:transparent;color:var(--ink);opacity:.55;cursor:pointer;
+    padding:0 3px;font-size:12px;line-height:1;border-radius:4px;
+  }
+  .lyr .eye:hover,.lyr .x:hover{opacity:1;background:rgba(255,255,255,.12)}
+  .lyr .n{color:var(--dim);font-size:11px}
+  /* ---- stage ---- */
+  .split{flex:1 1 auto;display:flex;min-height:0}
+  .stage{flex:1 1 auto;position:relative;min-width:0;background:#060911;overflow:hidden}
+  /* A live HTML map sits behind the canvas, transformed by the same view, so
+     it lines up 1:1 with what you draw on top of it. */
+  #htmlMap{
+    position:absolute;left:0;top:0;border:0;transform-origin:0 0;
+    pointer-events:none;background:#0d1424;display:none;
+  }
+  #htmlMap.on{display:block}
+  canvas{display:block;width:100%;height:100%;cursor:crosshair;touch-action:none;position:relative;z-index:1}
+  .drop{
+    position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    pointer-events:none;flex-direction:column;gap:10px;color:var(--dim);text-align:center;padding:24px;
+  }
+  .drop b{color:var(--ink);font-size:15px;font-weight:600}
+  .drop.hide{display:none}
+  .drop.armed{background:rgba(139,92,246,.14);outline:2px dashed var(--accent);outline-offset:-14px}
+  .hint{
+    position:absolute;left:12px;bottom:12px;background:rgba(10,14,26,.92);border:1px solid var(--line);
+    border-radius:8px;padding:7px 11px;color:var(--dim);font-size:12px;max-width:min(620px,72%);
+    backdrop-filter:blur(6px);pointer-events:none;
+  }
+  .hint b{color:var(--ink)}
+  .warn{position:absolute;right:12px;top:12px;display:flex;flex-direction:column;gap:6px;align-items:flex-end}
+  .warn span{background:rgba(244,63,94,.14);border:1px solid #6b1f34;color:#fda4af;border-radius:8px;padding:6px 10px;font-size:12px}
+  .warn span.ok{background:rgba(34,197,94,.12);border-color:#1c5c37;color:#86efac}
+  /* ---- inspector ---- */
+  .insp{
+    flex:0 0 262px;background:var(--panel);border-left:1px solid var(--line);
+    overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:10px;
+  }
+  .insp h2{font-size:12px;text-transform:uppercase;letter-spacing:.7px;color:var(--dim);margin:0;font-weight:600}
+  .insp .none{color:var(--dim);font-size:12px;line-height:1.6}
+  .fld{display:flex;flex-direction:column;gap:4px}
+  .fld>label{font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.5px}
+  .fld input[type=text],.fld input[type=number],.fld select,.fld textarea{
+    background:var(--panel2);border:1px solid var(--line);border-radius:6px;
+    color:var(--ink);padding:6px 8px;font:inherit;width:100%;
+  }
+  .fld textarea{resize:vertical;font-family:ui-monospace,Consolas,monospace;font-size:12px;line-height:1.5}
+  .fld input:focus,.fld select:focus,.fld textarea:focus{outline:none;border-color:var(--accent)}
+  .pair{display:flex;gap:8px}
+  .pair>*{flex:1 1 0;min-width:0}
+  .pair input[type=text]{
+    background:var(--panel2);border:1px solid var(--line);border-radius:6px;
+    color:var(--ink);padding:6px 8px;font:inherit;width:100%;min-width:0;
+  }
+  .pair input[type=text]:focus{outline:none;border-color:var(--accent)}
+  .pair button.small{flex:0 0 auto}
+  .tag{
+    display:inline-flex;align-items:center;gap:5px;background:var(--panel2);border:1px solid var(--line);
+    border-radius:5px;padding:2px 4px 2px 7px;font-size:11px;margin:0 4px 4px 0;
+  }
+  .tag button{border:0;background:transparent;color:inherit;padding:0 2px;opacity:.6;cursor:pointer;font-size:12px}
+  .tag button:hover{opacity:1;background:transparent}
+  .code{
+    background:#080d18;border:1px solid var(--line);border-radius:6px;padding:9px 10px;
+    font:11.5px/1.55 ui-monospace,"Cascadia Mono",Consolas,monospace;color:#cfe0ff;
+    white-space:pre;overflow:auto;max-height:52vh;user-select:text;
+  }
+  .code .k{color:#7dd3fc}
+  .code .s{color:#86efac}
+  .code .n{color:#fbbf24}
+  .code .b{color:#f472b6}
+  .kv{display:flex;justify-content:space-between;font-size:12px;color:var(--dim);gap:8px}
+  .kv b{color:var(--ink);font-weight:500;font-family:ui-monospace,Consolas,monospace}
+  .swatch{width:9px;height:9px;border-radius:2px;display:inline-block;margin-right:6px;vertical-align:middle}
+  /* ---- chips ---- */
+  .chips{
+    display:flex;gap:7px;padding:9px 12px;flex-wrap:wrap;background:var(--panel);
+    border-top:1px solid var(--line);flex:0 0 auto;max-height:20vh;overflow:auto;align-items:flex-start;
+  }
+  .chip{display:inline-flex;align-items:center;gap:7px;border-radius:7px;padding:5px 6px 5px 10px;font-size:12px;cursor:pointer;border:1px solid}
+  .chip.w{background:rgba(34,197,94,.1);border-color:#1c5c37;color:#86efac}
+  .chip.b{background:rgba(244,63,94,.1);border-color:#6b1f34;color:#fda4af}
+  .chip.lo{background:rgba(56,189,248,.1);border-color:#1b4f6b;color:#7dd3fc}
+  .chip.ch{background:rgba(244,114,182,.1);border-color:#6b2249;color:#f9a8d4}
+  .chip.sel{outline:2px solid var(--accent);outline-offset:1px}
+  .chip .x{border:0;background:transparent;color:inherit;opacity:.55;cursor:pointer;padding:0 3px;font-size:14px;line-height:1;border-radius:4px}
+  .chip .x:hover{opacity:1;background:rgba(255,255,255,.14)}
+  .chips .empty{color:var(--dim);font-size:12px;padding:5px 0}
+  .toast{
+    position:fixed;left:50%;bottom:26px;transform:translateX(-50%);background:var(--accent);color:#fff;
+    padding:9px 16px;border-radius:8px;font-weight:600;opacity:0;transition:opacity .18s;pointer-events:none;z-index:9;
+  }
+  .toast.show{opacity:1}
+</style>
+</head>
+<body>
+
+<div class="bar">
+  <span class="brand">Path editor</span>
+
+  <button id="mPaths" class="on">Paths</button>
+  <button id="mAreas">Areas</button>
+  <button id="mLocs">Locations</button>
+  <button id="mChars">Characters</button>
+  <button id="mTest">Test</button>
+
+  <span class="sep"></span>
+  <button id="addWalk" class="walk">+ Walkable</button>
+  <button id="addBlock" class="block">+ Blocked</button>
+  <button id="addHotspot">+ Hotspot</button>
+
+  <span class="sep"></span>
+  <button id="selectTool" title="V — left click selects instead of creating">Select</button>
+  <button id="codeTool" title="J — click anything to see its exported JSON">Code</button>
+  <label class="chk"><input type="checkbox" id="chain" checked> Chain</label>
+  <label class="chk"><input type="checkbox" id="snap"> Snap</label>
+  <label class="chk"><input type="checkbox" id="showImg" checked> Image</label>
+  <span class="coord" id="coord">–</span>
+
+  <span class="spring"></span>
+
+  <button id="undo" title="Ctrl+Z">Undo</button>
+  <button id="redo" title="Ctrl+Shift+Z">Redo</button>
+  <button id="reset">Reset</button>
+  <span class="sep"></span>
+  <button id="loadGame">Game…</button>
+  <button id="saveGame" title="Write this map into the loaded game's HTML">Save to game</button>
+  <span class="sep"></span>
+  <button id="loadImg">Backdrop…</button>
+  <button id="loadJson">Load</button>
+  <button id="copyTs">Copy TS</button>
+  <button id="copyGame" title="Runtime + this map as one inline script">For game</button>
+  <button id="save" class="go">Download JSON</button>
+</div>
+
+<div class="layerbar" id="layerbar"></div>
+
+<div class="split">
+  <div class="stage" id="stage">
+    <canvas id="cv"></canvas>
+    <div class="drop" id="drop">
+      <b>Drop a map image or an HTML map here</b>
+      <span>An <code>.html</code> map renders live behind the canvas at 1:1. A previously saved
+      <code>.json</code> loads your work back. You can also start with nothing.</span>
+    </div>
+    <div class="warn" id="warn"></div>
+    <div class="hint" id="hint"></div>
+  </div>
+  <aside class="insp" id="insp"></aside>
+</div>
+
+<div class="chips" id="chips"></div>
+<div class="toast" id="toast"></div>
+
+<input type="file" id="fileImg" accept="image/*,.html,.htm" hidden>
+<input type="file" id="fileJson" accept=".json,application/json" hidden>
+<input type="file" id="fileFrames" accept="image/*" multiple webkitdirectory directory hidden>
+<input type="file" id="fileGame" accept=".html,.htm,text/html" hidden>
+<datalist id="mapIds"></datalist>
+
+<script src="navpath.js"></script>
+<script>
+'use strict';
+
+/* =============================================================== model ==== */
+
+const FORMAT_VERSION = 2;
+const AUTOSAVE_KEY = 'path-editor:autosave:v3';
+const KNOWN_IDS_KEY = 'path-editor:map-ids:v1';
+const LAYER_COLORS = ['#22c55e', '#38bdf8', '#f59e0b', '#a78bfa', '#f43f5e', '#14b8a6', '#eab308', '#ec4899'];
+
+function blankDoc() {
+  return {
+    version: FORMAT_VERSION,
+    id: '',
+    image: { name: '', w: 1600, h: 1000 },
+    layers: [], activeLayer: '',
+    nodes: [], edges: [], areas: [],
+    locations: [], characters: [],
+    globalRoute: [],
+    looplab: null
+  };
+}
+let doc = blankDoc();
+
+let img = null;
+let mode = 'paths';                        // paths|areas|locations|characters|test
+let chainOn = true, snapOn = false, showImg = true;
+let selectTool = false;                    // left click selects, never creates
+let codeView = false;                      // inspector shows exported JSON instead of the form
+
+let view = { x: 0, y: 0, s: 1 };
+let viewTouched = false;
+let mouse = { x: 0, y: 0, inside: false };
+
+let activeNode = null;
+let sel = null;                            // {type, ref}
+let dragging = null;
+let draft = null;                          // {kind:'walkable'|'blocked'|'footprint', points, owner?}
+let routeEdit = null;                      // null | {kind:'character', ref} | {kind:'global'}
+let test = { a: null, b: null, result: null, smooth: true };
+let pendingFrameTarget = null;             // character awaiting a frame folder
+
+const history = [];
+let histAt = -1;
+let knownIds = [];
+
+const $ = id => document.getElementById(id);
+const cv = $('cv'), ctx = cv.getContext('2d');
+const clone = o => JSON.parse(JSON.stringify(o));
+const round1 = v => Math.round(v * 10) / 10;
+
+function uid(prefix, pool) {
+  let n = 0;
+  const used = new Set(pool.map(x => x.id));
+  while (used.has(prefix + n)) n++;
+  return prefix + n;
+}
+function toast(msg) {
+  const t = $('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => t.classList.remove('show'), 1500);
+}
+
+/* -------- transforms: the doc stores PERCENT, the canvas draws in px ------ */
+
+const imgW = () => doc.image.w || 1600;
+const imgH = () => doc.image.h || 1000;
+
+function toScreen(px, py) {
+  return { x: view.x + (px / 100) * imgW() * view.s,
+           y: view.y + (py / 100) * imgH() * view.s };
+}
+function toPct(sx, sy) {
+  return { x: ((sx - view.x) / view.s / imgW()) * 100,
+           y: ((sy - view.y) / view.s / imgH()) * 100 };
+}
+const applySnap = p => snapOn
+  ? { x: Math.round(p.x * 2) / 2, y: Math.round(p.y * 2) / 2 }
+  : { x: round1(p.x), y: round1(p.y) };
+
+/* ============================================================== layers ==== */
+
+/** Every map has at least one layer, so links always have somewhere to live. */
+function ensureLayers() {
+  if (!doc.layers || !doc.layers.length) {
+    doc.layers = [{ id: 'l0', name: 'Paths', color: LAYER_COLORS[0], visible: true }];
+    for (const e of doc.edges) if (!e.layer) e.layer = 'l0';
+  }
+  for (const l of doc.layers) if (l.visible === undefined) l.visible = true;
+  if (!doc.layers.some(l => l.id === doc.activeLayer)) doc.activeLayer = doc.layers[0].id;
+}
+const layerById = id => doc.layers.find(l => l.id === id) || null;
+function layerOf(edge) { return layerById(edge.layer) || doc.layers[0]; }
+function edgeVisible(edge) { const l = layerOf(edge); return !l || l.visible !== false; }
+
+function addLayer() {
+  const l = {
+    id: uid('l', doc.layers),
+    name: 'Layer ' + (doc.layers.length + 1),
+    color: LAYER_COLORS[doc.layers.length % LAYER_COLORS.length],
+    visible: true
+  };
+  doc.layers.push(l);
+  doc.activeLayer = l.id;
+  return l;
+}
+function deleteLayer(l) {
+  if (doc.layers.length <= 1) { toast('Keep at least one layer'); return; }
+  const fallback = doc.layers.find(x => x !== l).id;
+  // Links on a deleted layer move rather than vanish — losing paths silently
+  // would be far worse than an unexpected reassignment.
+  let moved = 0;
+  for (const e of doc.edges) if (e.layer === l.id) { e.layer = fallback; moved++; }
+  for (const c of doc.characters) {
+    if (c.ai && c.ai.layers) {
+      c.ai.layers = c.ai.layers.filter(x => x !== l.id);
+      if (!c.ai.layers.length) delete c.ai.layers;
+    }
+  }
+  doc.layers = doc.layers.filter(x => x !== l);
+  ensureLayers();
+  if (moved) toast(`${moved} link(s) moved to ${layerById(fallback).name}`);
+}
+
+/* ============================================================== history === */
+
+/**
+ * History holds one snapshot per *distinct* state, as a JSON string.
+ *
+ * Call sites bracket their mutations with pushHistory() before and after, so
+ * the "before" snapshot is nearly always identical to the previous "after".
+ * Storing both put duplicate adjacent entries in the stack and made every
+ * second undo a silent no-op. Deduplicating here fixes it for every call site
+ * at once, and also swallows no-op pushes from fields that fire change events
+ * without actually changing.
+ */
+function pushHistory() {
+  const snap = JSON.stringify(doc);
+  if (histAt >= 0 && history[histAt] === snap) return;
+  history.length = histAt + 1;
+  history.push(snap);
+  if (history.length > 120) history.shift();
+  histAt = history.length - 1;
+  autosave(); test.result = null;
+}
+function undo() { if (histAt > 0) { histAt--; doc = JSON.parse(history[histAt]); afterHistory(); } }
+function redo() { if (histAt < history.length - 1) { histAt++; doc = JSON.parse(history[histAt]); afterHistory(); } }
+function afterHistory() {
+  activeNode = null; sel = null; draft = null; routeEdit = null; test.result = null;
+  ensureLayers(); autosave(); refreshAll();
+}
+function autosave() { try { localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(doc)); } catch (e) {} }
+
+function refreshAll() {
+  refreshLayers(); refreshChips(); refreshInspector(); refreshWarnings();
+  refreshHint(); refreshToolbar(); refreshIdList(); updateDrop(); draw();
+}
+
+/** The drop prompt is only useful on an empty canvas. */
+function updateDrop() {
+  const empty = !img && !htmlUrl && !doc.nodes.length && !doc.areas.length &&
+                !doc.locations.length && !doc.characters.length;
+  $('drop').classList.toggle('hide', !empty);
+}
+function refreshToolbar() {
+  $('addWalk').disabled = mode !== 'areas';
+  $('addBlock').disabled = mode !== 'areas';
+  $('addHotspot').disabled = mode !== 'locations';
+  $('selectTool').classList.toggle('on', selectTool);
+  $('codeTool').classList.toggle('on', codeView);
+}
+
+/* ---------------------------------------------------------- known map ids */
+
+function loadKnownIds() {
+  try { knownIds = JSON.parse(localStorage.getItem(KNOWN_IDS_KEY) || '[]'); }
+  catch (e) { knownIds = []; }
+  if (!Array.isArray(knownIds)) knownIds = [];
+}
+function rememberId(id) {
+  const v = String(id || '').trim();
+  if (!v || knownIds.indexOf(v) !== -1) return;
+  knownIds.push(v); knownIds.sort();
+  try { localStorage.setItem(KNOWN_IDS_KEY, JSON.stringify(knownIds)); } catch (e) {}
+  refreshIdList();
+}
+function refreshIdList() {
+  const host = $('mapIds');
+  host.innerHTML = '';
+  const all = new Set(knownIds);
+  if (doc.id) all.add(doc.id);
+  for (const b of doc.locations) if (b.interact && b.interact.map) all.add(b.interact.map);
+  [...all].sort().forEach(id => {
+    const o = document.createElement('option'); o.value = id; host.append(o);
+  });
+}
+
+/* ============================================================== geometry == */
+
+function distToSegScreen(p, a, b) {
+  const vx = b.x - a.x, vy = b.y - a.y, L2 = vx * vx + vy * vy;
+  let t = L2 ? ((p.x - a.x) * vx + (p.y - a.y) * vy) / L2 : 0;
+  t = Math.max(0, Math.min(1, t));
+  return Math.hypot(p.x - (a.x + vx * t), p.y - (a.y + vy * t));
+}
+function pointInPoly(x, y, pts) {
+  let inside = false;
+  for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+    const xi = pts[i][0], yi = pts[i][1], xj = pts[j][0], yj = pts[j][1];
+    if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside;
+  }
+  return inside;
+}
+const nodeById = id => doc.nodes.find(n => n.id === id) || null;
+
+function hitNear(list, sx, sy, r) {
+  for (let i = list.length - 1; i >= 0; i--) {
+    const s = toScreen(list[i].x, list[i].y);
+    if (Math.hypot(s.x - sx, s.y - sy) <= r) return list[i];
+  }
+  return null;
+}
+const nodeAt = (sx, sy) => hitNear(doc.nodes, sx, sy, 11);
+const locAt = (sx, sy) => hitNear(doc.locations, sx, sy, 13);
+const charAt = (sx, sy) => hitNear(doc.characters, sx, sy, 13);
+
+function edgeAt(sx, sy, r = 7) {
+  const p = { x: sx, y: sy };
+  for (let i = doc.edges.length - 1; i >= 0; i--) {
+    const e = doc.edges[i];
+    if (!edgeVisible(e)) continue;               // hidden layers are not clickable
+    const A = nodeById(e.a), B = nodeById(e.b);
+    if (!A || !B) continue;
+    if (distToSegScreen(p, toScreen(A.x, A.y), toScreen(B.x, B.y)) <= r) return e;
+  }
+  return null;
+}
+function vertexAt(sx, sy, r = 9) {
+  const polys = doc.areas.concat(
+    doc.locations.filter(b => b.footprint).map(b => ({ points: b.footprint, owner: b })));
+  for (let i = polys.length - 1; i >= 0; i--) {
+    const p = polys[i];
+    for (let k = 0; k < p.points.length; k++) {
+      const s = toScreen(p.points[k][0], p.points[k][1]);
+      if (Math.hypot(s.x - sx, s.y - sy) <= r) return { points: p.points, index: k, owner: p.owner || p };
+    }
+  }
+  return null;
+}
+function areaAt(px, py) {
+  for (let i = doc.areas.length - 1; i >= 0; i--) if (pointInPoly(px, py, doc.areas[i].points)) return doc.areas[i];
+  return null;
+}
+
+/* ============================================================ mutations === */
+
+function addNode(p) {
+  const n = { id: uid('n', doc.nodes), x: round1(p.x), y: round1(p.y) };
+  doc.nodes.push(n); return n;
+}
+const hasEdge = (a, b) => doc.edges.some(e => (e.a === a && e.b === b) || (e.a === b && e.b === a));
+function addEdge(a, b) {
+  if (a === b || hasEdge(a, b)) return false;
+  doc.edges.push({ a, b, layer: doc.activeLayer });
+  return true;
+}
+function deleteNode(id) {
+  doc.nodes = doc.nodes.filter(n => n.id !== id);
+  doc.edges = doc.edges.filter(e => e.a !== id && e.b !== id);
+  // A deleted node must not linger in a pin or a route, or the export ships
+  // ids that resolve to nothing.
+  for (const b of doc.locations) if (b.node === id) delete b.node;
+  for (const c of doc.characters) {
+    if (c.route) { c.route = c.route.filter(r => r !== id); if (!c.route.length) delete c.route; }
+  }
+  doc.globalRoute = (doc.globalRoute || []).filter(r => r !== id);
+  if (activeNode === id) activeNode = null;
+  clearSelIf(o => o.id === id);
+}
+function clearSelIf(pred) { if (sel && sel.ref && pred(sel.ref)) sel = null; }
+function deleteEdge(e) { doc.edges = doc.edges.filter(x => x !== e); clearSelIf(o => o === e); }
+function deleteArea(a) { doc.areas = doc.areas.filter(x => x !== a); clearSelIf(o => o === a); }
+function deleteLoc(b) {
+  doc.locations = doc.locations.filter(x => x !== b);
+  for (const c of doc.characters) {
+    if (c.home === b.id) delete c.home;
+    if (c.ai && c.ai.targets) {
+      c.ai.targets = c.ai.targets.filter(t => t !== b.id);
+      if (!c.ai.targets.length) delete c.ai.targets;
+    }
+  }
+  clearSelIf(o => o === b);
+}
+function deleteChar(c) {
+  doc.characters = doc.characters.filter(x => x !== c);
+  if (routeEdit && routeEdit.owner === c) routeEdit = null;
+  releaseFrames(c.id);
+  clearSelIf(o => o === c);
+}
+function addLoc(p) {
+  const b = { id: uid('b', doc.locations), name: 'Location ' + (doc.locations.length + 1),
+              kind: '', x: round1(p.x), y: round1(p.y) };
+  doc.locations.push(b); return b;
+}
+function addCharacter(p) {
+  const c = { id: uid('c', doc.characters), name: 'Character ' + (doc.characters.length + 1),
+              x: round1(p.x), y: round1(p.y), facing: 0 };
+  doc.characters.push(c); return c;
+}
+
+/* ========================================================= sprite frames = */
+
+/**
+ * Loaded frame images, keyed by character id. Held in memory only — the map
+ * file records the folder and file names so the game loads them from its own
+ * asset pipeline, exactly like the background image. Embedding hundreds of
+ * PNGs as data URIs would make the map file unusable.
+ */
+const frameCache = new Map();          // id -> {images:[HTMLImageElement], urls:[string]}
+let spritePreview = true;
+let spriteRAF = null;
+const spriteClock = { t0: performance.now() };
+
+const naturalSort = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
+
+function loadFrames(character, fileList) {
+  const files = [...fileList].filter(f => f.type.startsWith('image/'));
+  if (!files.length) { toast('No images in that folder'); return; }
+  files.sort((a, b) => naturalSort.compare(a.name, b.name));
+
+  // webkitRelativePath is "folder/sub/file.png" — take the deepest folder, so
+  // picking a parent directory still records where the frames actually live.
+  const rel = files[0].webkitRelativePath || files[0].name;
+  const parts = rel.split('/');
+  const folder = parts.length > 1 ? parts.slice(0, -1).join('/') : '';
+
+  releaseFrames(character.id);
+  const images = [], urls = [];
+  let pending = files.length;
+  for (const f of files) {
+    const url = URL.createObjectURL(f);
+    const im = new Image();
+    im.onload = im.onerror = () => { if (--pending === 0) { refreshInspector(true); draw(); } };
+    im.src = url;
+    urls.push(url); images.push(im);
+  }
+  frameCache.set(character.id, { images, urls });
+
+  const prev = character.sprite || {};
+  character.sprite = {
+    folder,
+    frames: files.map(f => f.name),
+    fps: prev.fps || 8,
+    scale: prev.scale || 1,
+    anchor: prev.anchor || 'feet'
+  };
+  pushHistory();
+  toast(`${files.length} frames from ${folder || 'folder'}`);
+  startSpriteLoop();
+}
+
+function releaseFrames(id) {
+  const c = frameCache.get(id);
+  if (!c) return;
+  for (const u of c.urls) URL.revokeObjectURL(u);
+  frameCache.delete(id);
+}
+
+/** Which frame is showing right now, given fps. Matches NavPath.frameAt. */
+function frameIndex(sprite, seconds) {
+  const n = sprite && sprite.frames ? sprite.frames.length : 0;
+  if (!n) return 0;
+  const fps = sprite.fps > 0 ? sprite.fps : 0;
+  if (!fps) return 0;
+  return Math.floor(seconds * fps) % n;
+}
+
+function anyLivePreview() {
+  if (!spritePreview) return false;
+  for (const c of doc.characters) {
+    if (c.sprite && c.sprite.fps > 0 && frameCache.has(c.id)) return true;
+  }
+  return false;
+}
+function startSpriteLoop() {
+  if (spriteRAF !== null) return;
+  const step = () => {
+    spriteRAF = null;
+    if (!anyLivePreview()) return;
+    draw();
+    spriteRAF = requestAnimationFrame(step);
+  };
+  if (anyLivePreview()) spriteRAF = requestAnimationFrame(step);
+}
+function stopSpriteLoop() {
+  if (spriteRAF !== null) { cancelAnimationFrame(spriteRAF); spriteRAF = null; }
+}
+
+/** Nearest path node, aspect-corrected so it is a real distance. */
+function nearestNodeTo(p) {
+  const k = imgW() / imgH();
+  let best = null, bd = Infinity;
+  for (const n of doc.nodes) {
+    const d = Math.hypot((n.x - p.x) * k, n.y - p.y);
+    if (d < bd) { bd = d; best = n; }
+  }
+  return best;
+}
+
+/* =============================================================== view ===== */
+
+const VIEW_PAD = 24;       // breathing room around a fitted map
+const EDGE_SLACK = 60;     // how far past an edge you may pan, to reach edge nodes
+
+/** Scale at which the whole map fits the viewport, or 0 before layout. */
+function fitScale() {
+  const W = cv.clientWidth, H = cv.clientHeight;
+  if (W < 2 * VIEW_PAD || H < 2 * VIEW_PAD) return 0;
+  return Math.min((W - VIEW_PAD * 2) / imgW(), (H - VIEW_PAD * 2) / imgH());
+}
+
+function fitView() {
+  // A zero-size canvas means the stage has not been laid out yet; fitting
+  // against 0 would strand the view off-screen with no way back.
+  const s = fitScale();
+  if (!s) return false;
+  view.s = s;
+  clampView();
+  return true;
+}
+
+/**
+ * Keep the map where it belongs.
+ *
+ * Per axis: if the scaled map is smaller than the viewport on that axis there
+ * is nothing to pan to, so it is centred exactly — that is what keeps it
+ * centred through a zoom out. Once it is larger than the viewport, "centred"
+ * stops meaning anything, so the view is only clamped to stop the map being
+ * flung off-screen entirely.
+ */
+function clampView() {
+  const W = cv.clientWidth, H = cv.clientHeight;
+  const mw = imgW() * view.s, mh = imgH() * view.s;
+  view.x = mw <= W ? (W - mw) / 2
+                   : Math.min(EDGE_SLACK, Math.max(W - mw - EDGE_SLACK, view.x));
+  view.y = mh <= H ? (H - mh) / 2
+                   : Math.min(EDGE_SLACK, Math.max(H - mh - EDGE_SLACK, view.y));
+}
+
+function resize() {
+  const dpr = window.devicePixelRatio || 1;
+  cv.width = Math.max(1, Math.round(cv.clientWidth * dpr));
+  cv.height = Math.max(1, Math.round(cv.clientHeight * dpr));
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  if (!viewTouched) fitView(); else clampView();
+  draw();
+}
+
+/* =============================================================== render === */
+
+const isSel = o => !!sel && sel.ref === o;
+
+function draw() {
+  const W = cv.clientWidth, H = cv.clientHeight;
+  ctx.clearRect(0, 0, W, H);
+
+  const o = toScreen(0, 0), e = toScreen(100, 100);
+  const htmlBackdrop = doc.image.kind === 'html' && htmlUrl && showImg;
+  syncBackdrop();
+  ctx.save();
+  ctx.beginPath(); ctx.rect(o.x, o.y, e.x - o.x, e.y - o.y); ctx.clip();
+  if (img && showImg) {
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(img, o.x, o.y, e.x - o.x, e.y - o.y);
+  } else if (!htmlBackdrop) {
+    // Only paint a plate when there is nothing behind the canvas to see.
+    ctx.fillStyle = '#0d1424'; ctx.fillRect(o.x, o.y, e.x - o.x, e.y - o.y);
+    drawGrid();
+  }
+  ctx.restore();
+  ctx.strokeStyle = '#25324f'; ctx.lineWidth = 1;
+  ctx.strokeRect(o.x + .5, o.y + .5, e.x - o.x - 1, e.y - o.y - 1);
+
+  const dim = mode === 'test';
+  drawAreas();
+  drawFootprints();
+  drawEdges(dim);
+  drawRoutes();
+  drawNodes(dim);
+  drawLocations(dim);
+  drawCharacters(dim);
+  if (draft) drawDraft();
+  if (mode === 'test') drawTest();
+  drawChainCue();
+}
+
+function drawGrid() {
+  ctx.strokeStyle = '#16203a'; ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (let p = 0; p <= 100; p += 10) {
+    const a = toScreen(p, 0), b = toScreen(p, 100); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y);
+    const c = toScreen(0, p), d = toScreen(100, p); ctx.moveTo(c.x, c.y); ctx.lineTo(d.x, d.y);
+  }
+  ctx.stroke();
+}
+function tracePoly(points) {
+  ctx.beginPath();
+  points.forEach((p, i) => { const s = toScreen(p[0], p[1]); i ? ctx.lineTo(s.x, s.y) : ctx.moveTo(s.x, s.y); });
+  ctx.closePath();
+}
+function drawAreas() {
+  for (const a of doc.areas) {
+    if (a.points.length < 2) continue;
+    const col = a.kind === 'blocked' ? '244,63,94' : '34,197,94';
+    tracePoly(a.points);
+    ctx.fillStyle = `rgba(${col},${isSel(a) ? .3 : .16})`; ctx.fill();
+    ctx.strokeStyle = `rgba(${col},${isSel(a) ? 1 : .85})`;
+    ctx.lineWidth = isSel(a) ? 2.5 : 1.6; ctx.stroke();
+    if (mode === 'areas') drawVerts(a.points, a.kind === 'blocked' ? '#fda4af' : '#86efac', isSel(a));
+  }
+}
+function drawFootprints() {
+  for (const b of doc.locations) {
+    if (!b.footprint || b.footprint.length < 2) continue;
+    // A hotspot wired to an interaction is drawn solid; an inert outline is
+    // dashed, so it is obvious at a glance which polygons a player can click.
+    const live = b.interact && b.interact.type && b.interact.type !== 'none';
+    tracePoly(b.footprint);
+    ctx.fillStyle = `rgba(56,189,248,${isSel(b) ? .26 : live ? .16 : .07})`; ctx.fill();
+    ctx.strokeStyle = `rgba(56,189,248,${isSel(b) ? 1 : live ? .8 : .4})`;
+    ctx.lineWidth = isSel(b) ? 2.5 : 1.6;
+    if (!live) ctx.setLineDash([5, 4]);
+    ctx.stroke(); ctx.setLineDash([]);
+    if (mode === 'locations') drawVerts(b.footprint, '#7dd3fc', isSel(b));
+  }
+}
+function drawVerts(points, col, big) {
+  ctx.fillStyle = col;
+  for (const p of points) {
+    const s = toScreen(p[0], p[1]);
+    ctx.beginPath(); ctx.arc(s.x, s.y, big ? 4.5 : 3.2, 0, 7); ctx.fill();
+  }
+}
+function drawDraft() {
+  const col = draft.kind === 'blocked' ? '244,63,94' : draft.kind === 'footprint' ? '56,189,248' : '34,197,94';
+  const pts = draft.points.map(p => toScreen(p[0], p[1]));
+  if (!pts.length) return;
+  ctx.beginPath();
+  pts.forEach((s, i) => (i ? ctx.lineTo(s.x, s.y) : ctx.moveTo(s.x, s.y)));
+  if (mouse.inside) ctx.lineTo(mouse.x, mouse.y);
+  ctx.strokeStyle = `rgb(${col})`; ctx.lineWidth = 2;
+  ctx.setLineDash([6, 4]); ctx.stroke(); ctx.setLineDash([]);
+  if (pts.length > 1) {
+    ctx.beginPath();
+    pts.forEach((s, i) => (i ? ctx.lineTo(s.x, s.y) : ctx.moveTo(s.x, s.y)));
+    ctx.closePath(); ctx.fillStyle = `rgba(${col},.12)`; ctx.fill();
+  }
+  ctx.fillStyle = `rgb(${col})`;
+  pts.forEach((s, i) => { ctx.beginPath(); ctx.arc(s.x, s.y, i === 0 ? 6 : 3.5, 0, 7); ctx.fill(); });
+}
+
+function hexToRgb(hex) {
+  const h = (hex || '#22c55e').replace('#', '');
+  const v = h.length === 3 ? h.split('').map(c => c + c).join('') : h;
+  return [parseInt(v.slice(0, 2), 16), parseInt(v.slice(2, 4), 16), parseInt(v.slice(4, 6), 16)].join(',');
+}
+
+function drawEdges(dim) {
+  ctx.lineCap = 'round';
+  for (const e of doc.edges) {
+    if (!edgeVisible(e)) continue;
+    const A = nodeById(e.a), B = nodeById(e.b);
+    if (!A || !B) continue;
+    const a = toScreen(A.x, A.y), b = toScreen(B.x, B.y);
+    const rgb = hexToRgb((layerOf(e) || {}).color);
+    ctx.strokeStyle = dim ? `rgba(${rgb},.28)` : isSel(e) ? '#ffffff' : `rgba(${rgb},.92)`;
+    ctx.lineWidth = isSel(e) ? 5 : 3.2;
+    ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+    if (dim) continue;
+    if (e.cost && e.cost !== 1) {
+      const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+      ctx.fillStyle = '#0a0e1a'; ctx.strokeStyle = `rgba(${rgb},.9)`; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.arc(mx, my, 9, 0, 7); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = `rgb(${rgb})`; ctx.font = '9px ui-monospace,monospace';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText('×' + e.cost, mx, my);
+    }
+    if (e.oneWay) drawArrow(a, b);
+  }
+}
+function drawArrow(a, b) {
+  const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+  const ang = Math.atan2(b.y - a.y, b.x - a.x), L = 8;
+  ctx.fillStyle = '#e6fff0';
+  ctx.beginPath();
+  ctx.moveTo(mx + Math.cos(ang) * L, my + Math.sin(ang) * L);
+  ctx.lineTo(mx + Math.cos(ang + 2.5) * L, my + Math.sin(ang + 2.5) * L);
+  ctx.lineTo(mx + Math.cos(ang - 2.5) * L, my + Math.sin(ang - 2.5) * L);
+  ctx.closePath(); ctx.fill();
+}
+
+function label(x, y, text, col, size) {
+  ctx.font = `${size || 11}px ui-sans-serif,system-ui,sans-serif`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+  ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(4,7,15,.92)';
+  ctx.strokeText(text, x, y);
+  ctx.fillStyle = col; ctx.fillText(text, x, y);
+}
+
+function drawNodes(dim) {
+  for (const n of doc.nodes) {
+    const s = toScreen(n.x, n.y);
+    const big = isSel(n) || n.id === activeNode;
+    ctx.beginPath(); ctx.arc(s.x, s.y, big ? 8 : 6.5, 0, 7);
+    ctx.fillStyle = dim ? 'rgba(251,191,36,.32)' : isSel(n) ? '#ffffff' : '#fbbf24';
+    ctx.fill();
+    ctx.lineWidth = 2; ctx.strokeStyle = dim ? 'rgba(0,0,0,.4)' : 'rgba(20,14,0,.75)'; ctx.stroke();
+    if (n.id === activeNode && !dim) {
+      ctx.beginPath(); ctx.arc(s.x, s.y, 12, 0, 7);
+      ctx.strokeStyle = '#a78bfa'; ctx.lineWidth = 2; ctx.stroke();
+    }
+    if (!dim) {
+      if (n.dest) label(s.x, s.y - 12, n.dest, '#fde68a', 10);
+      if (n.tags && n.tags.length) label(s.x, s.y + 21, n.tags.join(' '), 'rgba(252,211,77,.7)', 9);
+    }
+  }
+}
+
+function drawLocations(dim) {
+  for (const b of doc.locations) {
+    const s = toScreen(b.x, b.y);
+    const pin = b.node ? nodeById(b.node) : nearestNodeTo(b);
+    if (pin && !dim) {
+      const p = toScreen(pin.x, pin.y);
+      ctx.strokeStyle = b.node ? 'rgba(56,189,248,.75)' : 'rgba(56,189,248,.3)';
+      ctx.lineWidth = 1.5; ctx.setLineDash([4, 4]);
+      ctx.beginPath(); ctx.moveTo(s.x, s.y); ctx.lineTo(p.x, p.y); ctx.stroke();
+      ctx.setLineDash([]);
+    }
+    const r = isSel(b) ? 9 : 7.5;
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(s.x - r, s.y - r, r * 2, r * 2, 3);
+    else ctx.rect(s.x - r, s.y - r, r * 2, r * 2);
+    ctx.fillStyle = dim ? 'rgba(56,189,248,.32)' : isSel(b) ? '#ffffff' : '#38bdf8';
+    ctx.fill();
+    ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(2,20,32,.8)'; ctx.stroke();
+    const live = b.interact && b.interact.type && b.interact.type !== 'none';
+    if (live && !dim) {
+      const poly = b.footprint && b.footprint.length >= 3;
+      const explicit = typeof b.interact.radius === 'number';
+      // Only draw the proximity ring where proximity actually applies — with a
+      // hotspot polygon and no explicit radius, the polygon IS the hit region.
+      if (!poly || explicit) {
+        const rad = explicit ? b.interact.radius : 6;
+        const edge = toScreen(b.x, b.y + rad);
+        ctx.beginPath(); ctx.arc(s.x, s.y, Math.abs(edge.y - s.y), 0, 7);
+        ctx.strokeStyle = 'rgba(56,189,248,.35)'; ctx.lineWidth = 1.5;
+        ctx.setLineDash([3, 4]); ctx.stroke(); ctx.setLineDash([]);
+      }
+      ctx.beginPath(); ctx.arc(s.x, s.y, r + 4, 0, 7);
+      ctx.strokeStyle = '#7dd3fc'; ctx.lineWidth = 1.5; ctx.stroke();
+    }
+    if (!dim) {
+      label(s.x, s.y - r - 3, b.name || b.id, '#7dd3fc');
+      if (b.dest) label(s.x, s.y + r + 14, b.dest, 'rgba(125,211,252,.7)', 9);
+    }
+  }
+}
+
+function drawCharacters(dim) {
+  const seconds = (performance.now() - spriteClock.t0) / 1000;
+  for (const c of doc.characters) {
+    const s = toScreen(c.x, c.y);
+    const r = isSel(c) ? 9 : 7.5;
+
+    // A loaded frame sequence stands in for the marker, so you can see the
+    // character at its real size against the map.
+    const cache = spritePreview ? frameCache.get(c.id) : null;
+    if (cache && c.sprite) {
+      const im = cache.images[frameIndex(c.sprite, seconds)];
+      if (im && im.naturalWidth) {
+        // Sprites scale with the map so they keep their footing when zooming.
+        const k = (c.sprite.scale || 1) * view.s * (imgH() / 1000);
+        const w = im.naturalWidth * k, h = im.naturalHeight * k;
+        const oy = c.sprite.anchor === 'center' ? h / 2 : h;
+        ctx.save();
+        ctx.imageSmoothingEnabled = false;      // frames are usually pixel art
+        ctx.globalAlpha = dim ? 0.4 : 1;
+        ctx.drawImage(im, s.x - w / 2, s.y - oy, w, h);
+        ctx.restore();
+        if (isSel(c)) {
+          ctx.strokeStyle = 'rgba(255,255,255,.65)'; ctx.lineWidth = 1;
+          ctx.strokeRect(s.x - w / 2, s.y - oy, w, h);
+        }
+        ctx.beginPath(); ctx.arc(s.x, s.y, 2.5, 0, 7);
+        ctx.fillStyle = isSel(c) ? '#ffffff' : '#f472b6'; ctx.fill();
+        if (!dim) label(s.x, s.y - oy - 3, c.name || c.id, '#f9a8d4');
+        continue;
+      }
+    }
+
+    ctx.beginPath(); ctx.arc(s.x, s.y, r, 0, 7);
+    ctx.fillStyle = dim ? 'rgba(244,114,182,.32)' : isSel(c) ? '#ffffff' : '#f472b6';
+    ctx.fill();
+    ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(32,4,20,.8)'; ctx.stroke();
+    if (dim) continue;
+    const a = (c.facing || 0) * Math.PI / 180;
+    ctx.beginPath();
+    ctx.moveTo(s.x + Math.cos(a) * (r + 7), s.y + Math.sin(a) * (r + 7));
+    ctx.lineTo(s.x + Math.cos(a + 2.5) * r, s.y + Math.sin(a + 2.5) * r);
+    ctx.lineTo(s.x + Math.cos(a - 2.5) * r, s.y + Math.sin(a - 2.5) * r);
+    ctx.closePath(); ctx.fillStyle = isSel(c) ? '#ffffff' : '#f472b6'; ctx.fill();
+    label(s.x, s.y - r - 3, c.name || c.id, '#f9a8d4');
+    const beh = c.ai && c.ai.behavior && c.ai.behavior !== 'idle' ? c.ai.behavior : '';
+    if (beh) {
+      const via = c.ai.routeMode === 'global' ? ' · global' : '';
+      label(s.x, s.y + r + 14, beh + via, 'rgba(249,168,212,.65)', 9);
+    }
+  }
+}
+
+function routeStops(list) {
+  return (list || []).map(id => {
+    const n = nodeById(id);
+    if (n) return n;
+    const b = doc.locations.find(x => x.dest === id || x.id === id);
+    return b || null;
+  }).filter(Boolean);
+}
+
+function drawRoutes() {
+  const paint = (from, ids, strong, col) => {
+    const pts = [from].concat(routeStops(ids));
+    if (pts.length < 2) return;
+    ctx.beginPath();
+    pts.forEach((p, i) => { const s = toScreen(p.x, p.y); i ? ctx.lineTo(s.x, s.y) : ctx.moveTo(s.x, s.y); });
+    ctx.strokeStyle = strong ? col.strong : col.weak;
+    ctx.lineWidth = strong ? 3 : 2;
+    ctx.setLineDash([7, 5]); ctx.stroke(); ctx.setLineDash([]);
+    if (!strong) return;
+    ctx.font = '10px ui-monospace,monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    routeStops(ids).forEach((p, i) => {
+      const s = toScreen(p.x, p.y);
+      ctx.fillStyle = col.strong;
+      ctx.beginPath(); ctx.arc(s.x, s.y + 14, 7, 0, 7); ctx.fill();
+      ctx.fillStyle = '#2a0616'; ctx.fillText(String(i + 1), s.x, s.y + 14);
+    });
+  };
+
+  const PINK = { strong: 'rgba(244,114,182,.95)', weak: 'rgba(244,114,182,.4)' };
+  const CYAN = { strong: 'rgba(34,211,238,.9)', weak: 'rgba(34,211,238,.35)' };
+
+  // The shared route, anchored at its own first stop.
+  const g = routeStops(doc.globalRoute);
+  if (g.length > 1) {
+    const editingGlobal = routeEdit && routeEdit.kind === 'global';
+    paint(g[0], (doc.globalRoute || []).slice(1), !!editingGlobal, CYAN);
+  }
+  for (const c of doc.characters) {
+    const usesGlobal = c.ai && c.ai.routeMode === 'global';
+    if (usesGlobal) continue;                       // drawn once, above
+    if (!c.route || !c.route.length) continue;
+    paint(c, c.route, sel && sel.ref === c, PINK);
+  }
+}
+
+function drawChainCue() {
+  if (mode !== 'paths' || !chainOn || selectTool || !activeNode || !mouse.inside || dragging) return;
+  const A = nodeById(activeNode); if (!A) return;
+  const a = toScreen(A.x, A.y);
+  ctx.strokeStyle = 'rgba(167,139,250,.75)'; ctx.lineWidth = 2;
+  ctx.setLineDash([5, 5]);
+  ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(mouse.x, mouse.y); ctx.stroke();
+  ctx.setLineDash([]);
+}
+
+function drawTest() {
+  const dot = (p, col, r) => {
+    const s = toScreen(p.x, p.y);
+    ctx.beginPath(); ctx.arc(s.x, s.y, r, 0, 7);
+    ctx.fillStyle = col; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = '#04070f'; ctx.stroke();
+  };
+  const res = test.result;
+  if (res && res.ok && res.points.length > 1) {
+    ctx.beginPath();
+    res.points.forEach((p, i) => { const s = toScreen(p.x, p.y); i ? ctx.lineTo(s.x, s.y) : ctx.moveTo(s.x, s.y); });
+    ctx.strokeStyle = 'rgba(34,211,238,.35)'; ctx.lineWidth = 9; ctx.lineJoin = 'round'; ctx.stroke();
+    ctx.strokeStyle = '#22d3ee'; ctx.lineWidth = 3; ctx.stroke();
+    for (const p of res.points.slice(1, -1)) dot(p, '#22d3ee', 4);
+  }
+  if (test.a) dot(test.a, '#4ade80', 7);
+  if (test.b) dot(test.b, '#f87171', 7);
+}
+
+/* ============================================================ layer bar == */
+
+function refreshLayers() {
+  const host = $('layerbar');
+  host.innerHTML = '';
+  host.append(el('span', 'lbl', 'Path layers'));
+
+  for (const l of doc.layers) {
+    const count = doc.edges.filter(e => (e.layer || doc.layers[0].id) === l.id).length;
+    const pill = el('span', 'lyr' + (l.id === doc.activeLayer ? ' active' : '') + (l.visible === false ? ' hidden' : ''));
+    pill.title = 'Click to draw on this layer';
+
+    const eye = el('button', 'eye', l.visible === false ? '◌' : '●');
+    eye.title = l.visible === false ? 'Show' : 'Hide';
+    eye.onclick = ev => {
+      ev.stopPropagation();
+      l.visible = l.visible === false;
+      pushHistory(); refreshAll();
+    };
+    const dot = el('span', 'dot'); dot.style.background = l.color;
+    const name = el('span', null, l.name);
+    const n = el('span', 'n', String(count));
+
+    const x = el('button', 'x', '×');
+    x.title = 'Delete layer';
+    x.onclick = ev => { ev.stopPropagation(); pushHistory(); deleteLayer(l); pushHistory(); refreshAll(); };
+
+    pill.append(eye, dot, name, n, x);
+    pill.onclick = () => {
+      doc.activeLayer = l.id;
+      sel = { type: 'layer', ref: l };
+      refreshAll();
+    };
+    host.append(pill);
+  }
+
+  const add = el('button', 'small', '+ Layer');
+  add.onclick = () => { pushHistory(); addLayer(); pushHistory(); refreshAll(); };
+  host.append(add);
+
+  const anyHidden = doc.layers.some(l => l.visible === false);
+  const all = el('button', 'small', anyHidden ? 'Show all' : 'Solo active');
+  all.title = anyHidden ? 'Make every layer visible' : 'Hide every layer except the active one';
+  all.onclick = () => {
+    pushHistory();
+    for (const l of doc.layers) l.visible = anyHidden ? true : l.id === doc.activeLayer;
+    pushHistory(); refreshAll();
+  };
+  host.append(all);
+}
+
+/* =========================================================== inspector === */
+
+function el(tag, cls, text) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text !== undefined) e.textContent = text;
+  return e;
+}
+function field(labelText, input) {
+  const f = el('div', 'fld');
+  f.append(el('label', null, labelText), input);
+  return f;
+}
+function numBox(value, step, onChange) {
+  const i = el('input'); i.type = 'number'; i.step = step; i.value = value;
+  i.onchange = () => onChange(parseFloat(i.value));
+  return i;
+}
+function textBox(value, onChange, placeholder) {
+  const i = el('input'); i.type = 'text'; i.value = value || '';
+  if (placeholder) i.placeholder = placeholder;
+  i.oninput = () => onChange(i.value);
+  i.onchange = () => { pushHistory(); refreshChips(); refreshWarnings(); draw(); };
+  return i;
+}
+function kv(k, v) {
+  const d = el('div', 'kv');
+  d.append(el('span', null, k), el('b', null, v));
+  return d;
+}
+function btn(text, cls, onClick) {
+  const b = el('button', 'small' + (cls ? ' ' + cls : ''), text);
+  b.onclick = onClick;
+  return b;
+}
+function routeEditor(host, get, set, owner) {
+  const ids = get() || [];
+  if (ids.length) {
+    const wrap = el('div');
+    ids.forEach((id, i) => {
+      const t = el('span', 'tag');
+      const known = !!(nodeById(id) || doc.locations.find(b => b.dest === id || b.id === id));
+      t.append(document.createTextNode((i + 1) + '. ' + id + (known ? '' : ' ⚠')));
+      const x = el('button', null, '×');
+      x.onclick = () => { pushHistory(); const c = ids.slice(); c.splice(i, 1); set(c); refreshAll(); };
+      t.append(x); wrap.append(t);
+    });
+    host.append(wrap);
+  } else {
+    host.append(el('div', 'none', 'No stops yet. Turn on “Pick stops”, then click path nodes or locations in order.'));
+  }
+  const editingThis = routeEdit && routeEdit.owner === owner;
+  const b = btn(editingThis ? 'Done picking' : 'Pick stops', editingThis ? 'on' : null, () => {
+    routeEdit = editingThis ? null : { kind: owner === 'global' ? 'global' : 'character', owner, set, get };
+    refreshAll();
+  });
+  host.append(b);
+  if (ids.length) host.append(btn('Clear stops', null, () => { pushHistory(); set([]); refreshAll(); }));
+}
+
+/* ------------------------------------------------------------ code view - */
+
+/**
+ * The exported JSON for whatever is selected — what actually lands in the file,
+ * not the editor's in-memory object, so what you read is what ships.
+ */
+function codeForSelection() {
+  const d = exportDoc();
+  if (!sel) return { title: 'Whole map', body: d };
+  const id = sel.ref.id;
+  switch (sel.type) {
+    case 'node': return { title: 'Path node', body: d.nodes.find(n => n.id === id) };
+    case 'area': return { title: 'Area', body: d.areas.find(a => a.id === id) };
+    case 'location': return { title: 'Location', body: d.locations.find(b => b.id === id) };
+    case 'character': return { title: 'Character', body: d.characters.find(c => c.id === id) };
+    case 'layer': return { title: 'Path layer', body: d.layers.find(l => l.id === id) };
+    case 'edge': {
+      // Links have no id, so match by position — export preserves doc order.
+      const i = doc.edges.indexOf(sel.ref);
+      return { title: 'Link', body: i >= 0 ? d.edges[i] : null };
+    }
+    default: return { title: 'Selection', body: null };
+  }
+}
+
+/** Minimal JSON syntax colouring — no dependency, no innerHTML of user text. */
+function renderJson(host, value) {
+  const text = JSON.stringify(value, null, 2);
+  const pre = el('pre', 'code');
+  const re = /("(?:\\.|[^"\\])*")(\s*:)?|\b(true|false|null)\b|(-?\d+(?:\.\d+)?)/g;
+  let last = 0, mm;
+  while ((mm = re.exec(text)) !== null) {
+    if (mm.index > last) pre.append(document.createTextNode(text.slice(last, mm.index)));
+    if (mm[1] !== undefined) {
+      pre.append(el('span', mm[2] ? 'k' : 's', mm[1]));
+      if (mm[2]) pre.append(document.createTextNode(mm[2]));
+    } else if (mm[3] !== undefined) pre.append(el('span', 'b', mm[3]));
+    else pre.append(el('span', 'n', mm[4]));
+    last = re.lastIndex;
+  }
+  if (last < text.length) pre.append(document.createTextNode(text.slice(last)));
+  host.append(pre);
+  return text;
+}
+
+function renderCodeView(host) {
+  const { title, body } = codeForSelection();
+  host.append(el('h2', null, title + ' — JSON'));
+  if (body === null || body === undefined) {
+    host.append(el('div', 'none', 'Nothing to show for that selection.'));
+    return;
+  }
+  const text = renderJson(host, body);
+  host.append(btn('Copy', null, async () => {
+    try { await navigator.clipboard.writeText(text); }
+    catch (e) {
+      const ta = document.createElement('textarea');
+      ta.value = text; document.body.appendChild(ta); ta.select();
+      document.execCommand('copy'); ta.remove();
+    }
+    toast('Copied');
+  }));
+  host.append(el('div', 'none',
+    sel ? 'Click anything else on the map to read its code. Press J to go back to editing.'
+        : 'Click something on the map to narrow this down. Press J to go back to editing.'));
+}
+
+let inspectorKey = null;
+function refreshInspector(force) {
+  const key = (sel ? sel.type + ':' + (sel.ref.id || doc.edges.indexOf(sel.ref)) : 'none') +
+              ':' + (routeEdit ? routeEdit.kind + (routeEdit.owner && routeEdit.owner.id || '') : '') +
+              ':' + (codeView ? 'code' : 'edit');
+  // Rebuilding while a text field has focus would steal the caret mid-word.
+  if (!force && key === inspectorKey && document.activeElement &&
+      /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName)) return;
+  inspectorKey = key;
+
+  const host = $('insp');
+  host.innerHTML = '';
+  const bump = () => { pushHistory(); refreshAll(); };
+
+  if (codeView) { renderCodeView(host); return; }
+
+  if (!sel) {
+    host.append(el('h2', null, 'This map'));
+    const idIn = el('input');
+    idIn.type = 'text'; idIn.value = doc.id || '';
+    idIn.placeholder = 'whatever your game calls this map';
+    idIn.setAttribute('list', 'mapIds');
+    idIn.oninput = () => { doc.id = idIn.value.trim(); };
+    idIn.onchange = () => { rememberId(doc.id); pushHistory(); refreshWarnings(); };
+    host.append(field('Map id', idIn));
+    if (!doc.id) host.append(el('div', 'none', 'Optional. Set it if another map travels here.'));
+
+    host.append(el('h2', null, 'Game'));
+    if (gameFile) {
+      host.append(kv('file', gameFile.name));
+      host.append(kv('writes', gameFile.handle ? 'in place' : 'as a download'));
+      const gv = el('input');
+      gv.type = 'text'; gv.value = gameVar; gv.placeholder = 'GAME_MAP';
+      gv.oninput = () => { gameVar = gv.value.trim() || 'GAME_MAP'; };
+      host.append(field('Global name in the game', gv));
+      host.append(el('div', 'none',
+        'Save to game rewrites the block between the navpath markers, leaving the rest of the file alone.'));
+    } else {
+      host.append(el('div', 'none',
+        'Open your game with Game… to trace over it and write the map back into it.'));
+    }
+
+    host.append(el('h2', null, 'Backdrop'));
+    host.append(kv('source', doc.image.name || 'none'));
+    host.append(kv('kind', doc.image.kind === 'html' ? 'live HTML' : img ? 'image' : 'grid'));
+    const dim = el('div', 'pair');
+    // Percent coordinates are relative to these, so a wrong size skews every
+    // point. Editable because an HTML map with no intrinsic size cannot be
+    // measured automatically.
+    dim.append(field('Width px', numBox(doc.image.w, 1, v => {
+      doc.image.w = Math.max(1, Math.round(v) || 1600); viewTouched = false; fitView(); bump();
+    })));
+    dim.append(field('Height px', numBox(doc.image.h, 1, v => {
+      doc.image.h = Math.max(1, Math.round(v) || 1000); viewTouched = false; fitView(); bump();
+    })));
+    host.append(dim);
+    if (doc.image.kind === 'html' && !htmlUrl) {
+      host.append(el('div', 'none', 'The HTML map is not loaded — re-pick it with Backdrop… to see it.'));
+    }
+
+    host.append(el('h2', null, 'Shared route'));
+    host.append(el('div', 'none', 'Characters set to “follow the shared route” walk these stops.'));
+    routeEditor(host, () => doc.globalRoute,
+                v => { doc.globalRoute = v; pushHistory(); }, 'global');
+
+    host.append(el('h2', null, 'Legend'));
+    const p = el('div', 'none');
+    p.innerHTML =
+      '<span class="swatch" style="background:#fbbf24"></span>Path nodes<br>' +
+      '<span class="swatch" style="background:#22c55e"></span>Walkable areas<br>' +
+      '<span class="swatch" style="background:#f43f5e"></span>Blocked areas<br>' +
+      '<span class="swatch" style="background:#38bdf8"></span>Locations<br>' +
+      '<span class="swatch" style="background:#f472b6"></span>Characters<br><br>' +
+      'Click anything on the map to edit it here.';
+    host.append(p);
+    host.append(kv('nodes', doc.nodes.length), kv('links', doc.edges.length),
+                kv('areas', doc.areas.length), kv('locations', doc.locations.length),
+                kv('characters', doc.characters.length));
+    return;
+  }
+
+  const o = sel.ref;
+
+  if (sel.type === 'layer') {
+    host.append(el('h2', null, 'Path layer'));
+    host.append(field('Name', textBox(o.name, v => { o.name = v || 'Layer'; refreshLayers(); })));
+    const col = el('input'); col.type = 'text'; col.value = o.color;
+    col.oninput = () => { o.color = col.value; draw(); refreshLayers(); };
+    col.onchange = () => pushHistory();
+    host.append(field('Colour', col));
+    const sw = el('div', 'pair');
+    LAYER_COLORS.forEach(c => {
+      const b = el('button', 'small', ' ');
+      b.style.background = c; b.style.borderColor = c;
+      b.onclick = () => { pushHistory(); o.color = c; bump(); };
+      sw.append(b);
+    });
+    host.append(sw);
+    const vis = el('label', 'chk');
+    const cb = el('input'); cb.type = 'checkbox'; cb.checked = o.visible !== false;
+    cb.onchange = () => { pushHistory(); o.visible = cb.checked; bump(); };
+    vis.append(cb, document.createTextNode('Visible'));
+    host.append(vis);
+    host.append(kv('links', doc.edges.filter(e => (e.layer || doc.layers[0].id) === o.id).length));
+    host.append(btn('Delete layer', 'danger', () => { pushHistory(); deleteLayer(o); pushHistory(); refreshAll(); }));
+    return;
+  }
+
+  if (sel.type === 'node') {
+    host.append(el('h2', null, 'Path node'), kv('id', o.id));
+    const pair = el('div', 'pair');
+    pair.append(field('x %', numBox(o.x, 0.1, v => { o.x = round1(v); bump(); })),
+                field('y %', numBox(o.y, 0.1, v => { o.y = round1(v); bump(); })));
+    host.append(pair);
+    // A stable name game code can use, since n0/n1 shift as the map is edited.
+    host.append(field('Destination id', textBox(o.dest, v => {
+      const t = v.trim(); if (t) o.dest = t; else delete o.dest;
+    }, 'north_gate')));
+    host.append(field('Tags (space separated)', textBox((o.tags || []).join(' '), v => {
+      const t = v.trim().split(/\s+/).filter(Boolean);
+      if (t.length) o.tags = t; else delete o.tags;
+    }, 'spawn exit door')));
+    host.append(kv('links', doc.edges.filter(e => e.a === o.id || e.b === o.id).length));
+    host.append(btn('Delete node', 'danger', () => { pushHistory(); deleteNode(o.id); bump(); }));
+  }
+
+  else if (sel.type === 'edge') {
+    host.append(el('h2', null, 'Link'), kv('from → to', o.a + ' → ' + o.b));
+    const ls = el('select');
+    doc.layers.forEach(l => {
+      const opt = el('option', null, l.name); opt.value = l.id;
+      if ((o.layer || doc.layers[0].id) === l.id) opt.selected = true;
+      ls.append(opt);
+    });
+    ls.onchange = () => { pushHistory(); o.layer = ls.value; bump(); };
+    host.append(field('Layer', ls));
+    host.append(field('Cost multiplier', numBox(o.cost || 1, 0.1, v => {
+      if (!v || v === 1) delete o.cost; else o.cost = Math.max(0.1, Math.round(v * 100) / 100);
+      bump();
+    })));
+    const ow = el('label', 'chk');
+    const cb = el('input'); cb.type = 'checkbox'; cb.checked = !!o.oneWay;
+    cb.onchange = () => { if (cb.checked) o.oneWay = true; else delete o.oneWay; bump(); };
+    ow.append(cb, document.createTextNode('One-way (' + o.a + ' → ' + o.b + ')'));
+    host.append(ow);
+    host.append(btn('Flip direction', null, () => { pushHistory(); const t = o.a; o.a = o.b; o.b = t; bump(); }));
+    host.append(btn('Delete link', 'danger', () => { pushHistory(); deleteEdge(o); bump(); }));
+  }
+
+  else if (sel.type === 'area') {
+    host.append(el('h2', null, o.kind === 'blocked' ? 'Blocked area' : 'Walkable area'));
+    const s = el('select');
+    ['walkable', 'blocked'].forEach(k => {
+      const opt = el('option', null, k); opt.value = k; if (o.kind === k) opt.selected = true;
+      s.append(opt);
+    });
+    s.onchange = () => { pushHistory(); o.kind = s.value; bump(); };
+    host.append(field('Kind', s), kv('corners', o.points.length), kv('id', o.id));
+    host.append(btn('Delete area', 'danger', () => { pushHistory(); deleteArea(o); bump(); }));
+  }
+
+  else if (sel.type === 'location') {
+    host.append(el('h2', null, 'Location'));
+    host.append(field('Name', textBox(o.name, v => { o.name = v; })));
+    host.append(field('Destination id', textBox(o.dest, v => {
+      const t = v.trim(); if (t) o.dest = t; else delete o.dest;
+    }, 'market_square')));
+    host.append(field('Kind', textBox(o.kind, v => { if (v) o.kind = v; else delete o.kind; },
+                                      'shop, park, plaza, gate…')));
+    const pair = el('div', 'pair');
+    pair.append(field('x %', numBox(o.x, 0.1, v => { o.x = round1(v); bump(); })),
+                field('y %', numBox(o.y, 0.1, v => { o.y = round1(v); bump(); })));
+    host.append(pair);
+
+    const auto = nearestNodeTo(o);
+    host.append(kv('path node', o.node ? o.node + ' (pinned)' : auto ? auto.id + ' (auto)' : 'none'));
+    host.append(btn(o.node ? 'Unpin' : 'Pin nearest', null, () => {
+      pushHistory();
+      if (o.node) delete o.node;
+      else if (auto) o.node = auto.id;
+      else toast('No path nodes yet');
+      bump();
+    }));
+
+    /* ---- what happens when the player clicks it ---- */
+    host.append(el('h2', null, 'Interaction'));
+    const it = o.interact || { type: 'none' };
+    const tSel = el('select');
+    [['none', 'nothing'], ['dialog', 'dialog'], ['shop', 'shop'],
+     ['enter', 'enter a scene'], ['travel', 'travel to another map'],
+     ['custom', 'custom']].forEach(([v, lbl]) => {
+      const opt = el('option', null, lbl); opt.value = v;
+      if (it.type === v) opt.selected = true;
+      tSel.append(opt);
+    });
+    tSel.onchange = () => {
+      pushHistory();
+      if (tSel.value === 'none') delete o.interact;
+      else o.interact = Object.assign({}, o.interact, { type: tSel.value });
+      bump();
+    };
+    host.append(field('When clicked', tSel));
+
+    if (it.type && it.type !== 'none') {
+      host.append(field('Prompt', textBox(it.label, v => {
+        if (v) o.interact.label = v; else delete o.interact.label;
+      }, 'Enter the market')));
+      host.append(field('Radius % (blank = 6)', numBox(
+        it.radius === undefined ? '' : it.radius, 0.5, v => {
+          if (isNaN(v) || v <= 0) delete o.interact.radius; else o.interact.radius = round1(v);
+          bump();
+        })));
+
+      if (it.type === 'dialog') {
+        const ta = el('textarea');
+        ta.value = (it.lines || []).join('\n');
+        ta.rows = 4; ta.placeholder = 'One line per row';
+        ta.oninput = () => {
+          const lines = ta.value.split('\n').map(s => s.trim()).filter(Boolean);
+          if (lines.length) o.interact.lines = lines; else delete o.interact.lines;
+        };
+        ta.onchange = () => pushHistory();
+        host.append(field('Lines', ta));
+      }
+      if (it.type === 'enter') {
+        host.append(field('Scene / level id', textBox(it.scene, v => {
+          if (v) o.interact.scene = v; else delete o.interact.scene;
+        }, 'shop_interior')));
+      }
+      if (it.type === 'travel') {
+        const mIn = el('input');
+        mIn.type = 'text'; mIn.value = it.map || '';
+        mIn.placeholder = 'id of the map this leads to';
+        mIn.setAttribute('list', 'mapIds');
+        mIn.oninput = () => { const v = mIn.value.trim(); if (v) o.interact.map = v; else delete o.interact.map; };
+        mIn.onchange = () => { rememberId(o.interact.map); pushHistory(); refreshWarnings(); };
+        host.append(field('Target map id', mIn));
+        host.append(field('Arrive at (destination id)', textBox(it.node, v => {
+          if (v) o.interact.node = v; else delete o.interact.node;
+        }, 'blank = the target map’s spawn')));
+        if (doc.id && it.map === doc.id) host.append(el('div', 'none', '⚠ This travels to the map it is on.'));
+      }
+      if (it.type === 'shop' || it.type === 'custom' || it.type === 'dialog') {
+        host.append(el('h2', null, 'Choices'));
+        (it.options || []).forEach((op, i) => {
+          const row = el('div', 'pair');
+          row.append(textBox(op.text, v => { op.text = v; }, 'Buy'),
+                     textBox(op.action, v => { op.action = v; }, 'shop.open'));
+          row.append(btn('×', 'danger', () => {
+            pushHistory(); o.interact.options.splice(i, 1);
+            if (!o.interact.options.length) delete o.interact.options;
+            bump();
+          }));
+          host.append(row);
+        });
+        host.append(btn('+ Choice', null, () => {
+          pushHistory();
+          o.interact.options = (o.interact.options || []).concat({ text: 'Option', action: '' });
+          bump();
+        }));
+      }
+      if (it.type === 'custom') {
+        const ta = el('textarea');
+        ta.value = it.data ? JSON.stringify(it.data, null, 1) : '';
+        ta.rows = 4; ta.placeholder = '{ "cost": 50 }';
+        ta.onchange = () => {
+          // Invalid JSON must not silently wipe what was typed.
+          const raw = ta.value.trim();
+          if (!raw) { pushHistory(); delete o.interact.data; bump(); return; }
+          try { o.interact.data = JSON.parse(raw); pushHistory(); bump(); }
+          catch (e) { toast('Custom data is not valid JSON — not saved'); }
+        };
+        host.append(field('Custom data (JSON)', ta));
+      }
+    }
+
+    host.append(el('h2', null, 'Clickable area'));
+    if (o.footprint) {
+      host.append(kv('hotspot', o.footprint.length + ' corners'));
+      host.append(el('div', 'none',
+        'A polygon hotspot in percent coordinates — clicks inside it hit this location exactly, ' +
+        'at any render size. Leave Radius blank so proximity does not widen it.'));
+    } else {
+      host.append(el('div', 'none',
+        'No hotspot. Without one, clicks are matched by proximity to the anchor point instead.'));
+    }
+    host.append(btn(o.footprint ? 'Redraw hotspot' : 'Draw hotspot', null, () => {
+      draft = { kind: 'footprint', points: [], owner: o, createOnClose: false };
+      toast('Trace its clickable area — Enter to close'); refreshAll();
+    }));
+    if (o.footprint) {
+      host.append(btn('Centre anchor in hotspot', null, () => {
+        pushHistory();
+        const c = centroid(o.footprint);
+        o.x = c.x; o.y = c.y;
+        bump();
+      }));
+      host.append(btn('Clear hotspot', null, () => { pushHistory(); delete o.footprint; bump(); }));
+    }
+    host.append(btn('Delete location', 'danger', () => { pushHistory(); deleteLoc(o); bump(); }));
+  }
+
+  else if (sel.type === 'character') {
+    host.append(el('h2', null, 'Character'));
+    host.append(field('Name', textBox(o.name, v => { o.name = v; })));
+    const pair = el('div', 'pair');
+    pair.append(field('x %', numBox(o.x, 0.1, v => { o.x = round1(v); bump(); })),
+                field('y %', numBox(o.y, 0.1, v => { o.y = round1(v); bump(); })));
+    host.append(pair);
+    host.append(field('Facing °', numBox(o.facing || 0, 15, v => {
+      o.facing = ((Math.round(v) % 360) + 360) % 360; bump();
+    })));
+
+    const homeSel = el('select');
+    const none = el('option', null, '— none —'); none.value = ''; homeSel.append(none);
+    doc.locations.forEach(b => {
+      const opt = el('option', null, b.name || b.id); opt.value = b.id;
+      if (o.home === b.id) opt.selected = true;
+      homeSel.append(opt);
+    });
+    homeSel.onchange = () => { pushHistory(); if (homeSel.value) o.home = homeSel.value; else delete o.home; bump(); };
+    host.append(field('Home location', homeSel));
+
+    /* ---- animation frames ---- */
+    host.append(el('h2', null, 'Animation'));
+    const sp = o.sprite;
+    const cache = frameCache.get(o.id);
+    if (sp && sp.frames && sp.frames.length) {
+      host.append(kv('folder', sp.folder || '(root)'));
+      host.append(kv('frames', sp.frames.length + (cache ? '' : ' — not loaded')));
+      if (!cache) {
+        host.append(el('div', 'none',
+          'The frame list is saved, but the images are not. Re-pick the folder to preview them here.'));
+      }
+      const row = el('div', 'pair');
+      row.append(field('FPS', numBox(sp.fps === undefined ? 8 : sp.fps, 1, v => {
+        o.sprite.fps = Math.max(0, isNaN(v) ? 8 : v); startSpriteLoop(); bump();
+      })));
+      row.append(field('Scale', numBox(sp.scale === undefined ? 1 : sp.scale, 0.1, v => {
+        o.sprite.scale = Math.max(0.05, isNaN(v) ? 1 : v); bump();
+      })));
+      host.append(row);
+      const an = el('select');
+      [['feet', 'feet on the point'], ['center', 'centred on the point']].forEach(([v, lbl]) => {
+        const opt = el('option', null, lbl); opt.value = v;
+        if ((sp.anchor || 'feet') === v) opt.selected = true;
+        an.append(opt);
+      });
+      an.onchange = () => { pushHistory(); o.sprite.anchor = an.value; bump(); };
+      host.append(field('Anchor', an));
+      host.append(el('div', 'none', 'First frames: ' + sp.frames.slice(0, 3).join(', ') +
+                                    (sp.frames.length > 3 ? ' …' : '')));
+    } else {
+      host.append(el('div', 'none',
+        'Pick a folder of images and they become this character’s frames, sorted by filename. ' +
+        'The map file records the folder and names — your game loads the images itself.'));
+    }
+    const fr = el('div', 'pair');
+    fr.append(btn(sp && sp.frames ? 'Replace frames…' : 'Load frames…', null, () => {
+      pendingFrameTarget = o;
+      $('fileFrames').click();
+    }));
+    if (sp) {
+      fr.append(btn('Clear', 'danger', () => {
+        pushHistory(); releaseFrames(o.id); delete o.sprite; bump();
+      }));
+    }
+    host.append(fr);
+    if (cache) {
+      const pv = btn(spritePreview ? 'Pause preview' : 'Play preview', spritePreview ? 'on' : null, () => {
+        spritePreview = !spritePreview;
+        if (spritePreview) startSpriteLoop(); else stopSpriteLoop();
+        refreshInspector(true); draw();
+      });
+      host.append(pv);
+    }
+
+    /* ---- scripted behaviour ---- */
+    host.append(el('h2', null, 'Behaviour'));
+    const ai = o.ai || {};
+    const bSel = el('select');
+    [['idle', 'stand still'], ['patrol', 'walk a route'],
+     ['wander', 'wander the paths'], ['visit', 'visit locations']].forEach(([v, lbl]) => {
+      const opt = el('option', null, lbl); opt.value = v;
+      if ((ai.behavior || 'idle') === v) opt.selected = true;
+      bSel.append(opt);
+    });
+    bSel.onchange = () => {
+      pushHistory();
+      if (bSel.value === 'idle') delete o.ai;
+      else o.ai = Object.assign({ speed: 20, pause: 1 }, o.ai, { behavior: bSel.value });
+      bump();
+    };
+    host.append(field('Does', bSel));
+
+    if (ai.behavior && ai.behavior !== 'idle') {
+      const sp = el('div', 'pair');
+      sp.append(field('Speed %/s', numBox(ai.speed === undefined ? 20 : ai.speed, 1, v => {
+        o.ai.speed = Math.max(0.5, v || 20); bump();
+      })));
+      sp.append(field('Pause s', numBox(ai.pause === undefined ? 1 : ai.pause, 0.5, v => {
+        o.ai.pause = Math.max(0, isNaN(v) ? 1 : v); bump();
+      })));
+      host.append(sp);
+
+      if (ai.behavior === 'patrol') {
+        const rm = el('select');
+        [['custom', 'its own stops'], ['global', 'the shared route']].forEach(([v, lbl]) => {
+          const opt = el('option', null, lbl); opt.value = v;
+          if ((ai.routeMode || 'custom') === v) opt.selected = true;
+          rm.append(opt);
+        });
+        rm.onchange = () => {
+          pushHistory();
+          if (rm.value === 'global') o.ai.routeMode = 'global'; else delete o.ai.routeMode;
+          bump();
+        };
+        host.append(field('Walks', rm));
+
+        const lp = el('label', 'chk');
+        const cb = el('input'); cb.type = 'checkbox'; cb.checked = ai.loop !== false;
+        cb.onchange = () => { pushHistory(); o.ai.loop = cb.checked; bump(); };
+        lp.append(cb, document.createTextNode('Loop the route'));
+        host.append(lp);
+
+        if (ai.routeMode === 'global' && !(doc.globalRoute || []).length) {
+          host.append(el('div', 'none', '⚠ The shared route is empty — set it with nothing selected.'));
+        }
+      }
+      if (ai.behavior === 'visit') {
+        host.append(el('div', 'none', 'Ticked locations only. None ticked = visits any of them.'));
+        const wrap = el('div');
+        doc.locations.forEach(b => {
+          const l = el('label', 'chk');
+          const cb = el('input'); cb.type = 'checkbox';
+          cb.checked = (ai.targets || []).indexOf(b.id) !== -1;
+          cb.onchange = () => {
+            pushHistory();
+            const t = new Set(o.ai.targets || []);
+            cb.checked ? t.add(b.id) : t.delete(b.id);
+            if (t.size) o.ai.targets = [...t]; else delete o.ai.targets;
+            bump();
+          };
+          l.append(cb, document.createTextNode(b.name || b.id));
+          wrap.append(l);
+        });
+        if (!doc.locations.length) wrap.append(el('div', 'none', 'No locations yet.'));
+        host.append(wrap);
+      }
+
+      // Which parts of the network this character is allowed to use.
+      host.append(el('h2', null, 'Uses layers'));
+      host.append(el('div', 'none', 'None ticked = the whole network.'));
+      const lw = el('div');
+      doc.layers.forEach(l => {
+        const lab = el('label', 'chk');
+        const cb = el('input'); cb.type = 'checkbox';
+        cb.checked = (ai.layers || []).indexOf(l.id) !== -1;
+        cb.onchange = () => {
+          pushHistory();
+          const t = new Set(o.ai.layers || []);
+          cb.checked ? t.add(l.id) : t.delete(l.id);
+          if (t.size) o.ai.layers = [...t]; else delete o.ai.layers;
+          bump();
+        };
+        const dot = el('span', 'swatch'); dot.style.background = l.color;
+        lab.append(cb, dot, document.createTextNode(l.name));
+        lw.append(lab);
+      });
+      host.append(lw);
+    }
+
+    if (!(ai.behavior === 'patrol' && ai.routeMode === 'global')) {
+      host.append(el('h2', null, 'Its own stops'));
+      routeEditor(host, () => o.route,
+                  v => { if (v.length) o.route = v; else delete o.route; pushHistory(); }, o);
+    }
+    host.append(btn('Delete character', 'danger', () => { pushHistory(); deleteChar(o); bump(); }));
+  }
+}
+
+/* ============================================================== chips ===== */
+
+function refreshChips() {
+  const host = $('chips');
+  host.innerHTML = '';
+  const items = []
+    .concat(doc.areas.map(a => ({ o: a, cls: a.kind === 'blocked' ? 'b' : 'w', type: 'area',
+                                  text: (a.kind === 'blocked' ? 'Blocked' : 'Walkable') + ' · ' + a.points.length,
+                                  del: () => deleteArea(a) })))
+    .concat(doc.locations.map(b => ({ o: b, cls: 'lo', type: 'location',
+                                      text: b.name || b.id, del: () => deleteLoc(b) })))
+    .concat(doc.characters.map(c => ({ o: c, cls: 'ch', type: 'character',
+                                       text: c.name || c.id, del: () => deleteChar(c) })));
+  if (!items.length) {
+    host.innerHTML = '<span class="empty">Areas, locations and characters appear here as you add them.</span>';
+    return;
+  }
+  for (const it of items) {
+    const e = el('span', 'chip ' + it.cls + (isSel(it.o) ? ' sel' : ''));
+    e.append(el('span', null, it.text));
+    const x = el('button', 'x', '×');
+    x.title = 'Delete';
+    x.onclick = ev => { ev.stopPropagation(); pushHistory(); it.del(); pushHistory(); refreshAll(); };
+    e.append(x);
+    e.onclick = () => {
+      sel = isSel(it.o) ? null : { type: it.type, ref: it.o };
+      routeEdit = null;
+      refreshAll();
+    };
+    host.append(e);
+  }
+}
+
+function refreshWarnings() {
+  const host = $('warn');
+  host.innerHTML = '';
+  const add = (text, ok) => host.append(el('span', ok ? 'ok' : null, text));
+  if (!doc.nodes.length) return;
+
+  const orphans = doc.nodes.filter(n => !doc.edges.some(e => e.a === n.id || e.b === n.id));
+  if (orphans.length) add(`${orphans.length} unconnected node${orphans.length > 1 ? 's' : ''}`);
+
+  if (window.NavPath) {
+    const m = NavPath.loadMap(exportDoc());
+    const groups = m.components();
+    // Direction matters: an undirected "connected" graph can still have places
+    // you walk into and never out of, so ask the directed question too.
+    const reach = m.unreachablePlaces({ limit: 4 });
+    if (groups.length > 1) add(`${groups.length} separate path islands`);
+    if (reach.total) {
+      const eg = reach.pairs.map(p => `${p.from} → ${p.to}`).join(', ');
+      add(`${reach.total} one-way dead end${reach.total > 1 ? 's' : ''}: ${eg}` +
+          (reach.total > reach.pairs.length ? ' …' : ''));
+    } else if (groups.length === 1 && !orphans.length && doc.nodes.length > 1) {
+      add('graph fully connected, both ways', true);
+    }
+
+    // A walker only follows the links you drew. If a link crosses a blocked
+    // area, characters WILL walk through it — so it has to be caught here.
+    const bad = m.blockedEdges();
+    if (bad.length) add(`${bad.length} link${bad.length > 1 ? 's' : ''} cross a blocked area`);
+  }
+
+  const stranded = doc.locations.filter(b => b.node && !nodeById(b.node));
+  if (stranded.length) add(`${stranded.length} location(s) pinned to a missing node`);
+
+  // Duplicate destination ids resolve to whichever comes first, so a link
+  // would land somewhere arbitrary.
+  const seen = new Map();
+  for (const n of doc.nodes) if (n.dest) seen.set(n.dest, (seen.get(n.dest) || 0) + 1);
+  for (const b of doc.locations) if (b.dest) seen.set(b.dest, (seen.get(b.dest) || 0) + 1);
+  const dupes = [...seen.entries()].filter(([, c]) => c > 1);
+  if (dupes.length) add(`duplicate destination id: ${dupes.map(d => d[0]).join(', ')}`);
+
+  const travel = doc.locations.filter(b => b.interact && b.interact.type === 'travel');
+  const noTarget = travel.filter(b => !b.interact.map);
+  if (noTarget.length) add(`${noTarget.length} travel link(s) with no target map`);
+  if (doc.id && travel.some(b => b.interact.map === doc.id)) add('a travel link points at this same map');
+
+  const stuck = doc.characters.filter(c => {
+    if (!c.ai || c.ai.behavior !== 'patrol') return false;
+    const stops = c.ai.routeMode === 'global' ? doc.globalRoute : c.route;
+    return !(stops && stops.length);
+  });
+  if (stuck.length) add(`${stuck.length} character(s) set to walk a route with no stops`);
+}
+
+/* =============================================================== hint ===== */
+
+const HINTS = {
+  paths: '<b>Click</b> drops a node and chains it to the last one · <b>click a node</b> to link · ' +
+         '<b>drag</b> to move · <b>Alt/right-click</b> deletes · <b>Esc</b> breaks the chain · ' +
+         '<b>Shift+click</b> drops an unlinked node. New links land on the active layer above.',
+  areas: 'Pick <b>+ Walkable</b> or <b>+ Blocked</b>, then click each corner. ' +
+         '<b>Enter</b> or clicking the first dot closes it · <b>Backspace</b> undoes a corner · <b>Esc</b> cancels. ' +
+         'Drag a vertex to adjust · <b>Alt-click</b> a vertex removes it.',
+  locations: '<b>+ Hotspot</b> traces a clickable polygon — the precise region a player can click, ' +
+             'stored in percent coordinates and independent of the background image. ' +
+             '<b>Click</b> alone drops a plain anchor point instead. ' +
+             'The dashed tether shows the path node characters walk to.',
+  characters: '<b>Click</b> to place a character, then set its behaviour on the right. ' +
+              'It can walk its own stops or the shared route, and be limited to certain path layers.',
+  test: 'Click to set <b>start</b>, click again for <b>end</b> — snaps to locations and characters. ' +
+        'Runs the real navpath.js A* over your data. <b>S</b> toggles smoothing · <b>Esc</b> clears.'
+};
+function refreshHint() {
+  let h = HINTS[mode];
+  if (routeEdit) {
+    h = '<b>Picking stops.</b> Click path nodes or locations in the order they should be visited. ' +
+        'Click <b>Done picking</b> or press <b>Esc</b> when finished.';
+  } else if (codeView) {
+    h = '<b>Code view.</b> Click anything on the map to read the exact JSON it exports as — ' +
+        'an area, a link, a location, a character. With nothing selected you get the whole map. ' +
+        'Press <b>J</b> to go back to editing.';
+  } else if (selectTool) {
+    h = '<b>Select tool.</b> Left click selects and drags what is already there — nothing new is created. ' +
+        'Press <b>V</b> or the Select button to go back to placing. ' + h;
+  } else if (mode === 'test' && test.result) {
+    const r = test.result;
+    h = r.ok
+      ? `<b>Path found</b> · ${r.points.length} points · ${r.nodes.length} graph nodes · length ` +
+        `${r.length.toFixed(1)} · cost ${r.cost.toFixed(1)} · smoothing <b>${test.smooth ? 'on' : 'off'}</b> (press S)` +
+        (r.startWalkable && r.endWalkable ? '' : ' · ⚠ an endpoint is off walkable ground')
+      : '<b>No path.</b> Those two points are not connected through the graph. ' + HINTS.test;
+  }
+  $('hint').innerHTML = h;
+}
+
+/* =============================================================== modes === */
+
+function setMode(m, keepDraft) {
+  mode = m;
+  if (!keepDraft) draft = null;
+  if (m !== 'paths') activeNode = null;
+  [['mPaths', 'paths'], ['mAreas', 'areas'], ['mLocs', 'locations'],
+   ['mChars', 'characters'], ['mTest', 'test']].forEach(([id, k]) => $(id).classList.toggle('on', m === k));
+  cv.style.cursor = m === 'test' ? 'pointer' : selectTool ? 'default' : 'crosshair';
+  refreshToolbar(); refreshHint(); refreshInspector(true); draw();
+}
+function startArea(kind) {
+  if (mode !== 'areas') setMode('areas');
+  draft = { kind, points: [] };
+  sel = null;
+  refreshAll();
+}
+/** Average of a polygon's corners — good enough to sit an anchor inside it. */
+function centroid(points) {
+  let x = 0, y = 0;
+  for (const p of points) { x += p[0]; y += p[1]; }
+  return { x: round1(x / points.length), y: round1(y / points.length) };
+}
+
+function commitDraft() {
+  if (!draft) return;
+  if (draft.points.length < 3) { toast('Needs at least 3 corners'); return; }
+  pushHistory();
+  if (draft.kind === 'footprint') {
+    const c = centroid(draft.points);
+    let owner = draft.owner;
+    if (!owner) {
+      owner = addLoc(c);
+      // A hotspot drawn from scratch is meant to be clicked, so give it an
+      // interaction rather than leaving it inert.
+      owner.interact = { type: 'dialog' };
+    }
+    // A redraw from the inspector keeps the anchor the author placed.
+    owner.footprint = draft.points;
+    sel = { type: 'location', ref: owner };
+  } else {
+    doc.areas.push({ id: uid('a', doc.areas), kind: draft.kind, points: draft.points });
+  }
+  draft = null;
+  pushHistory(); refreshAll();
+}
+
+/* ============================================================== input ==== */
+
+const evPos = ev => {
+  const r = cv.getBoundingClientRect();
+  return { x: ev.clientX - r.left, y: ev.clientY - r.top };
+};
+function select(type, ref) { sel = { type, ref }; }
+
+cv.addEventListener('pointerdown', ev => {
+  // Capture is a convenience, not a precondition — if it throws, everything
+  // below it must still run rather than the click being swallowed whole.
+  try { cv.setPointerCapture(ev.pointerId); } catch (e) {}
+  const s = evPos(ev);
+  const p = applySnap(toPct(s.x, s.y));
+
+  if (ev.button === 1 || keys.has('Space')) {
+    dragging = { kind: 'pan', sx: s.x, sy: s.y, vx: view.x, vy: view.y };
+    viewTouched = true; cv.style.cursor = 'grabbing';
+    return;
+  }
+  const del = ev.button === 2 || ev.altKey;
+
+  /* ---- test ---- */
+  if (mode === 'test') {
+    if (ev.button !== 0) return;
+    const b = locAt(s.x, s.y), c = charAt(s.x, s.y);
+    const pt = b ? { x: b.x, y: b.y } : c ? { x: c.x, y: c.y } : p;
+    if (!test.a || test.b) { test.a = pt; test.b = null; test.result = null; }
+    else { test.b = pt; runTest(); }
+    draw(); refreshHint();
+    return;
+  }
+
+  /* ---- picking route stops wins over everything else ---- */
+  if (routeEdit && ev.button === 0 && !del) {
+    const n = nodeAt(s.x, s.y), b = locAt(s.x, s.y);
+    const id = n ? (n.dest || n.id) : b ? (b.dest || b.id) : null;
+    if (id) {
+      pushHistory();
+      routeEdit.set((routeEdit.get() || []).concat(id));
+      refreshAll();
+      return;
+    }
+  }
+
+  /* ---- paths ---- */
+  if (mode === 'paths') {
+    const n = nodeAt(s.x, s.y);
+    if (del) {
+      if (n) { pushHistory(); deleteNode(n.id); pushHistory(); refreshAll(); return; }
+      const e = edgeAt(s.x, s.y);
+      if (e) { pushHistory(); deleteEdge(e); pushHistory(); refreshAll(); }
+      return;
+    }
+    if (ev.button !== 0) return;
+
+    if (n) {
+      select('node', n);
+      if (chainOn && !selectTool && activeNode && activeNode !== n.id) {
+        pushHistory();
+        if (!addEdge(activeNode, n.id)) toast('Already linked');
+        pushHistory();
+      }
+      activeNode = selectTool ? null : n.id;
+      dragging = { kind: 'point', ref: n, moved: false };
+      refreshAll();
+      return;
+    }
+    const e = edgeAt(s.x, s.y);
+    if (e) { select('edge', e); refreshAll(); return; }
+    if (selectTool) { sel = null; activeNode = null; refreshAll(); return; }
+
+    pushHistory();
+    const fresh = addNode(p);
+    if (chainOn && activeNode && !ev.shiftKey) addEdge(activeNode, fresh.id);
+    activeNode = ev.shiftKey ? null : fresh.id;
+    select('node', fresh);
+    pushHistory();
+    dragging = { kind: 'point', ref: fresh, moved: false };
+    refreshAll();
+    return;
+  }
+
+  /* ---- an open polygon draft takes clicks in any mode ---- */
+  if (draft) {
+    if (ev.button !== 0) return;
+    if (draft.points.length >= 3) {
+      const f = toScreen(draft.points[0][0], draft.points[0][1]);
+      if (Math.hypot(f.x - s.x, f.y - s.y) < 12) { commitDraft(); return; }
+    }
+    draft.points.push([round1(p.x), round1(p.y)]);
+    draw();
+    return;
+  }
+
+  /* ---- areas ---- */
+  if (mode === 'areas') {
+    const v = vertexAt(s.x, s.y);
+    if (v && del) {
+      if (v.points.length <= 3) { toast('Needs at least 3 corners'); return; }
+      pushHistory(); v.points.splice(v.index, 1); pushHistory(); refreshAll();
+      return;
+    }
+    if (v && ev.button === 0) {
+      select(v.owner.kind === undefined ? 'location' : 'area', v.owner);
+      dragging = { kind: 'vertex', points: v.points, index: v.index, moved: false };
+      refreshAll();
+      return;
+    }
+    const hit = areaAt(p.x, p.y);
+    if (hit && del) { pushHistory(); deleteArea(hit); pushHistory(); refreshAll(); return; }
+    sel = hit ? { type: 'area', ref: hit } : null;
+    refreshAll();
+    return;
+  }
+
+  /* ---- locations ---- */
+  if (mode === 'locations') {
+    const b = locAt(s.x, s.y);
+    if (b && del) { pushHistory(); deleteLoc(b); pushHistory(); refreshAll(); return; }
+    if (ev.button !== 0) return;
+    if (b) {
+      select('location', b);
+      dragging = { kind: 'point', ref: b, moved: false };
+      refreshAll();
+      return;
+    }
+    const v = vertexAt(s.x, s.y);
+    if (v && v.owner && v.owner.footprint) {
+      select('location', v.owner);
+      dragging = { kind: 'vertex', points: v.points, index: v.index, moved: false };
+      refreshAll();
+      return;
+    }
+    // Clicking inside a footprint selects that location — a city block is a
+    // much bigger click target than its 15px anchor.
+    const inside = doc.locations.find(x => x.footprint && pointInPoly(p.x, p.y, x.footprint));
+    if (inside) { select('location', inside); refreshAll(); return; }
+    if (selectTool) { sel = null; refreshAll(); return; }
+
+    pushHistory();
+    const fresh = addLoc(p);
+    select('location', fresh);
+    pushHistory();
+    dragging = { kind: 'point', ref: fresh, moved: false };
+    refreshAll();
+    return;
+  }
+
+  /* ---- characters ---- */
+  if (mode === 'characters') {
+    const c = charAt(s.x, s.y);
+    if (c && del) { pushHistory(); deleteChar(c); pushHistory(); refreshAll(); return; }
+    if (ev.button !== 0) return;
+    if (c) {
+      select('character', c);
+      dragging = { kind: 'point', ref: c, moved: false };
+      refreshAll();
+      return;
+    }
+    if (selectTool) { sel = null; refreshAll(); return; }
+    pushHistory();
+    const fresh = addCharacter(p);
+    select('character', fresh);
+    pushHistory();
+    dragging = { kind: 'point', ref: fresh, moved: false };
+    refreshAll();
+  }
+});
+
+cv.addEventListener('pointermove', ev => {
+  const s = evPos(ev);
+  mouse.x = s.x; mouse.y = s.y; mouse.inside = true;
+  const p = toPct(s.x, s.y);
+  $('coord').textContent = `${p.x.toFixed(1)}, ${p.y.toFixed(1)}`;
+
+  if (dragging) {
+    if (dragging.kind === 'pan') {
+      view.x = dragging.vx + (s.x - dragging.sx);
+      view.y = dragging.vy + (s.y - dragging.sy);
+      clampView();          // a map that fits on screen stays centred
+      draw(); return;
+    }
+    const q = applySnap(p);
+    if (dragging.kind === 'point') { dragging.ref.x = q.x; dragging.ref.y = q.y; }
+    else if (dragging.kind === 'vertex') dragging.points[dragging.index] = [q.x, q.y];
+    dragging.moved = true;
+    draw(); return;
+  }
+
+  const over = mode === 'paths' ? nodeAt(s.x, s.y)
+             : mode === 'areas' ? vertexAt(s.x, s.y)
+             : mode === 'locations' ? locAt(s.x, s.y)
+             : mode === 'characters' ? charAt(s.x, s.y) : null;
+  if (mode !== 'test') cv.style.cursor = over ? 'move' : selectTool ? 'default' : 'crosshair';
+  if (draft || (mode === 'paths' && chainOn && !selectTool && activeNode)) draw();
+});
+
+cv.addEventListener('pointerup', ev => {
+  if (dragging) {
+    if (dragging.moved) { pushHistory(); refreshChips(); refreshInspector(true); refreshWarnings(); }
+    dragging = null;
+    cv.style.cursor = mode === 'test' ? 'pointer' : selectTool ? 'default' : 'crosshair';
+    draw();
+  }
+  try { cv.releasePointerCapture(ev.pointerId); } catch (e) {}
+});
+cv.addEventListener('pointerleave', () => { mouse.inside = false; $('coord').textContent = '–'; draw(); });
+cv.addEventListener('contextmenu', ev => ev.preventDefault());
+cv.addEventListener('dblclick', () => { if (draft) commitDraft(); });
+
+cv.addEventListener('wheel', ev => {
+  ev.preventDefault();
+  viewTouched = true;
+  // Anchor on the middle of the viewport, not the cursor, so the map scales in
+  // place and stays centred instead of creeping toward wherever the pointer is.
+  const cx = cv.clientWidth / 2, cy = cv.clientHeight / 2;
+  const before = toPct(cx, cy);
+  // Never let it shrink much past "whole map visible" — a map zoomed out to a
+  // speck is only ever a mistake.
+  const floor = Math.max((fitScale() || 0.05) * 0.4, 0.02);
+  view.s = Math.max(floor, Math.min(40, view.s * Math.exp(-ev.deltaY * 0.0015)));
+  const after = toPct(cx, cy);
+  view.x += ((after.x - before.x) / 100) * imgW() * view.s;
+  view.y += ((after.y - before.y) / 100) * imgH() * view.s;
+  clampView();
+  draw();
+}, { passive: false });
+
+const keys = new Set();
+window.addEventListener('keydown', ev => {
+  if (/^(INPUT|TEXTAREA|SELECT)$/.test(ev.target.tagName)) return;
+  keys.add(ev.code);
+  const k = ev.key.toLowerCase();
+
+  if ((ev.ctrlKey || ev.metaKey) && k === 'z') { ev.preventDefault(); ev.shiftKey ? redo() : undo(); return; }
+  if ((ev.ctrlKey || ev.metaKey) && k === 'y') { ev.preventDefault(); redo(); return; }
+  if ((ev.ctrlKey || ev.metaKey) && k === 's') { ev.preventDefault(); saveJson(); return; }
+
+  if (ev.code === 'Escape') {
+    if (draft) draft = null;
+    else if (routeEdit) routeEdit = null;
+    else if (mode === 'test') { test.a = test.b = null; test.result = null; }
+    else { activeNode = null; sel = null; }
+    refreshAll(); return;
+  }
+  if (ev.code === 'Enter' && draft) { commitDraft(); return; }
+  if (ev.code === 'Backspace' && draft) { draft.points.pop(); draw(); return; }
+
+  if (ev.code === 'Delete' || (ev.code === 'Backspace' && !draft)) {
+    if (!sel) return;
+    pushHistory();
+    if (sel.type === 'node') deleteNode(sel.ref.id);
+    else if (sel.type === 'edge') deleteEdge(sel.ref);
+    else if (sel.type === 'area') deleteArea(sel.ref);
+    else if (sel.type === 'location') deleteLoc(sel.ref);
+    else if (sel.type === 'character') deleteChar(sel.ref);
+    else if (sel.type === 'layer') deleteLayer(sel.ref);
+    pushHistory(); refreshAll();
+    return;
+  }
+
+  if (sel && sel.type === 'edge' && (k === '1' || k === '2' || k === '3')) {
+    pushHistory();
+    const v = Number(k);
+    if (v === 1) delete sel.ref.cost; else sel.ref.cost = v;
+    pushHistory(); refreshAll(); toast(v === 1 ? 'Cost reset' : 'Cost ×' + v);
+    return;
+  }
+  if (k === 'o' && sel && sel.type === 'edge') {
+    pushHistory();
+    if (sel.ref.oneWay) delete sel.ref.oneWay; else sel.ref.oneWay = true;
+    pushHistory(); refreshAll(); toast(sel.ref.oneWay ? 'One-way →' : 'Two-way');
+    return;
+  }
+  if (k === 'v') { toggleSelectTool(); return; }
+  if (k === 'j') { toggleCodeView(); return; }
+  if (k === 's' && mode === 'test') { test.smooth = !test.smooth; runTest(); draw(); refreshHint(); return; }
+  if (k === 'f') { viewTouched = false; fitView(); draw(); return; }
+  if (k === 'p') setMode('paths');
+  else if (k === 'a') setMode('areas');
+  else if (k === 'l') setMode('locations');
+  else if (k === 'c') setMode('characters');
+  else if (k === 't') setMode('test');
+});
+window.addEventListener('keyup', ev => keys.delete(ev.code));
+
+function toggleCodeView() {
+  codeView = !codeView;
+  // Reading code is a look-don't-touch mode: clicks should select, not create.
+  if (codeView) selectTool = true;
+  refreshToolbar(); refreshHint(); refreshInspector(true);
+  cv.style.cursor = mode === 'test' ? 'pointer' : selectTool ? 'default' : 'crosshair';
+  draw();
+}
+
+function toggleSelectTool() {
+  selectTool = !selectTool;
+  if (selectTool) activeNode = null;
+  cv.style.cursor = mode === 'test' ? 'pointer' : selectTool ? 'default' : 'crosshair';
+  refreshToolbar(); refreshHint(); draw();
+}
+
+/* =============================================================== test ==== */
+
+function runTest() {
+  if (!window.NavPath) { toast('navpath.js not loaded'); return; }
+  if (!test.a || !test.b) return;
+  test.result = NavPath.loadMap(exportDoc()).findPath(test.a, test.b, { smooth: test.smooth });
+  refreshHint();
+}
+
+/* ============================================================ import/IO == */
+
+function exportDoc() {
+  const output = {
+    version: FORMAT_VERSION,
+    id: doc.id || '',
+    image: doc.image.kind === 'html'
+      ? { name: doc.image.name, w: doc.image.w, h: doc.image.h, kind: 'html' }
+      : { name: doc.image.name, w: doc.image.w, h: doc.image.h },
+    layers: doc.layers.map(l => {
+      const o = { id: l.id, name: l.name, color: l.color, visible: l.visible !== false };
+      if (l.locked) o.locked = true;
+      if (Number.isFinite(l.zMin)) o.zMin = l.zMin;
+      if (Number.isFinite(l.zMax)) o.zMax = l.zMax;
+      return o;
+    }),
+    nodes: doc.nodes.map(n => {
+      const o = { id: n.id, x: round1(n.x), y: round1(n.y) };
+      if (Number.isFinite(n.z)) o.z = n.z;
+      if (n.layer) o.layer = n.layer;
+      if (n.dest) o.dest = n.dest;
+      if (n.tags && n.tags.length) o.tags = n.tags.slice();
+      return o;
+    }),
+    edges: doc.edges.map(e => {
+      const o = { a: e.a, b: e.b };
+      if (e.id) o.id = e.id;
+      if (e.layer) o.layer = e.layer;
+      if (e.cost && e.cost !== 1) o.cost = e.cost;
+      if (e.oneWay) o.oneWay = true;
+      return o;
+    }),
+    areas: doc.areas.map(a => {
+      const o = { id: a.id, kind: a.kind, points: a.points.map(p => Number.isFinite(p[2]) ? [round1(p[0]), round1(p[1]), p[2]] : [round1(p[0]), round1(p[1])]) };
+      if (a.name) o.name = a.name;
+      if (a.layer) o.layer = a.layer;
+      if (Number.isFinite(a.zMin)) o.zMin = a.zMin;
+      if (Number.isFinite(a.zMax)) o.zMax = a.zMax;
+      return o;
+    }),
+    locations: doc.locations.map(b => {
+      const o = { id: b.id, name: b.name || b.id, x: round1(b.x), y: round1(b.y) };
+      if (b.dest) o.dest = b.dest;
+      if (b.kind) o.kind = b.kind;
+      if (b.node) o.node = b.node;
+      if (b.footprint) o.footprint = b.footprint.map(p => [round1(p[0]), round1(p[1])]);
+      if (b.interact && b.interact.type && b.interact.type !== 'none') o.interact = clone(b.interact);
+      return o;
+    }),
+    characters: doc.characters.map(c => {
+      const o = { id: c.id, name: c.name || c.id, x: round1(c.x), y: round1(c.y) };
+      if (c.facing) o.facing = c.facing;
+      if (c.home) o.home = c.home;
+      if (c.route && c.route.length) o.route = c.route.slice();
+      if (c.ai && c.ai.behavior && c.ai.behavior !== 'idle') o.ai = clone(c.ai);
+      if (c.sprite && c.sprite.frames && c.sprite.frames.length) o.sprite = clone(c.sprite);
+      return o;
+    }),
+    globalRoute: (doc.globalRoute || []).slice()
+  };
+  // LoopLab owns timing, elevation, meetings, animation cues, events, and
+  // deterministic receipts that this percentage-path editor does not expose.
+  // Carry the extension byte-for-byte through a visible edit instead of
+  // silently flattening or discarding those authored contracts.
+  if (doc.looplab && typeof doc.looplab === 'object') output.looplab = clone(doc.looplab);
+  return output;
+}
+
+function saveJson() {
+  const blob = new Blob([JSON.stringify(exportDoc(), null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = (doc.id || doc.image.name || 'map').replace(/\.[^.]+$/, '') + '.path.json';
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+
+function toTS() {
+  const d = exportDoc();
+  const name = (d.id || d.image.name || 'map').replace(/\.[^.]+$/, '').replace(/[^a-z0-9]+/gi, ' ').trim()
+    .split(/\s+/).map((w, i) => (i ? w[0].toUpperCase() + w.slice(1) : w.toLowerCase())).join('') || 'map';
+  return `// Generated by the path editor. Every coordinate is a percentage of the
+// map image (x: 0-100 of width, y: 0-100 of height), so the data survives any
+// render size. Feed it to navpath.js: NavPath.loadMap(${name}Map).
+export interface PathLayer { id: string; name: string; color: string; visible: boolean }
+export interface PathNode {
+  id: string; x: number; y: number;
+  /** Stable, author-chosen name for this spot — what routes and links point at. */
+  dest?: string;
+  tags?: string[];
+}
+export interface PathEdge { a: string; b: string; layer?: string; cost?: number; oneWay?: boolean }
+export interface PathArea { id: string; kind: 'walkable' | 'blocked'; points: [number, number][] }
+export interface InteractOption { text: string; action?: string }
+export interface Interaction {
+  type: 'dialog' | 'shop' | 'enter' | 'travel' | 'custom';
+  /** Prompt shown to the player. */
+  label?: string;
+  /** How close the player must be, in percent-of-height units. Default 6. */
+  radius?: number;
+  lines?: string[];
+  options?: InteractOption[];
+  /** 'enter' — a scene or level inside this map. */
+  scene?: string;
+  /** 'travel' — the id of another map. */
+  map?: string;
+  /** 'travel' — destination id to arrive at over there; omitted means its spawn. */
+  node?: string;
+  data?: Record<string, unknown>;
+}
+/** Any named place: a shop, a plaza, a park, a gate. */
+export interface MapLocation {
+  id: string; name: string; dest?: string; kind?: string; x: number; y: number;
+  /** Pinned path node characters walk to; omitted means "snap to nearest". */
+  node?: string;
+  /**
+   * Clickable polygon hotspot, in percent coordinates — independent of the
+   * background image, so it holds at any render size. When present it IS the
+   * hit region; proximity only applies if interact.radius is set explicitly.
+   */
+  footprint?: [number, number][];
+  interact?: Interaction;
+}
+export interface CharacterAI {
+  behavior: 'patrol' | 'wander' | 'visit';
+  /** Percent-of-height units per second. */
+  speed?: number;
+  /** Seconds spent waiting at each stop. */
+  pause?: number;
+  loop?: boolean;
+  /** patrol — 'global' walks the map's shared route instead of its own stops. */
+  routeMode?: 'custom' | 'global';
+  /** visit — location ids. Empty means any location. */
+  targets?: string[];
+  /** Path layers this character may use. Empty means the whole network. */
+  layers?: string[];
+}
+/**
+ * Animation frames. The map records where the images live and what they are
+ * called, sorted; loading them is your game's job, so the map file stays small.
+ *   src = \`\${assetBase}/\${sprite.folder}/\${sprite.frames[i]}\`
+ */
+export interface CharacterSprite {
+  /** Folder the frames were picked from, relative to your asset root. */
+  folder: string;
+  /** File names in play order (natural-sorted by filename). */
+  frames: string[];
+  fps: number;
+  scale: number;
+  /** Where the character's x/y sits on the image. */
+  anchor: 'feet' | 'center';
+}
+export interface Character {
+  id: string; name: string; x: number; y: number;
+  facing?: number; home?: string; route?: string[];
+  ai?: CharacterAI;
+  sprite?: CharacterSprite;
+}
+export interface PathMap {
+  version: number;
+  /** This map's id, e.g. "map-01-prospect-yards". */
+  id: string;
+  image: { name: string; w: number; h: number };
+  layers: PathLayer[];
+  nodes: PathNode[];
+  edges: PathEdge[];
+  areas: PathArea[];
+  locations: MapLocation[];
+  characters: Character[];
+  /** Shared stop list characters can be told to walk instead of their own. */
+  globalRoute: string[];
+}
+
+export const ${name}Map: PathMap = ${JSON.stringify(d, null, 2)};
+`;
+}
+
+/**
+ * Runtime + this map as one inline block, for a single-file HTML game that
+ * cannot load an external script.
+ *
+ * The runtime source is fetched from navpath.js next to this page. That works
+ * when the editor is served over http; over file:// the browser blocks the
+ * read, so the map data is copied on its own with a note — the build-inline.js
+ * script does the same job from disk and always works.
+ */
+async function copyForGame() {
+  const data = JSON.stringify(exportDoc());
+  const varName = 'GAME_MAP';
+  let runtime = null;
+  try {
+    const res = await fetch('navpath.js');
+    if (res.ok) runtime = await res.text();
+  } catch (e) { /* file:// — fall through */ }
+
+  let text;
+  if (runtime) {
+    text = '<script>\n' + runtime.trimEnd() + '\n' +
+           `var ${varName} = NavPath.loadMap(${data});\n` +
+           `if (typeof window !== 'undefined') window.${varName} = ${varName};\n` +
+           '<\/script>\n';
+    toast('Runtime + map copied — paste into your game');
+  } else {
+    text = '<!-- Paste the contents of navpath.js above this block. -->\n' +
+           '<script>\n' +
+           `var ${varName} = NavPath.loadMap(${data});\n` +
+           '<\/script>\n';
+    toast('Map copied — paste navpath.js above it (or use build-inline.js)');
+  }
+
+  try { await navigator.clipboard.writeText(text); }
+  catch (e) {
+    const ta = document.createElement('textarea');
+    ta.value = text; document.body.appendChild(ta); ta.select();
+    document.execCommand('copy'); ta.remove();
+  }
+}
+
+async function copyTs() {
+  const text = toTS();
+  try { await navigator.clipboard.writeText(text); }
+  catch (e) {
+    const ta = document.createElement('textarea');
+    ta.value = text; document.body.appendChild(ta); ta.select();
+    document.execCommand('copy'); ta.remove();
+  }
+  toast('TypeScript copied');
+}
+
+function loadDoc(data, quiet) {
+  if (!data || typeof data !== 'object') { toast('Not a path file'); return false; }
+  // The outgoing characters take their frame object URLs with them.
+  for (const c of doc.characters) releaseFrames(c.id);
+  // `buildings` was the old key for what are now locations.
+  const locs = data.locations || data.buildings || [];
+  doc = {
+    version: FORMAT_VERSION,
+    id: data.id ? String(data.id) : '',
+    image: Object.assign({ name: '', w: 1600, h: 1000 }, data.image || {}),
+    layers: (data.layers || []).map((l, i) => ({
+      id: String(l.id || 'l' + i),
+      name: String(l.name || 'Layer ' + (i + 1)),
+      color: String(l.color || LAYER_COLORS[i % LAYER_COLORS.length]),
+      visible: l.visible !== false,
+      locked: l.locked === true,
+      ...(Number.isFinite(+l.zMin) ? { zMin: +l.zMin } : {}),
+      ...(Number.isFinite(+l.zMax) ? { zMax: +l.zMax } : {})
+    })),
+    activeLayer: '',
+    nodes: (data.nodes || []).map(n => {
+      const o = { id: String(n.id), x: +n.x, y: +n.y };
+      if (Number.isFinite(+n.z)) o.z = +n.z;
+      if (n.layer) o.layer = String(n.layer);
+      if (n.dest) o.dest = String(n.dest);
+      if (Array.isArray(n.tags) && n.tags.length) o.tags = n.tags.map(String);
+      return o;
+    }),
+    edges: (data.edges || []).map(e => {
+      const o = { a: String(e.a), b: String(e.b) };
+      if (e.id) o.id = String(e.id);
+      if (e.layer) o.layer = String(e.layer);
+      if (e.cost) o.cost = +e.cost;
+      if (e.oneWay) o.oneWay = true;
+      return o;
+    }),
+    areas: (data.areas || []).map((a, i) => ({
+      id: String(a.id || 'a' + i),
+      kind: a.kind === 'blocked' ? 'blocked' : 'walkable',
+      points: (a.points || []).map(p => Number.isFinite(+p[2]) ? [+p[0], +p[1], +p[2]] : [+p[0], +p[1]]),
+      ...(a.name ? { name: String(a.name) } : {}),
+      ...(a.layer ? { layer: String(a.layer) } : {}),
+      ...(Number.isFinite(+a.zMin) ? { zMin: +a.zMin } : {}),
+      ...(Number.isFinite(+a.zMax) ? { zMax: +a.zMax } : {})
+    })),
+    locations: locs.map((b, i) => {
+      const o = { id: String(b.id || 'b' + i), name: String(b.name || b.id || 'Location'), x: +b.x, y: +b.y };
+      if (b.dest) o.dest = String(b.dest);
+      if (b.kind) o.kind = String(b.kind);
+      if (b.node) o.node = String(b.node);
+      if (Array.isArray(b.footprint) && b.footprint.length >= 3) o.footprint = b.footprint.map(p => [+p[0], +p[1]]);
+      if (b.interact && typeof b.interact === 'object' && b.interact.type) o.interact = clone(b.interact);
+      return o;
+    }),
+    characters: (data.characters || []).map((c, i) => {
+      const o = { id: String(c.id || 'c' + i), name: String(c.name || c.id || 'Character'), x: +c.x, y: +c.y };
+      o.facing = +c.facing || 0;
+      if (c.home) o.home = String(c.home);
+      if (Array.isArray(c.route) && c.route.length) o.route = c.route.map(String);
+      if (c.ai && typeof c.ai === 'object' && c.ai.behavior) o.ai = clone(c.ai);
+      if (c.sprite && Array.isArray(c.sprite.frames) && c.sprite.frames.length) {
+        o.sprite = {
+          folder: String(c.sprite.folder || ''),
+          frames: c.sprite.frames.map(String),
+          fps: +c.sprite.fps || 8,
+          scale: +c.sprite.scale || 1,
+          anchor: c.sprite.anchor === 'center' ? 'center' : 'feet'
+        };
+      }
+      return o;
+    }),
+    globalRoute: Array.isArray(data.globalRoute) ? data.globalRoute.map(String) : [],
+    looplab: data.looplab && typeof data.looplab === 'object' && !Array.isArray(data.looplab) ? clone(data.looplab) : null
+  };
+  ensureLayers();
+
+  // Prune references that point at things this file does not contain.
+  const nodeIds = new Set(doc.nodes.map(n => n.id));
+  const before = doc.edges.length;
+  doc.edges = doc.edges.filter(e => nodeIds.has(e.a) && nodeIds.has(e.b));
+  if (doc.edges.length !== before) toast(`Dropped ${before - doc.edges.length} dangling link(s)`);
+  const layerIds = new Set(doc.layers.map(l => l.id));
+  for (const e of doc.edges) if (!e.layer || !layerIds.has(e.layer)) e.layer = doc.layers[0].id;
+  for (const b of doc.locations) if (b.node && !nodeIds.has(b.node)) delete b.node;
+  const locIds = new Set(doc.locations.map(b => b.id));
+  const stopIds = new Set([...nodeIds, ...locIds,
+    ...doc.nodes.filter(n => n.dest).map(n => n.dest),
+    ...doc.locations.filter(b => b.dest).map(b => b.dest)]);
+  for (const c of doc.characters) {
+    if (c.home && !locIds.has(c.home)) delete c.home;
+    if (c.route) { c.route = c.route.filter(r => stopIds.has(r)); if (!c.route.length) delete c.route; }
+    if (c.ai && c.ai.layers) {
+      c.ai.layers = c.ai.layers.filter(l => layerIds.has(l));
+      if (!c.ai.layers.length) delete c.ai.layers;
+    }
+    if (c.ai && c.ai.targets) {
+      c.ai.targets = c.ai.targets.filter(t => locIds.has(t));
+      if (!c.ai.targets.length) delete c.ai.targets;
+    }
+  }
+  doc.globalRoute = doc.globalRoute.filter(r => stopIds.has(r));
+
+  history.length = 0; histAt = -1;
+  pushHistory();
+  activeNode = null; sel = null; draft = null; routeEdit = null;
+  test = { a: null, b: null, result: null, smooth: test.smooth };
+  viewTouched = false; fitView();
+  refreshAll();
+  if (!quiet) {
+    const richRouteLabel = doc.looplab && doc.looplab.authoredRoute ? ' · rich timed route preserved' : '';
+    toast(`Loaded ${doc.nodes.length} nodes, ${doc.areas.length} areas, ` +
+          `${doc.locations.length} locations, ${doc.characters.length} characters${richRouteLabel}`);
+  }
+  return true;
+}
+
+function setImage(file) {
+  const url = URL.createObjectURL(file);
+  const im = new Image();
+  im.onload = () => {
+    clearHtmlBackdrop();
+    img = im;
+    doc.image = { name: file.name, w: im.naturalWidth, h: im.naturalHeight };
+    updateDrop();
+    viewTouched = false; fitView(); draw();
+    toast(`${im.naturalWidth}×${im.naturalHeight}`);
+  };
+  im.onerror = () => toast('Could not read that image');
+  im.src = url;
+}
+
+/* ------------------------------------------------------- HTML backdrop -- */
+
+let htmlUrl = null;
+
+/**
+ * Rebuild the backdrop iframe with a given sandbox.
+ *
+ * The sandbox attribute only takes effect on navigation, and setting src to
+ * the same blob URL will not reliably re-navigate — so the element is replaced
+ * outright. It must stay before the canvas in the DOM to sit behind it.
+ */
+function makeBackdropFrame(sandbox, measuring) {
+  const old = $('htmlMap');
+  if (old) old.remove();
+  const f = document.createElement('iframe');
+  f.id = 'htmlMap';
+  f.title = 'map backdrop';
+  f.setAttribute('sandbox', sandbox);
+  // A measuring frame must keep the size it was given; syncBackdrop skips it.
+  if (measuring) f.dataset.measuring = '1';
+  stage.insertBefore(f, stage.firstChild);
+  return f;
+}
+
+function clearHtmlBackdrop() {
+  const f = $('htmlMap');
+  if (f) { f.classList.remove('on'); f.removeAttribute('src'); f.onload = null; }
+  if (htmlUrl) { URL.revokeObjectURL(htmlUrl); htmlUrl = null; }
+}
+
+/**
+ * Load an HTML map and render it live behind the canvas at 1:1, so paths can
+ * be traced over the real thing rather than a screenshot of it.
+ *
+ * Measured first, then rendered. The measuring pass needs to read the page's
+ * layout, so it runs same-origin; the render pass does not, so it does not get
+ * that and is isolated. Withholding it there is free.
+ *
+ * Measuring runs the map's own scripts, because plenty of maps build their
+ * layout in JavaScript and report no size without them. An earlier version
+ * measured with scripts disabled first and only re-ran them if that came up
+ * empty — correct, but it logged a "Blocked script execution" console error on
+ * every single load, which is a bad trade for a tool loading your own files.
+ */
+function setHtmlBackdrop(file, onReady) {
+  clearHtmlBackdrop();
+  img = null;
+  htmlUrl = URL.createObjectURL(file);
+
+  const usable = (w, h) => w > 50 && h > 50;
+
+  function measureWith(sandbox, done) {
+    const f = makeBackdropFrame(sandbox, true);
+    /*
+     * Two things this has to get right, both of which silently return a
+     * plausible-looking wrong answer if missed:
+     *
+     *  - display:block. The #htmlMap rule hides the frame until it is ready,
+     *    and a display:none iframe has NO layout, so every measurement is 0.
+     *  - a tiny box. At the default 300x150 an empty document reports the
+     *    FRAME's size as though it were content, which passes the "did we get
+     *    a real number" test and stops the scripted fallback firing.
+     *
+     * Off-screen rather than hidden, since visibility:hidden also kills layout
+     * for some content.
+     */
+    f.style.cssText = 'position:absolute;left:-99999px;top:0;border:0;' +
+                      'display:block;width:10px;height:10px;';
+    f.onload = () => {
+      let w = 0, h = 0;
+      try {
+        const d = f.contentDocument;
+        const de = d.documentElement, b = d.body;
+        w = Math.max(de.scrollWidth, b ? b.scrollWidth : 0, de.offsetWidth);
+        h = Math.max(de.scrollHeight, b ? b.scrollHeight : 0, de.offsetHeight);
+      } catch (e) { /* unreadable — caller falls back */ }
+      done(w, h);
+    };
+    f.src = htmlUrl;
+  }
+
+  function render(w, h) {
+    if (!usable(w, h)) { w = doc.image.w || 1600; h = doc.image.h || 1000; }
+    doc.image = { name: file.name, w, h, kind: 'html' };
+    const live = makeBackdropFrame('allow-scripts');
+    live.onload = () => {
+      live.classList.add('on');
+      updateDrop();
+      viewTouched = false; fitView(); draw();
+      if (onReady) onReady(w, h);
+      else toast(`${file.name} — ${w}×${h}`);
+    };
+    live.src = htmlUrl;
+  }
+
+  measureWith('allow-scripts allow-same-origin', render);
+}
+
+/* ------------------------------------------------- round-trip with a game */
+
+let gameFile = null;          // { handle, name, text }
+let gameVar = 'GAME_MAP';
+let gameWriteArmed = false;   // first in-place overwrite of a file asks twice
+
+/**
+ * Open a game's HTML: render it as the backdrop AND, if it already carries an
+ * embedded map, load that map for editing. That is what makes this a
+ * round-trip rather than a one-way export.
+ */
+async function openGame() {
+  let file = null, handle = null;
+  // The file-system picker hands back a writable handle, which is what lets
+  // "Save to game" put the map back into the same file rather than downloading
+  // a copy. It needs a secure context, so fall back where it is unavailable.
+  if (window.showOpenFilePicker) {
+    try {
+      [handle] = await window.showOpenFilePicker({
+        multiple: false,
+        types: [{ description: 'HTML game', accept: { 'text/html': ['.html', '.htm'] } }]
+      });
+      file = await handle.getFile();
+    } catch (e) {
+      if (e && e.name === 'AbortError') return;      // user cancelled
+      handle = null;
+    }
+  }
+  if (!file) { $('fileGame').click(); return; }      // plain picker, no handle
+  useGameFile(file, handle);
+}
+
+function useGameFile(file, handle) {
+  const reader = new FileReader();
+  reader.onload = () => {
+    const text = String(reader.result);
+    gameFile = { handle: handle || null, name: file.name, text };
+    gameWriteArmed = false;
+    const embedded = window.NavPath ? NavPath.extractMap(text) : null;
+
+    setHtmlBackdrop(file, (w, h) => {
+      if (embedded) {
+        // The live measurement of the page beats whatever size was saved with
+        // the map — the game's layout is the authority on its own size.
+        loadDoc(embedded, true);
+        doc.image = { name: file.name, w, h, kind: 'html' };
+        pushHistory();
+        viewTouched = false; fitView(); refreshAll();
+        toast(`${file.name} — loaded its embedded map (${doc.nodes.length} nodes)`);
+      } else {
+        doc.image = { name: file.name, w, h, kind: 'html' };
+        refreshAll();
+        toast(`${file.name} — ${w}×${h}, no map embedded yet`);
+      }
+    });
+  };
+  reader.onerror = () => toast('Could not read that file');
+  reader.readAsText(file);
+}
+
+/** Write the current map back into the loaded game's HTML. */
+async function saveToGame() {
+  if (!gameFile) { toast('Load a game first with Game…'); return; }
+  if (!window.NavPath) { toast('navpath.js not loaded'); return; }
+
+  const canWriteInPlace = !!(gameFile.handle && gameFile.handle.createWritable);
+  // Overwriting the user's own game file is not something to do on a stray
+  // click, so the first write per file asks twice. After that, iterating is
+  // meant to be fast.
+  if (canWriteInPlace && !gameWriteArmed) {
+    gameWriteArmed = true;
+    $('saveGame').textContent = `Overwrite ${gameFile.name}?`;
+    $('saveGame').classList.add('danger');
+    setTimeout(() => {
+      if (gameWriteArmed) {
+        gameWriteArmed = false;
+        $('saveGame').textContent = 'Save to game';
+        $('saveGame').classList.remove('danger');
+      }
+    }, 4000);
+    return;
+  }
+  $('saveGame').textContent = 'Save to game';
+  $('saveGame').classList.remove('danger');
+
+  let runtime = null;
+  try {
+    const r = await fetch('navpath.js');
+    if (r.ok) runtime = await r.text();
+  } catch (e) { /* file:// blocks this; the data still goes in */ }
+
+  // Re-read the file rather than trusting the copy taken at load time. An edit
+  // made in a code editor while this map was open would otherwise be silently
+  // reverted by writing our stale snapshot back over it.
+  let base = gameFile.text;
+  if (canWriteInPlace) {
+    try {
+      const fresh = await (await gameFile.handle.getFile()).text();
+      if (fresh !== gameFile.text) {
+        base = fresh;
+        toast('Game file changed on disk — merging into the current version');
+      }
+    } catch (e) { /* unreadable now; fall back to what we have */ }
+  }
+
+  const out = NavPath.injectMap(base, exportDoc(), { runtime, varName: gameVar });
+
+  if (canWriteInPlace) {
+    try {
+      const w = await gameFile.handle.createWritable();
+      await w.write(out);
+      await w.close();
+      gameFile.text = out;
+      toast(`Map written into ${gameFile.name}` + (runtime ? ' with the runtime' : ' (add navpath.js yourself)'));
+      refreshAll();
+      return;
+    } catch (e) {
+      toast('Could not write in place — downloading a copy instead');
+    }
+  }
+
+  const blob = new Blob([out], { type: 'text/html' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = gameFile.name;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+  gameFile.text = out;
+  toast(`Downloaded ${gameFile.name} with the map embedded`);
+  refreshAll();
+}
+
+/** Keep the backdrop locked to the canvas view. */
+function syncBackdrop() {
+  const f = $('htmlMap');
+  if (!f) return;                       // rebuilt between load passes
+  // Resizing a frame mid-measurement makes an empty document report the
+  // frame's own box as if it were content, which is exactly the noise the
+  // 10px measuring frame exists to avoid.
+  if (f.dataset.measuring) return;
+  if (doc.image.kind !== 'html' || !htmlUrl) { f.classList.remove('on'); return; }
+  f.classList.toggle('on', showImg);
+  f.style.width = imgW() + 'px';
+  f.style.height = imgH() + 'px';
+  f.style.transform = `translate(${view.x}px, ${view.y}px) scale(${view.s})`;
+}
+function readJsonFile(file) {
+  const r = new FileReader();
+  r.onload = () => { try { loadDoc(JSON.parse(r.result)); } catch (e) { toast('Invalid JSON'); } };
+  r.readAsText(file);
+}
+
+/* ============================================================ drag & drop = */
+
+const stage = $('stage');
+['dragenter', 'dragover'].forEach(t => stage.addEventListener(t, ev => {
+  ev.preventDefault(); $('drop').classList.remove('hide'); $('drop').classList.add('armed');
+}));
+['dragleave', 'drop'].forEach(t => stage.addEventListener(t, ev => {
+  ev.preventDefault(); $('drop').classList.remove('armed'); updateDrop();
+}));
+stage.addEventListener('drop', ev => {
+  const f = ev.dataTransfer.files[0];
+  if (!f) return;
+  if (/\.json$/i.test(f.name)) readJsonFile(f);
+  else if (/\.html?$/i.test(f.name)) setHtmlBackdrop(f);
+  else if (f.type.startsWith('image/')) setImage(f);
+  else toast('Drop an image, an .html map, or a .json');
+});
+
+/* =============================================================== wiring == */
+
+$('mPaths').onclick = () => setMode('paths');
+$('mAreas').onclick = () => setMode('areas');
+$('mLocs').onclick = () => setMode('locations');
+$('mChars').onclick = () => setMode('characters');
+$('mTest').onclick = () => setMode('test');
+$('addWalk').onclick = () => startArea('walkable');
+$('addBlock').onclick = () => startArea('blocked');
+// Always starts a NEW location whose polygon is its clickable region. It must
+// not adopt the current selection as owner — committing a hotspot selects the
+// location it made, so the next click would silently redraw that one instead
+// of adding another. Redrawing an existing hotspot is the inspector's job.
+$('addHotspot').onclick = () => {
+  if (mode !== 'locations') setMode('locations');
+  sel = null;
+  draft = { kind: 'footprint', points: [], owner: null, createOnClose: true };
+  toast('Trace the clickable area — Enter to close');
+  refreshAll();
+};
+$('selectTool').onclick = toggleSelectTool;
+$('codeTool').onclick = toggleCodeView;
+$('chain').onchange = e => { chainOn = e.target.checked; draw(); };
+$('snap').onchange = e => { snapOn = e.target.checked; };
+$('showImg').onchange = e => { showImg = e.target.checked; draw(); };
+$('undo').onclick = undo;
+$('redo').onclick = redo;
+/* Reset arms on the first click and fires on the second. A native confirm()
+   is suppressed outright by embedded and preview browsers — it returns false
+   and the button silently does nothing, which reads as "reset is broken". */
+let resetArmed = 0;
+function disarmReset() {
+  resetArmed = 0;
+  $('reset').textContent = 'Reset';
+  $('reset').classList.remove('danger');
+}
+$('reset').onclick = () => {
+  if (!doc.nodes.length && !doc.areas.length && !doc.locations.length && !doc.characters.length) {
+    toast('Nothing to clear');
+    return;
+  }
+  const now = performance.now();
+  if (!resetArmed || now - resetArmed > 4000) {
+    resetArmed = now;
+    $('reset').textContent = 'Clear everything?';
+    $('reset').classList.add('danger');
+    setTimeout(() => { if (resetArmed && performance.now() - resetArmed >= 4000) disarmReset(); }, 4100);
+    return;
+  }
+  disarmReset();
+  pushHistory();
+  for (const c of doc.characters) releaseFrames(c.id);   // object URLs, not GC'd
+  doc.nodes = []; doc.edges = []; doc.areas = []; doc.locations = []; doc.characters = [];
+  doc.globalRoute = [];
+  activeNode = null; sel = null; routeEdit = null;
+  test = { a: null, b: null, result: null, smooth: test.smooth };
+  pushHistory(); refreshAll();
+  toast('Cleared — Ctrl+Z to undo');
+};
+$('loadGame').onclick = openGame;
+$('saveGame').onclick = saveToGame;
+$('fileGame').onchange = e => { if (e.target.files[0]) useGameFile(e.target.files[0], null); e.target.value = ''; };
+$('loadImg').onclick = () => $('fileImg').click();
+$('loadJson').onclick = () => $('fileJson').click();
+$('fileImg').onchange = e => {
+  const f = e.target.files[0];
+  if (f) (/\.html?$/i.test(f.name) ? setHtmlBackdrop : setImage)(f);
+  e.target.value = '';
+};
+$('fileJson').onchange = e => { if (e.target.files[0]) readJsonFile(e.target.files[0]); e.target.value = ''; };
+$('fileFrames').onchange = e => {
+  if (pendingFrameTarget && e.target.files.length) loadFrames(pendingFrameTarget, e.target.files);
+  pendingFrameTarget = null;
+  e.target.value = '';
+  refreshAll();
+};
+$('copyTs').onclick = copyTs;
+$('copyGame').onclick = copyForGame;
+$('save').onclick = saveJson;
+
+window.addEventListener('resize', resize);
+// A flex child can get its real size after this script runs; observe it rather
+// than trusting the first layout pass.
+if (window.ResizeObserver) new ResizeObserver(resize).observe(stage);
+window.addEventListener('beforeunload', ev => {
+  if (doc.nodes.length || doc.areas.length || doc.locations.length || doc.characters.length) {
+    ev.preventDefault(); ev.returnValue = '';
+  }
+});
+
+/* =============================================================== boot ==== */
+
+(function boot() {
+  loadKnownIds();
+  let restored = false;
+  try {
+    const raw = localStorage.getItem(AUTOSAVE_KEY);
+    if (raw) {
+      const data = JSON.parse(raw);
+      if ((data.nodes || []).length || (data.areas || []).length ||
+          (data.locations || data.buildings || []).length || (data.characters || []).length) {
+        loadDoc(data, true); restored = true;
+      }
+    }
+  } catch (e) { /* a corrupt autosave must not brick the editor */ }
+
+  if (!restored) { ensureLayers(); pushHistory(); }
+  resize();
+  setMode('paths');
+  refreshAll();
+  if (restored) toast('Restored your last map' + (doc.image.name ? ` — re-drop ${doc.image.name}` : ''));
+})();
+</script>
+</body>
+</html>

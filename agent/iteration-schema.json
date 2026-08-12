@@ -1,0 +1,100 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "summary": { "type": "string" },
+    "hypothesis": { "type": "string" },
+    "agentReviews": {
+      "type": "array",
+      "maxItems": 16,
+      "items": {
+        "type": "object",
+        "properties": {
+          "agentId": { "type": "string", "minLength": 1, "maxLength": 80 },
+          "verdict": { "type": "string", "enum": ["proceed", "revise", "block"] },
+          "note": { "type": "string", "minLength": 1, "maxLength": 1000 }
+        },
+        "required": ["agentId", "verdict", "note"],
+        "additionalProperties": false
+      }
+    },
+    "commands": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "properties": {
+          "op": {
+            "type": "string",
+            "description": "LoopLab command operation. Put every command-specific field in argumentsJson.",
+            "enum": [
+              "set_project",
+              "set_gameplay_program",
+              "remove_gameplay_program",
+              "set_narrative_contract",
+              "remove_narrative_contract",
+              "set_visual_identity",
+              "remove_visual_identity",
+              "set_verb_architecture",
+              "remove_verb_architecture",
+              "record_replay_case",
+              "set_feature_contracts",
+              "upsert_feature_contract",
+              "remove_feature_contract",
+              "set_acceptance_tests",
+              "upsert_acceptance_test",
+              "remove_acceptance_test",
+              "add_object",
+              "update_object",
+              "remove_object",
+              "duplicate_object",
+              "clear_objects",
+              "reorder_object",
+              "add_traversal_path",
+              "update_traversal_path",
+              "remove_traversal_path",
+              "add_map",
+              "set_start_map",
+              "reorder_map",
+              "connect_maps",
+              "update_map",
+              "switch_map",
+              "remove_map",
+              "add_asset",
+              "update_asset",
+              "remove_asset",
+              "set_authored_route_document",
+              "update_authored_route_actor",
+              "update_authored_route_step",
+              "update_authored_route_meeting",
+              "generate_tiles",
+              "generate_sprite",
+              "replace_project"
+            ]
+          },
+          "argumentsJson": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 100000,
+            "description": "A valid JSON object string containing every command field except op. Example: {\"changes\":{\"background\":\"#242424\"}}"
+          }
+        },
+        "required": ["op", "argumentsJson"],
+        "additionalProperties": false
+      }
+    },
+    "scores": {
+      "type": "object",
+      "properties": {
+        "playability": { "type": "number", "minimum": 0, "maximum": 10 },
+        "clarity": { "type": "number", "minimum": 0, "maximum": 10 },
+        "variety": { "type": "number", "minimum": 0, "maximum": 10 },
+        "visual_cohesion": { "type": "number", "minimum": 0, "maximum": 10 }
+      },
+      "required": ["playability", "clarity", "variety", "visual_cohesion"],
+      "additionalProperties": false
+    }
+  },
+  "required": ["summary", "hypothesis", "agentReviews", "commands", "scores"],
+  "additionalProperties": false
+}

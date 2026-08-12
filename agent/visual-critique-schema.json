@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "LoopLab grounded visual critique provider output",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["summary", "observations", "dimensions", "strengths", "issues", "limitations"],
+  "properties": {
+    "summary": { "type": "string", "minLength": 1, "maxLength": 4000 },
+    "observations": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 8,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["captureId", "sceneSummary", "groundedObservations"],
+        "properties": {
+          "captureId": { "type": "string", "minLength": 1, "maxLength": 200 },
+          "sceneSummary": { "type": "string", "minLength": 1, "maxLength": 1800 },
+          "groundedObservations": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 16,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["region", "observation", "confidence"],
+              "properties": {
+                "region": { "type": "string", "minLength": 1, "maxLength": 240 },
+                "observation": { "type": "string", "minLength": 1, "maxLength": 1200 },
+                "confidence": { "type": "string", "enum": ["high", "medium", "low"] }
+              }
+            }
+          }
+        }
+      }
+    },
+    "dimensions": {
+      "type": "array",
+      "minItems": 7,
+      "maxItems": 7,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "score", "confidence", "evidenceCaptureIds", "rationale", "nextAction"],
+        "properties": {
+          "id": { "type": "string", "enum": ["gameplay-readability", "brief-alignment", "visual-hierarchy", "style-cohesion", "character-environment-fit", "depth-legibility", "hud-obstruction"] },
+          "score": { "type": "integer", "minimum": 0, "maximum": 100 },
+          "confidence": { "type": "string", "enum": ["high", "medium", "low"] },
+          "evidenceCaptureIds": { "type": "array", "minItems": 1, "maxItems": 8, "items": { "type": "string", "minLength": 1, "maxLength": 200 } },
+          "rationale": { "type": "string", "minLength": 1, "maxLength": 1600 },
+          "nextAction": { "type": "string", "minLength": 1, "maxLength": 1200 }
+        }
+      }
+    },
+    "strengths": {
+      "type": "array",
+      "maxItems": 12,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "title", "summary", "evidenceCaptureIds"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1, "maxLength": 100 },
+          "title": { "type": "string", "minLength": 1, "maxLength": 240 },
+          "summary": { "type": "string", "minLength": 1, "maxLength": 1400 },
+          "evidenceCaptureIds": { "type": "array", "minItems": 1, "maxItems": 8, "items": { "type": "string", "minLength": 1, "maxLength": 200 } }
+        }
+      }
+    },
+    "issues": {
+      "type": "array",
+      "maxItems": 20,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "severity", "title", "problem", "impact", "suggestedChange", "evidenceCaptureIds"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1, "maxLength": 100 },
+          "severity": { "type": "string", "enum": ["high", "medium", "low"] },
+          "title": { "type": "string", "minLength": 1, "maxLength": 240 },
+          "problem": { "type": "string", "minLength": 1, "maxLength": 1800 },
+          "impact": { "type": "string", "minLength": 1, "maxLength": 1400 },
+          "suggestedChange": { "type": "string", "minLength": 1, "maxLength": 1800 },
+          "evidenceCaptureIds": { "type": "array", "minItems": 1, "maxItems": 8, "items": { "type": "string", "minLength": 1, "maxLength": 200 } }
+        }
+      }
+    },
+    "limitations": { "type": "array", "minItems": 1, "maxItems": 12, "items": { "type": "string", "minLength": 1, "maxLength": 1000 } }
+  }
+}

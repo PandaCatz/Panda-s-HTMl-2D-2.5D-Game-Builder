@@ -1,0 +1,12726 @@
+"use client";
+
+/* eslint-disable @next/next/no-img-element -- Looplab renders local data-URL pixel art and captured references; framework image optimization would add network-oriented behavior and blur exact pixels. */
+/* eslint-disable jsx-a11y/media-has-caption -- Installed CC0 audio packs are non-speech music and sound effects; there is no spoken content to caption. */
+
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type FormEvent,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type PointerEvent as ReactPointerEvent,
+  type ReactNode,
+} from "react";
+import VisualIdentityPanel, { type VisualIdentityContract, type VisualIdentityRole } from "./visual-identity-panel";
+import {
+  LOOPLAB_PROTOCOL_VERSION,
+  applyAgentCommand,
+  applyCollectedVerificationEvidence,
+  buildStandaloneArtifact,
+  buildStandaloneHtml as buildHeadlessHtml,
+  createTemplate,
+  getAgentManifest,
+  getCompactAgentManifest,
+  invalidateVerifiedAuthoring,
+  promoteVerifiedIteration,
+  recordAgentProjectChange,
+  summarizeProject,
+  validateProject,
+} from "../lib/looplab-agent-core.mjs";
+import {
+  LOOPLAB_AGENT_FORM_RESPONSE_LIMIT_CHARACTERS,
+  normalizeAgentFormCommand,
+  prepareBoundedAgentFormResponse,
+} from "../lib/looplab-bounded-agent-response.mjs";
+import { validateLooplabCommandInput } from "../lib/looplab-agent-contracts.mjs";
+import { LOOPLAB_SHARED_PROJECT_STORE_POLICY, LOOPLAB_SHARED_PROJECT_STORE_SCHEMA } from "../lib/looplab-shared-project-contract.mjs";
+import { previewSharedProjectRebase, sharedProjectRevisionDigest } from "../lib/looplab-shared-project-rebase.mjs";
+import { LOOPLAB_GAME_DIRECTOR, composeDirectedGameBrief, composeProviderGeneratedGameBrief, directedGameSummary, reconcileDirectedGameBrief } from "../lib/looplab-game-director.mjs";
+import {
+  SPRITE_KIND_NAMES,
+  SPRITE_PALETTE_NAMES,
+  TILE_THEME_NAMES,
+  generateSpritePixels,
+  generateTilesetPixels,
+} from "../lib/looplab-pixel-generator.mjs";
+import { analyzeProject, canCollectOfflineVerificationEvidence } from "../lib/looplab-doctor.mjs";
+import { buildAgentProjectContext } from "../lib/looplab-agent-context.mjs";
+import { routeGameStudioWork } from "../lib/looplab-capability-router.mjs";
+import { providerFamilyPaths, resolveProviderRoute } from "../lib/looplab-provider-routing.mjs";
+import { createRuntimeModel } from "../lib/looplab-runtime-instance.mjs";
+import { compileTileRuntimeProgram } from "../lib/looplab-tile-runtime.mjs";
+import { createPresentationRuntime } from "../lib/looplab-presentation.mjs";
+import { createReplayEvidence, createRuntimePlaytestEvidence, validateVerificationEvidence, verificationCoverageRequirements } from "../lib/looplab-verification.mjs";
+import { analyzeRuntimeJoinPixels, buildRuntimeJoinPlan } from "../lib/looplab-runtime-join.mjs";
+import { analyzeVisualPerception, isHudVisualReviewTarget, visualBoundsExtendBeyondFrame } from "../lib/looplab-visual-perception.mjs";
+import { isVisualCritiqueFresh } from "../lib/looplab-visual-critique-freshness.mjs";
+import { analyzeSpriteFrames, decodedMemoryLedger, extractPalette, packSpriteAtlas, silhouetteDriftLimitForRole, sliceAtlasFrames } from "../lib/looplab-sprite-tools.mjs";
+import { extractProjectFromHtml } from "../lib/looplab-html-project.mjs";
+import { groundAnchorOffset, listSupportSurfaces, resolveSupportContact, snapObjectToSupport, supportFootprintRect } from "../lib/looplab-support.mjs";
+import { authoredColliderForPlacement, visualBoundsForAsset } from "../lib/looplab-authored-collision.mjs";
+import { LOOPLAB_COLLISION_GEOMETRY_DEFAULT_TUNING, LOOPLAB_COLLISION_GEOMETRY_SCHEMA } from "../lib/looplab-collision-geometry.mjs";
+import { CC0_ASSET_CATEGORIES, CC0_ASSET_PACKS, CC0_ASSET_POLICY } from "../lib/looplab-cc0-assets.mjs";
+import { introducedDoctorErrors } from "../lib/looplab-quality.mjs";
+import { LOOPLAB_PROJECT_SCHEMA_VERSION } from "../lib/looplab-reuse-guide.mjs";
+import { buildKineticCityScaffold } from "../lib/looplab-directed-scaffold.mjs";
+import { depthKey as spatialDepthKey, normalizeProjection, projectWorldRect, screenToWorld, worldToScreen } from "../lib/looplab-spatial.mjs";
+import { authoredRoutePreview, createNavigationModel, findNavigationPath, normalizeAuthoredRouteDocument, summarizeAuthoredRouteDocument } from "../lib/looplab-navigation.mjs";
+import { inspectVerbArchitecture, LOOPLAB_VERB_ARCHITECTURE_POLICY } from "../lib/looplab-verb-architecture.mjs";
+import { inspectGameplayProgram, LOOPLAB_GAMEPLAY_RULE_POLICY } from "../lib/looplab-gameplay-rules.mjs";
+import { inspectMotionBodies, LOOPLAB_MOTION_BODY_POLICY } from "../lib/looplab-motion-bodies.mjs";
+import { inspectCombatProgram, LOOPLAB_COMBAT_POLICY } from "../lib/looplab-combat.mjs";
+import { inspectActorProgram, LOOPLAB_ACTOR_POLICY } from "../lib/looplab-actors.mjs";
+import { LOOPLAB_HOSTED_STORAGE_WRAPPER_SCHEMA, normalizeSaveProgram } from "../lib/looplab-save-state.mjs";
+import { readGamepadInputCodes } from "../lib/looplab-gamepad.mjs";
+import { aiArtPresentationState } from "../lib/looplab-ai-art-presentation.mjs";
+import { listCommandMacros } from "../lib/looplab-command-macros.mjs";
+import { getAgentRecipe, listAgentRecipes } from "../lib/looplab-agent-playbook.mjs";
+import { listBuilderBenchmarks } from "../lib/looplab-builder-benchmark.mjs";
+import {
+  LOOPLAB_PREFERENCE_DIMENSIONS,
+  addPreferenceStatement,
+  clearPreferenceMemory,
+  createPreferenceMemory,
+  normalizeAppliedPreferenceContext,
+  parsePreferenceMemory,
+  preferenceContextForProject,
+  preferenceMemoryView,
+  recordPairwisePreference,
+  removePreferenceEntry,
+  selectAppliedPreferenceContext,
+  setPreferenceMemoryEnabled,
+  updatePreferenceEntry,
+} from "../lib/looplab-preference-memory.mjs";
+import {
+  LOOPLAB_PLAYTEST_OBSERVATION_POLICY,
+  LOOPLAB_PLAYTEST_PURPOSE,
+  addPlaytestSession,
+  advancePlaytestSimulationTick,
+  clearPlaytestSessions,
+  createPlaytestLedger,
+  finishPlaytestSession,
+  getPlaytestSession,
+  parsePlaytestLedger,
+  playtestActiveSessionView,
+  playtestLedgerView,
+  recordPlaytestEvents,
+  recordPlaytestInput,
+  recordPlaytestReset,
+  recordPlaytestSample,
+  removePlaytestSession,
+  resolvePlaytestAction,
+  setPlaytestSessionActive,
+  startPlaytestSession,
+  updatePlaytestFeedback,
+} from "../lib/looplab-playtest-observation.mjs";
+import {
+  getAgentWorkLedger,
+  LOOPLAB_AGENT_WORK_ITEM_KINDS,
+  LOOPLAB_AGENT_WORK_ITEM_PRIORITIES,
+  LOOPLAB_AGENT_WORK_ITEM_STATUSES,
+  LOOPLAB_AGENT_WORK_LEDGER_MUTATIONS,
+} from "../lib/looplab-agent-work-ledger.mjs";
+
+type ObjectKind = "player" | "platform" | "coin" | "hazard" | "decor" | "spawn" | "portal" | "goal";
+type ControlMode = "platformer" | "topdown";
+type WorkspaceMode = "edit" | "play";
+type ExperienceMode = "director" | "workbench";
+type MobileTab = "scene" | "stage" | "inspect";
+type AssetLabTab = "tiles" | "sprites" | "library";
+type AssetGenerationMode = "local" | "ai";
+type SpriteKind = "hero" | "enemy" | "pickup" | "prop" | "effect" | "ui";
+type AssetLibraryCategoryId = "sprites" | "sound-effects" | "music" | "textures" | "characters" | "tileset" | "backgrounds" | "fonts" | "icons" | "user-interface";
+type AgentProvider = "openai" | "anthropic" | "codex" | "claude";
+type ProviderRouteMode = "fallback" | "strict";
+type LoopStrategy = "improve" | "explore" | "cycle";
+type LoopEvaluationProfile = "auto" | "general" | "platformer" | "top-down" | "connected-world" | "systems";
+type ArtDirectionMode = "explore" | "preserve" | "locked";
+type UsageReceipt = { schemaVersion?: string; kind?: string; provider: string; model: string | null; source?: string; measured: boolean; billingMode: "api" | "subscription" | "mixed"; authMethod?: string | null; runCount?: number; measuredRuns?: number; pricedRuns?: number; unpricedRuns?: number; inputTokens: number | null; promptTokens?: number | null; cachedInputTokens: number; cacheWriteTokens: number; outputTokens: number | null; reasoningTokens: number; totalTokens: number | null; estimatedUsd: number | null; estimateKind?: string; pricing?: { sourceUrl?: string; asOf?: string; longContextApplied?: boolean } | null; note?: string };
+type PromptGeneration = { id: string; requestedProvider?: AgentProvider | "auto"; provider: AgentProvider; providerFailover?: Record<string, unknown>; generatedAt: string; title: string; summary: string; model?: string; basePrompt: string; requiredConstraints: string[]; usage?: UsageReceipt | null };
+type ProviderPromptDraft = PromptGeneration & { prompt: string; similarityToPrevious?: number; console?: Array<Record<string, unknown>> };
+type DirectedBrief = { genre: string; coreLoop: string; movementTemplate: string; format: string; progression: string; campaignScope?: string; userPrompt: string; promptVariant?: string; composedPrompt: string; promptGeneration?: PromptGeneration };
+type DirectorWorkspaceTab = "build" | "research";
+type ResearchDepth = "quick" | "standard" | "deep" | "exhaustive";
+type ResearchEngineId = "source-command-sc-research" | "game-studio" | "web-game-foundations" | "openai-docs" | "provider-native";
+type ResearchSource = { id: string; title: string; url: string; publisher: string; publishedAt: string | null };
+type ResearchFinding = { id: string; title: string; summary: string; confidence: "high" | "medium" | "low"; sourceIds: string[] };
+type ResearchSuggestion = { id: string; title: string; rationale: string; promptAddition: string; category: string; confidence: "high" | "medium" | "low"; sourceIds: string[] };
+type ResearchReport = { id: string; query: string; preset: string; depth: ResearchDepth; engine?: ResearchEngineId; provider: AgentProvider; createdAt: string; title: string; executiveSummary: string; confidence: "high" | "medium" | "low"; findings: ResearchFinding[]; suggestions: ResearchSuggestion[]; sources: ResearchSource[]; uncertainties: string[]; reportFile?: string; markdown?: string; usage?: UsageReceipt | null };
+type ResearchEvent = { sequence?: number; type: string; message?: string; detail?: string; error?: string; sourceCount?: number; suggestionCount?: number; receipt?: UsageReceipt; usage?: UsageReceipt };
+type LocalFileHandle = { kind: "file"; name: string; getFile: () => Promise<File> };
+type LocalDirectoryHandle = { kind: "directory"; name: string; values: () => AsyncIterableIterator<LocalFileHandle | LocalDirectoryHandle> };
+type DirectoryPickerWindow = Window & { showDirectoryPicker?: (options?: { mode?: "read" | "readwrite" }) => Promise<LocalDirectoryHandle> };
+type CaptureRegion = { startX: number; startY: number; x: number; y: number; width: number; height: number };
+type ProviderState = "ready" | "needs-key" | "needs-login" | "not-installed" | "blocked" | "unknown";
+type ProviderStatus = {
+  id: AgentProvider;
+  label: string;
+  kind: "api" | "cli";
+  state: ProviderState;
+  ready: boolean;
+  installed: boolean;
+  runnable: boolean;
+  authenticated: boolean;
+  summary: string;
+  detail: string;
+  version?: string | null;
+  model?: string;
+  authMethod?: string | null;
+  credentialName?: string;
+  installCommand?: string;
+  loginCommand?: string;
+  keyUrl?: string;
+  docsUrl?: string;
+  action: { kind: "none" | "login" | "native-key" | "open-url" | "copy-command"; label: string; url?: string; command?: string };
+};
+type ActiveProviderConnection = { id: string; provider: AgentProvider; status: "running"; createdAt: string; eventsUrl: string; cancelUrl: string };
+type LocalCopilotStatus = {
+  schemaVersion: "looplab-local-copilot-status/v1";
+  checkedAt: string;
+  state: "ready" | "unavailable" | "needs-model" | "blocked";
+  ready: boolean;
+  engine: string | null;
+  label: string;
+  origin: string | null;
+  model: string | null;
+  availableModels: string[];
+  authenticated: boolean;
+  authentication: string;
+  summary: string;
+  detail: string;
+  candidates: Array<{ id: string; label: string; origin: string; state: string; reachable: boolean; ready: boolean; models: string[]; detail: string; docsUrl: string | null }>;
+  policy: { advisoryOnly: true; mutatesProject: false; verificationEvidence: false; toolExecution: false; providerReplacement: false; remoteEndpointsAllowed: false };
+};
+type CompanionHealth = {
+  ok: boolean;
+  name: string;
+  version: string;
+  protocolVersion?: string;
+  sessionId?: string;
+  mutationAuth?: { required: boolean; header: string };
+  sharedProjectStore?: { schemaVersion: string; mounted: boolean; relativeRoot: string; staleWritePolicy: string };
+  checkedAt: string;
+  readyCount: number;
+  providers: Record<AgentProvider, ProviderStatus>;
+  activeJobs: number;
+  activeResearchJobs?: number;
+  activeVisualCritiqueJobs?: number;
+  activeAssetJobs?: number;
+  activeReleaseVerificationJobs?: number;
+  activeLocalCopilotJobs?: number;
+  activePromptGenerations?: number;
+  activeAgentPresences?: number;
+  activeConnections: number;
+  activeProviderConnections?: ActiveProviderConnection[];
+  localCopilot?: LocalCopilotStatus;
+};
+type AgentPresenceEntry = {
+  presenceId: string;
+  clientKind: "codex" | "claude" | "human" | "automation" | "other";
+  displayName: string;
+  status: "active" | "idle" | "reviewing" | "blocked";
+  projectId: string | null;
+  sourceDigest: string | null;
+  operation: string | null;
+  workItemIds: string[];
+  joinedAt: string;
+  lastSeenAt: string;
+  expiresAt: string;
+  ttlSeconds: number;
+};
+type AgentPresenceView = {
+  schemaVersion: "looplab-agent-presence/v1";
+  generatedAt: string;
+  count: number;
+  expiredPruned: number;
+  recommendedHeartbeatSeconds: number;
+  presences: AgentPresenceEntry[];
+  policy: Record<string, unknown>;
+};
+type ConsoleEntry = { sequence: number; type: string; message: string; detail?: string; tone?: "good" | "bad" | "neutral"; url?: string };
+type AiArtJobDescriptor = { jobId: string; status: string; eventsUrl: string; statusUrl: string; resultUrl: string; cancelUrl: string };
+type AiArtJobEvent = { sequence?: number; type: string; message?: string; error?: string; model?: string; usage?: UsageReceipt };
+type ReleaseVerificationJobDescriptor = { jobId: string; status: string; eventsUrl: string; statusUrl: string; resultUrl: string; cancelUrl: string };
+type ReleaseVerificationJobEvent = { sequence?: number; type: string; message?: string; error?: string; passed?: boolean; artifactSha256?: string; sourceDigest?: string; findingCount?: number };
+type LocalCopilotJobDescriptor = { jobId: string; kind: "local-copilot"; status: string; engine: string; model: string; eventsUrl: string; statusUrl: string; resultUrl: string; cancelUrl: string };
+type VisualCritiqueJobDescriptor = { jobId: string; kind: "visual-critique"; provider?: AgentProvider; status: string; request?: VisualCritiqueRequestSummary; eventsUrl: string; statusUrl: string; resultUrl: string; cancelUrl: string };
+type VisualCritiqueRequestSummary = { schemaVersion: string; sourceDigest: string; captureSetDigest: string; requestDigest: string; captureCount: number; totalDecodedBytes: number; captures: Array<{ id: string; mapId: string; mapName: string; profileId: string; profileName: string; sha256: string; width: number; height: number; byteLength: number }> };
+type VisualCritiqueEvent = { sequence?: number; type: string; message?: string; error?: string; sourceDigest?: string; captureSetDigest?: string; critiqueDigest?: string; issueCount?: number; receipt?: UsageReceipt; usage?: UsageReceipt };
+type VisualCritiqueResult = {
+  schemaVersion: "looplab-visual-critique/v1";
+  sourceDigest: string;
+  captureSetDigest: string;
+  requestDigest: string;
+  critiqueDigest: string;
+  generatedAt: string;
+  provider: AgentProvider;
+  model: string;
+  summary: string;
+  observations: Array<{ captureId: string; sceneSummary: string; groundedObservations: Array<{ region: string; observation: string; confidence: "high" | "medium" | "low" }> }>;
+  dimensions: Array<{ id: string; score: number; confidence: "high" | "medium" | "low"; evidenceCaptureIds: string[]; rationale: string; nextAction: string }>;
+  strengths: Array<{ id: string; title: string; summary: string; evidenceCaptureIds: string[] }>;
+  issues: Array<{ id: string; severity: "high" | "medium" | "low"; title: string; problem: string; impact: string; suggestedChange: string; evidenceCaptureIds: string[] }>;
+  limitations: string[];
+  usage: UsageReceipt | null;
+  policy: { advisoryOnly: true; mutatesProject: false; verificationEvidence: false; automaticWinner: null; aestheticApproval: "not-proven" };
+};
+type ReleaseVerificationAttestation = {
+  schemaVersion: string;
+  subject: { name: string; mediaType: string; digest: { sha256: string }; byteLength: number };
+  source: { sourceDigest: string; projectName: string; projectSchemaVersion: string | null; buildId: string | null; sourceRevision: string | null; runtimeVersion: string };
+  verificationResult: "PASSED";
+  verifiedAt: string;
+  attestationDigest: string;
+  [key: string]: unknown;
+};
+type LocalOperationUsage = { schemaVersion: string; provider: "none"; source: string; measured: true; totalTokens: 0; estimatedUsd: 0; actualChargeClaimed: false; note: string };
+type ReleaseVerificationResult = {
+  schemaVersion: "looplab-release-verification-result/v1";
+  jobId: string;
+  passed: boolean;
+  project?: GameProject;
+  html?: string;
+  sourceDigest: string;
+  audit: { valid: boolean; byteLength: number; [key: string]: unknown };
+  platformHarness: { passed: boolean; artifactSha256: string | null; checks: Array<{ id: string; status: string }>; findingCount: number | null; [key: string]: unknown };
+  findings: Array<Record<string, unknown>>;
+  attestation: ReleaseVerificationAttestation | null;
+  doctor: { profile: string; score: number; errorCount: number; warningCount: number; digest: string; sourceDigest: string } | null;
+  usage: LocalOperationUsage;
+};
+type AiArtSourceResult = {
+  jobId: string;
+  request: { role: string; assetType: "tileset" | "sprite"; identity: string; actions: string[]; frameCount: number; columns: number; rows: number; targetFrameSize: number; quality: string; background: string; projection: string; palette: string[]; groundAnchored: boolean; promptDigest: string; model: string; providerOperation: "generation" | "edit"; referenceSummary: Array<{ referenceId: string; assetId: string; purpose: string; delivery: "semantic" | "image"; uploaded: boolean; byteLength: number | null; sha256: string | null }>; visualIdentity: { inherited: boolean; bypassed: boolean; identityDigest: string | null; status: string | null; directiveIds: string[]; referenceIds: string[]; exclusionIds: string[]; imageReferenceCount: number; imageReferenceBytes: number; referenceConsent: boolean } };
+  image: { dataUrl: string; width: number; height: number; byteLength: number; provider: string; model: string; requestId?: string | null; promptDigest: string; layout: { frameCount: number; columns: number; rows: number; actions: string[] }; normalization: { targetFrameSize: number; palette: string[]; groundAnchored: boolean; projection: string; background: string } };
+  usage: UsageReceipt;
+};
+
+type AssetSourceReference = {
+  packId: string;
+  assetId: string;
+  archiveId: string;
+  path: string;
+  sourceUrl: string;
+  license: "CC0-1.0";
+  licenseUrl: string;
+  verifiedAt: string;
+};
+
+type ProjectResource = {
+  id: string;
+  name: string;
+  kind: "audio" | "font" | "map-data" | "document";
+  mimeType: string;
+  dataUrl: string;
+  bytes: number;
+  source: AssetSourceReference;
+};
+
+type InstalledPackAsset = {
+  id: string;
+  packId: string;
+  archiveId: string;
+  path: string;
+  name: string;
+  directory: string;
+  extension: string;
+  kind: "image" | "audio" | "font" | "map-data" | "document" | "source";
+  mimeType: string;
+  bytes: number;
+  sha256: string;
+  url: string;
+  selectable: boolean;
+  previewable: boolean;
+  width?: number;
+  height?: number;
+};
+
+type InstalledPackSummary = (typeof CC0_ASSET_PACKS)[number] & {
+  installed: boolean;
+  installedAssetCount: number;
+  archiveOnlyAssetCount: number;
+  archiveBytes: number;
+  indexUrl: string;
+  archives: Array<{ id: string; label: string; file: string; uploadId: string; bytes: number; sha256: string; installedAssetCount: number; archiveOnlyAssetCount: number }>;
+};
+
+type AssetPackManifest = {
+  schemaVersion: string;
+  generatedAt: string;
+  packCount: number;
+  installedAssetCount: number;
+  packs: InstalledPackSummary[];
+};
+
+type AssetPackIndex = {
+  schemaVersion: string;
+  pack: InstalledPackSummary;
+  installedAssetCount: number;
+  archiveOnlyAssetCount: number;
+  archives: InstalledPackSummary["archives"];
+  assets: InstalledPackAsset[];
+  archiveOnly: Array<{ archiveId: string; path: string; reason: string; kind: string; extension: string }>;
+};
+
+type GeneratedAsset = {
+  id: string;
+  name: string;
+  type: "tileset" | "sprite";
+  dataUrl: string;
+  width: number;
+  height: number;
+  frameWidth: number;
+  frameHeight: number;
+  frames: number;
+  columns: number;
+  anchorX: number;
+  anchorY: number;
+  opaqueBounds?: { x: number; y: number; width: number; height: number };
+  colliderBounds?: { x: number; y: number; width: number; height: number };
+  collisionPolicy?: "authored-only";
+  anchorMode?: "ground" | "center" | "top-left";
+  invariants?: Record<string, unknown>;
+  analysis?: Record<string, unknown>;
+  generator: Record<string, string | number | boolean>;
+  source?: AssetSourceReference;
+};
+
+type Collider = {
+  enabled: boolean;
+  offsetX: number;
+  offsetY: number;
+  width: number;
+  height: number;
+  trigger: boolean;
+  oneWay: boolean;
+  zMin?: number;
+  zMax?: number;
+};
+
+type SupportContact = {
+  mode: "floor" | "surface" | "free";
+  surfaceId?: string;
+  offset?: number;
+  tolerance?: number;
+};
+
+type ProjectionContract = {
+  type: "orthographic" | "dimetric-2:1";
+  tileWidth: number;
+  tileHeight: number;
+  elevationStep?: number;
+  originX?: number;
+  originY?: number;
+  worldUnitsPerTile?: number;
+};
+
+type NavigationLayer = { id: string; name: string; color: string; visible: boolean; locked: boolean; zMin: number; zMax: number };
+type NavigationNode = { id: string; x: number; y: number; z: number; layerId?: string; destinationId?: string; tags?: string[] };
+type NavigationLink = { id: string; a: string; b: string; layerId?: string; cost: number; oneWay: boolean };
+type NavigationArea = { id: string; name: string; kind: "walkable" | "blocked"; points: Array<{ x: number; y: number; z?: number }>; layerId?: string; zMin: number; zMax: number };
+type AuthoredRouteDocument = { version: number; sourceFormat: string; coordinateSpace: string; data: Record<string, unknown>; integrity: { revision: number; digestAlgorithm: "sha256-jcs-v1"; sourceDigest: string; currentDigest: string; hashStatus: "unverified" | "preserved" | "verified" | "stale"; hashes: Array<{ path: string; value: string; source?: string }>; verifiedDigest?: string; verifiedAt?: string; verificationKind?: "deterministic-replay" | "render-capture" | "runtime-probe" | "combined"; simVersion?: string; staleReasons?: string[]; versionLog?: unknown[]; legacyDigests?: string[] } };
+type NavigationModel = { version: number; activeLayerId: string; layers: NavigationLayer[]; nodes: NavigationNode[]; links: NavigationLink[]; areas: NavigationArea[]; authoredRoute?: AuthoredRouteDocument; testRoute?: { from?: { x: number; y: number; z: number }; to?: { x: number; y: number; z: number }; layerIds?: string[] } };
+type AuthoredRoutePreview = { id: string; name: string; actorType: string; points: Array<{ x: number; y: number; z: number }>; schedule: Array<Record<string, unknown>>; depthBias: number; sourceScreenSpace: boolean };
+type SupportSurface = { id: string; name: string; kind: string; role: string | null; x: number; y: number; width: number; height: number; zMin: number; zMax: number };
+
+type GameObject = {
+  id: string;
+  name: string;
+  kind: ObjectKind;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  color: string;
+  solid: boolean;
+  assetId?: string;
+  assetFrame?: number;
+  collider?: Collider;
+  targetMapId?: string;
+  targetSpawnId?: string;
+  transition?: "fade" | "slide" | "instant";
+  runtimeJoin?: {
+    version?: 1;
+    enabled: boolean;
+    mode?: "portal" | "continuous";
+    sourceEdge?: "left" | "right" | "top" | "bottom";
+    targetEdge?: "left" | "right" | "top" | "bottom";
+    overlapPixels?: number;
+    sampleDepth?: number;
+    minimumUniquePixelRatio?: number;
+    maximumBoundaryColorDelta?: number;
+    requireExactSpawn?: boolean;
+    requireClearLanding?: boolean;
+  };
+  motionBody?: {
+    schemaVersion: "looplab-motion-body/v1" | "looplab-motion-body/v2";
+    enabled: boolean;
+    driver: "input" | "automatic";
+    pathId: string;
+    actionId?: string;
+    initialDirection: "forward" | "reverse";
+    endBehavior: "stop" | "loop" | "ping-pong";
+    maxSpeed: number;
+    acceleration: number;
+    deceleration: number;
+    collisionResponse: "stop";
+    snapTolerance: number;
+    riderMode?: "block" | "carry-player";
+    carryTolerance?: number;
+    crushResponse?: "stop" | "respawn";
+    acceptanceTestId?: string;
+  };
+  anchorMode?: "ground" | "center" | "top-left";
+  collisionOwner?: "authored-map";
+  z?: number;
+  supportZ?: number;
+  requiresSupport?: boolean;
+  groundAnchor?: { offsetX: number; offsetY: number };
+  supportFootprint?: { offsetX: number; offsetY: number; width: number; height: number };
+  supportContact?: SupportContact;
+  collisionHeight?: number;
+  depthLayer?: number;
+  depthBias?: number;
+  role?: string;
+  routeLayer?: string;
+  cullingPadding?: number;
+  allowHudOverlap?: boolean;
+  visualBounds?: { offsetX: number; offsetY: number; width: number; height: number };
+  interactionSockets?: Array<{ id: string; requiresFreshPress: boolean; x?: number; y?: number; z?: number }>;
+  depthSlices?: Array<{ id: string; sourceY: number; height: number; depthBias: number }>;
+  navigationNodeId?: string;
+  hidden?: boolean;
+  opacity?: number;
+  runtimeState?: string;
+};
+
+type TraversalPath = {
+  id: string;
+  name: string;
+  kind: "rail" | "grind" | "zipline" | "route";
+  collisionOwner: "authored-map";
+  points: Array<{ x: number; y: number; z?: number }>;
+  entryRadius: number;
+  entryZTolerance?: number;
+  minimumEntrySpeed: number;
+  direction: "both" | "forward" | "reverse";
+  acceleration?: number;
+  maximumSpeed?: number;
+  exitImpulse?: { x?: number; y?: number; z?: number };
+  transferPathIds?: string[];
+  bailBehavior?: "drop" | "launch" | "reset" | "continue";
+  routeLayer?: string;
+  visualObjectId?: string;
+  acceptanceTestId?: string;
+  enabled?: boolean;
+};
+
+type CollisionGeometryPoint = { id: string; x: number; y: number };
+type CollisionGeometryChain = {
+  id: string;
+  name: string;
+  enabled: boolean;
+  role: "auto" | "floor" | "boundary";
+  oneWay: boolean;
+  frontFace: "right";
+  zMin: number;
+  zMax: number;
+  sourceObjectId?: string;
+  points: CollisionGeometryPoint[];
+};
+type CollisionGeometry = {
+  schemaVersion: string;
+  collisionOwner: "authored-map";
+  tuning: typeof LOOPLAB_COLLISION_GEOMETRY_DEFAULT_TUNING;
+  chains: CollisionGeometryChain[];
+};
+
+type TilePaletteEntry = {
+  id: string;
+  name: string;
+  assetId: string;
+  frame: number;
+  drawOffsetX: number;
+  drawOffsetY: number;
+  anchor: "top-left" | "bottom-left" | "bottom-center" | "center";
+  probability: number;
+  transforms: { horizontal: boolean; vertical: boolean; diagonal: boolean };
+};
+type TileVisualLayer = {
+  id: string;
+  name: string;
+  role: "ground-static" | "interleaved" | "foreground";
+  visible: boolean;
+  locked: boolean;
+  opacity: number;
+  blendMode: string;
+  supportZ: number;
+  terrainSetId?: string;
+  chunks: Array<Record<string, unknown>>;
+  terrainChunks: Array<Record<string, unknown>>;
+};
+type TileCollisionLayer = {
+  id: string;
+  name: string;
+  visible: boolean;
+  locked: boolean;
+  zMin: number;
+  zMax: number;
+  chunks: Array<Record<string, unknown>>;
+};
+type TileProgram = {
+  schemaVersion: string;
+  collisionOwner: "authored-map";
+  cellWidth: number;
+  cellHeight: number;
+  columns: number;
+  rows: number;
+  chunkSize: number;
+  variationSeed: number;
+  palette: TilePaletteEntry[];
+  terrainSets: Array<{ id: string; name: string; terrainIds: string[]; variants: Array<Record<string, unknown>> }>;
+  collisionProfiles: Array<{ id: string; name: string; shape: "solid-full" | "one-way-top" }>;
+  layers: TileVisualLayer[];
+  collisionLayers: TileCollisionLayer[];
+};
+
+type GameMap = {
+  id: string;
+  name: string;
+  width: number;
+  height: number;
+  background: string;
+  gravity: number;
+  grid: number;
+  controlMode: ControlMode;
+  projection?: ProjectionContract;
+  navigation?: NavigationModel;
+  objects: GameObject[];
+  traversalPaths?: TraversalPath[];
+  collisionGeometry?: CollisionGeometry;
+  tileProgram?: TileProgram;
+  clearanceZones?: Array<{ id: string; routeId?: string; routeName?: string; phase?: string; x: number; y: number; width: number; height: number; zMin?: number; zMax?: number }>;
+  hudSafeAreas?: Array<{ id: string; name: string; x: number; y: number; width: number; height: number }>;
+  maxInteractionGap?: number;
+  interactionPolicy?: { expectedSockets?: number; requiresFreshPress?: boolean };
+};
+
+type DeviceProfile = {
+  id: string;
+  name?: string;
+  width: number;
+  height: number;
+  dpr?: number;
+  touchTargetMin?: number;
+};
+
+type VisualReference = {
+  id: string;
+  label: string;
+  mapId: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  dataUrl: string;
+  signature: number[];
+  createdAt: string;
+};
+
+type IterationLedgerEntry = {
+  id: string;
+  parentId?: string | null;
+  status: string;
+  accepted?: boolean;
+  restorable?: boolean;
+  snapshotId?: string | null;
+  restoredFrom?: string;
+  current?: boolean;
+  live?: boolean;
+  objective?: string;
+  summary?: string;
+  reason?: string;
+  condition?: string;
+  provider?: string;
+  track?: string;
+  score?: number;
+  scoreKind?: "quality" | "doctor" | string;
+  qualityDelta?: number;
+  evaluation?: { schemaVersion?: string; digest?: string; profile?: { id?: string; label?: string; digest?: string }; dimensions?: Array<{ id: string; label?: string; score: number; weight?: number; applicable?: boolean }>; hardGates?: Record<string, unknown>; judgmentResidue?: Record<string, unknown> };
+  comparison?: { schemaVersion?: string; digest?: string; regressionFree?: boolean; hardGatesPassed?: boolean; dimensionComparisons?: Array<{ id: string; label?: string; before: number; after: number; delta: number; regressed?: boolean }>; dimensionRegressions?: Array<{ id: string; label?: string; delta: number }>; failedHardGates?: Array<{ id: string; label?: string; detail?: string }> };
+  providerParity?: { schemaVersion?: string; sharedContractDigest?: string; receiptDigest?: string; provider?: string; operation?: string; semanticParity?: boolean; outputIdentityClaimed?: boolean };
+  doctorScore?: number;
+  errorCount?: number;
+  warningCount?: number;
+  doctorDigest?: string;
+  sourceDigest?: string;
+  doctorProfile?: "prototype" | "production" | string;
+  mapCount?: number;
+  objectCount?: number;
+  assetCount?: number;
+  createdAt?: string;
+};
+
+type IterationLedger = {
+  schemaVersion: string;
+  lineageId: string;
+  currentId: string | null;
+  entryCount: number;
+  snapshotCount: number;
+  snapshotLimit: number;
+  entries: IterationLedgerEntry[];
+};
+
+type IterationTechnicalRelation = "first-dominates" | "second-dominates" | "tradeoff" | "equivalent" | "insufficient-evidence";
+
+const ITERATION_RELATION_LABELS: Record<IterationTechnicalRelation, string> = {
+  "first-dominates": "First is technically dominant",
+  "second-dominates": "Second is technically dominant",
+  tradeoff: "Strengths trade across dimensions",
+  equivalent: "Technically equivalent",
+  "insufficient-evidence": "Comparable evidence is incomplete",
+};
+
+type IterationComparison = {
+  schemaVersion: "looplab-candidate-decision/v1" | string;
+  digest: string;
+  first: IterationLedgerEntry;
+  second: IterationLedgerEntry;
+  changed: boolean;
+  technicalRelation: IterationTechnicalRelation;
+  relationBasis: string;
+  automaticWinner: null;
+  humanDecisionRequired: boolean;
+  recommendedNextStep: "no-selection-needed" | "collect-comparable-evidence" | "preview-play-and-decide" | string;
+  profileComparison: { compatible: boolean; id: string | null; digest: string | null; reason: string };
+  evidence: {
+    complete: boolean;
+    missing: string[];
+    first: { complete: boolean; feasible: boolean; sourceBound: boolean; missing: string[] };
+    second: { complete: boolean; feasible: boolean; sourceBound: boolean; missing: string[] };
+  };
+  hardGates: {
+    first: { passed: boolean; failures: Array<{ id: string; label: string }> };
+    second: { passed: boolean; failures: Array<{ id: string; label: string }> };
+  };
+  dimensionComparisons: Array<{ id: string; label: string; first: number; second: number; delta: number; relation: "first-better" | "second-better" | "equal" }>;
+  judgmentPrompts: Array<{ id: string; label: string; question: string }>;
+  nextActions: Array<{ candidate: "first" | "second"; iterationId: string | null; available: boolean; action: "continue-current" | "restore-as-child" | "unavailable"; label: string; command: { op: "restore_iteration"; id: string } | null }>;
+  decisionBoundary: string;
+  delta: { doctorScore: number; errors: number; warnings: number; maps: number; objects: number; assets: number };
+  doctor: {
+    first: { score: number; errorCount: number; warningCount: number; digest: string; sourceDigest: string; profile: string };
+    second: { score: number; errorCount: number; warningCount: number; digest: string; sourceDigest: string; profile: string };
+  };
+  counts: { first: { maps: number; objects: number; assets: number }; second: { maps: number; objects: number; assets: number } };
+};
+
+type Browser2DFramework = "standalone" | "canvas" | "phaser" | "pixi" | "melon";
+
+type GameProject = {
+  schemaVersion?: string;
+  name: string;
+  width: number;
+  height: number;
+  background: string;
+  gravity: number;
+  grid: number;
+  controlMode: ControlMode;
+  objects: GameObject[];
+  traversalPaths?: TraversalPath[];
+  collisionGeometry?: CollisionGeometry;
+  tileProgram?: TileProgram;
+  clearanceZones?: GameMap["clearanceZones"];
+  hudSafeAreas?: GameMap["hudSafeAreas"];
+  maxInteractionGap?: number;
+  interactionPolicy?: GameMap["interactionPolicy"];
+  assets?: GeneratedAsset[];
+  resources?: ProjectResource[];
+  maps?: GameMap[];
+  activeMapId?: string;
+  startMapId?: string;
+  visualReferences?: VisualReference[];
+  visualIdentity?: VisualIdentityContract;
+  projection?: ProjectionContract;
+  navigation?: NavigationModel;
+  packageBudgetBytes?: number;
+  doctorProfile?: "prototype" | "production";
+  iteration?: {
+    id: string;
+    parentId?: string | null;
+    status: "candidate" | "verified" | "promoted" | "rejected" | "rolled-back";
+    track?: string;
+    objective?: string;
+    createdAt?: string;
+    verifiedAt?: string;
+    promotedAt?: string;
+    readOnly?: boolean;
+    verification?: { digest: string; sourceDigest: string; profile: "prototype" | "production"; score: number; errorCount: number; warningCount: number; verifiedAt: string; buildId?: string | null; sourceRevision?: string | null; evidenceRefs?: unknown[] };
+  };
+  build?: { id: string; sourceRevision?: string; generatedFromRevision?: string; sourceTimestamp?: string; outputTimestamp?: string; servedBuildId?: string };
+  workstreams?: Array<{ id: string; name: string; status: "completed" | "active" | "blocked" | "pending" }>;
+  agentRequests?: Array<{ id: string; prompt: string; provider: AgentProvider; track: string; status: string; createdAt: string; summary?: string; designBrief?: DirectedBrief | null; route?: unknown; agentPlan?: unknown; agentExecution?: unknown; boundaries?: unknown; loop?: { strategy: LoopStrategy; maxIterations: number; currentIteration: number; stopScore: number; evaluationProfile?: LoopEvaluationProfile; contextBudgetTokens?: number; requireNoBlockers: boolean; conditions: string[]; artDirectionMode?: ArtDirectionMode; styleLocks?: string[]; completedConditions?: string[]; bestScore?: number; stopReason?: string } }>;
+  agentWorkLedger?: AgentWorkLedger;
+  authoring?: Record<string, unknown> & { agentChangeFeed?: { schemaVersion: string; feedId: string; revision: number; droppedEventCount: number; originCursor: string; currentCursor: string; events: AgentChangeEvent[] } };
+  inputActions?: Array<{ id: string; label: string; bindings: string[]; animationState?: string; onboarding?: boolean; replayEvent?: boolean }>;
+  replay?: {
+    version: string;
+    tickRate: number;
+    seed: number;
+    cases: Array<{
+      id: string;
+      name?: string;
+      revision?: number;
+      changeReason?: string;
+      tickRate?: number;
+      seed?: number;
+      tickCount: number;
+      startMapId?: string;
+      startSpawnId?: string;
+      inputs: Array<{ tick: number; action?: string; actionId?: string; code?: string; pressed: boolean }>;
+      checkpoints?: Array<{ tick: number; hash: string }>;
+      expectedHash?: string;
+      legacyExpectedHash?: string;
+    }>;
+  };
+  featureContracts?: Array<Record<string, unknown> & { id: string; name: string }>;
+  acceptanceTests?: Array<Record<string, unknown>>;
+  release?: Record<string, unknown>;
+  releaseVerification?: ReleaseVerificationAttestation;
+  performance?: Record<string, unknown>;
+  qualityContracts?: {
+    architecture?: Record<string, unknown>;
+    canvas2d?: Record<string, unknown>;
+    collision2d?: Record<string, unknown>;
+    inputViewport?: Record<string, unknown>;
+    presentation?: Record<string, unknown>;
+    palette?: Record<string, unknown>;
+    verbArchitectureRequired?: boolean;
+    gameplayProgramRequired?: boolean;
+    narrativeContractRequired?: boolean;
+    presentationProgramRequired?: boolean;
+    gameShellRequired?: boolean;
+  };
+  deviceProfiles?: DeviceProfile[];
+  audio?: Record<string, unknown>;
+  lifecycle?: Record<string, unknown>;
+  accessibility?: Record<string, unknown>;
+  runtimeProfile?: { dimension: "2d"; framework: Browser2DFramework };
+  movementTuning?: { maxRunSpeed: number; groundAcceleration: number; airAcceleration: number; groundFriction: number; jumpVelocity: number; coyoteTicks: number; jumpBufferTicks: number; jumpCutVelocity: number; apexGravityScale: number; fallGravityScale: number; apexThreshold: number };
+  scaffold?: { id: string; version: string; source: string; deterministic: boolean; providerGenerated: boolean };
+  iterationHistory?: IterationLedgerEntry[];
+  iterationArchive?: { version: 1; lineageId: string; snapshots: Array<{ id: string; sourceDigest: string; createdAt: string; project: Record<string, unknown> }>; assetBlobs: Record<string, string> };
+  designBrief?: DirectedBrief;
+  gameplayProgram?: Record<string, unknown>;
+  combatProgram?: Record<string, unknown>;
+  actorProgram?: Record<string, unknown>;
+  narrativeContract?: Record<string, unknown>;
+  presentationProgram?: Record<string, unknown>;
+  gameShell?: Record<string, unknown>;
+  saveProgram?: { schemaVersion: string; version: number; enabled: boolean; portableCodes: boolean; hosted: { autoSave: boolean; restoreOnBoot: boolean } };
+  verbArchitecture?: Record<string, unknown>;
+  tuningContract?: Record<string, unknown>;
+  structuralScaffoldContract?: Record<string, unknown>;
+  spatialLayoutContract?: Record<string, unknown>;
+  templateProvenance?: { id?: string; version?: number; semanticMode?: string; adaptationStatus?: "starter" | "adapted"; neutralRuntimeIds?: string[]; [key: string]: unknown };
+};
+
+type PreferenceContext = {
+  genres: string[];
+  coreLoops: string[];
+  movementTemplates: string[];
+  formats: string[];
+  progressionModes: string[];
+  campaignScopes: string[];
+  tags: string[];
+};
+
+type PreferenceEntry = {
+  id: string;
+  kind: "statement" | "pairwise";
+  source: "user-explicit";
+  enabled: boolean;
+  dimensions: string[];
+  context: PreferenceContext;
+  createdAt: string;
+  updatedAt: string;
+  statement?: string;
+  rationale?: string;
+  preferredCandidateId?: string;
+  otherCandidateId?: string;
+  preferredSourceDigest?: string;
+  otherSourceDigest?: string;
+  comparisonDigest?: string;
+};
+
+type PreferenceMemory = {
+  schemaVersion: "looplab-preference-memory/v1";
+  enabled: boolean;
+  revision: number;
+  updatedAt: string | null;
+  entries: PreferenceEntry[];
+};
+
+type PlaytestRating = "up" | "neutral" | "down" | "unrated";
+type PlaytestOutcome = "completed" | "quit" | "stopped" | "timeout" | "left-preview";
+type PlaytestHeatmap = { mapId: string; columns: number; rows: number; cells: Array<{ x: number; y: number; samples: number; respawns: number }> };
+type PlaytestSession = {
+  schemaVersion: "looplab-playtest-session/v1" | "looplab-playtest-session/v2";
+  id: string;
+  status: "completed";
+  source: { projectId: string; projectName: string; iterationId: string | null; sourceDigest: string; startMapId: string; startSpawnId: string | null; mapBounds: Array<{ mapId: string; width: number; height: number }> };
+  startedAt: string;
+  endedAt: string;
+  activeDurationMs: number;
+  outcome: PlaytestOutcome;
+  feedback: { source: "unrated" | "user-explicit"; rating: PlaytestRating; tags: string[]; note: string };
+  summary: {
+    activeDurationMs: number;
+    outcome: PlaytestOutcome;
+    completed: boolean;
+    counts: { inputTransitions: number; actions: number; collections: number; respawns: number; resets: number; portals: number; mapChanges: number; idleSpans: number };
+    mapStats: Array<{ mapId: string; activeDurationMs: number; visits: number; sampleCount: number; actionCount: number; collections: number; respawns: number; resets: number; portals: number }>;
+    heatmaps: PlaytestHeatmap[];
+  };
+  [key: string]: unknown;
+};
+type PlaytestLedger = { schemaVersion: "looplab-playtest-ledger/v1"; revision: number; updatedAt: string | null; sessions: PlaytestSession[] };
+type PlaytestDraft = {
+  schemaVersion: "looplab-playtest-session/v2";
+  id: string;
+  status: "recording";
+  activeDurationMs: number;
+  limitReached: boolean;
+  [key: string]: unknown;
+};
+type ActivePlaytestView = {
+  schemaVersion: "looplab-playtest-session/v2";
+  id: string;
+  status: "recording";
+  source: PlaytestSession["source"];
+  startedAt: string;
+  activeDurationMs: number;
+  inputTransitionCount: number;
+  simulationTick: number;
+  tickRate: number;
+  startMode: "authored-reset" | "current-preview";
+  sampleCount: number;
+  eventCount: number;
+  currentMapId: string;
+  suspended: boolean;
+  limitReached: boolean;
+  policy: Record<string, unknown>;
+};
+type PlaytestReplayPreview = {
+  schemaVersion: "looplab-playtest-replay-preview/v1";
+  sourceDigest: string;
+  sessionDigest: string | null;
+  promotionDigest: string;
+  eligible: boolean;
+  replaySpecification: { id: string; [key: string]: unknown } | null;
+  replayResult: { status?: string; tickCount?: number; [key: string]: unknown } | null;
+  eventComparison: { matched: boolean; differences: Array<{ type: string; recorded: number; replayed: number }> } | null;
+  blockers: Array<{ code: string; message: string }>;
+  warnings: Array<{ code: string; message: string }>;
+};
+
+type AppliedPreferenceContext = {
+  schemaVersion: "looplab-applied-preference-context/v1";
+  enabled: boolean;
+  memoryDigest: string;
+  activeContext: PreferenceContext;
+  selectedEntryIds: string[];
+  excludedEntryIds: string[];
+  entries: Array<{ id: string; kind: "statement" | "pairwise"; dimensions: string[]; guidance: string; context: PreferenceContext; relevance: { reasons: string[] }; provenance: Record<string, unknown> }>;
+  instruction: string;
+  policy: Record<string, unknown>;
+  receiptDigest: string;
+};
+
+type ProjectLibraryEntry = {
+  id: string;
+  name: string;
+  origin: "starter" | "folder" | "file" | "variation" | "local" | "shared";
+  sourceLabel: string;
+  folderName?: string | null;
+  parentLibraryId?: string | null;
+  updatedAt: string;
+  project: GameProject;
+  storage: "browser-cache" | "shared";
+  sharedProjectId?: string | null;
+  sharedSourceDigest?: string | null;
+  sharedRevisionDigest?: string | null;
+  sharedBaseProject?: GameProject | null;
+  sharedProjectPath?: string | null;
+  sharedSyncStatus?: "local-only" | "pending" | "synced" | "conflict" | "rebased" | "offline";
+};
+
+type ProjectLibraryIterationSummary = Pick<NonNullable<GameProject["iteration"]>, "id" | "parentId" | "status" | "track" | "createdAt" | "readOnly">;
+
+type SharedProjectSummary = {
+  id: string;
+  name: string;
+  origin: ProjectLibraryEntry["origin"];
+  sourceLabel: string;
+  folderName: string | null;
+  parentLibraryId: string | null;
+  createdAt: string;
+  updatedAt: string;
+  sourceDigest: string;
+  revisionDigest: string;
+  mapCount: number;
+  iteration: ProjectLibraryIterationSummary | null;
+  projectPath: string;
+};
+
+type SharedProjectListResponse = { ok: true; schemaVersion: string; count: number; projects: SharedProjectSummary[] };
+type SharedProjectReadResponse = {
+  ok: true;
+  schemaVersion: string;
+  summary: SharedProjectSummary;
+  sourceDigest: string;
+  revisionDigest: string;
+  project: GameProject;
+  validation: ReturnType<typeof validateProject>;
+};
+type SharedProjectWriteResponse = Omit<SharedProjectReadResponse, "project"> & {
+  created: boolean;
+  changed: boolean;
+  idempotent: boolean;
+  encodedBytes: number;
+};
+
+type RuntimeObject = GameObject & {
+  vx: number;
+  vy: number;
+  grounded: boolean;
+  collected: boolean;
+  jumpHeld?: boolean;
+};
+
+type TileRuntimeEntry = {
+  id: string;
+  layerId: string;
+  role: TileVisualLayer["role"];
+  worldX: number;
+  worldY: number;
+  worldWidth: number;
+  worldHeight: number;
+  z: number;
+  depth: number;
+  opacity: number;
+  blendMode: string;
+  tileId: string;
+  assetId: string;
+  frame: number;
+  drawOffsetX: number;
+  drawOffsetY: number;
+  anchor: TilePaletteEntry["anchor"];
+  flipH: boolean;
+  flipV: boolean;
+  flipD: boolean;
+  destinationWidth: number;
+  destinationHeight: number;
+};
+
+type TileRuntime = {
+  present: boolean;
+  visualEntries: TileRuntimeEntry[];
+  collisionObjects: RuntimeObject[];
+  counts: { visualEntries: number; collisionObjects: number; collisionCells: number; unresolvedTerrainCells: number };
+};
+
+type RuntimeState = {
+  activeMapId: string;
+  mapName: string;
+  width: number;
+  height: number;
+  background: string;
+  gravity: number;
+  controlMode: ControlMode;
+  projection?: ProjectionContract;
+  collectedCount: number;
+  activeTraversalPathId?: string | null;
+  activeChoicePageId?: string | null;
+  gameplayRevision?: number;
+  variables?: Record<string, number | boolean | string>;
+  completedRuleIds?: string[];
+  player?: { id?: string; x: number; y: number; z: number; vx?: number; vy?: number; grounded?: boolean } | null;
+  won: boolean;
+};
+
+type RuntimeChoiceState = {
+  id: string;
+  title: string;
+  body: string;
+  modal: boolean;
+  choices: Array<{ id: string; label: string; actionId: string; visible: boolean; enabled: boolean }>;
+};
+
+type RuntimeHudBinding = { id: string; text: string; ariaLabel: string; region: "primary" | "secondary" | "ticker" };
+
+type RuntimeEvent = {
+  type: string;
+  mapId?: string;
+  mapName?: string;
+  transition?: "fade" | "slide" | "instant";
+  count?: number;
+  value?: number;
+  objectId?: string;
+  ruleId?: string;
+  sourceMapId?: string;
+  targetMapId?: string;
+  actionId?: string;
+  pathId?: string;
+  choiceId?: string;
+  pageId?: string;
+  clockId?: string;
+  variableId?: string;
+  cause?: string;
+  spawnId?: string;
+  fromX?: number;
+  fromY?: number;
+  fromZ?: number;
+  toX?: number;
+  toY?: number;
+  toZ?: number;
+  [key: string]: unknown;
+};
+
+type RuntimeSlice = {
+  id: string;
+  sourceY: number;
+  height: number;
+  depthBias: number;
+};
+
+type RuntimeEngine = {
+  update: (dt: number) => RuntimeEvent[];
+  reset: () => void;
+  loadMap: (mapId: string, spawnId?: string | null) => boolean;
+  setInput: (code: string, pressed: boolean) => void;
+  drainEvents: () => RuntimeEvent[];
+  getState: () => RuntimeState;
+  getObjects: () => RuntimeObject[];
+  getTraversalPaths: () => TraversalPath[];
+  getTileProgram: () => TileProgram | null;
+  getTileRuntime: () => TileRuntime;
+  getNavigation: () => NavigationModel;
+  getGameplayState: () => { revision: number; variables: Record<string, number | boolean | string>; completedRuleIds: string[]; completedMapRuleIds: string[] };
+  getChoiceState: () => RuntimeChoiceState | null;
+  getHudState: () => RuntimeHudBinding[];
+  chooseChoice: (choiceId: string) => boolean;
+  renderEntries: () => Array<{ object: RuntimeObject; slice: RuntimeSlice | null; depth: number }>;
+};
+
+type PreviewTransition = {
+  mapName: string;
+  kind: "fade" | "slide" | "instant";
+};
+
+type AgentCommand = { op?: string; [key: string]: unknown };
+type AgentRunResult = Record<string, unknown>;
+type AgentRecipeRef = {
+  id: string;
+  title: string;
+  revision: number;
+  status: string;
+  summary: string;
+  when: string[];
+  steps: Array<{ id: string; instruction: string; commands: string[] }>;
+  stopConditions: string[];
+  evidence: string[];
+  recipeDigest: string;
+};
+type AgentWorkItemStatus = "open" | "in-progress" | "blocked" | "landed" | "rejected";
+type AgentWorkItemKind = "bug" | "feature" | "research" | "documentation" | "coordination";
+type AgentWorkItemPriority = "critical" | "high" | "medium" | "low";
+type AgentWorkClaim = { holder: string; acquiredAt: string; renewedAt: string; expiresAt: string; transition: number };
+type AgentWorkItem = {
+  id: string;
+  title: string;
+  summary: string;
+  kind: AgentWorkItemKind;
+  priority: AgentWorkItemPriority;
+  status: AgentWorkItemStatus;
+  scope: string[];
+  blockers: string[];
+  evidenceRefs: string[];
+  resultSummary: string | null;
+  observedSourceDigest: string | null;
+  createdAt: string;
+  createdBy: string;
+  updatedAt: string;
+  updatedBy: string;
+  claim: AgentWorkClaim | null;
+};
+type AgentWorkLedger = { schemaVersion: string; revision: number; droppedEventCount: number; items: AgentWorkItem[]; events: Array<Record<string, unknown>> };
+type AgentChangeEvent = {
+  id: string;
+  revision: number;
+  cursor: string;
+  occurredAt: string;
+  category: "authored" | "coordination" | "lifecycle" | "metadata" | "history";
+  channel: "headless" | "mouse" | "provider" | "history" | "system";
+  operation: string;
+  summary: string;
+  actor?: string;
+  commandCount?: number;
+  operationCounts?: Record<string, number>;
+  targets: Array<{ kind: string; id: string }>;
+  before: { sourceDigest: string; ledgerDigest: string };
+  after: { sourceDigest: string; ledgerDigest: string };
+  sourceChanged: boolean;
+  ledgerChanged: boolean;
+};
+type AgentChangeFeedView = {
+  schemaVersion: "looplab-agent-change-feed/v1";
+  sourceDigest: string;
+  ledgerDigest: string;
+  requestedCursor: string | null;
+  baselineStatus: "established" | "current" | "origin" | "retained" | "expired-or-foreign";
+  resyncRequired: boolean;
+  resyncReason: string | null;
+  currentCursor: string;
+  nextCursor: string;
+  hasMore: boolean;
+  returnedEventCount: number;
+  availableEventCount: number;
+  categoryCounts: Record<string, number>;
+  events: AgentChangeEvent[];
+  retention: { revision: number; retainedEventCount: number; retainedEventLimit: number; droppedEventCount: number };
+};
+type AgentWorkLedgerViewItem = AgentWorkItem & { claimState: "active" | "expired" | "unclaimed"; claimRemainingSeconds: number };
+type AgentWorkLedgerView = {
+  schemaVersion: string;
+  ledgerSchemaVersion: string;
+  ledgerDigest: string;
+  revision: number;
+  total: number;
+  truncated: boolean;
+  counts: Record<AgentWorkItemStatus, number>;
+  activeClaims: number;
+  expiredClaims: number;
+  droppedEventCount: number;
+  items: AgentWorkLedgerViewItem[];
+  recentEvents: Array<Record<string, unknown>>;
+};
+type AgentMacroPlanRef = {
+  sourceDigest: string;
+  projectedSourceDigest: string;
+  expansionDigest: string;
+  applicable: boolean;
+  changed: boolean;
+  macro: { id: string; title: string; version: number };
+  commands: Array<{ op?: string; [key: string]: unknown }>;
+  doctor: {
+    before: { score: number; errorCount: number; warningCount: number };
+    after: { score: number; errorCount: number; warningCount: number };
+    newBlockers: Array<{ code: string; message: string }>;
+    release?: {
+      before: { score: number; errorCount: number; warningCount: number };
+      after: { score: number; errorCount: number; warningCount: number };
+      newBlockers: Array<{ code: string; message: string }>;
+    };
+  };
+};
+type AgentBatchPreviewRef = {
+  schemaVersion: "looplab-agent-batch-preview/v1";
+  sourceDigest: string;
+  projectedSourceDigest: string;
+  previewDigest: string;
+  summary: string;
+  profile: "prototype" | "production";
+  commandCount: number;
+  commands: AgentCommand[];
+  changed: boolean;
+  applicable: boolean;
+  rolledBack: boolean;
+  commandErrors: Array<{ index: number; op: string | null; stage: string; message: string }>;
+  doctor: {
+    before: { score: number; errorCount: number; warningCount: number };
+    after: { score: number; errorCount: number; warningCount: number };
+    newBlockers: Array<{ code: string; message: string }>;
+    release: {
+      before: { score: number; errorCount: number; warningCount: number };
+      after: { score: number; errorCount: number; warningCount: number };
+      newBlockers: Array<{ code: string; message: string }>;
+    };
+  };
+  applyCommand?: AgentCommand | null;
+};
+type TuningFeelReportRef = {
+  schemaVersion: "looplab-feel-report/v1";
+  sourceDigest: string | null;
+  status: string;
+  controlMode: string;
+  method: string;
+  tickRate: number;
+  metrics: Record<string, number | null>;
+  limitations: string[];
+};
+type TuningContractInspectionRef = {
+  schemaVersion: "looplab-tuning-report/v1";
+  present: boolean;
+  status: string;
+  contract: Record<string, unknown> | null;
+  contractDigest: string | null;
+  feel: TuningFeelReportRef;
+  metrics?: { parameterCount: number; objectiveCount: number; constraintCount: number; maxCandidates: number };
+  issues: Array<{ severity: string; code: string; message: string }>;
+  errors: string[];
+  limitations: string[];
+};
+type TuningCandidateRef = {
+  id: string;
+  baseline: boolean;
+  changed: boolean;
+  safe: boolean;
+  pareto: boolean;
+  assignments: Record<string, number>;
+  failedGateIds: string[];
+  failedConstraintIds: string[];
+  objectives: Array<{ id: string; metric: string; goal: string; value: number | null; loss: number | null; target?: number; minimum?: number; maximum?: number }>;
+  constraints: Array<{ id: string; metric: string; operator: string; value: number | null; passed: boolean }>;
+  feel: TuningFeelReportRef;
+  candidateDigest: string;
+  previewCommand: AgentCommand | null;
+};
+type TuningSearchResultRef = {
+  schemaVersion: "looplab-tuning-search/v1";
+  sourceDigest: string;
+  contractDigest: string;
+  strategy: string;
+  totalParameterCombinations: number;
+  evaluatedCandidateCount: number;
+  candidateBudget: number;
+  safeCandidateIds: string[];
+  paretoCandidateIds: string[];
+  automaticWinner: null;
+  humanDecisionRequired: boolean;
+  candidates: TuningCandidateRef[];
+  decisionBoundary: string;
+  applicationPolicy: string;
+  providerUsage: { provider: "none"; totalTokens: 0; rateEquivalentUsd: 0 };
+  limitations: string[];
+  searchDigest: string;
+};
+type TuningCandidatePreviewRef = { candidateId: string; receipt: AgentBatchPreviewRef };
+type GameFoundationCandidateRef = {
+  id: "platformer" | "topdown" | "systems" | "dimetric" | "kinetic";
+  title: string;
+  family: string;
+  summary: string;
+  readiness: "proven-playable" | "validated-starter" | "blocked";
+  proofComplete: boolean;
+  preparedReadiness: "proven-playable" | "validated-starter" | "blocked";
+  preparedProofComplete?: boolean;
+  preparedValidation?: { valid: boolean; errorCount: number };
+  doctor: {
+    prototype: { score: number; errorCount: number; warningCount: number };
+    production: { score: number; errorCount: number; warningCount: number };
+  };
+  preparedDoctor?: {
+    prototype: { score: number; errorCount: number; warningCount: number };
+    production: { score: number; errorCount: number; warningCount: number };
+  };
+  fit: { score: number; compatible: boolean; reasons: string[]; conflicts: string[]; tradeoffs: string[] };
+  safe: boolean;
+  materializable: boolean;
+  replacementBlocked: boolean;
+  proofBlocked: boolean;
+  candidateDigest: string;
+  preparedGapLedger: Array<{ id: string; area: string; message: string }>;
+  materializationRequest: AgentCommand | null;
+};
+type GameFoundationSearchResultRef = {
+  schemaVersion: "looplab-game-foundation-search/v1";
+  status: "completed" | "review-required" | "infeasible";
+  sourceDigest: string;
+  automaticWinner: null;
+  candidates: GameFoundationCandidateRef[];
+  materializableCandidateIds: string[];
+  decisionBoundary: string;
+  providerUsage: { provider: "none"; totalTokens: 0; rateEquivalentUsd: 0 };
+};
+type GameFoundationMaterializationRef = {
+  schemaVersion: "looplab-game-foundation-materialization/v1";
+  foundationId: string;
+  previewCommand: AgentCommand;
+  mutatesProject: false;
+};
+type GameFoundationPreviewRef = { candidateId: string; receipt: AgentBatchPreviewRef };
+type SpatialLayoutInspectionRef = {
+  schemaVersion: "looplab-spatial-layout-report/v1";
+  present: boolean;
+  status: string;
+  sourceDigest: string | null;
+  contract: Record<string, unknown> | null;
+  contractDigest: string | null;
+  map: { id: string; name: string; width: number; height: number; controlMode: string; projection: string; objectCount: number } | null;
+  existingMapProtected: boolean;
+  pinnedObjectCount: number;
+  issues: Array<{ severity: string; code: string; message: string }>;
+  errors: string[];
+  warnings: string[];
+  limitations: string[];
+};
+type SpatialLayoutPreviewRef = {
+  width: number;
+  height: number;
+  routes: Array<{ id: string; role: string; width: number; points: Array<{ x: number; y: number; z: number }> }>;
+  objects: Array<{ id: string; kind: string; x: number; y: number; z: number; width: number; height: number; solid: boolean; pinned: boolean }>;
+};
+type SpatialLayoutCandidateRef = {
+  id: string;
+  mapId: string;
+  family: string;
+  variant: string;
+  safe: boolean;
+  materializable: boolean;
+  replacementBlocked: boolean;
+  descriptors: { axes: string[]; values: Record<string, string>; cellId: string };
+  metrics: { routeBeats: number; branchCount: number; loopCount: number; elevationLayers: number; topology: string; clearance: number; density: number; objectCount: number; routeCount: number; errors: string[] };
+  gates: Array<{ id: string; passed: boolean; detail: string }>;
+  failedGateIds: string[];
+  candidateDigest: string;
+  pinnedObjectIds: string[];
+  preview: SpatialLayoutPreviewRef;
+  materializationRequest: AgentCommand | null;
+};
+type SpatialLayoutSearchResultRef = {
+  schemaVersion: "looplab-spatial-layout-search/v1";
+  status: "completed" | "infeasible";
+  sourceDigest: string;
+  contractDigest: string;
+  strategy: string;
+  generatedBlueprintCount: number;
+  feasibleDescriptorCellCount: number;
+  evaluatedCandidateCount: number;
+  candidateBudget: number;
+  safeCandidateIds: string[];
+  materializableCandidateIds: string[];
+  automaticWinner: null;
+  agentDecisionRequired: boolean;
+  candidates: SpatialLayoutCandidateRef[];
+  excluded: Array<{ id: string; failedConstraintIds: string[] }>;
+  decisionBoundary: string;
+  applicationPolicy: string;
+  providerUsage: { provider: "none"; totalTokens: 0; rateEquivalentUsd: 0 };
+  searchDigest: string;
+};
+type SpatialLayoutMaterializationRef = {
+  schemaVersion: "looplab-spatial-layout-materialization/v1";
+  sourceDigest: string;
+  contractDigest: string;
+  searchDigest: string;
+  mapId: string;
+  candidateId: string;
+  candidateDigest: string;
+  previewCommand: AgentCommand;
+  mutatesProject: false;
+  automaticWinner: null;
+};
+type SpatialLayoutCandidatePreviewRef = { candidateId: string; materialization: SpatialLayoutMaterializationRef; receipt: AgentBatchPreviewRef };
+type AgentMechanicalRepairRef = {
+  schemaVersion: "looplab-auto-repair/v1";
+  sourceDigest: string;
+  projectedSourceDigest: string;
+  repairDigest: string;
+  profile: "prototype" | "production";
+  maxRepairs: number;
+  safeRepairCount: number;
+  commandCount: number;
+  changed: boolean;
+  applicable: boolean;
+  repairLimitReached: boolean;
+  repairs: Array<{ index: number; scope: string; mapId: string | null; targetId: string; findingCodes: string[]; summary: string }>;
+  residue: Array<{ code: string; message: string; reason: string; mapId: string | null; objectId: string | null; assetId: string | null; featureId: string | null }>;
+  omittedResidueCount: number;
+  doctor: {
+    current: { before: { score: number }; after: { score: number }; delta: { score: number; errors: number; warnings: number }; newBlockers: Array<{ code: string; message: string }> };
+    release: { before: { score: number }; after: { score: number }; delta: { score: number; errors: number; warnings: number }; newBlockers: Array<{ code: string; message: string }> };
+  };
+};
+type AgentConvergenceRef = {
+  schemaVersion: "looplab-convergence/v1";
+  sourceDigest: string;
+  projectedSourceDigest: string;
+  convergenceDigest: string;
+  profile: "prototype" | "production";
+  maxRepairs: number;
+  maxPasses: number;
+  passCount: number;
+  totalRepairCount: number;
+  totalCommandCount: number;
+  stopReason: string;
+  changed: boolean;
+  applicable: boolean;
+  remainingSafeRepairCount: number;
+  initialDoctor?: { score: number; errorCount: number; warningCount: number };
+  initialReleaseDoctor?: { score: number; errorCount: number; warningCount: number };
+  finalDoctor: { score: number; errorCount: number; warningCount: number };
+  finalReleaseDoctor: { score: number; errorCount: number; warningCount: number };
+  residue: Array<{ code: string; message: string; reason: string; mapId: string | null; objectId: string | null; assetId: string | null; featureId: string | null }>;
+  omittedResidueCount: number;
+  passes: Array<{ pass: number; safeRepairCount: number; commandCount: number; findingCodes: string[]; sourceDigest: string; projectedSourceDigest: string }>;
+};
+type BuilderBenchmarkTaskRef = {
+  id: string;
+  title: string;
+  category: string;
+  startingTemplate: string;
+  campaignScope: string;
+  prompt: string;
+  taskDigest: string;
+  ordinaryDirectorConstraints: string[];
+  expectations: Array<{ id: string; dimension: string; required: boolean; statement: string }>;
+  judgmentResidue: string[];
+};
+type BuilderBenchmarkRegistryRef = {
+  schemaVersion: "looplab-builder-benchmark-suite/v1";
+  suiteVersion: number;
+  suiteDigest: string;
+  tasks: BuilderBenchmarkTaskRef[];
+  minimumStochasticTrials: number;
+  providerExecution: string;
+  notTasteEvidence: string;
+};
+type BuilderBenchmarkReceiptRef = {
+  schemaVersion: "looplab-builder-benchmark-run/v1";
+  sourceDigest: string;
+  receiptDigest: string;
+  passed: boolean;
+  benchmark: { id: string; title: string; category: string; taskDigest: string };
+  technicalFitness: { requiredScore: number; requiredCheckCount: number; passedRequiredCount: number; failedRequiredCount: number; failedRequiredIds: string[] };
+  checks: Array<{ id: string; dimension: string; required: boolean; statement: string; passed: boolean; status: string }>;
+  blockers: Array<{ id: string; dimension: string; statement: string }>;
+  evidence: { doctor: { current: { score: number; errorCount: number; warningCount: number }; release: { score: number; errorCount: number; warningCount: number } }; standaloneAudit: { valid: boolean; byteLength: number | null } };
+  notTasteEvidence: string;
+};
+type BuilderBenchmarkComparisonRef = {
+  schemaVersion: "looplab-builder-benchmark-comparison/v1";
+  comparisonDigest: string;
+  conclusion: string;
+  claimStrength: string;
+  reasons: string[];
+  baseline: { runCount: number; passRate: number; meanRequiredScore: number | null };
+  candidate: { runCount: number; passRate: number; meanRequiredScore: number | null };
+  deltas: { passRate: number | null; requiredScore: number | null; totalTokens: number | null; rateEquivalentUsd: number | null };
+  efficiency: { eligible: boolean; reason: string };
+  notTasteEvidence: string;
+};
+type AgentIntentPlanRef = {
+  schemaVersion: string;
+  protocolVersion: string;
+  sourceDigest: string;
+  planDigest: string;
+  intent: string;
+  mapIds: string[];
+  strategy: { kind: "composite-workflow" | "command-macro" | "playbook-recipe" | "guarded-workflow"; id: string; title: string; reason: string };
+  coverage: Array<{ id: string; title: string; detectedBy: string; status: string; phaseIds: string[]; evidence: string }>;
+  phases: Array<{ id: string; title: string; status: string; dependsOn: string[]; stepIds: string[]; operations: string[]; mutatesProject: boolean; sourcePolicy: string; retryClass: string; completionEvidence: string[] }>;
+  steps: Array<{ id: string; phaseId?: string; status: string; operations: string[]; instruction?: string; command?: AgentCommand; blockedBy?: string[]; issues?: string[] }>;
+  missingInputs: Array<{ key: string; description: string }>;
+  parameterIssues: Array<{ code?: string; key?: string; message: string }>;
+  authority: { nonExecuting: boolean; providerUsed: boolean; persistsProject: boolean; grantsMutationAuthority: boolean; reviewRequiredBeforeMutation: boolean };
+};
+type AgentProjectContextRef = {
+  schemaVersion: string;
+  view: "campaign" | "map";
+  sourceDigest: string;
+  sourceOfTruth: false;
+  mutationInput: false;
+  verificationEvidence: false;
+  campaign: { mapCount: number; objectCount: number; traversalPathCount: number; byKind: Record<string, number> };
+  maps: { total: number; returned: number; truncated: boolean; entries: Array<{ id: string; name: string; active: boolean; start: boolean; objectCount: number; byKind: Record<string, number>; objectIdsByKind: Record<string, { total: number; returned: number; truncated: boolean; ids: string[] }> }> };
+  selectedMapIds: string[];
+  evidenceIndex: {
+    readiness: {
+      schemaVersion: string;
+      sourceDigest: string;
+      current: { profile: string; semantics: string; score: number | null; errorCount: number; warningCount: number; blocking: boolean; digest: string };
+      release: { profile: string; semantics: string; score: number | null; errorCount: number; warningCount: number; blocking: boolean; digest: string };
+      releaseDelta: { profile: string; blockingOnlyAtRelease: boolean; scoreDelta: number | null; additionalErrorCount: number; additionalWarningCount: number; findingCount: number; findingsTruncated: boolean; findings: Array<{ severity: string; code: string; message: string; action: string | null }> };
+      interpretation: string;
+    };
+  };
+  measurements: { fullProjectCharacters: number; payloadCharacters: number; roughTokenEstimate: number; smallerThanFullProject: boolean; reductionRatio: number; overheadCharacters: number };
+  omissionPolicy: { interpretation: string };
+};
+type VerificationEvidence = { id: string; type: string; status: "passed" | "failed"; sourceDigest: string; createdAt: string; [key: string]: unknown };
+type LoopPhase = "idle" | "generating" | "verifying";
+type VisualReadinessReport = {
+  requested: boolean;
+  status: "not-requested" | "measurably-ready" | "review" | "needs-art-pass";
+  score: number | null;
+  passedCount: number;
+  checkCount: number;
+  checks: Array<{ id: string; passed: boolean; detail: string }>;
+  metrics: Record<string, number | boolean | string | null>;
+  aestheticApproval: "not-claimed";
+  limitation: string;
+};
+type ReplaySuiteResult = {
+  status: "not-configured" | "no-fixtures" | "recordable" | "passed" | "failed" | "invalid";
+  passed: boolean;
+  caseCount: number;
+  passedCount: number;
+  failedCount: number;
+  recordableCount: number;
+  firstDivergence: { caseId: string; tick: number } | null;
+};
+type AcceptanceSuiteResult = {
+  status: "no-specs" | "specified" | "passed" | "failed" | "invalid";
+  passed: boolean;
+  testCount: number;
+  executableCount: number;
+  passedCount: number;
+  failedCount: number;
+  invalidCount: number;
+  specifiedCount: number;
+};
+type AcceptancePlanItem = {
+  id: string;
+  status: "missing" | "recordable" | "specified" | "passed" | "failed" | "invalid" | "stale";
+  proof: string | null;
+  referenced: boolean;
+  owners: Array<{ type: string; id: string }>;
+  firstFailure: { id?: string; tick?: number } | null;
+  errors: string[];
+};
+type CandidateVerificationResult = {
+  project: GameProject;
+  evidenceRefs: VerificationEvidence[];
+  evidenceCount: number;
+  runtimeCheckCount: number;
+  captureCount: number;
+  runtimeJoinCount: number;
+  sourceDigest: string;
+  doctorDigest: string;
+  visualReadiness: VisualReadinessReport;
+  replayResults: ReplaySuiteResult;
+};
+type VisualReviewCapture = {
+  id: string;
+  mapId: string;
+  mapName: string;
+  profileId: string;
+  profileName: string;
+  dataUrl: string;
+  sha256: string;
+  width: number;
+  height: number;
+  renderedBounds: { width: number; height: number };
+  targetViewport: { width: number; height: number; devicePixelRatio: number };
+  actualViewport: { width: number; height: number; devicePixelRatio: number };
+  annotatedDataUrl: string;
+  perception: VisualPerceptionReceipt;
+};
+type VisualReviewAnnotation = {
+  id: string;
+  number: number;
+  kind: string;
+  severity: "error" | "warning" | "info";
+  label: string;
+  detail: string;
+  source: "semantic" | "pixel-diff";
+  sourceEvidenceIds: string[];
+  affectedIds: string[];
+  bounds: { x: number; y: number; width: number; height: number; xRatio: number; yRatio: number; widthRatio: number; heightRatio: number };
+  metrics: Record<string, unknown>;
+  cropDataUrl?: string;
+};
+type VisualPerceptionReceipt = {
+  schemaVersion: "looplab-visual-perception/v1";
+  captureId: string;
+  sourceDigest: string;
+  frame: { width: number; height: number };
+  comparison: null | { status: "compared" | "dimension-mismatch"; sha256: string | null; width: number; height: number; metrics?: Record<string, number> };
+  annotationCount: number;
+  annotations: VisualReviewAnnotation[];
+  policy: { advisoryOnly: true; semanticGeometryPreferred: true; pixelDiffClaim: "changed-region-only"; imageBytesEphemeral: true };
+};
+type VisualReviewReport = {
+  version: 2;
+  sourceDigest: string;
+  createdAt: string;
+  mapIds: string[];
+  profileIds: string[];
+  requiredCaptureCount: number;
+  captures: VisualReviewCapture[];
+  responsiveEvidence: VerificationEvidence[];
+  runtimeJoinEvidence: VerificationEvidence[];
+  evidenceRefs: VerificationEvidence[];
+  verificationEligible: boolean;
+  evidenceValid: boolean;
+  doctorFindings: Array<{ severity: string; code: string; message: string; mapId: string | null; objectId: string | null }>;
+};
+type ExportReceipt = {
+  schemaVersion: string;
+  status: "draft" | "release-ready";
+  generatedAt: string;
+  filename: string;
+  source: { projectName: string; projectSchemaVersion: string | null; buildId: string | null; sourceRevision: string | null; sourceDigest: string; doctorDigest: string };
+  doctor: { profile: string; score: number; grade: string; errorCount: number; warningCount: number; canPromote: boolean };
+  release: { status: "draft" | "release-ready"; shippable: boolean; reason: string; nextAction: string; doctorProfile: string; exportProfile: "strict" | "hosted"; iterationStatus: string; sourceBoundVerification: boolean; persistence: { schemaVersion: string | null; status: string; portableCodes: boolean; automaticStorage: boolean; exactWrapper: string | null; fallback: string }; exactArtifactVerification: { valid: boolean; attestationDigest: string | null; verifiedAt: string | null; expectedSha256: string | null; actualSha256: string | null } };
+  artifact: { gate: "passed"; valid: boolean; sha256: string | null; uploadFileCount: number; byteLength: number; embeddedPayloadBytes: number; decodedImageMemoryBytes: number; embeddedResourceCount: number; scriptCount: number; runtimeCapabilities: Array<{ capability: string; version: string; declaredSha256: string; actualSha256: string; trusted: boolean }>; checks: Array<{ id: string; passed: boolean; detail: string }>; warnings: Array<{ severity: string; code: string; message: string }> };
+  game: { mapCount: number; startMapId: string; selectedAssetCount: number; embeddedResourceCount: number };
+  runtime: { version: string; offlinePlayable: boolean; externalDependencies: string[]; launch: string };
+  editableSource: { filename: string; authoritative: boolean; htmlIsBuildArtifact: boolean };
+};
+
+type DragState = {
+  id: string;
+  offsetX: number;
+  offsetY: number;
+  z: number;
+  before: GameProject;
+};
+
+type MapTool = "select" | "tiles" | "traversal" | "collision-chain" | "navigation" | "walkable-area" | "blocked-area" | "test-route";
+type TileBrushMode = "paint-tile" | "erase-tile" | "paint-terrain" | "erase-terrain" | "paint-collision" | "erase-collision";
+type PathPointDragState = { pathId: string; pointIndex: number; z: number; before: GameProject };
+type CollisionPointDragState = { chainId: string; pointIndex: number; z: number; before: GameProject };
+type CollisionChainDraft = { points: CollisionGeometryPoint[]; role: CollisionGeometryChain["role"]; oneWay: boolean; zMin: number; zMax: number };
+type NavigationNodeDragState = { nodeId: string; z: number; before: GameProject };
+type NavigationAreaDraft = { kind: "walkable" | "blocked"; points: Array<{ x: number; y: number; z: number }> };
+type NavigationTestState = { from: { x: number; y: number; z: number } | null; to: { x: number; y: number; z: number } | null; result: { ok: boolean; points: Array<{ x: number; y: number; z: number }>; nodeIds: string[]; cost: number; reason?: string | null } | null };
+
+const STORAGE_KEY = "looplab-project-v1";
+const RESEARCH_STORAGE_KEY = "looplab-research-v1";
+const PREFERENCE_MEMORY_STORAGE_KEY = "looplab-preference-memory-v1";
+const PLAYTEST_LEDGER_STORAGE_KEY = "looplab-playtest-ledger-v1";
+const PLAYTEST_FEEDBACK_TAGS = ["fun", "confusing", "too-hard", "too-easy", "great-flow", "dead-space", "collision-issue", "visual-clarity"] as const;
+type StoredProjectDraft = { version: 2; savedAt: string; project: GameProject };
+
+const readLocalStorage = (key: string): string | null => {
+  try {
+    return window.localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+};
+
+const writeLocalStorage = (key: string, value: string): boolean => {
+  try {
+    window.localStorage.setItem(key, value);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+const parseStoredProjectDraft = (serialized: string): { project: GameProject; savedAt: string | null } => {
+  const parsed = JSON.parse(serialized) as GameProject | StoredProjectDraft;
+  if (parsed && typeof parsed === "object" && "project" in parsed && parsed.project && Array.isArray(parsed.project.objects)) {
+    return { project: parsed.project, savedAt: typeof parsed.savedAt === "string" ? parsed.savedAt : null };
+  }
+  const legacyProject = parsed as GameProject;
+  const legacySavedAt = legacyProject.authoring?.changedAt ?? legacyProject.build?.sourceTimestamp ?? legacyProject.iteration?.createdAt ?? null;
+  return { project: legacyProject, savedAt: typeof legacySavedAt === "string" ? legacySavedAt : null };
+};
+
+const routePointText = (value: unknown) => Array.isArray(value)
+  ? value.map((entry) => Number(entry)).join(", ")
+  : value && typeof value === "object"
+    ? [Number((value as { x?: number }).x ?? 0), Number((value as { y?: number }).y ?? 0), Number((value as { z?: number }).z ?? 0)].join(", ")
+    : "";
+
+const parseRoutePointText = (value: string) => {
+  const numbers = value.split(",").map((entry) => Number(entry.trim()));
+  if (numbers.length < 2 || numbers.length > 3 || numbers.some((entry) => !Number.isFinite(entry))) throw new Error("Route points use x, y or x, y, z.");
+  return numbers;
+};
+
+const parseRouteScalar = (value: string): string | number => {
+  const trimmed = value.trim();
+  if (trimmed !== "" && Number.isFinite(Number(trimmed))) return Number(trimmed);
+  return trimmed;
+};
+const PROJECT_LIBRARY_ACTIVE_KEY = "looplab-active-project-v1";
+const PROJECT_LIBRARY_DB_NAME = "looplab-project-library-v1";
+const PROJECT_LIBRARY_STORE_NAME = "projects";
+const DEFAULT_COMPANION_URL = "http://127.0.0.1:4317";
+const COMPANION_URL = typeof window === "undefined"
+  ? process.env.LOOPLAB_COMPANION_URL ?? process.env.NEXT_PUBLIC_LOOPLAB_COMPANION_URL ?? DEFAULT_COMPANION_URL
+  : String((window as typeof window & { __LOOPLAB_COMPANION_URL__?: string }).__LOOPLAB_COMPANION_URL__ ?? DEFAULT_COMPANION_URL);
+const COMPANION_SESSION_HEADER = "x-looplab-session-token";
+const HISTORY_LIMIT = 50;
+const PROVIDER_IDS: AgentProvider[] = ["codex", "claude", "openai", "anthropic"];
+
+const companionFetch = (input: RequestInfo | URL, init: RequestInit = {}) => {
+  const headers = new Headers(init.headers);
+  const token = typeof window === "undefined" ? "" : String((window as typeof window & { __LOOPLAB_COMPANION_TOKEN__?: string }).__LOOPLAB_COMPANION_TOKEN__ ?? "");
+  if (token) headers.set(COMPANION_SESSION_HEADER, token);
+  return fetch(input, { ...init, headers });
+};
+
+class SharedProjectRequestError extends Error {
+  statusCode: number;
+  code: string;
+  path: string | null;
+  expected: unknown;
+  got: unknown;
+  current: unknown;
+  repairAction: string | null;
+
+  constructor(message: string, statusCode: number, details: Record<string, unknown> = {}) {
+    super(message);
+    this.name = "SharedProjectRequestError";
+    this.statusCode = statusCode;
+    this.code = typeof details.code === "string" ? details.code : "shared-project-request-failed";
+    this.path = typeof details.path === "string" ? details.path : null;
+    this.expected = details.expected ?? null;
+    this.got = details.got ?? null;
+    this.current = details.current ?? null;
+    this.repairAction = typeof details.repairAction === "string" ? details.repairAction : null;
+  }
+}
+
+const readSharedProjectResponse = async <T extends { ok?: boolean }>(response: Response): Promise<T> => {
+  let value: Record<string, unknown> | null = null;
+  try {
+    value = await response.json() as Record<string, unknown>;
+  } catch {
+    value = null;
+  }
+  if (!response.ok || value?.ok !== true) {
+    throw new SharedProjectRequestError(
+      typeof value?.error === "string" ? value.error : `LoopLab companion returned HTTP ${response.status}.`,
+      response.status,
+      value ?? {},
+    );
+  }
+  return value as T;
+};
+
+const listCompanionProjects = async (): Promise<SharedProjectListResponse> => {
+  const response = await companionFetch(`${COMPANION_URL}/projects`, { cache: "no-store" });
+  return readSharedProjectResponse<SharedProjectListResponse>(response);
+};
+
+const readCompanionProject = async (id: string): Promise<SharedProjectReadResponse> => {
+  const response = await companionFetch(`${COMPANION_URL}/projects/${encodeURIComponent(id)}`, { cache: "no-store" });
+  return readSharedProjectResponse<SharedProjectReadResponse>(response);
+};
+
+const writeCompanionProject = async (id: string, project: GameProject, options: {
+  expectedRevisionDigest?: string | null;
+  createOnly?: boolean;
+  metadata?: { origin?: ProjectLibraryEntry["origin"]; sourceLabel?: string; folderName?: string | null; parentLibraryId?: string | null };
+} = {}): Promise<SharedProjectWriteResponse> => {
+  const headers = new Headers({ "Content-Type": "application/json" });
+  if (options.expectedRevisionDigest) headers.set("If-Match", `"${options.expectedRevisionDigest}"`);
+  if (options.createOnly) headers.set("If-None-Match", "*");
+  const response = await companionFetch(`${COMPANION_URL}/projects/${encodeURIComponent(id)}`, {
+    method: "PUT",
+    cache: "no-store",
+    headers,
+    body: JSON.stringify({
+      project,
+      ...(options.expectedRevisionDigest ? { expectedRevisionDigest: options.expectedRevisionDigest } : {}),
+      ...(options.createOnly ? { createOnly: true } : {}),
+      ...(options.metadata ? { metadata: options.metadata } : {}),
+    }),
+  });
+  return readSharedProjectResponse<SharedProjectWriteResponse>(response);
+};
+
+type CompanionEventStream = {
+  closed: boolean;
+  onmessage: ((event: { data: string }) => void) | null;
+  onerror: ((error: unknown) => void) | null;
+  close: () => void;
+};
+
+function openCompanionEventStream(input: RequestInfo | URL): CompanionEventStream {
+  const controller = new AbortController();
+  const stream: CompanionEventStream = {
+    closed: false,
+    onmessage: null,
+    onerror: null,
+    close: () => {
+      if (stream.closed) return;
+      stream.closed = true;
+      controller.abort();
+    },
+  };
+  queueMicrotask(() => {
+    void (async () => {
+      try {
+        const response = await companionFetch(input, { cache: "no-store", headers: { Accept: "text/event-stream" }, signal: controller.signal });
+        if (!response.ok || !response.body) throw new Error(`Companion event stream failed with HTTP ${response.status}.`);
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        const emitBufferedEvents = (flush = false) => {
+          buffer = buffer.replace(/\r\n/g, "\n");
+          if (flush && buffer && !buffer.endsWith("\n\n")) buffer += "\n\n";
+          let boundary = buffer.indexOf("\n\n");
+          while (boundary >= 0) {
+            const block = buffer.slice(0, boundary);
+            buffer = buffer.slice(boundary + 2);
+            const data = block.split("\n").filter((line) => line.startsWith("data:")).map((line) => line.slice(5).replace(/^ /, "")).join("\n");
+            if (data && !stream.closed) stream.onmessage?.({ data });
+            boundary = buffer.indexOf("\n\n");
+          }
+        };
+        while (!stream.closed) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          emitBufferedEvents();
+        }
+        buffer += decoder.decode();
+        emitBufferedEvents(true);
+        stream.closed = true;
+      } catch (error) {
+        if (stream.closed || (error instanceof DOMException && error.name === "AbortError")) return;
+        stream.onerror?.(error);
+      }
+    })();
+  });
+  return stream;
+}
+
+function aiArtJobDescriptor(jobId: string): AiArtJobDescriptor {
+  const encoded = encodeURIComponent(jobId);
+  return { jobId, status: "running", eventsUrl: `/asset-jobs/${encoded}/events`, statusUrl: `/asset-jobs/${encoded}/status`, resultUrl: `/asset-jobs/${encoded}/result`, cancelUrl: `/asset-jobs/${encoded}/cancel` };
+}
+
+function releaseVerificationJobDescriptor(jobId: string): ReleaseVerificationJobDescriptor {
+  const encoded = encodeURIComponent(jobId);
+  return { jobId, status: "running", eventsUrl: `/release-verification-jobs/${encoded}/events`, statusUrl: `/release-verification-jobs/${encoded}/status`, resultUrl: `/release-verification-jobs/${encoded}/result`, cancelUrl: `/release-verification-jobs/${encoded}/cancel` };
+}
+
+function localCopilotJobDescriptor(jobId: string): LocalCopilotJobDescriptor {
+  const encoded = encodeURIComponent(jobId);
+  return { jobId, kind: "local-copilot", status: "running", engine: "", model: "", eventsUrl: `/local-copilot/jobs/${encoded}/events`, statusUrl: `/local-copilot/jobs/${encoded}/status`, resultUrl: `/local-copilot/jobs/${encoded}/result`, cancelUrl: `/local-copilot/jobs/${encoded}/cancel` };
+}
+
+function visualCritiqueJobDescriptor(jobId: string): VisualCritiqueJobDescriptor {
+  const encoded = encodeURIComponent(jobId);
+  return { jobId, kind: "visual-critique", status: "running", eventsUrl: `/visual-critique-jobs/${encoded}/events`, statusUrl: `/visual-critique-jobs/${encoded}/status`, resultUrl: `/visual-critique-jobs/${encoded}/result`, cancelUrl: `/visual-critique-jobs/${encoded}/cancel` };
+}
+
+async function submitReleaseVerificationJob(project: GameProject, filename: string) {
+  const response = await companionFetch(`${COMPANION_URL}/release-verification-jobs`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ project, filename }),
+  });
+  const value = await response.json() as ReleaseVerificationJobDescriptor & { error?: string };
+  if (!response.ok) throw new Error(value.error ?? "Exact release verification could not be started.");
+  return value;
+}
+
+async function readReleaseVerificationJob(job: ReleaseVerificationJobDescriptor, includeResult = false) {
+  const statusResponse = await companionFetch(`${COMPANION_URL}${job.statusUrl}`, { cache: "no-store" });
+  const status = await statusResponse.json() as Record<string, unknown> & { status?: string; error?: string };
+  if (!statusResponse.ok) throw new Error(status.error ?? "Exact release-verification status is unavailable.");
+  if (includeResult && (status.status === "completed" || status.status === "failed")) {
+    const resultResponse = await companionFetch(`${COMPANION_URL}${job.resultUrl}`, { cache: "no-store" });
+    const result = await resultResponse.json() as { ok: boolean; status: string; result?: ReleaseVerificationResult; error?: string; usage?: LocalOperationUsage };
+    return { status, result, resultResponseOk: resultResponse.ok };
+  }
+  return { status, result: null, resultResponseOk: null };
+}
+
+async function waitForReleaseVerificationJob(job: ReleaseVerificationJobDescriptor, onEvent?: (event: ReleaseVerificationJobEvent) => void) {
+  const seenEvents = new Set<number>();
+  while (true) {
+    const { status, result, resultResponseOk } = await readReleaseVerificationJob(job, true);
+    for (const event of (status.recentEvents as ReleaseVerificationJobEvent[] | undefined) ?? []) {
+      const sequence = Number(event.sequence ?? 0);
+      if (sequence && seenEvents.has(sequence)) continue;
+      if (sequence) seenEvents.add(sequence);
+      onEvent?.(event);
+    }
+    if (status.status === "completed" || status.status === "failed") {
+      if (resultResponseOk && result?.result) return result.result;
+      throw new Error(result?.error ?? status.error ?? `Exact release verification ${status.status}.`);
+    }
+    if (status.status === "cancelled") throw new Error("Exact release verification was cancelled.");
+    await new Promise((resolve) => window.setTimeout(resolve, 500));
+  }
+}
+
+async function submitAiArtJob(payload: Record<string, unknown>) {
+  const response = await companionFetch(`${COMPANION_URL}/asset-jobs`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ provider: "openai", ...payload }) });
+  const value = await response.json() as AiArtJobDescriptor & { error?: string };
+  if (!response.ok) throw new Error(value.error ?? "The AI art job could not be started.");
+  return value;
+}
+
+async function waitForAiArtJob(job: AiArtJobDescriptor, onEvent?: (event: AiArtJobEvent) => void) {
+  const seenEvents = new Set<number>();
+  while (true) {
+    const statusResponse = await companionFetch(`${COMPANION_URL}${job.statusUrl}`, { cache: "no-store" });
+    const status = await statusResponse.json() as { status: string; error?: string; recentEvents?: AiArtJobEvent[] };
+    if (!statusResponse.ok) throw new Error(status.error ?? "The AI art job status is unavailable.");
+    for (const event of status.recentEvents ?? []) {
+      const sequence = Number(event.sequence ?? 0);
+      if (sequence && seenEvents.has(sequence)) continue;
+      if (sequence) seenEvents.add(sequence);
+      onEvent?.(event);
+    }
+    if (status.status === "completed") {
+      const resultResponse = await companionFetch(`${COMPANION_URL}${job.resultUrl}`, { cache: "no-store" });
+      const resultEnvelope = await resultResponse.json() as { ok: boolean; result?: AiArtSourceResult; error?: string };
+      if (!resultResponse.ok || !resultEnvelope.result) throw new Error(resultEnvelope.error ?? "The AI art result is unavailable.");
+      return resultEnvelope.result;
+    }
+    if (status.status === "failed" || status.status === "cancelled") throw new Error(status.error ?? `AI art job ${status.status}.`);
+    await new Promise((resolve) => window.setTimeout(resolve, 750));
+  }
+}
+
+function removeBorderConnectedNeutralMatte(frame: { width: number; height: number; pixels: Uint8ClampedArray }) {
+  const pixels = new Uint8ClampedArray(frame.pixels);
+  const visited = new Uint8Array(frame.width * frame.height);
+  const queue = new Int32Array(frame.width * frame.height);
+  let head = 0;
+  let tail = 0;
+  const isMatte = (pixelIndex: number) => {
+    const offset = pixelIndex * 4;
+    if (pixels[offset + 3] < 16) return false;
+    const red = pixels[offset];
+    const green = pixels[offset + 1];
+    const blue = pixels[offset + 2];
+    const average = (red + green + blue) / 3;
+    return Math.max(red, green, blue) - Math.min(red, green, blue) <= 18 && Math.abs(average - 217) <= 48;
+  };
+  const enqueue = (pixelIndex: number) => {
+    if (pixelIndex < 0 || pixelIndex >= visited.length || visited[pixelIndex] || !isMatte(pixelIndex)) return;
+    visited[pixelIndex] = 1;
+    queue[tail] = pixelIndex;
+    tail += 1;
+  };
+  for (let x = 0; x < frame.width; x += 1) { enqueue(x); enqueue((frame.height - 1) * frame.width + x); }
+  for (let y = 1; y < frame.height - 1; y += 1) { enqueue(y * frame.width); enqueue(y * frame.width + frame.width - 1); }
+  let removedPixels = 0;
+  while (head < tail) {
+    const pixelIndex = queue[head];
+    head += 1;
+    const x = pixelIndex % frame.width;
+    const y = Math.floor(pixelIndex / frame.width);
+    const offset = pixelIndex * 4;
+    pixels[offset] = 0;
+    pixels[offset + 1] = 0;
+    pixels[offset + 2] = 0;
+    pixels[offset + 3] = 0;
+    removedPixels += 1;
+    if (x > 0) enqueue(pixelIndex - 1);
+    if (x + 1 < frame.width) enqueue(pixelIndex + 1);
+    if (y > 0) enqueue(pixelIndex - frame.width);
+    if (y + 1 < frame.height) enqueue(pixelIndex + frame.width);
+  }
+  return { ...frame, pixels, removedPixels };
+}
+
+async function normalizeAiArtSource(result: AiArtSourceResult): Promise<GeneratedAsset> {
+  const image = new Image();
+  image.src = result.image.dataUrl;
+  await image.decode();
+  const source = document.createElement("canvas");
+  source.width = image.naturalWidth;
+  source.height = image.naturalHeight;
+  const context = source.getContext("2d", { willReadFrequently: true });
+  if (!context) throw new Error("Canvas is unavailable for AI art normalization.");
+  context.imageSmoothingEnabled = false;
+  context.drawImage(image, 0, 0);
+  const columns = Math.max(1, result.request.columns);
+  const rows = Math.max(1, result.request.rows);
+  const cellWidth = Math.floor(source.width / columns);
+  const cellHeight = Math.floor(source.height / rows);
+  const frames: Array<{ width: number; height: number; pixels: Uint8ClampedArray }> = [];
+  let removedMattePixels = 0;
+  for (let frameIndex = 0; frameIndex < result.request.frameCount; frameIndex += 1) {
+    const x = (frameIndex % columns) * cellWidth;
+    const y = Math.floor(frameIndex / columns) * cellHeight;
+    const frame = { width: cellWidth, height: cellHeight, pixels: context.getImageData(x, y, cellWidth, cellHeight).data };
+    const cleaned = result.request.background === "light-neutral-gray" ? removeBorderConnectedNeutralMatte(frame) : { ...frame, removedPixels: 0 };
+    removedMattePixels += cleaned.removedPixels;
+    frames.push({ width: cleaned.width, height: cleaned.height, pixels: cleaned.pixels });
+  }
+  const anchorMode = result.request.groundAnchored ? "ground" : "center";
+  const frameKind = result.request.assetType === "tileset" ? "tile" : "sprite";
+  const packed = packSpriteAtlas(frames, {
+    frameWidth: result.request.targetFrameSize,
+    frameHeight: result.request.targetFrameSize,
+    columns: Math.min(columns, frames.length),
+    maximumColors: 16,
+    palette: result.request.palette,
+    anchorMode,
+    frameKind,
+    matteColor: result.request.background === "light-neutral-gray" ? "#d9d9d9" : undefined,
+    requireTransparency: frameKind === "sprite",
+  });
+  const role = result.request.role;
+  const placementKind = role === "character" ? "hero" : role === "environment" ? "effect" : role;
+  const name = `${result.request.identity || role} AI ${role}`;
+  const transparentBackground = frameKind === "tile" || !packed.analysis.failedInvariants.includes("missing-transparent-border");
+  return {
+    id: "generator-preview",
+    name,
+    type: result.request.assetType,
+    dataUrl: pixelsToDataUrl(packed),
+    width: packed.width,
+    height: packed.height,
+    frameWidth: packed.frameWidth,
+    frameHeight: packed.frameHeight,
+    frames: packed.frames,
+    columns: packed.columns,
+    anchorX: result.request.groundAnchored ? packed.anchorX : 0.5,
+    anchorY: result.request.groundAnchored ? packed.anchorY : 0.5,
+    collisionPolicy: "authored-only",
+    anchorMode,
+    invariants: { identityReference: result.request.identity, actions: result.request.actions, palette: packed.palette, frameCount: packed.frames, sharedScale: true, groundAnchor: result.request.groundAnchored, transparentBackground, authoredCollisionOnly: true, providerNormalized: true, analysisMeasured: true, maxSilhouetteDrift: silhouetteDriftLimitForRole(role), maxAnchorVariance: 1 },
+    analysis: { ...packed.analysis, sourceWidth: source.width, sourceHeight: source.height, sourceEncodedBytes: result.image.byteLength, removedMattePixels },
+    generator: { kind: placementKind, aiRole: role, source: "openai-image-api", provider: "openai", model: result.image.model, promptDigest: result.request.promptDigest, requestId: result.image.requestId ?? "unavailable", actions: result.request.actions.join("|"), quality: result.request.quality, background: result.request.background, projection: result.request.projection, normalization: "measured-shared-scale-palette-lock-v2", visualIdentityDigest: result.request.visualIdentity?.identityDigest ?? "", visualIdentityInherited: result.request.visualIdentity?.inherited === true, visualIdentityBypassed: result.request.visualIdentity?.bypassed === true, visualIdentityReferenceIds: result.request.visualIdentity?.referenceIds?.join("|") ?? "", visualIdentityImageReferenceCount: result.request.visualIdentity?.imageReferenceCount ?? 0 },
+  };
+}
+
+function usageDollarLabel(receipt?: UsageReceipt | null) {
+  if (receipt?.estimatedUsd === null || receipt?.estimatedUsd === undefined || !Number.isFinite(receipt.estimatedUsd)) return "USD unavailable";
+  if (receipt.estimatedUsd > 0 && receipt.estimatedUsd < 0.000001) return "<$0.000001";
+  return `$${receipt.estimatedUsd.toFixed(6)}`;
+}
+
+function usageReceiptMessage(receipt: UsageReceipt | null | undefined, prefix: string) {
+  if (!receipt) return `${prefix}: usage unavailable`;
+  const tokenLabel = receipt.measured && receipt.totalTokens !== null ? `${receipt.totalTokens.toLocaleString()} tokens` : "token count unavailable";
+  const runLabel = receipt.runCount ? ` across ${receipt.runCount} run${receipt.runCount === 1 ? "" : "s"}` : "";
+  const estimateLabel = receipt.billingMode === "subscription" ? "API-equivalent" : "estimated";
+  return `${prefix}: ${tokenLabel}${runLabel} · ${usageDollarLabel(receipt)} ${estimateLabel}`;
+}
+
+function usageReceiptDetail(receipt?: UsageReceipt | null) {
+  if (!receipt) return undefined;
+  const parts: string[] = [];
+  if (receipt.inputTokens !== null) parts.push(`input ${receipt.inputTokens.toLocaleString()}`);
+  if (receipt.cachedInputTokens > 0) parts.push(`cached ${receipt.cachedInputTokens.toLocaleString()}`);
+  if (receipt.cacheWriteTokens > 0) parts.push(`cache write ${receipt.cacheWriteTokens.toLocaleString()}`);
+  if (receipt.outputTokens !== null) parts.push(`output ${receipt.outputTokens.toLocaleString()}`);
+  if (receipt.reasoningTokens > 0) parts.push(`reasoning ${receipt.reasoningTokens.toLocaleString()} (included in output)`);
+  if (receipt.runCount && receipt.unpricedRuns) parts.push(`${receipt.unpricedRuns} unpriced run${receipt.unpricedRuns === 1 ? "" : "s"}`);
+  if (receipt.billingMode === "subscription") parts.push("subscription run; this is not an additional CLI charge");
+  return parts.join(" · ") || receipt.note;
+}
+
+function measuredAssetSummary(asset: GeneratedAsset | null) {
+  const analysis = asset?.analysis;
+  if (!analysis || analysis.measured !== true || typeof analysis.measurementVersion !== "string") return null;
+  const numberValue = (value: unknown) => Number.isFinite(Number(value)) ? Number(value) : 0;
+  return {
+    version: analysis.measurementVersion,
+    failedInvariants: Array.isArray(analysis.failedInvariants) ? analysis.failedInvariants.map(String) : [],
+    silhouetteDrift: numberValue(analysis.silhouetteDrift),
+    anchorVariance: numberValue(analysis.anchorVariance),
+    sourceAnchorVariance: numberValue(analysis.sourceAnchorVariance),
+    characterCountMax: numberValue(analysis.characterCountMax),
+    haloPixelRatio: numberValue(analysis.haloPixelRatio),
+    edgeLeakageRatio: numberValue(analysis.edgeLeakageRatio),
+    emptyFrameCount: numberValue(analysis.emptyFrameCount),
+    tileEdgeMismatchRatio: analysis.tileEdgeMismatchRatio === null || analysis.tileEdgeMismatchRatio === undefined ? null : numberValue(analysis.tileEdgeMismatchRatio),
+  };
+}
+
+const GAME_GENRES = LOOPLAB_GAME_DIRECTOR.genres;
+const CORE_LOOPS = LOOPLAB_GAME_DIRECTOR.coreLoops;
+const MOVEMENT_TEMPLATES = LOOPLAB_GAME_DIRECTOR.movementTemplates;
+const GAME_FORMATS = LOOPLAB_GAME_DIRECTOR.formats;
+const PROGRESSION_MODES = LOOPLAB_GAME_DIRECTOR.progressions;
+const CAMPAIGN_SCOPES = LOOPLAB_GAME_DIRECTOR.campaignScopes;
+
+const RESEARCH_PRESETS = [
+  { id: "full-brief", label: "Research my game", description: "Evidence for the complete directed brief", query: "Research the strongest current design patterns, comparable games, player expectations, and browser-specific risks for this complete 2D HTML game concept." },
+  { id: "similar-games", label: "Similar games", description: "Comparables and differentiators", query: "Find well-documented comparable games for this concept. Analyze their core loops, strengths, common player complaints, and opportunities to differentiate without copying protected expression." },
+  { id: "genre-expectations", label: "Genre & players", description: "Audience expectations and friction", query: "Research current player expectations, onboarding conventions, accessibility needs, and common failure modes for the selected genre and target game format." },
+  { id: "core-loop", label: "Core loop", description: "Retention, pacing, and mastery", query: "Research evidence-backed patterns for making this selected core gameplay loop readable, replayable, skillful, and satisfying in a small 2D browser game." },
+  { id: "controls", label: "Controls", description: "Keyboard, touch, and gamepad", query: "Research best practices and platform guidance for responsive 2D browser-game controls across keyboard, touch, gamepad, focus loss, remapping, and input accessibility." },
+  { id: "map-flow", label: "Map flow", description: "Routes, transitions, and landmarks", query: "Research level-design guidance for route readability, interaction density, setup and recovery space, connected-map transitions, landmarks, and collision clarity for this game." },
+  { id: "art-direction", label: "Art direction", description: "Sprites, tiles, and visual cohesion", query: "Research practical 2D art-direction patterns for cohesive sprites, tiles, palettes, silhouettes, animation readability, dimetric projection when relevant, and efficient browser packaging." },
+  { id: "accessibility", label: "Accessibility", description: "Inclusive play and readable UI", query: "Research current authoritative accessibility guidance for 2D browser games, including motion, contrast, text, input alternatives, timing, audio cues, touch targets, and cognitive load." },
+  { id: "browser-performance", label: "Browser performance", description: "Frame time, memory, and packaging", query: "Research current browser-game performance practices for 2D HTML games: frame pacing, canvas rendering, decoded image memory, atlases, loading, mobile constraints, offline packaging, and measurement." },
+  { id: "engine-selection", label: "One-file engine", description: "Canvas, melonJS, Phaser, or Pixi", query: "Compare built-in Canvas 2D, melonJS, Phaser, and PixiJS for this exact game under a strict one-offline-HTML upload constraint. Use current official sources, measure bundle cost, identify the required inline delivery path, and recommend the smallest engine that still covers the mechanics." },
+  { id: "canvas-patterns", label: "Canvas patterns", description: "Techniques worth adapting", query: "Use https://github.com/raphamorim/awesome-canvas only as a discovery index. Find relevant Canvas techniques for this game, trace each recommendation to its original maintained source, verify its license before reuse, and reject CDN or multi-file dependencies that conflict with one-file offline export." },
+] as const;
+
+const RESEARCH_ENGINES: Array<{ id: ResearchEngineId; label: string; kind: string; description: string }> = [
+  { id: "source-command-sc-research", label: "SuperClaude deep research", kind: "Skill", description: "Adaptive decomposition, multi-hop evidence gathering, contradiction checks, confidence, and a report-only boundary." },
+  { id: "game-studio", label: "Game Studio research", kind: "Plugin", description: "Prioritizes browser-game mechanics, player experience, visual direction, implementation fit, and playtestable recommendations." },
+  { id: "web-game-foundations", label: "Web Game Foundations", kind: "Plugin skill", description: "Focuses on simulation, rendering, inputs, asset architecture, saves, debugging, performance, and browser constraints." },
+  { id: "openai-docs", label: "Official technical docs", kind: "Skill", description: "Uses primary specifications and official vendor documentation; best for APIs, engines, standards, and current platform behavior." },
+  { id: "provider-native", label: "Native web research", kind: "Built in", description: "Uses the selected provider's web tools for a direct cited answer without an extra game-specific lens." },
+];
+
+const MAP_SIZE_PRESETS = [
+  { id: "small-landscape", label: "Small landscape", width: 640, height: 360 },
+  { id: "standard-landscape", label: "Standard landscape", width: 960, height: 540 },
+  { id: "wide-landscape", label: "Wide landscape", width: 1280, height: 720 },
+  { id: "large-landscape", label: "Large landscape", width: 1920, height: 1080 },
+  { id: "square", label: "Square world", width: 1024, height: 1024 },
+  { id: "portrait", label: "Portrait world", width: 720, height: 1280 },
+] as const;
+
+const DEFAULT_WORKSTREAMS: NonNullable<GameProject["workstreams"]> = [
+  { id: "creation", name: "Full game creation", status: "active" },
+  { id: "gameplay", name: "Gameplay & feel", status: "pending" },
+  { id: "narrative", name: "Story & narrative", status: "pending" },
+  { id: "maps", name: "Maps & collision", status: "pending" },
+  { id: "character", name: "Characters & sprites", status: "pending" },
+  { id: "assets", name: "Tiles & assets", status: "pending" },
+  { id: "input", name: "Input & mobile", status: "pending" },
+  { id: "ui", name: "UI & devices", status: "pending" },
+  { id: "audio", name: "Audio", status: "pending" },
+  { id: "release", name: "Performance & release", status: "pending" },
+];
+
+const DEFAULT_BROWSER_2D_CONTRACTS: NonNullable<GameProject["qualityContracts"]> = {
+  architecture: {
+    simulationStateSerializable: true,
+    rendererDisposableAdapter: true,
+    semanticInputActions: true,
+    fixedStepHz: 60,
+    maximumCatchUpSteps: 5,
+    cameraPresentationOnly: true,
+    generatedArtOwnsCollision: false,
+  },
+  canvas2d: {
+    fixedBackbuffer: true,
+    cappedDpr: true,
+    opaqueContext: true,
+    oneAnimationFrameOwner: true,
+    atlasIntegerRects: true,
+    culling: true,
+    targetP95FrameMs: 12,
+  },
+  collision2d: {
+    authority: "authored-map",
+    axisSeparated: true,
+    halfOpenTileRanges: true,
+    fastBodySubsteps: true,
+    highSpeedPolicy: "swept-aabb",
+    deterministicOrdering: true,
+  },
+  inputViewport: {
+    tickSnapshots: true,
+    readsKeyAndCode: true,
+    clearsOnBlur: true,
+    pointerCapture: true,
+    safeAreas: true,
+    touchTargetMin: 44,
+  },
+  presentation: {
+    eventQueue: true,
+    simulationIndependent: true,
+    reducedMotion: true,
+  },
+  palette: {
+    onePaletteAcrossFrames: true,
+    averagingAfterQuantization: false,
+    alphaWeightedResample: true,
+    gameplayCriticalRecoloring: false,
+  },
+};
+
+const ensureBrowser2DProject = (project: GameProject, options: { migrateLegacyRenderer?: boolean } = {}): GameProject => {
+  const requestedFramework = String(project.runtimeProfile?.framework ?? "canvas");
+  const currentFramework: Browser2DFramework = ["standalone", "canvas", "phaser", "pixi", "melon"].includes(requestedFramework) ? requestedFramework as Browser2DFramework : "canvas";
+  const legacyCanvasMetadata = options.migrateLegacyRenderer && currentFramework === "phaser" && project.release?.engineDelivery == null;
+  const framework = legacyCanvasMetadata ? "canvas" : currentFramework ?? "canvas";
+  const delivery = framework === "phaser" ? "inline-script-tag" : framework === "pixi" ? "inline-umd" : framework === "melon" ? "tree-shaken-inline-iife" : "built-in-inline";
+  const existingWorkstreams = project.workstreams ?? [];
+  const workstreamById = new Map(existingWorkstreams.map((stream) => [stream.id, stream]));
+  const knownWorkstreamIds = new Set(DEFAULT_WORKSTREAMS.map((stream) => stream.id));
+  const hasExistingActive = existingWorkstreams.some((stream) => stream.status === "active");
+  const workstreams = [
+    ...DEFAULT_WORKSTREAMS.map((fallback) => workstreamById.get(fallback.id) ?? (hasExistingActive ? { ...fallback, status: "pending" as const } : fallback)),
+    ...existingWorkstreams.filter((stream) => !knownWorkstreamIds.has(stream.id)),
+  ];
+  const quality = project.qualityContracts ?? {};
+  const designBrief = project.designBrief ? reconcileDirectedGameBrief({ ...project.designBrief, movementTemplate: project.designBrief.movementTemplate ?? "auto" }) as DirectedBrief : undefined;
+  const replayCases = (project.replay?.cases ?? []).map((replayCase) => Number.isInteger(replayCase.tickCount) && Array.isArray(replayCase.inputs)
+    ? replayCase
+    : {
+        id: replayCase.id,
+        name: replayCase.name ?? replayCase.id,
+        revision: replayCase.revision ?? 1,
+        changeReason: "Migrated legacy replay metadata; record a new executable fixture before release",
+        tickCount: 1,
+        inputs: [],
+        checkpoints: [],
+        legacyExpectedHash: replayCase.expectedHash,
+      });
+  const exportProfile = project.release?.exportProfile === "hosted" ? "hosted" : "strict";
+  const release: Record<string, unknown> = {
+    singleFile: true,
+    networkFree: true,
+    allowNetwork: false,
+    exportProfile,
+    storageFree: exportProfile === "strict",
+    allowStorage: exportProfile === "hosted",
+    runtimeBundleEmbedded: framework === "canvas",
+    engineDelivery: delivery,
+    moduleImports: [],
+    externalRequests: [],
+    assetLookupValidated: true,
+    ...(project.release ?? {}),
+    ...(legacyCanvasMetadata ? { runtimeBundleEmbedded: true, engineDelivery: "built-in-inline" } : {}),
+  };
+  release.singleFile = true;
+  release.networkFree = true;
+  release.allowNetwork = false;
+  release.exportProfile = exportProfile;
+  release.storageFree = exportProfile === "strict";
+  release.allowStorage = exportProfile === "hosted";
+  release.moduleImports = [];
+  release.externalRequests = [];
+  if (exportProfile === "hosted") release.storageWrapper = LOOPLAB_HOSTED_STORAGE_WRAPPER_SCHEMA;
+  else delete release.storageWrapper;
+  return {
+    ...project,
+    schemaVersion: LOOPLAB_PROJECT_SCHEMA_VERSION,
+    ...(designBrief ? { designBrief } : {}),
+    workstreams,
+    replay: { version: String(project.replay?.version ?? "1"), tickRate: Number(project.replay?.tickRate ?? 60), seed: Number(project.replay?.seed ?? 1), cases: replayCases },
+    runtimeProfile: { dimension: "2d", framework },
+    release,
+    ...(project.saveProgram ? { saveProgram: normalizeSaveProgram(project.saveProgram, { profile: exportProfile }) } : {}),
+    performance: { targetP95FrameMs: 12, ...(project.performance ?? {}) },
+    qualityContracts: {
+      architecture: { ...DEFAULT_BROWSER_2D_CONTRACTS.architecture, ...(quality.architecture ?? {}) },
+      canvas2d: { ...DEFAULT_BROWSER_2D_CONTRACTS.canvas2d, ...(quality.canvas2d ?? {}) },
+      collision2d: { ...DEFAULT_BROWSER_2D_CONTRACTS.collision2d, ...(quality.collision2d ?? {}) },
+      inputViewport: { ...DEFAULT_BROWSER_2D_CONTRACTS.inputViewport, ...(quality.inputViewport ?? {}) },
+      presentation: { ...DEFAULT_BROWSER_2D_CONTRACTS.presentation, ...(quality.presentation ?? {}) },
+      palette: { ...DEFAULT_BROWSER_2D_CONTRACTS.palette, ...(quality.palette ?? {}) },
+    },
+  };
+};
+
+const uid = () =>
+  typeof crypto !== "undefined" && "randomUUID" in crypto
+    ? crypto.randomUUID()
+    : `object-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+
+const formatBytes = (bytes: number) => bytes < 1024 ? `${bytes} B` : bytes < 1024 * 1024 ? `${(bytes / 1024).toFixed(1)} KiB` : `${(bytes / 1024 / 1024).toFixed(2)} MiB`;
+const TUNING_FEEL_METRICS = [
+  { id: "timeToMaxSpeedMs", label: "Reach max speed", unit: "ms" },
+  { id: "stopTimeMs", label: "Stop", unit: "ms" },
+  { id: "maxJumpRisePx", label: "Jump rise", unit: "px" },
+  { id: "timeToApexMs", label: "Apex", unit: "ms" },
+  { id: "airTimeMs", label: "Airtime", unit: "ms" },
+  { id: "maximumHorizontalTravelPx", label: "Air travel", unit: "px" },
+] as const;
+const formatTuningValue = (value: number, unit: string) => `${Number.isInteger(value) ? value : value.toFixed(1)} ${unit}`;
+
+function SpatialLayoutMiniMap({ preview, label }: { preview: SpatialLayoutPreviewRef; label: string }) {
+  const width = Math.max(1, Number(preview.width) || 1);
+  const height = Math.max(1, Number(preview.height) || 1);
+  return <svg className="spatial-layout-preview" viewBox={`0 0 ${width} ${height}`} role="img" aria-label={label} preserveAspectRatio="xMidYMid meet">
+    <rect x="0" y="0" width={width} height={height} className="spatial-preview-ground" />
+    {(preview.objects ?? []).filter((object) => object.solid || object.pinned).map((object) => <rect
+      key={object.id}
+      x={object.x}
+      y={object.y}
+      width={Math.max(1, object.width)}
+      height={Math.max(1, object.height)}
+      className={`spatial-preview-object ${object.solid ? "solid" : ""} ${object.pinned ? "pinned" : ""} ${object.z > 0 ? "raised" : ""}`}
+      vectorEffect="non-scaling-stroke"
+    />)}
+    {(preview.routes ?? []).map((route) => <polyline
+      key={route.id}
+      points={route.points.map((point) => `${point.x},${point.y}`).join(" ")}
+      className={`spatial-preview-route ${route.role === "primary" ? "primary" : "alternate"} ${route.points.some((point) => point.z > 0) ? "raised" : ""}`}
+      vectorEffect="non-scaling-stroke"
+    />)}
+  </svg>;
+}
+
+const sha256Hex = async (bytes: ArrayBuffer) => {
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  return [...new Uint8Array(digest)].map((value) => value.toString(16).padStart(2, "0")).join("");
+};
+
+const pixelContentStats = (pixels: Uint8ClampedArray) => {
+  const colors = new Set<string>();
+  let opaque = 0;
+  let luminanceTotal = 0;
+  let luminanceSquaredTotal = 0;
+  for (let offset = 0; offset < pixels.length; offset += 4) {
+    const red = pixels[offset];
+    const green = pixels[offset + 1];
+    const blue = pixels[offset + 2];
+    const alpha = pixels[offset + 3];
+    if (alpha >= 250) opaque += 1;
+    if (colors.size < 4097) colors.add(`${red >> 4}:${green >> 4}:${blue >> 4}:${alpha >> 5}`);
+    const luminance = 0.2126 * red + 0.7152 * green + 0.0722 * blue;
+    luminanceTotal += luminance;
+    luminanceSquaredTotal += luminance * luminance;
+  }
+  const pixelCount = Math.max(1, pixels.length / 4);
+  const luminanceMean = luminanceTotal / pixelCount;
+  const luminanceStdDev = Math.sqrt(Math.max(0, luminanceSquaredTotal / pixelCount - luminanceMean * luminanceMean));
+  return {
+    distinctQuantizedColorCount: colors.size,
+    luminanceMean,
+    luminanceStdDev,
+    opaquePixelRatio: opaque / pixelCount,
+    flatFrame: colors.size < 4 || luminanceStdDev < 1,
+  };
+};
+
+const waitForAnimationFrames = (count = 2) => new Promise<void>((resolve) => {
+  let remaining = Math.max(1, count);
+  const next = () => {
+    remaining -= 1;
+    if (remaining <= 0) resolve();
+    else window.requestAnimationFrame(next);
+  };
+  window.requestAnimationFrame(next);
+});
+
+const visibleElement = (element: HTMLElement | null) => {
+  if (!element) return false;
+  const style = window.getComputedStyle(element);
+  const bounds = element.getBoundingClientRect();
+  return style.display !== "none" && style.visibility !== "hidden" && Number(style.opacity) !== 0 && bounds.width > 0 && bounds.height > 0;
+};
+
+const rectContains = (outer: DOMRect, inner: DOMRect, tolerance = 2) => inner.left >= outer.left - tolerance
+  && inner.top >= outer.top - tolerance
+  && inner.right <= outer.right + tolerance
+  && inner.bottom <= outer.bottom + tolerance;
+
+type VisualReviewPayloadOptions = { includeThumbnails?: boolean; includeAnnotatedImages?: boolean; includeCrops?: boolean };
+
+const visualReviewCaptureForHeadless = (capture: VisualReviewCapture, options: VisualReviewPayloadOptions = {}) => ({
+  ...capture,
+  dataUrl: options.includeThumbnails === true ? capture.dataUrl : undefined,
+  annotatedDataUrl: options.includeAnnotatedImages === true ? capture.annotatedDataUrl : undefined,
+  perception: {
+    ...capture.perception,
+    annotations: capture.perception.annotations.map((annotation) => options.includeCrops === true ? annotation : { ...annotation, cropDataUrl: undefined }),
+  },
+});
+
+const visualReviewForHeadless = (report: VisualReviewReport | null, options: VisualReviewPayloadOptions = {}) => {
+  if (!report) return null;
+  return {
+    version: report.version,
+    sourceDigest: report.sourceDigest,
+    createdAt: report.createdAt,
+    mapIds: report.mapIds,
+    profileIds: report.profileIds,
+    requiredCaptureCount: report.requiredCaptureCount,
+    verificationEligible: report.verificationEligible,
+    evidenceValid: report.evidenceValid,
+    doctorFindings: report.doctorFindings,
+    captures: report.captures.map((capture) => visualReviewCaptureForHeadless(capture, options)),
+    responsiveEvidence: report.responsiveEvidence,
+    runtimeJoinEvidence: report.runtimeJoinEvidence,
+  };
+};
+
+const cloneProject = (project: GameProject): GameProject =>
+  JSON.parse(JSON.stringify(project)) as GameProject;
+
+const compactProjectLibraryIteration = (iteration: GameProject["iteration"] | null | undefined): ProjectLibraryIterationSummary | null => iteration ? {
+  id: iteration.id,
+  parentId: iteration.parentId,
+  status: iteration.status,
+  track: iteration.track,
+  createdAt: iteration.createdAt,
+  readOnly: iteration.readOnly,
+} : null;
+
+const SHARED_PROJECT_ID_PATTERN = /^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$/;
+const sharedProjectLibraryId = (id: string) => `shared:${id}`;
+const projectLibraryId = (name: string): string => {
+  const slug = name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 48) || "project";
+  const suffix = typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+    ? crypto.randomUUID().slice(0, 8)
+    : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
+  return `${slug}-${suffix}`;
+};
+
+const makeProjectLibraryEntry = (project: GameProject, options: Partial<Omit<ProjectLibraryEntry, "project" | "name" | "updatedAt">> & { id?: string; name?: string } = {}): ProjectLibraryEntry => ({
+  id: options.id ?? projectLibraryId(options.name ?? project.name),
+  name: options.name ?? project.name,
+  origin: options.origin ?? "local",
+  sourceLabel: options.sourceLabel ?? "Local Looplab project",
+  folderName: options.folderName ?? null,
+  parentLibraryId: options.parentLibraryId ?? null,
+  updatedAt: new Date().toISOString(),
+  project: cloneProject(project),
+  storage: options.storage ?? "browser-cache",
+  sharedProjectId: options.sharedProjectId ?? null,
+  sharedSourceDigest: options.sharedSourceDigest ?? null,
+  sharedRevisionDigest: options.sharedRevisionDigest ?? null,
+  sharedBaseProject: options.sharedBaseProject ? cloneProject(options.sharedBaseProject) : null,
+  sharedProjectPath: options.sharedProjectPath ?? null,
+  sharedSyncStatus: options.sharedSyncStatus ?? (options.storage === "shared" ? "synced" : "local-only"),
+});
+
+const nextProjectVariationName = (baseName: string, existingNames: string[]): string => {
+  const normalizedBase = baseName.replace(/\s+—\s+Variation\s+\d+$/i, "").trim() || "Untitled Game";
+  const used = new Set(existingNames.map((name) => name.trim().toLowerCase()));
+  let number = 1;
+  while (used.has(`${normalizedBase} — Variation ${number}`.toLowerCase())) number += 1;
+  return `${normalizedBase} — Variation ${number}`;
+};
+
+const openProjectLibraryDatabase = (): Promise<IDBDatabase | null> => new Promise((resolve) => {
+  if (typeof indexedDB === "undefined") {
+    resolve(null);
+    return;
+  }
+  const request = indexedDB.open(PROJECT_LIBRARY_DB_NAME, 1);
+  request.onupgradeneeded = () => {
+    const database = request.result;
+    if (!database.objectStoreNames.contains(PROJECT_LIBRARY_STORE_NAME)) database.createObjectStore(PROJECT_LIBRARY_STORE_NAME, { keyPath: "id" });
+  };
+  request.onsuccess = () => resolve(request.result);
+  request.onerror = () => resolve(null);
+  request.onblocked = () => resolve(null);
+});
+
+const readProjectLibraryEntries = async (): Promise<ProjectLibraryEntry[]> => {
+  const database = await openProjectLibraryDatabase();
+  if (!database) return [];
+  return new Promise((resolve) => {
+    const transaction = database.transaction(PROJECT_LIBRARY_STORE_NAME, "readonly");
+    const request = transaction.objectStore(PROJECT_LIBRARY_STORE_NAME).getAll();
+    request.onsuccess = () => {
+      const entries = Array.isArray(request.result)
+        ? request.result.flatMap((entry): ProjectLibraryEntry[] => {
+          if (!entry || typeof entry.id !== "string" || typeof entry.name !== "string" || !entry.project || !Array.isArray(entry.project.objects)) return [];
+          return [{
+            ...entry,
+            storage: entry.storage === "shared" ? "shared" : "browser-cache",
+            sharedProjectId: typeof entry.sharedProjectId === "string" ? entry.sharedProjectId : null,
+            sharedSourceDigest: typeof entry.sharedSourceDigest === "string" ? entry.sharedSourceDigest : null,
+            sharedProjectPath: typeof entry.sharedProjectPath === "string" ? entry.sharedProjectPath : null,
+            sharedRevisionDigest: typeof entry.sharedRevisionDigest === "string" ? entry.sharedRevisionDigest : null,
+            sharedBaseProject: entry.sharedBaseProject && Array.isArray(entry.sharedBaseProject.objects) ? cloneProject(entry.sharedBaseProject) : null,
+            sharedSyncStatus: ["local-only", "pending", "synced", "conflict", "rebased", "offline"].includes(entry.sharedSyncStatus) ? entry.sharedSyncStatus : entry.storage === "shared" ? "synced" : "local-only",
+          } as ProjectLibraryEntry];
+        })
+        : [];
+      resolve(entries);
+    };
+    request.onerror = () => resolve([]);
+    transaction.oncomplete = () => database.close();
+    transaction.onabort = () => database.close();
+  });
+};
+
+const persistProjectLibraryEntry = async (entry: ProjectLibraryEntry): Promise<boolean> => {
+  const database = await openProjectLibraryDatabase();
+  if (!database) return false;
+  return new Promise((resolve) => {
+    const transaction = database.transaction(PROJECT_LIBRARY_STORE_NAME, "readwrite");
+    transaction.objectStore(PROJECT_LIBRARY_STORE_NAME).put(entry);
+    transaction.oncomplete = () => { database.close(); resolve(true); };
+    transaction.onerror = () => { database.close(); resolve(false); };
+    transaction.onabort = () => { database.close(); resolve(false); };
+  });
+};
+
+const parseEditableProject = (filename: string, contents: string): GameProject => {
+  const isHtml = filename.toLowerCase().endsWith(".html") || /^\s*<!doctype\s+html|^\s*<html\b/i.test(contents);
+  const imported = isHtml ? extractProjectFromHtml(contents) : { project: JSON.parse(contents), source: "looplab-json" };
+  const parsed = ensureBrowser2DProject(imported.project as GameProject, { migrateLegacyRenderer: true });
+  const validation = validateProject(parsed);
+  if (!validation.valid) throw new Error(validation.errors.join(" "));
+  return ensureMapModel(parsed);
+};
+
+const projectFoundation = (slug: string): Partial<GameProject> => {
+  const iterationId = `${slug}-v001`;
+  return {
+    schemaVersion: LOOPLAB_PROJECT_SCHEMA_VERSION,
+    projection: { type: "orthographic", tileWidth: 20, tileHeight: 20 },
+    packageBudgetBytes: 2_000_000,
+    doctorProfile: "prototype",
+    iteration: { id: iterationId, parentId: null, status: "candidate", track: "creation", objective: "Build a clear, playable first version", createdAt: new Date().toISOString(), readOnly: false },
+    build: { id: iterationId, sourceRevision: iterationId, generatedFromRevision: iterationId, sourceTimestamp: new Date().toISOString(), servedBuildId: iterationId },
+    workstreams: DEFAULT_WORKSTREAMS,
+    inputActions: [
+      { id: "move-left", label: "Move left", bindings: ["ArrowLeft", "KeyA"], animationState: "run", onboarding: true, replayEvent: true },
+      { id: "move-right", label: "Move right", bindings: ["ArrowRight", "KeyD"], animationState: "run", onboarding: true, replayEvent: true },
+      { id: "jump", label: "Jump", bindings: ["Space", "ArrowUp", "KeyW"], animationState: "jump", onboarding: true, replayEvent: true },
+      { id: "interact", label: "Interact / lock", bindings: ["KeyE"], animationState: "interact", onboarding: true, replayEvent: true },
+    ],
+    replay: { version: "1", tickRate: 60, seed: 1, cases: [] },
+    release: { externalRequests: [], debugMarkers: [], singleFile: true, networkFree: true, storageFree: true, runtimeBundleEmbedded: true, engineDelivery: "built-in-inline", moduleImports: [], assetLookupValidated: true },
+    performance: { targetP95FrameMs: 12 },
+    qualityContracts: DEFAULT_BROWSER_2D_CONTRACTS,
+    deviceProfiles: [
+      { id: "desktop", name: "Desktop", width: 1440, height: 900, touchTargetMin: 44 },
+      { id: "small-laptop", name: "Small laptop", width: 1024, height: 768, touchTargetMin: 44 },
+      { id: "portrait-390x844", name: "Portrait mobile", width: 390, height: 844, touchTargetMin: 44 },
+      { id: "dpr2-mobile", name: "DPR2 mobile", width: 390, height: 844, dpr: 2, touchTargetMin: 44 },
+    ],
+    lifecycle: { pauseOnBlur: true },
+    accessibility: { reducedMotion: true, canvasSemantics: true },
+    runtimeProfile: { dimension: "2d", framework: "canvas" },
+    movementTuning: { maxRunSpeed: 260, groundAcceleration: 2200, airAcceleration: 1200, groundFriction: 2600, jumpVelocity: 570, coyoteTicks: 6, jumpBufferTicks: 8, jumpCutVelocity: 235, apexGravityScale: 0.6, fallGravityScale: 1.45, apexThreshold: 86 },
+  };
+};
+
+const makeObject = (kind: ObjectKind, x: number, y: number): GameObject => {
+  const presets: Record<ObjectKind, Omit<GameObject, "id" | "x" | "y">> = {
+    player: {
+      name: "Player",
+      kind,
+      width: 44,
+      height: 58,
+      color: "#5b5cf0",
+      solid: false,
+      collider: { enabled: true, offsetX: 6, offsetY: 4, width: 32, height: 54, trigger: false, oneWay: false },
+    },
+    platform: {
+      name: "Platform",
+      kind,
+      width: 180,
+      height: 28,
+      color: "#202018",
+      solid: true,
+      collider: { enabled: true, offsetX: 0, offsetY: 0, width: 180, height: 28, trigger: false, oneWay: true },
+    },
+    coin: {
+      name: "Coin",
+      kind,
+      width: 30,
+      height: 30,
+      color: "#ffc928",
+      solid: false,
+      collider: { enabled: true, offsetX: 2, offsetY: 2, width: 26, height: 26, trigger: true, oneWay: false },
+    },
+    hazard: {
+      name: "Spikes",
+      kind,
+      width: 84,
+      height: 28,
+      color: "#ff5c3b",
+      solid: false,
+      collider: { enabled: true, offsetX: 0, offsetY: 0, width: 84, height: 28, trigger: true, oneWay: false },
+    },
+    decor: {
+      name: "Decoration",
+      kind,
+      width: 72,
+      height: 72,
+      color: "#96e6d2",
+      solid: false,
+      collider: { enabled: false, offsetX: 0, offsetY: 0, width: 72, height: 72, trigger: false, oneWay: false },
+    },
+    spawn: {
+      name: "Spawn point",
+      kind,
+      width: 42,
+      height: 64,
+      color: "#c8ff4d",
+      solid: false,
+      collider: { enabled: false, offsetX: 0, offsetY: 0, width: 42, height: 64, trigger: false, oneWay: false },
+    },
+    portal: {
+      name: "Map portal",
+      kind,
+      width: 52,
+      height: 76,
+      color: "#42cde3",
+      solid: false,
+      collider: { enabled: true, offsetX: 4, offsetY: 4, width: 44, height: 72, trigger: true, oneWay: false },
+      transition: "fade",
+    },
+    goal: {
+      name: "Goal",
+      kind,
+      width: 48,
+      height: 72,
+      color: "#c8ff4d",
+      solid: false,
+      collider: { enabled: true, offsetX: 4, offsetY: 4, width: 40, height: 68, trigger: true, oneWay: false },
+    },
+  };
+
+  const object = { id: uid(), x, y, z: 0, supportZ: 0, anchorMode: "ground" as const, collisionOwner: "authored-map" as const, ...presets[kind] };
+  if (object.collider) object.collider = { ...object.collider, zMin: 0, zMax: 1 };
+  return object;
+};
+
+const fitColliderToObject = (object: GameObject): GameObject => {
+  return { ...object, collider: authoredColliderForPlacement(object) as Collider };
+};
+
+const platformerStarter = (): GameProject => createTemplate("platformer") as GameProject;
+
+const topDownStarter = (): GameProject => ({
+  ...projectFoundation("topdown"),
+  name: "Tiny Quest",
+  width: 960,
+  height: 540,
+  background: "#dff0c7",
+  gravity: 0,
+  grid: 24,
+  controlMode: "topdown",
+  assets: [],
+  objects: [
+    { ...makeObject("player", 450, 236), name: "Explorer", width: 46, height: 46, color: "#5147df" },
+    { ...makeObject("platform", 92, 76), name: "North wall", width: 776, height: 24 },
+    { ...makeObject("platform", 92, 440), name: "South wall", width: 776, height: 24 },
+    { ...makeObject("platform", 92, 100), name: "West wall", width: 24, height: 340 },
+    { ...makeObject("platform", 844, 100), name: "East wall", width: 24, height: 340 },
+    { ...makeObject("platform", 300, 200), name: "Stone block", width: 110, height: 70, color: "#315d54" },
+    { ...makeObject("platform", 580, 300), name: "Stone block", width: 110, height: 70, color: "#315d54" },
+    { ...makeObject("coin", 182, 150), name: "Relic A", color: "#ffbd24" },
+    { ...makeObject("coin", 748, 354), name: "Relic B", color: "#ffbd24" },
+    { ...makeObject("hazard", 460, 120), name: "Danger zone", width: 100, height: 36 },
+    { ...makeObject("spawn", 450, 236), name: "Start" },
+    { ...makeObject("goal", 760, 144), name: "Quest marker", width: 44, height: 58 },
+  ].map(fitColliderToObject),
+});
+
+const blankStarter = (): GameProject => ({
+  ...projectFoundation("blank"),
+  name: "Untitled Game",
+  width: 960,
+  height: 540,
+  background: "#f4ecd8",
+  gravity: 1500,
+  grid: 20,
+  controlMode: "platformer",
+  assets: [],
+  objects: [
+    { ...makeObject("player", 120, 402), name: "Player" },
+    { ...makeObject("platform", 0, 520), name: "Ground", width: 960, height: 20 },
+    { ...makeObject("spawn", 86, 410), name: "Spawn point" },
+  ].map(fitColliderToObject),
+});
+
+const kineticCityStarter = (): GameProject => {
+  const brief = composeDirectedGameBrief({
+    userPrompt: "A stylish rollerblading courier crosses two connected city districts, chains authored rails, collects momentum tokens, and reaches a clear night-route finish.",
+    genre: "skating-tricks",
+    coreLoop: "traverse-chain-score",
+    movementTemplate: "kinetic-runner",
+    format: "connected-rooms",
+    progression: "score-attack",
+  }) as DirectedBrief;
+  return buildKineticCityScaffold({ ...platformerStarter(), ...projectFoundation("kinetic") }, brief) as GameProject;
+};
+
+const mapFromProject = (project: GameProject, id: string, name: string): GameMap => {
+  const existing = project.maps?.find((map) => map.id === id);
+  return {
+    id,
+    name,
+    width: project.width,
+    height: project.height,
+    background: project.background,
+    gravity: project.gravity,
+    grid: project.grid,
+    controlMode: project.controlMode,
+    projection: project.projection,
+    navigation: createNavigationModel(project.navigation) as NavigationModel,
+    objects: project.objects,
+    traversalPaths: project.traversalPaths ?? existing?.traversalPaths ?? [],
+    collisionGeometry: project.collisionGeometry ?? existing?.collisionGeometry,
+    tileProgram: project.tileProgram ?? existing?.tileProgram,
+    clearanceZones: project.clearanceZones ?? existing?.clearanceZones,
+    hudSafeAreas: project.hudSafeAreas ?? existing?.hudSafeAreas,
+    maxInteractionGap: project.maxInteractionGap ?? existing?.maxInteractionGap,
+    interactionPolicy: project.interactionPolicy ?? existing?.interactionPolicy,
+  };
+};
+
+const ensureMapModel = (project: GameProject): GameProject => {
+  project = ensureBrowser2DProject(project);
+  if (project.maps?.length && project.activeMapId && project.maps.some((map) => map.id === project.activeMapId)) {
+    const startMapId = project.maps.some((map) => map.id === project.startMapId) ? project.startMapId : project.maps[0].id;
+    return startMapId === project.startMapId ? project : { ...project, startMapId };
+  }
+  const id = project.activeMapId ?? "map-main";
+  return { ...project, activeMapId: id, startMapId: project.startMapId ?? id, maps: [mapFromProject(project, id, "Main map")] };
+};
+
+const syncActiveMap = (project: GameProject): GameProject => {
+  const ensured = ensureMapModel(project);
+  const activeId = ensured.activeMapId as string;
+  const existing = ensured.maps?.find((map) => map.id === activeId);
+  const snapshot = mapFromProject(ensured, activeId, existing?.name ?? "Map");
+  return { ...ensured, maps: ensured.maps?.map((map) => map.id === activeId ? snapshot : map) };
+};
+
+const INITIAL_KINETIC_CITY_PROJECT = kineticCityStarter();
+const INITIAL_KINETIC_CITY_DOCTOR_PROJECT = syncActiveMap(INITIAL_KINETIC_CITY_PROJECT);
+const INITIAL_KINETIC_CITY_DOCTOR_REPORT = analyzeProject(INITIAL_KINETIC_CITY_DOCTOR_PROJECT);
+const INITIAL_KINETIC_CITY_RELEASE_REPORT = INITIAL_KINETIC_CITY_DOCTOR_REPORT.profile === "production"
+  ? INITIAL_KINETIC_CITY_DOCTOR_REPORT
+  : analyzeProject(INITIAL_KINETIC_CITY_DOCTOR_PROJECT, { profile: "production" });
+
+const activateMap = (project: GameProject, mapId: string): GameProject => {
+  const synced = syncActiveMap(project);
+  const target = synced.maps?.find((map) => map.id === mapId);
+  if (!target) return synced;
+  return {
+    ...synced,
+    activeMapId: target.id,
+    width: target.width,
+    height: target.height,
+    background: target.background,
+    gravity: target.gravity,
+    grid: target.grid,
+    controlMode: target.controlMode,
+    projection: target.projection ?? synced.projection,
+    navigation: createNavigationModel(target.navigation) as NavigationModel,
+    objects: target.objects,
+    traversalPaths: target.traversalPaths ?? [],
+    collisionGeometry: target.collisionGeometry,
+    tileProgram: target.tileProgram,
+    clearanceZones: target.clearanceZones,
+    hudSafeAreas: target.hudSafeAreas,
+    maxInteractionGap: target.maxInteractionGap,
+    interactionPolicy: target.interactionPolicy,
+  };
+};
+
+const objectMeta: Record<ObjectKind, { label: string; glyph: string; description: string }> = {
+  player: { label: "Player", glyph: "P", description: "Keyboard-controlled hero" },
+  platform: { label: "Platform", glyph: "▰", description: "Solid collision surface" },
+  coin: { label: "Collectible", glyph: "●", description: "Adds to the score" },
+  hazard: { label: "Hazard", glyph: "▲", description: "Returns player to spawn" },
+  decor: { label: "Decoration", glyph: "✦", description: "Visual, non-solid shape" },
+  spawn: { label: "Spawn", glyph: "◎", description: "Player reset position" },
+  portal: { label: "Portal", glyph: "↗", description: "Links to another map and spawn" },
+  goal: { label: "Goal", glyph: "⚑", description: "Completes the current game" },
+};
+
+const collisionBox = (object: GameObject) => {
+  if (object.collider?.enabled === false) return null;
+  const collider: Collider = object.collider ?? { enabled: true, offsetX: 0, offsetY: 0, width: object.width, height: object.height, trigger: false, oneWay: false };
+  return {
+    x: object.x + collider.offsetX,
+    y: object.y + collider.offsetY,
+    width: collider.width,
+    height: collider.height,
+    zMin: collider.zMin ?? object.z ?? 0,
+    zMax: collider.zMax ?? (object.z ?? 0) + (object.collisionHeight ?? 1),
+  };
+};
+
+const objectScreenPlacement = (object: GameObject | RuntimeObject, projection: ProjectionContract, assets: GeneratedAsset[] = []) => {
+  if (projection.type !== "dimetric-2:1") return { x: object.x, y: object.y };
+  const anchor = groundAnchorOffset(object, assets);
+  const screen = worldToScreen({ x: object.x + anchor.x, y: object.y + anchor.y, z: object.z ?? 0 }, projection);
+  return { x: screen.x - anchor.x, y: screen.y - anchor.y };
+};
+
+const objectScreenRect = (object: GameObject | RuntimeObject, projection: ProjectionContract, assets: GeneratedAsset[] = []) => {
+  const placement = objectScreenPlacement(object, projection, assets);
+  return { x: placement.x, y: placement.y, width: object.width, height: object.height };
+};
+
+const pointInsideRect = (point: { x: number; y: number }, rect: { x: number; y: number; width: number; height: number }) =>
+  point.x >= rect.x && point.x <= rect.x + rect.width && point.y >= rect.y && point.y <= rect.y + rect.height;
+
+const pointInsidePolygon = (point: { x: number; y: number }, polygon: Array<{ x: number; y: number }>) => {
+  let inside = false;
+  for (let first = 0, second = polygon.length - 1; first < polygon.length; second = first, first += 1) {
+    const a = polygon[first];
+    const b = polygon[second];
+    const crosses = (a.y > point.y) !== (b.y > point.y)
+      && point.x < ((b.x - a.x) * (point.y - a.y)) / ((b.y - a.y) || Number.EPSILON) + a.x;
+    if (crosses) inside = !inside;
+  }
+  return inside;
+};
+
+const strokeProjectedPolygon = (context: CanvasRenderingContext2D, points: Array<{ x: number; y: number }>) => {
+  if (!points.length) return;
+  context.beginPath();
+  context.moveTo(points[0].x, points[0].y);
+  points.slice(1).forEach((point) => context.lineTo(point.x, point.y));
+  context.closePath();
+};
+
+function downloadFile(contents: string, filename: string, type: string) {
+  const blob = new Blob([contents], { type });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+function pixelsToDataUrl(generated: { width: number; height: number; pixels: Uint8ClampedArray }) {
+  const canvas = document.createElement("canvas");
+  canvas.width = generated.width;
+  canvas.height = generated.height;
+  const context = canvas.getContext("2d");
+  if (!context) throw new Error("Canvas is unavailable.");
+  const pixels = new Uint8ClampedArray(generated.pixels.length);
+  pixels.set(generated.pixels);
+  context.putImageData(new ImageData(pixels, generated.width, generated.height), 0, 0);
+  return canvas.toDataURL("image/png");
+}
+
+function downloadDataUrl(dataUrl: string, filename: string) {
+  const link = document.createElement("a");
+  link.href = dataUrl;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+}
+
+function blobToDataUrl(blob: Blob) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error ?? new Error("The selected pack file could not be read."));
+    reader.readAsDataURL(blob);
+  });
+}
+
+async function pixelFrameFromDataUrl(dataUrl: string) {
+  try {
+    const image = new Image();
+    image.src = dataUrl;
+    await image.decode();
+    if (!image.naturalWidth || !image.naturalHeight) return null;
+    const canvas = document.createElement("canvas");
+    canvas.width = image.naturalWidth;
+    canvas.height = image.naturalHeight;
+    const context = canvas.getContext("2d", { willReadFrequently: true });
+    if (!context) return null;
+    context.imageSmoothingEnabled = false;
+    context.drawImage(image, 0, 0);
+    return { width: canvas.width, height: canvas.height, pixels: context.getImageData(0, 0, canvas.width, canvas.height).data };
+  } catch {
+    return null;
+  }
+}
+
+function intersectVisualRects(first: { x: number; y: number; width: number; height: number }, second: { x: number; y: number; width: number; height: number }) {
+  const left = Math.max(first.x, second.x);
+  const top = Math.max(first.y, second.y);
+  const right = Math.min(first.x + first.width, second.x + second.width);
+  const bottom = Math.min(first.y + first.height, second.y + second.height);
+  return right > left && bottom > top ? { x: left, y: top, width: right - left, height: bottom - top } : null;
+}
+
+function visualAnnotationStyle(annotation: VisualReviewAnnotation) {
+  if (annotation.severity === "error") return { color: "#ff6b6b", dash: [] as number[] };
+  if (annotation.severity === "warning") return { color: "#ffb000", dash: [10, 5] };
+  return { color: "#22b8cf", dash: [3, 4] };
+}
+
+function drawVisualAnnotation(context: CanvasRenderingContext2D, annotation: VisualReviewAnnotation, offsetX = 0, offsetY = 0, scale = 1) {
+  const bounds = annotation.bounds;
+  const x = (bounds.x - offsetX) * scale;
+  const y = (bounds.y - offsetY) * scale;
+  const width = bounds.width * scale;
+  const height = bounds.height * scale;
+  const style = visualAnnotationStyle(annotation);
+  context.save();
+  context.lineWidth = Math.max(2, 3 * scale);
+  context.strokeStyle = "rgba(31,32,36,.92)";
+  context.setLineDash([]);
+  context.strokeRect(x, y, width, height);
+  context.lineWidth = Math.max(1, 1.5 * scale);
+  context.strokeStyle = style.color;
+  context.setLineDash(style.dash.map((value) => value * scale));
+  context.strokeRect(x, y, width, height);
+  context.setLineDash([]);
+  const badgeSize = Math.max(16, 20 * scale);
+  const badgeX = Math.max(0, x);
+  const badgeY = Math.max(0, y - badgeSize);
+  context.fillStyle = "#25262b";
+  context.fillRect(badgeX, badgeY, badgeSize, badgeSize);
+  context.strokeStyle = style.color;
+  context.lineWidth = Math.max(1, scale);
+  context.strokeRect(badgeX, badgeY, badgeSize, badgeSize);
+  context.fillStyle = "#ffffff";
+  context.font = `800 ${Math.max(10, 11 * scale)}px ui-monospace, monospace`;
+  context.textAlign = "center";
+  context.textBaseline = "middle";
+  context.fillText(String(annotation.number), badgeX + badgeSize / 2, badgeY + badgeSize / 2);
+  context.restore();
+}
+
+function annotatedVisualDataUrl(source: HTMLCanvasElement, annotations: VisualReviewAnnotation[]) {
+  const annotated = document.createElement("canvas");
+  annotated.width = source.width;
+  annotated.height = source.height;
+  const context = annotated.getContext("2d");
+  if (!context) return source.toDataURL("image/png");
+  context.imageSmoothingEnabled = false;
+  context.drawImage(source, 0, 0);
+  for (const annotation of annotations) drawVisualAnnotation(context, annotation);
+  return annotated.toDataURL("image/png");
+}
+
+function visualAnnotationCropDataUrl(source: HTMLCanvasElement, annotation: VisualReviewAnnotation) {
+  const padding = 16;
+  const left = Math.max(0, Math.floor(annotation.bounds.x - padding));
+  const top = Math.max(0, Math.floor(annotation.bounds.y - padding));
+  const right = Math.min(source.width, Math.ceil(annotation.bounds.x + annotation.bounds.width + padding));
+  const bottom = Math.min(source.height, Math.ceil(annotation.bounds.y + annotation.bounds.height + padding));
+  const sourceWidth = Math.max(1, right - left);
+  const sourceHeight = Math.max(1, bottom - top);
+  const scale = Math.max(0.25, Math.min(2, 360 / sourceWidth, 240 / sourceHeight));
+  const crop = document.createElement("canvas");
+  crop.width = Math.max(1, Math.round(sourceWidth * scale));
+  crop.height = Math.max(1, Math.round(sourceHeight * scale));
+  const context = crop.getContext("2d");
+  if (!context) return undefined;
+  context.imageSmoothingEnabled = false;
+  context.drawImage(source, left, top, sourceWidth, sourceHeight, 0, 0, crop.width, crop.height);
+  drawVisualAnnotation(context, annotation, left, top, scale);
+  return crop.toDataURL("image/png");
+}
+
+async function fetchInstalledPackManifest() {
+  const response = await fetch("/asset-packs/manifest.json", { cache: "no-store" });
+  if (!response.ok) throw new Error(`Installed pack manifest is unavailable (${response.status}).`);
+  return await response.json() as AssetPackManifest;
+}
+
+async function fetchInstalledPackIndex(packId: string) {
+  if (!CC0_ASSET_PACKS.some((pack) => pack.id === packId)) throw new Error(`Unknown asset pack: ${packId}`);
+  const response = await fetch(`/asset-packs/index/${encodeURIComponent(packId)}.json`, { cache: "no-store" });
+  if (!response.ok) throw new Error(`Installed pack index is unavailable (${response.status}).`);
+  return await response.json() as AssetPackIndex;
+}
+
+function sourceReferenceForPackAsset(index: AssetPackIndex, asset: InstalledPackAsset): AssetSourceReference {
+  return {
+    packId: index.pack.id,
+    assetId: asset.id,
+    archiveId: asset.archiveId,
+    path: asset.path,
+    sourceUrl: index.pack.sourceUrl,
+    license: "CC0-1.0",
+    licenseUrl: index.pack.licenseUrl,
+    verifiedAt: index.pack.verifiedAt,
+  };
+}
+
+async function importInstalledPackAsset(index: AssetPackIndex, asset: InstalledPackAsset) {
+  if (!asset.selectable || !asset.url) throw new Error(`${asset.name} is archive-only and cannot be imported directly.`);
+  const response = await fetch(asset.url);
+  if (!response.ok) throw new Error(`Could not read ${asset.name} (${response.status}).`);
+  const blob = await response.blob();
+  const dataUrl = await blobToDataUrl(blob);
+  const source = sourceReferenceForPackAsset(index, asset);
+  if (asset.kind !== "image") {
+    const resource: ProjectResource = {
+      id: `resource-${uid()}`,
+      name: asset.name,
+      kind: asset.kind === "source" ? "document" : asset.kind,
+      mimeType: asset.mimeType,
+      dataUrl,
+      bytes: asset.bytes,
+      source,
+    };
+    return { resource, asset: null };
+  }
+
+  const tileLike = index.pack.categories.some((category) => ["tileset", "textures"].includes(category));
+  const role = index.pack.categories.includes("characters")
+    ? "hero"
+    : index.pack.categories.some((category) => ["icons", "user-interface"].includes(category))
+      ? "ui"
+      : index.pack.categories.includes("backgrounds")
+        ? "effect"
+        : "prop";
+  const width = asset.width ?? 1;
+  const height = asset.height ?? 1;
+  const usesGroundAnchor = role !== "ui" && role !== "effect";
+  const generated: GeneratedAsset = {
+    id: `pack-${uid()}`,
+    name: asset.name.replace(/\.[^.]+$/, ""),
+    type: tileLike ? "tileset" : "sprite",
+    dataUrl,
+    width,
+    height,
+    frameWidth: width,
+    frameHeight: height,
+    frames: 1,
+    columns: 1,
+    anchorX: usesGroundAnchor ? 0.5 : 0.5,
+    anchorY: usesGroundAnchor ? 1 : 0.5,
+    collisionPolicy: "authored-only",
+    anchorMode: usesGroundAnchor ? "ground" : "center",
+    invariants: { sourcePack: index.pack.id, paletteSourcePreserved: true, groundAnchor: usesGroundAnchor, authoredCollisionOnly: true },
+    analysis: { decodedMemoryBytes: width * height * 4, sourceSha256: asset.sha256, failedInvariants: [] },
+    generator: { kind: role, imported: true, packId: index.pack.id, archiveId: asset.archiveId },
+    source,
+  };
+  return { asset: generated, resource: null };
+}
+
+function signatureFromCanvas(source: HTMLCanvasElement, region: { x: number; y: number; width: number; height: number }) {
+  const sample = document.createElement("canvas");
+  sample.width = 8;
+  sample.height = 8;
+  const context = sample.getContext("2d", { willReadFrequently: true });
+  if (!context) return [];
+  context.drawImage(source, region.x, region.y, region.width, region.height, 0, 0, 8, 8);
+  const pixels = context.getImageData(0, 0, 8, 8).data;
+  const signature: number[] = [];
+  for (let index = 0; index < pixels.length; index += 4) {
+    signature.push(Math.round((pixels[index] + pixels[index + 1] + pixels[index + 2]) / 3));
+  }
+  return signature;
+}
+
+async function signatureFromDataUrl(dataUrl: string) {
+  const image = new Image();
+  image.src = dataUrl;
+  await image.decode();
+  const canvas = document.createElement("canvas");
+  canvas.width = image.naturalWidth;
+  canvas.height = image.naturalHeight;
+  const context = canvas.getContext("2d");
+  if (!context) return [];
+  context.drawImage(image, 0, 0);
+  return signatureFromCanvas(canvas, { x: 0, y: 0, width: canvas.width, height: canvas.height });
+}
+
+function ModalShell({ children, dismissLabel, onDismiss }: { children: ReactNode; dismissLabel: string; onDismiss: () => void }) {
+  return (
+    <div className="modal-backdrop">
+      <button type="button" className="modal-dismiss-layer" aria-label={dismissLabel} onClick={onDismiss} />
+      {children}
+    </div>
+  );
+}
+
+function PreviewInputButton({
+  action,
+  label,
+  children,
+  onInput,
+  className = "",
+}: {
+  action: "left" | "right" | "up" | "down" | "jump" | "interact";
+  label: string;
+  children: ReactNode;
+  onInput: (action: string, pressed: boolean) => void;
+  className?: string;
+}) {
+  const press = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    onInput(action, true);
+  };
+  const release = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    onInput(action, false);
+  };
+  const keyDown = (event: ReactKeyboardEvent<HTMLButtonElement>) => {
+    if (event.code !== "Space" && event.code !== "Enter") return;
+    event.preventDefault();
+    if (!event.repeat) onInput(action, true);
+  };
+  const keyUp = (event: ReactKeyboardEvent<HTMLButtonElement>) => {
+    if (event.code !== "Space" && event.code !== "Enter") return;
+    event.preventDefault();
+    onInput(action, false);
+  };
+  return (
+    <button
+      type="button"
+      className={`preview-input ${className}`.trim()}
+      aria-label={label}
+      onPointerDown={press}
+      onPointerUp={release}
+      onPointerCancel={release}
+      onLostPointerCapture={() => onInput(action, false)}
+      onKeyDown={keyDown}
+      onKeyUp={keyUp}
+      onContextMenu={(event) => event.preventDefault()}
+    >
+      {children}
+    </button>
+  );
+}
+
+const commandMacroRegistry = listCommandMacros();
+const agentPlaybookRegistry = listAgentRecipes({ status: "all", limit: 50 });
+const builderBenchmarkRegistry = listBuilderBenchmarks({ limit: 24 }) as BuilderBenchmarkRegistryRef;
+
+function defaultCommandMacroParameters(project: GameProject, macroId: string) {
+  const maps = project.maps?.length ? project.maps : [{
+    id: project.activeMapId ?? "map-main",
+    name: project.name,
+    width: project.width,
+    height: project.height,
+    objects: project.objects,
+  } as GameMap];
+  const activeMap = maps.find((map) => map.id === project.activeMapId) ?? maps[0];
+  if (macroId === "protect-completion-witness") return {};
+  if (macroId === "connect-maps-round-trip") {
+    const source = activeMap;
+    const target = maps.find((map) => map.id !== source.id) ?? maps[1];
+    const targetId = target?.id ?? "map-two";
+    const targetSpawn = target?.objects.find((object) => object.kind === "spawn")?.id ?? `${targetId}-entry-from-${source.id}`;
+    const sourceSpawn = source.objects.find((object) => object.kind === "spawn")?.id ?? `${source.id}-entry-from-${targetId}`;
+    return {
+      sourceMapId: source.id,
+      targetMapId: targetId,
+      forwardPortalId: `${source.id}-to-${targetId}`,
+      returnPortalId: `${targetId}-to-${source.id}`,
+      forwardTargetSpawnId: targetSpawn,
+      returnTargetSpawnId: sourceSpawn,
+      transition: "fade",
+      runtimeJoin: true,
+    };
+  }
+  const propCount = maps.flatMap((map) => map.objects).filter((object) => object.role === "prop").length;
+  const width = 48;
+  const height = 80;
+  return {
+    mapId: activeMap.id,
+    objectId: `supported-prop-${propCount + 1}`,
+    name: `Supported prop ${propCount + 1}`,
+    x: Math.max(0, activeMap.width - 176),
+    y: Math.max(0, activeMap.height - 180),
+    width,
+    height,
+    footprint: { offsetX: 8, offsetY: 58, width: 32, height: 22, collisionHeight: 1 },
+    groundAnchor: { offsetX: width / 2, offsetY: height },
+    supportMode: "auto",
+    supportTolerance: 2,
+    cullingPadding: 16,
+  };
+}
+
+export default function Home() {
+  const providerParityContract = useMemo(() => getAgentManifest().providerParity, []);
+  const [project, setProject] = useState<GameProject>(() => cloneProject(INITIAL_KINETIC_CITY_PROJECT));
+  const [doctorCache, setDoctorCache] = useState(() => ({
+    sourceProject: project,
+    project: syncActiveMap(project),
+    report: INITIAL_KINETIC_CITY_DOCTOR_REPORT,
+    releaseReport: INITIAL_KINETIC_CITY_RELEASE_REPORT,
+    analyzedAt: "bootstrap",
+  }));
+  const doctorAnalysisPending = doctorCache.sourceProject !== project;
+  const doctorAnalysisSequenceRef = useRef(0);
+  useEffect(() => {
+    if (doctorCache.sourceProject === project) {
+
+      return;
+    }
+    const sequence = ++doctorAnalysisSequenceRef.current;
+    const snapshot = syncActiveMap(project);
+    let cancelled = false;
+
+    const timeoutId = window.setTimeout(() => {
+      const report = analyzeProject(snapshot);
+      const releaseReport = report.profile === "production" ? report : analyzeProject(snapshot, { profile: "production" });
+      if (cancelled || sequence !== doctorAnalysisSequenceRef.current) return;
+      setDoctorCache({ sourceProject: project, project: snapshot, report, releaseReport, analyzedAt: new Date().toISOString() });
+
+    }, 120);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeoutId);
+    };
+  }, [doctorCache.sourceProject, project]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [mode, setMode] = useState<WorkspaceMode>("edit");
+  const [experienceMode, setExperienceMode] = useState<ExperienceMode>("director");
+  const [mapStudioFocused, setMapStudioFocused] = useState(false);
+  const [mobileTab, setMobileTab] = useState<MobileTab>("stage");
+  const [previewFocus, setPreviewFocusState] = useState(false);
+  const previewFocusRef = useRef(false);
+  const setPreviewFocusMode = useCallback((focused: boolean) => {
+    previewFocusRef.current = focused;
+    setPreviewFocusState(focused);
+  }, []);
+  const enterPreview = useCallback((focused = true) => {
+    setPreviewFocusMode(focused);
+    setMode("play");
+    setMobileTab("stage");
+  }, [setPreviewFocusMode]);
+  const exitPreview = useCallback(() => {
+    setPreviewFocusMode(false);
+    setMode("edit");
+  }, [setPreviewFocusMode]);
+  const [zoom, setZoom] = useState(0.86);
+  const [showColliders, setShowColliders] = useState(false);
+  const [showPaths, setShowPaths] = useState(true);
+  const [selectedPathId, setSelectedPathId] = useState<string | null>(null);
+  const [selectedPathPointIndex, setSelectedPathPointIndex] = useState<number | null>(null);
+  const [selectedCollisionChainId, setSelectedCollisionChainId] = useState<string | null>(null);
+  const [collisionChainDraft, setCollisionChainDraft] = useState<CollisionChainDraft | null>(null);
+  const [collisionChainRole, setCollisionChainRole] = useState<CollisionGeometryChain["role"]>("auto");
+  const [collisionChainOneWay, setCollisionChainOneWay] = useState(false);
+  const [mapTool, setMapTool] = useState<MapTool>("select");
+  const [tileBrushMode, setTileBrushMode] = useState<TileBrushMode>("paint-tile");
+  const [selectedTileLayerId, setSelectedTileLayerId] = useState("");
+  const [selectedTileCollisionLayerId, setSelectedTileCollisionLayerId] = useState("");
+  const [selectedTileId, setSelectedTileId] = useState("");
+  const [selectedTerrainId, setSelectedTerrainId] = useState("");
+  const [selectedTileCollisionProfileId, setSelectedTileCollisionProfileId] = useState("");
+  const [editorElevation, setEditorElevation] = useState(0);
+  const [selectedNavigationNodeId, setSelectedNavigationNodeId] = useState<string | null>(null);
+  const [selectedAuthoredRouteActorId, setSelectedAuthoredRouteActorId] = useState<string | null>(null);
+  const [selectedNavigationLinkId, setSelectedNavigationLinkId] = useState<string | null>(null);
+  const [selectedNavigationAreaId, setSelectedNavigationAreaId] = useState<string | null>(null);
+  const [navigationChainNodeId, setNavigationChainNodeId] = useState<string | null>(null);
+  const [navigationAreaDraft, setNavigationAreaDraft] = useState<NavigationAreaDraft | null>(null);
+  const [navigationTest, setNavigationTest] = useState<NavigationTestState>({ from: null, to: null, result: null });
+  const [showTemplates, setShowTemplates] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
+  const [showAssetLab, setShowAssetLab] = useState(false);
+  const [assetLabTab, setAssetLabTab] = useState<AssetLabTab>("tiles");
+  const [assetLibraryCategory, setAssetLibraryCategory] = useState<AssetLibraryCategoryId>("tileset");
+  const [assetPackManifest, setAssetPackManifest] = useState<AssetPackManifest | null>(null);
+  const [assetPackManifestError, setAssetPackManifestError] = useState<string | null>(null);
+  const [selectedAssetPackId, setSelectedAssetPackId] = useState<string | null>(null);
+  const [selectedAssetPackIndex, setSelectedAssetPackIndex] = useState<AssetPackIndex | null>(null);
+  const [assetPackLoading, setAssetPackLoading] = useState(false);
+  const [assetPackSearch, setAssetPackSearch] = useState("");
+  const [assetPackKindFilter, setAssetPackKindFilter] = useState<"all" | InstalledPackAsset["kind"]>("all");
+  const [assetPackPage, setAssetPackPage] = useState(0);
+  const [selectedPackAssetIds, setSelectedPackAssetIds] = useState<string[]>([]);
+  const [focusedPackAssetId, setFocusedPackAssetId] = useState<string | null>(null);
+  const [assetPackImporting, setAssetPackImporting] = useState(false);
+  const [generatorSeed, setGeneratorSeed] = useState("looplab-01");
+  const [tileTheme, setTileTheme] = useState("meadow");
+  const [tileSize, setTileSize] = useState(32);
+  const [selectedTileFrame, setSelectedTileFrame] = useState(0);
+  const [spriteKind, setSpriteKind] = useState<SpriteKind>("hero");
+  const [spritePalette, setSpritePalette] = useState("violet");
+  const [spriteSize, setSpriteSize] = useState(32);
+  const [generatedAsset, setGeneratedAsset] = useState<GeneratedAsset | null>(null);
+  const [assetGenerationMode, setAssetGenerationMode] = useState<AssetGenerationMode>("local");
+  const [aiArtPrompt, setAiArtPrompt] = useState("A polished, readable game asset with a distinctive silhouette and cohesive material detail.");
+  const [aiArtActions, setAiArtActions] = useState("idle\nmove-contact\nmove-pass\nmove-recoil");
+  const [aiArtQuality, setAiArtQuality] = useState<"low" | "medium" | "high">("medium");
+  const [aiArtBackground, setAiArtBackground] = useState<"transparent" | "light-neutral-gray">("transparent");
+  const [assetPreviewSurface, setAssetPreviewSurface] = useState<"checker" | "light" | "dark">("checker");
+  const [aiArtUseVisualIdentity, setAiArtUseVisualIdentity] = useState(true);
+  const [aiArtReferenceConsent, setAiArtReferenceConsent] = useState(false);
+  const [aiArtRunning, setAiArtRunning] = useState(false);
+  const [aiArtJob, setAiArtJob] = useState<AiArtJobDescriptor | null>(null);
+  const [aiArtUsage, setAiArtUsage] = useState<UsageReceipt | null>(null);
+  const [toast, setToast] = useState("Autosaved on this device");
+  const [lastExportReceipt, setLastExportReceipt] = useState<ExportReceipt | null>(null);
+  const [exportPreviewHtml, setExportPreviewHtml] = useState("");
+  const [showExportPreview, setShowExportPreview] = useState(false);
+  const [ready, setReady] = useState(false);
+  const [runtimeTick, setRuntimeTick] = useState(0);
+  const [previewWon, setPreviewWon] = useState(false);
+  const [previewPaused, setPreviewPaused] = useState(false);
+  const [previewPerformance, setPreviewPerformance] = useState({ currentFrameMs: 0, p95FrameMs: 0, fixedStepCount: 0, droppedCatchUpEvents: 0, longFrames: 0 });
+  const [runtimeState, setRuntimeState] = useState<RuntimeState>(() => ({
+    activeMapId: project.activeMapId ?? "map-main",
+    mapName: "Main map",
+    width: project.width,
+    height: project.height,
+    background: project.background,
+    gravity: project.gravity,
+    controlMode: project.controlMode,
+    projection: project.projection,
+    collectedCount: 0,
+    gameplayRevision: 0,
+    variables: {},
+    completedRuleIds: [],
+    won: false,
+  }));
+  const [runtimeChoiceState, setRuntimeChoiceState] = useState<RuntimeChoiceState | null>(null);
+  const [runtimeHudState, setRuntimeHudState] = useState<RuntimeHudBinding[]>([]);
+  const [previewTransition, setPreviewTransition] = useState<PreviewTransition | null>(null);
+  const [assetRenderTick, setAssetRenderTick] = useState(0);
+  const [aiBrief, setAiBrief] = useState(project.designBrief?.userPrompt ?? "Build a polished, replayable 2D game with a clear route, cohesive art, fair collision, and a satisfying finish.");
+  const [directorWorkspaceTab, setDirectorWorkspaceTab] = useState<DirectorWorkspaceTab>("build");
+  const [gameGenre, setGameGenre] = useState(project.designBrief?.genre ?? "auto");
+  const [coreGameLoop, setCoreGameLoop] = useState(project.designBrief?.coreLoop ?? "auto");
+  const [movementTemplate, setMovementTemplate] = useState(project.designBrief?.movementTemplate ?? "auto");
+  const [gameFormat, setGameFormat] = useState(project.designBrief?.format ?? "auto");
+  const [progressionMode, setProgressionMode] = useState(project.designBrief?.progression ?? "auto");
+  const [campaignScope, setCampaignScope] = useState(project.designBrief?.campaignScope ?? "auto");
+  const [promptVariant, setPromptVariant] = useState(project.designBrief?.promptVariant ?? "");
+  const [providerPromptDraft, setProviderPromptDraft] = useState<ProviderPromptDraft | null>(() => project.designBrief?.promptGeneration ? { ...project.designBrief.promptGeneration, prompt: project.designBrief.composedPrompt } as ProviderPromptDraft : null);
+  const [promptGenerating, setPromptGenerating] = useState(false);
+  const [aiProvider, setAiProvider] = useState<AgentProvider>("codex");
+  const [aiTrack, setAiTrack] = useState("creation");
+  const [runtimePreference, setRuntimePreference] = useState<"auto" | "canvas" | "phaser" | "pixi" | "melon">("auto");
+  const [loopEnabled, setLoopEnabled] = useState(false);
+  const [loopStrategy, setLoopStrategy] = useState<LoopStrategy>("improve");
+  const [loopIterations, setLoopIterations] = useState(5);
+  const [loopStopScore, setLoopStopScore] = useState(95);
+  const [loopEvaluationProfile, setLoopEvaluationProfile] = useState<LoopEvaluationProfile>("auto");
+  const [providerContextBudgetTokens, setProviderContextBudgetTokens] = useState(96_000);
+  const [loopConditions, setLoopConditions] = useState("Core loop is understandable, responsive, and complete\nRoutes, collision, anchors, supports, depth, and visible geometry agree\nPlayer, goals, hazards, rewards, and traversable surfaces read clearly at gameplay scale\nArt direction is cohesive and intentional for the user's brief without prescribing a palette or theme\nConfigured device profiles, deterministic replay, and one-file package gates pass");
+  const [artDirectionMode, setArtDirectionMode] = useState<ArtDirectionMode>("explore");
+  const [styleLocks, setStyleLocks] = useState("");
+  const [preferenceMemory, setPreferenceMemory] = useState<PreferenceMemory>(() => createPreferenceMemory() as PreferenceMemory);
+  const [playtestLedger, setPlaytestLedger] = useState<PlaytestLedger>(() => createPlaytestLedger() as PlaytestLedger);
+  const [activePlaytestView, setActivePlaytestView] = useState<ActivePlaytestView | null>(null);
+  const [selectedPlaytestSessionId, setSelectedPlaytestSessionId] = useState<string | null>(null);
+  const [playtestReplayPreview, setPlaytestReplayPreview] = useState<PlaytestReplayPreview | null>(null);
+  const [playtestReplayBusy, setPlaytestReplayBusy] = useState(false);
+  const [showPlaytestHeatmap, setShowPlaytestHeatmap] = useState(false);
+  const [playtestRatingDraft, setPlaytestRatingDraft] = useState<PlaytestRating>("unrated");
+  const [playtestNoteDraft, setPlaytestNoteDraft] = useState("");
+  const [playtestTagsDraft, setPlaytestTagsDraft] = useState<string[]>([]);
+  const [usePreferenceMemoryForRun, setUsePreferenceMemoryForRun] = useState(true);
+  const [preferenceStatementDraft, setPreferenceStatementDraft] = useState("");
+  const [preferenceDimensions, setPreferenceDimensions] = useState<string[]>(["overall-fit"]);
+  const [preferenceContextTags, setPreferenceContextTags] = useState("");
+  const [preferenceScope, setPreferenceScope] = useState<"current-context" | "all-games">("current-context");
+  const [editingPreferenceId, setEditingPreferenceId] = useState<string | null>(null);
+  const [candidatePreferenceRationale, setCandidatePreferenceRationale] = useState("");
+  const [candidatePreferenceDimensions, setCandidatePreferenceDimensions] = useState<string[]>(["overall-fit"]);
+  const [researchQuery, setResearchQuery] = useState("Research the biggest evidence-backed opportunities and risks for this game idea.");
+  const [researchEngine, setResearchEngine] = useState<ResearchEngineId>("source-command-sc-research");
+  const [researchDepth, setResearchDepth] = useState<ResearchDepth>("standard");
+  const [researchRunning, setResearchRunning] = useState(false);
+  const [researchEvents, setResearchEvents] = useState<ResearchEvent[]>([]);
+  const [researchReports, setResearchReports] = useState<ResearchReport[]>([]);
+  const [selectedResearchId, setSelectedResearchId] = useState<string | null>(null);
+  const [researchView, setResearchView] = useState<"report" | "markdown">("report");
+  const [researchCancelUrl, setResearchCancelUrl] = useState<string | null>(null);
+  const [projectFolderName, setProjectFolderName] = useState<string | null>(null);
+  const [projectLibrary, setProjectLibrary] = useState<ProjectLibraryEntry[]>(() => [makeProjectLibraryEntry(project, { id: "kinetic-city-starter", origin: "starter", sourceLabel: "Built-in Kinetic City project" })]);
+  const [activeProjectLibraryId, setActiveProjectLibraryId] = useState("kinetic-city-starter");
+  const [projectLibraryReady, setProjectLibraryReady] = useState(false);
+  const [sharedProjectCatalog, setSharedProjectCatalog] = useState<SharedProjectSummary[]>([]);
+  const [sharedProjectCatalogReady, setSharedProjectCatalogReady] = useState(false);
+  const [mapWidthDraft, setMapWidthDraft] = useState(() => String(project.width));
+  const [mapHeightDraft, setMapHeightDraft] = useState(() => String(project.height));
+  const [mapSizeDraftMapId, setMapSizeDraftMapId] = useState(() => project.activeMapId ?? "map-main");
+  const [showDoctor, setShowDoctor] = useState(false);
+  const [captureMode, setCaptureMode] = useState(false);
+  const [captureRegion, setCaptureRegion] = useState<CaptureRegion | null>(null);
+  const [viewportPreset, setViewportPreset] = useState("desktop");
+  const [companionOnline, setCompanionOnline] = useState(false);
+  const [companionHealth, setCompanionHealth] = useState<CompanionHealth | null>(null);
+  const [agentPresenceView, setAgentPresenceView] = useState<AgentPresenceView | null>(null);
+  const [providerScanRunning, setProviderScanRunning] = useState(false);
+  const [providerLoginsRunning, setProviderLoginsRunning] = useState<AgentProvider[]>([]);
+  const [providerKeyDraft, setProviderKeyDraft] = useState("");
+  const [providerKeySaving, setProviderKeySaving] = useState(false);
+  const [loopRunning, setLoopRunning] = useState(false);
+  const [loopPhase, setLoopPhase] = useState<LoopPhase>("idle");
+  const [verificationRunning, setVerificationRunning] = useState(false);
+  const [releaseVerificationRunning, setReleaseVerificationRunning] = useState(false);
+  const [releaseVerificationJob, setReleaseVerificationJob] = useState<ReleaseVerificationJobDescriptor | null>(null);
+  const [visualReviewRunning, setVisualReviewRunning] = useState(false);
+  const [showVisualReview, setShowVisualReview] = useState(false);
+  const [visualReview, setVisualReview] = useState<VisualReviewReport | null>(null);
+  const [visualCritiqueProvider, setVisualCritiqueProvider] = useState<AgentProvider>("openai");
+  const [visualCritiqueConsent, setVisualCritiqueConsent] = useState(false);
+  const [visualCritiqueRunning, setVisualCritiqueRunning] = useState(false);
+  const [visualCritiqueJob, setVisualCritiqueJob] = useState<VisualCritiqueJobDescriptor | null>(null);
+  const [visualCritiqueRequest, setVisualCritiqueRequest] = useState<VisualCritiqueRequestSummary | null>(null);
+  const [visualCritique, setVisualCritique] = useState<VisualCritiqueResult | null>(null);
+  const [selectedVisualCaptureId, setSelectedVisualCaptureId] = useState<string | null>(null);
+  const [selectedVisualAnnotationId, setSelectedVisualAnnotationId] = useState<string | null>(null);
+  const [showVisualAnnotations, setShowVisualAnnotations] = useState(true);
+  const [iterationCompareIds, setIterationCompareIds] = useState<string[]>([]);
+  const [loopConsole, setLoopConsole] = useState<ConsoleEntry[]>([{ sequence: 1, type: "system", message: "Starting the managed AI companion and checking providers…", detail: "Looplab launches the local companion with the app; no provider is marked ready until it is verified.", tone: "neutral" }]);
+  const [agentCommandText, setAgentCommandText] = useState('{"op":"get_project"}');
+  const [agentCommandResult, setAgentCommandResult] = useState('{"ok":true,"ready":true}');
+  const [agentCommandRunning, setAgentCommandRunning] = useState(false);
+  const [agentContextView, setAgentContextView] = useState<"campaign" | "map">("campaign");
+  const [agentContextMapId, setAgentContextMapId] = useState(() => project.activeMapId ?? "map-main");
+  const [agentRecipeQuery, setAgentRecipeQuery] = useState("");
+  const [agentRecipeId, setAgentRecipeId] = useState(agentPlaybookRegistry.recipes[0]?.id ?? "recover-stale-source");
+  const [agentWorkActor, setAgentWorkActor] = useState("codex");
+  const [agentWorkQuery, setAgentWorkQuery] = useState("");
+  const [agentWorkStatus, setAgentWorkStatus] = useState<AgentWorkItemStatus | "all">("all");
+  const [agentWorkSelectedId, setAgentWorkSelectedId] = useState<string | null>(null);
+  const [agentWorkDraft, setAgentWorkDraft] = useState({ id: "", title: "", summary: "", kind: "feature" as AgentWorkItemKind, priority: "medium" as AgentWorkItemPriority, scope: "" });
+  const [agentWorkResultSummary, setAgentWorkResultSummary] = useState("");
+  const [agentWorkBlockers, setAgentWorkBlockers] = useState("");
+  const [agentWorkEvidence, setAgentWorkEvidence] = useState("");
+  const [agentMacroId, setAgentMacroId] = useState("place-supported-prop");
+  const [agentMacroParametersText, setAgentMacroParametersText] = useState(() => JSON.stringify(defaultCommandMacroParameters(project, "place-supported-prop"), null, 2));
+  const [agentMacroPlan, setAgentMacroPlan] = useState<AgentMacroPlanRef | null>(null);
+  const [agentBatchSummary, setAgentBatchSummary] = useState("One coherent reviewed authoring pass");
+  const [agentBatchCommandsText, setAgentBatchCommandsText] = useState("[]");
+  const [agentBatchPreview, setAgentBatchPreview] = useState<AgentBatchPreviewRef | null>(null);
+  const [agentRepairCodes, setAgentRepairCodes] = useState("");
+  const [agentRepairLimit, setAgentRepairLimit] = useState(16);
+  const [agentConvergencePasses, setAgentConvergencePasses] = useState(3);
+  const [agentRepairPlan, setAgentRepairPlan] = useState<AgentMechanicalRepairRef | null>(null);
+  const [agentConvergencePlan, setAgentConvergencePlan] = useState<AgentConvergenceRef | null>(null);
+  const [agentBenchmarkId, setAgentBenchmarkId] = useState(builderBenchmarkRegistry.tasks[0]?.id ?? "");
+  const [agentBenchmarkReceipt, setAgentBenchmarkReceipt] = useState<BuilderBenchmarkReceiptRef | null>(null);
+  const [agentBenchmarkBaseline, setAgentBenchmarkBaseline] = useState<BuilderBenchmarkReceiptRef | null>(null);
+  const [agentBenchmarkComparison, setAgentBenchmarkComparison] = useState<BuilderBenchmarkComparisonRef | null>(null);
+  const [agentChangeCursorDraft, setAgentChangeCursorDraft] = useState("");
+  const [agentChangeView, setAgentChangeView] = useState<AgentChangeFeedView | null>(null);
+  const [agentPlanIntent, setAgentPlanIntent] = useState("Improve the selected 2D game without weakening collision, replay, or one-file export.");
+  const [agentIntentPlan, setAgentIntentPlan] = useState<AgentIntentPlanRef | null>(null);
+  const [tuningContractDraft, setTuningContractDraft] = useState(() => project.tuningContract ? JSON.stringify(project.tuningContract, null, 2) : "");
+  const [combatProgramDraft, setCombatProgramDraft] = useState(() => project.combatProgram ? JSON.stringify(project.combatProgram, null, 2) : "");
+  const [motionBodyDraftEdit, setMotionBodyDraftEdit] = useState<{ objectId: string | null; source: string; value: string }>({ objectId: null, source: "", value: "" });
+  const [actorProgramDraft, setActorProgramDraft] = useState(() => project.actorProgram ? JSON.stringify(project.actorProgram, null, 2) : "");
+  const [presentationProgramDraft, setPresentationProgramDraft] = useState(() => project.presentationProgram ? JSON.stringify(project.presentationProgram, null, 2) : "");
+  const [gameShellDraft, setGameShellDraft] = useState(() => project.gameShell ? JSON.stringify(project.gameShell, null, 2) : "");
+  const [tuningSearchResult, setTuningSearchResult] = useState<TuningSearchResultRef | null>(null);
+  const [tuningSearchRunning, setTuningSearchRunning] = useState(false);
+  const [selectedTuningCandidateId, setSelectedTuningCandidateId] = useState<string | null>(null);
+  const [tuningCandidatePreview, setTuningCandidatePreview] = useState<TuningCandidatePreviewRef | null>(null);
+  const [foundationSearchResult, setFoundationSearchResult] = useState<GameFoundationSearchResultRef | null>(null);
+  const [foundationSearchRunning, setFoundationSearchRunning] = useState(false);
+  const [selectedFoundationId, setSelectedFoundationId] = useState<string | null>(null);
+  const [foundationCandidatePreview, setFoundationCandidatePreview] = useState<GameFoundationPreviewRef | null>(null);
+  const [spatialLayoutContractDraft, setSpatialLayoutContractDraft] = useState(() => project.spatialLayoutContract ? JSON.stringify(project.spatialLayoutContract, null, 2) : "");
+  const [spatialLayoutSearchResult, setSpatialLayoutSearchResult] = useState<SpatialLayoutSearchResultRef | null>(null);
+  const [spatialLayoutSearchRunning, setSpatialLayoutSearchRunning] = useState(false);
+  const [selectedSpatialLayoutCandidateId, setSelectedSpatialLayoutCandidateId] = useState<string | null>(null);
+  const [spatialLayoutCandidatePreview, setSpatialLayoutCandidatePreview] = useState<SpatialLayoutCandidatePreviewRef | null>(null);
+  const [historyState, setHistoryState] = useState({ canUndo: false, canRedo: false });
+  const [collected, setCollected] = useState(0);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const stageViewportRef = useRef<HTMLDivElement>(null);
+  const canvasWrapRef = useRef<HTMLDivElement>(null);
+  const playHudRef = useRef<HTMLDivElement>(null);
+  const touchControlsRef = useRef<HTMLDivElement>(null);
+  const visualReviewRef = useRef<VisualReviewReport | null>(null);
+  const visualReviewCaptureRunningRef = useRef(false);
+  const lastExportHtmlRef = useRef("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const pathEditorInputRef = useRef<HTMLInputElement>(null);
+  const spriteFrameInputRef = useRef<HTMLInputElement>(null);
+  const preferenceMemoryInputRef = useRef<HTMLInputElement>(null);
+  const dragRef = useRef<DragState | null>(null);
+  const pathPointDragRef = useRef<PathPointDragState | null>(null);
+  const collisionPointDragRef = useRef<CollisionPointDragState | null>(null);
+  const navigationNodeDragRef = useRef<NavigationNodeDragState | null>(null);
+  const historyRef = useRef<GameProject[]>([]);
+  const futureRef = useRef<GameProject[]>([]);
+  const runtimeRef = useRef<RuntimeObject[]>([]);
+  const runtimeEngineRef = useRef<RuntimeEngine | null>(null);
+  const presentationRuntimeRef = useRef<ReturnType<typeof createPresentationRuntime> | null>(null);
+  const previewPausedRef = useRef(false);
+  const previewPerformanceRef = useRef({ currentFrameMs: 0, p95FrameMs: 0, fixedStepCount: 0, droppedCatchUpEvents: 0, longFrames: 0, samples: [] as number[] });
+  const agentBridgeRunRef = useRef<((command: AgentCommand) => Promise<AgentRunResult>) | null>(null);
+  const postGenerationVerificationRef = useRef<(() => Promise<CandidateVerificationResult>) | null>(null);
+  const keysRef = useRef(new Set<string>());
+  const rafRef = useRef<number | null>(null);
+  const providerEventSourcesRef = useRef<Map<AgentProvider, CompanionEventStream>>(new Map());
+  const companionDigestRef = useRef("");
+  const toastTimerRef = useRef<number | null>(null);
+  const previewTransitionTimerRef = useRef<number | null>(null);
+  const projectRef = useRef(project);
+  const projectLibraryRef = useRef(projectLibrary);
+  const activeProjectLibraryIdRef = useRef(activeProjectLibraryId);
+  const sharedProjectCatalogRef = useRef(sharedProjectCatalog);
+  const sharedProjectSaveQueuesRef = useRef(new Map<string, Promise<SharedProjectWriteResponse | null>>());
+  const sharedProjectSaveErrorsRef = useRef(new Map<string, string>());
+  const sharedProjectSavingRef = useRef(new Set<string>());
+  const agentReadyRef = useRef(false);
+  const agentPresenceViewRef = useRef<AgentPresenceView | null>(null);
+  const agentPresenceLeaseRef = useRef(new Map<string, string>());
+  const agentChangeNotificationRef = useRef({ feedId: project.authoring?.agentChangeFeed?.feedId ?? "", cursor: project.authoring?.agentChangeFeed?.currentCursor ?? "" });
+  const assetImageCacheRef = useRef(new Map<string, { source: string; image: HTMLImageElement }>());
+  const assetPackManifestRef = useRef<AssetPackManifest | null>(null);
+  const assetPackIndexRef = useRef(new Map<string, AssetPackIndex>());
+  const eventSourceRef = useRef<CompanionEventStream | null>(null);
+  const researchEventSourceRef = useRef<CompanionEventStream | null>(null);
+  const visualCritiqueEventSourceRef = useRef<CompanionEventStream | null>(null);
+  const promptGenerationAttemptRef = useRef(0);
+  const promptGenerationActiveRef = useRef(false);
+  const directorBriefRef = useRef<DirectedBrief | null>(project.designBrief ?? null);
+  const preferenceMemoryRef = useRef(preferenceMemory);
+  const playtestLedgerRef = useRef(playtestLedger);
+  const activePlaytestRef = useRef<PlaytestDraft | null>(null);
+  const localDraftLoadedRef = useRef(false);
+  const localDraftSavedAtRef = useRef<string | null>(null);
+  const projectLocalStorageDisabledRef = useRef(false);
+  const researchLocalStorageDisabledRef = useRef(false);
+  const preferenceLocalStorageDisabledRef = useRef(false);
+  const playtestLocalStorageDisabledRef = useRef(false);
+
+  const selected = useMemo(
+    () => project.objects.find((object) => object.id === selectedId) ?? null,
+    [project.objects, selectedId],
+  );
+  const selectedMotionBodySource = selected?.motionBody ? JSON.stringify(selected.motionBody, null, 2) : "";
+  const motionBodyDraft = motionBodyDraftEdit.objectId === selected?.id && motionBodyDraftEdit.source === selectedMotionBodySource
+    ? motionBodyDraftEdit.value
+    : selectedMotionBodySource;
+  const setMotionBodyDraft = (value: string) => setMotionBodyDraftEdit({ objectId: selected?.id ?? null, source: selectedMotionBodySource, value });
+  const selectedAsset = selected?.assetId ? project.assets?.find((asset) => asset.id === selected.assetId) ?? null : null;
+  const assetMeasurement = measuredAssetSummary(generatedAsset);
+  const selectedPath = useMemo(() => project.traversalPaths?.find((path) => path.id === selectedPathId) ?? null, [project.traversalPaths, selectedPathId]);
+  const navigation = useMemo(() => createNavigationModel(project.navigation) as NavigationModel, [project.navigation]);
+  const activeNavigationLayer = useMemo(() => navigation.layers.find((layer) => layer.id === navigation.activeLayerId) ?? navigation.layers[0] ?? null, [navigation]);
+  const selectedNavigationNode = useMemo(() => navigation.nodes.find((node) => node.id === selectedNavigationNodeId) ?? null, [navigation.nodes, selectedNavigationNodeId]);
+  const selectedNavigationLink = useMemo(() => navigation.links.find((link) => link.id === selectedNavigationLinkId) ?? null, [navigation.links, selectedNavigationLinkId]);
+  const selectedNavigationArea = useMemo(() => navigation.areas.find((area) => area.id === selectedNavigationAreaId) ?? null, [navigation.areas, selectedNavigationAreaId]);
+  const authoredRoute = useMemo(() => normalizeAuthoredRouteDocument(navigation.authoredRoute) as AuthoredRouteDocument | null, [navigation.authoredRoute]);
+  const authoredRouteSummary = useMemo(() => summarizeAuthoredRouteDocument(authoredRoute), [authoredRoute]);
+  const authoredRouteActors = useMemo(() => {
+    const data = authoredRoute?.data as { actors?: Array<Record<string, unknown>>; characters?: Array<Record<string, unknown>> } | undefined;
+    return data?.actors ?? data?.characters ?? [];
+  }, [authoredRoute]);
+  const selectedAuthoredRouteActor = useMemo(() => authoredRouteActors.find((actor) => String(actor.id) === selectedAuthoredRouteActorId) ?? authoredRouteActors[0] ?? null, [authoredRouteActors, selectedAuthoredRouteActorId]);
+  const selectedAuthoredRouteSchedule = useMemo(() => Array.isArray(selectedAuthoredRouteActor?.schedule) ? selectedAuthoredRouteActor.schedule as Array<Record<string, unknown>> : [], [selectedAuthoredRouteActor]);
+  const authoredRoutePaths = useMemo(() => authoredRoutePreview(authoredRoute, project) as AuthoredRoutePreview[], [authoredRoute, project]);
+  const activeProjection = useMemo(() => normalizeProjection(project.projection ?? { type: "orthographic", tileWidth: project.grid, tileHeight: project.grid }, project) as ProjectionContract, [project]);
+  const isDimetric = activeProjection.type === "dimetric-2:1";
+  const maps = useMemo(() => ensureMapModel(project).maps ?? [], [project]);
+  const deviceProfiles = useMemo<DeviceProfile[]>(() => {
+    const configured = (project.deviceProfiles ?? []).filter((profile) => profile && profile.id && Number(profile.width) > 0 && Number(profile.height) > 0);
+    return configured.length ? configured : [{ id: "desktop", name: "Desktop", width: 1440, height: 900, dpr: 1, touchTargetMin: 44 }];
+  }, [project.deviceProfiles]);
+  const activeDeviceProfile = deviceProfiles.find((profile) => profile.id === viewportPreset) ?? deviceProfiles[0];
+  const activeProfileExpectsTouch = activeDeviceProfile.width <= 700;
+  const activeMap = useMemo(
+    () => maps.find((map) => map.id === (project.activeMapId ?? "map-main")) ?? maps[0],
+    [maps, project.activeMapId],
+  );
+  const activeMapSnapshot = useMemo(
+    () => mapFromProject(project, project.activeMapId ?? activeMap?.id ?? "map-main", activeMap?.name ?? "Map"),
+    [activeMap?.id, activeMap?.name, project],
+  );
+  const activeTileProgram = activeMapSnapshot.tileProgram ?? null;
+  const editorTileRuntime = useMemo(
+    () => compileTileRuntimeProgram(activeTileProgram, activeMapSnapshot) as TileRuntime,
+    [activeMapSnapshot, activeTileProgram],
+  );
+  const activeTileLayerId = activeTileProgram?.layers.some((layer) => layer.id === selectedTileLayerId)
+    ? selectedTileLayerId
+    : activeTileProgram?.layers[0]?.id ?? "";
+  const activeTileCollisionLayerId = activeTileProgram?.collisionLayers.some((layer) => layer.id === selectedTileCollisionLayerId)
+    ? selectedTileCollisionLayerId
+    : activeTileProgram?.collisionLayers[0]?.id ?? "";
+  const activeTileId = activeTileProgram?.palette.some((entry) => entry.id === selectedTileId)
+    ? selectedTileId
+    : activeTileProgram?.palette[0]?.id ?? "";
+  const activeTerrainIds = activeTileProgram?.terrainSets.find((set) => set.id === activeTileProgram.layers.find((layer) => layer.id === activeTileLayerId)?.terrainSetId)?.terrainIds ?? [];
+  const activeTerrainId = activeTerrainIds.includes(selectedTerrainId) ? selectedTerrainId : activeTerrainIds[0] ?? "";
+  const activeTileCollisionProfileId = activeTileProgram?.collisionProfiles.some((profile) => profile.id === selectedTileCollisionProfileId)
+    ? selectedTileCollisionProfileId
+    : activeTileProgram?.collisionProfiles[0]?.id ?? "";
+  const activeCollisionGeometry = activeMapSnapshot.collisionGeometry ?? null;
+  const selectedCollisionChain = activeCollisionGeometry?.chains.find((chain) => chain.id === selectedCollisionChainId) ?? null;
+  const supportSurfaces = useMemo(() => listSupportSurfaces(activeMapSnapshot, selectedId) as SupportSurface[], [activeMapSnapshot, selectedId]);
+  const selectedSupport = useMemo(
+    () => selected ? resolveSupportContact(activeMapSnapshot, selected, project.assets ?? [], { projection: project.projection }) : null,
+    [activeMapSnapshot, project.assets, project.projection, selected],
+  );
+  const selectedGroundAnchor = useMemo(() => selected ? groundAnchorOffset(selected, project.assets ?? []) : null, [project.assets, selected]);
+  const selectedSupportFootprint = useMemo(() => selected ? supportFootprintRect(selected) : null, [selected]);
+  const doctorReport = doctorCache.report;
+  const releaseDoctorReport = doctorCache.releaseReport;
+  const doctorReportFresh = doctorCache.sourceProject === project && !doctorAnalysisPending;
+  const currentExportProfile = doctorReport.saveReport?.profile === "hosted" ? "hosted" : "strict";
+  const currentAiArtRole: VisualIdentityRole = assetLabTab === "tiles" ? "tileset" : spriteKind === "hero" ? "character" : spriteKind;
+  const applicableVisualIdentityReferences = useMemo(() => (project.visualIdentity?.references ?? []).filter((reference) => reference.appliesToRoles.includes("all") || reference.appliesToRoles.includes(currentAiArtRole)), [currentAiArtRole, project.visualIdentity?.references]);
+  const aiArtImageReferenceCount = applicableVisualIdentityReferences.filter((reference) => reference.delivery === "image").length;
+  const aiArtReferenceAssets = useMemo(() => {
+    const references = project.visualIdentity?.references ?? [];
+    const referencedIds = new Set(references.map((reference) => reference.assetId));
+    return (project.assets ?? []).filter((asset) => referencedIds.has(asset.id)).map((asset) => references.some((reference) => reference.assetId === asset.id && reference.delivery === "image") ? asset : { ...asset, dataUrl: undefined });
+  }, [project.assets, project.visualIdentity?.references]);
+
+  const currentSaveProgram = project.saveProgram ?? null;
+  const tuningInspection = doctorReport.tuningReport as TuningContractInspectionRef;
+  const spatialLayoutInspection = doctorReport.spatialLayoutReport as SpatialLayoutInspectionRef;
+  const combatInspection = doctorReport.combatReport as { present: boolean; enabled: boolean; valid: boolean; teamCount: number; actorCount: number; emitterCount: number; poolCapacity: number; errors: string[]; warnings: string[]; issues: Array<{ severity: string; code: string; message: string }> };
+  const motionBodyInspection = doctorReport.motionBodyReport as { present: boolean; bodyCount: number; enabledBodyCount: number; valid: boolean; errors: string[]; warnings: string[]; issues: Array<{ severity: string; code: string; message: string; objectId?: string }> };
+  const selectedMotionBodyIssues = motionBodyInspection.issues.filter((issue) => issue.objectId === selected?.id);
+  const actorInspection = doctorReport.actorReport as { present: boolean; enabled: boolean; valid: boolean; actorCount: number; patrolCount: number; perceptionCount: number; cutsceneCount: number; errors: string[]; warnings: string[]; issues: Array<{ severity: string; code: string; message: string }> };
+  const presentationInspection = doctorReport.presentationReport as { present: boolean; status: string; errors: string[]; warnings: string[]; issues: Array<{ severity: string; code: string; message: string }>; metrics?: { audioCueCount: number; motionCueCount: number; effectCount: number; mappedEventCount: number; maximumVoices?: number; maximumParticles?: number } };
+  const gameShellInspection = doctorReport.gameShellReport as { present: boolean; valid: boolean; shipReady: boolean; status: string; errors: string[]; warnings: string[]; issues: Array<{ severity: string; code: string; message: string }>; metrics?: { stateCount: number; settingsControlCount: number; terminalCount: number }; proofBoundary?: string };
+  const tuningFeel = tuningInspection.feel;
+  useEffect(() => {
+    presentationRuntimeRef.current?.destroy();
+    const controller = createPresentationRuntime(project.presentationProgram, {
+      host: globalThis,
+      document,
+      getPoint: (event: RuntimeEvent, target: string) => {
+        const snapshot = projectRef.current;
+        const engine = runtimeEngineRef.current;
+        const state = engine?.getState();
+        const objects = engine?.getObjects() ?? snapshot.objects;
+        if (target === "center") return { x: Number(state?.width ?? snapshot.width) / 2, y: Number(state?.height ?? snapshot.height) / 2, objectId: null };
+        const requestedId = target === "player" ? state?.player?.id : event?.objectId;
+        const object = objects.find((candidate) => candidate.id === requestedId) ?? objects.find((candidate) => candidate.kind === "player");
+        if (!object) return { x: Number(state?.width ?? snapshot.width) / 2, y: Number(state?.height ?? snapshot.height) / 2, objectId: null };
+        const projection = normalizeProjection(state?.projection ?? snapshot.projection, state ?? snapshot) as ProjectionContract;
+        const placement = objectScreenPlacement(object, projection, snapshot.assets ?? []);
+        return { x: placement.x + object.width / 2, y: placement.y + object.height, objectId: object.id };
+      },
+    });
+    presentationRuntimeRef.current = controller;
+    return () => {
+      controller.destroy();
+      if (presentationRuntimeRef.current === controller) presentationRuntimeRef.current = null;
+    };
+  }, [project.presentationProgram]);
+  const visibleAgentRecipes = useMemo(() => listAgentRecipes({ status: "all", limit: 50, query: agentRecipeQuery }).recipes as AgentRecipeRef[], [agentRecipeQuery]);
+  const visibleAgentRecipeId = visibleAgentRecipes.some((recipe) => recipe.id === agentRecipeId) ? agentRecipeId : visibleAgentRecipes[0]?.id ?? agentRecipeId;
+  const selectedAgentRecipe = useMemo(() => getAgentRecipe(visibleAgentRecipeId).recipe as AgentRecipeRef, [visibleAgentRecipeId]);
+  const agentWorkLedgerView = useMemo(() => getAgentWorkLedger(project, { query: agentWorkQuery, status: agentWorkStatus, limit: 50, eventLimit: 6 }) as AgentWorkLedgerView, [agentWorkQuery, agentWorkStatus, project]);
+  const selectedAgentWorkItem = agentWorkLedgerView.items.find((item) => item.id === agentWorkSelectedId) ?? agentWorkLedgerView.items[0] ?? null;
+  const visibleAgentContextMapId = maps.some((map) => map.id === agentContextMapId) ? agentContextMapId : project.activeMapId ?? maps[0]?.id ?? "map-main";
+  const cachedAgentContextMaps = doctorCache.project.maps ?? [];
+  const cachedAgentContextMapId = cachedAgentContextMaps.some((map) => map.id === visibleAgentContextMapId)
+    ? visibleAgentContextMapId
+    : doctorCache.project.activeMapId ?? cachedAgentContextMaps[0]?.id ?? "map-main";
+  const agentProjectContext = useMemo(() => {
+    const contextWorkLedger = getAgentWorkLedger(doctorCache.project, { includeEvents: false, limit: 8, eventLimit: 0 }) as AgentWorkLedgerView;
+    return buildAgentProjectContext(doctorCache.project, {
+      view: agentContextView,
+      mapIds: agentContextView === "map" ? [cachedAgentContextMapId] : [],
+      mapLimit: 24,
+      protocolVersion: LOOPLAB_PROTOCOL_VERSION,
+      sourceDigest: doctorReport.sourceDigest,
+      doctor: doctorReport,
+      releaseDoctor: releaseDoctorReport,
+      runtimeJoinPlan: buildRuntimeJoinPlan(doctorCache.project),
+      workLedger: {
+        schemaVersion: contextWorkLedger.ledgerSchemaVersion,
+        digest: contextWorkLedger.ledgerDigest,
+        revision: contextWorkLedger.revision,
+        total: contextWorkLedger.total,
+        counts: contextWorkLedger.counts,
+        activeClaims: contextWorkLedger.activeClaims,
+        expiredClaims: contextWorkLedger.expiredClaims,
+        items: contextWorkLedger.items.map((item) => ({ id: item.id, title: item.title, kind: item.kind, priority: item.priority, status: item.status, claim: item.claim, claimState: item.claimState })),
+      },
+    }) as AgentProjectContextRef;
+  }, [agentContextView, cachedAgentContextMapId, doctorCache.project, doctorReport, releaseDoctorReport]);
+  const agentReadiness = agentProjectContext.evidenceIndex.readiness;
+  const currentAgentChangeFeed = useMemo(() => applyAgentCommand(syncActiveMap(project), { op: "get_agent_changes" }).result as AgentChangeFeedView, [project]);
+  const recentAgentChanges = project.authoring?.agentChangeFeed?.events?.slice(-6).reverse() ?? [];
+  const selectedAgentContextMap = agentProjectContext.maps.entries.find((map) => map.id === visibleAgentContextMapId) ?? agentProjectContext.maps.entries[0] ?? null;
+  const agentMacroPlanFresh = doctorReportFresh && agentMacroPlan?.sourceDigest === doctorReport.sourceDigest;
+  const agentBatchPreviewFresh = doctorReportFresh && agentBatchPreview?.sourceDigest === doctorReport.sourceDigest;
+  const agentRepairPlanFresh = doctorReportFresh && agentRepairPlan?.sourceDigest === doctorReport.sourceDigest;
+  const agentConvergencePlanFresh = doctorReportFresh && agentConvergencePlan?.sourceDigest === doctorReport.sourceDigest;
+  const selectedAgentBenchmark = builderBenchmarkRegistry.tasks.find((task) => task.id === agentBenchmarkId) ?? builderBenchmarkRegistry.tasks[0] ?? null;
+  const agentBenchmarkReceiptFresh = doctorReportFresh && agentBenchmarkReceipt?.sourceDigest === doctorReport.sourceDigest;
+  const agentIntentPlanFresh = doctorReportFresh && agentIntentPlan?.sourceDigest === doctorReport.sourceDigest;
+  const doctorTechnicalLabel = doctorReport.technicalStatus === "clean" ? "technical clean" : doctorReport.technicalStatus === "passes-with-findings" ? "passes with findings" : "blocked";
+  const visualReadiness = doctorReport.visualReadiness as VisualReadinessReport;
+  const replayResults = doctorReport.replayResults as ReplaySuiteResult;
+  const iterationLedger = useMemo(() => applyAgentCommand(syncActiveMap(project), { op: "get_iteration_history" }).result as IterationLedger, [project]);
+  const iterationComparison = useMemo(() => {
+    if (iterationCompareIds.length !== 2) return null;
+    try {
+      return applyAgentCommand(syncActiveMap(project), { op: "compare_iterations", ids: iterationCompareIds }).result as IterationComparison;
+    } catch {
+      return null;
+    }
+  }, [iterationCompareIds, project]);
+  const exportReceiptFresh = doctorReportFresh && lastExportReceipt?.source.sourceDigest === doctorReport.sourceDigest;
+  const exportReleaseReady = lastExportReceipt?.status === "release-ready";
+  const verificationFresh = useMemo(() => {
+    if (!doctorReportFresh) return false;
+    const verification = project.iteration?.verification;
+    const evidence = validateVerificationEvidence(verification?.evidenceRefs, { sourceDigest: doctorReport.sourceDigest, ...verificationCoverageRequirements(syncActiveMap(project)) });
+    return (project.iteration?.status === "verified" || project.iteration?.status === "promoted")
+      && verification?.digest === doctorReport.digest
+      && verification.sourceDigest === doctorReport.sourceDigest
+      && verification.profile === doctorReport.profile
+      && (verification.buildId ?? null) === (project.build?.id ?? null)
+      && (verification.sourceRevision ?? null) === (project.build?.sourceRevision ?? null)
+      && evidence.valid;
+  }, [doctorReport, doctorReportFresh, project]);
+  const visualReviewFresh = doctorReportFresh && visualReview?.sourceDigest === doctorReport.sourceDigest;
+  const visualCritiqueFresh = doctorReportFresh && isVisualCritiqueFresh({
+    critique: visualCritique,
+    request: visualCritiqueRequest,
+    currentSourceDigest: doctorReport.sourceDigest,
+    visualReview,
+  });
+  const selectedVisualCapture = visualReview?.captures.find((capture) => capture.id === selectedVisualCaptureId) ?? visualReview?.captures[0] ?? null;
+  const selectedVisualAnnotation = selectedVisualCapture?.perception.annotations.find((annotation) => annotation.id === selectedVisualAnnotationId) ?? selectedVisualCapture?.perception.annotations[0] ?? null;
+  const directedSelections = useMemo(() => ({ genre: gameGenre, coreLoop: coreGameLoop, movementTemplate, format: gameFormat, progression: progressionMode, campaignScope }), [campaignScope, coreGameLoop, gameFormat, gameGenre, movementTemplate, progressionMode]);
+  const preparedDirectedBrief = useMemo(() => composeDirectedGameBrief({ ...directedSelections, userPrompt: aiBrief, promptVariant }), [aiBrief, directedSelections, promptVariant]);
+  const directedSummary = useMemo(() => directedGameSummary(preparedDirectedBrief), [preparedDirectedBrief]);
+  const directedBrief = useMemo(() => {
+    if (!providerPromptDraft || providerPromptDraft.basePrompt !== preparedDirectedBrief.composedPrompt) return preparedDirectedBrief as DirectedBrief;
+    try {
+      return composeProviderGeneratedGameBrief(preparedDirectedBrief, providerPromptDraft) as DirectedBrief;
+    } catch {
+      return preparedDirectedBrief as DirectedBrief;
+    }
+  }, [preparedDirectedBrief, providerPromptDraft]);
+  const directedPrompt = directedBrief.composedPrompt;
+  const activePreferenceContext = useMemo(() => preferenceContextForProject(directedBrief, project) as PreferenceContext, [directedBrief, project]);
+  const appliedPreferenceContext = useMemo(() => selectAppliedPreferenceContext(preferenceMemory, activePreferenceContext, { enabled: usePreferenceMemoryForRun }) as AppliedPreferenceContext, [activePreferenceContext, preferenceMemory, usePreferenceMemoryForRun]);
+  const appliedPreferenceIds = useMemo(() => new Set(appliedPreferenceContext.selectedEntryIds), [appliedPreferenceContext.selectedEntryIds]);
+  useEffect(() => {
+    directorBriefRef.current = directedBrief;
+  }, [directedBrief]);
+  const activeProjectLibraryEntry = useMemo(() => projectLibrary.find((entry) => entry.id === activeProjectLibraryId) ?? projectLibrary[0] ?? null, [activeProjectLibraryId, projectLibrary]);
+  const projectLibraryOptions = useMemo(() => {
+    const loadedSharedIds = new Set(projectLibrary.map((entry) => entry.sharedProjectId).filter((id): id is string => Boolean(id)));
+    return [
+      ...projectLibrary.map((entry) => ({ value: entry.id, name: entry.name, origin: entry.origin, sourceLabel: entry.sourceLabel, shared: entry.storage === "shared", mounted: true, syncStatus: entry.sharedSyncStatus ?? "local-only", sourceDigest: entry.sharedSourceDigest ?? null, revisionDigest: entry.sharedRevisionDigest ?? null })),
+      ...sharedProjectCatalog
+        .filter((entry) => !loadedSharedIds.has(entry.id))
+        .map((entry) => ({ value: sharedProjectLibraryId(entry.id), name: entry.name, origin: entry.origin, sourceLabel: entry.sourceLabel, shared: true, mounted: false, syncStatus: "not-mounted" as const, sourceDigest: entry.sourceDigest })),
+    ];
+  }, [projectLibrary, sharedProjectCatalog]);
+  const tuningSearchFresh = doctorReportFresh && tuningSearchResult?.sourceDigest === doctorReport.sourceDigest;
+  const selectedTuningCandidate = tuningSearchResult?.candidates.find((candidate) => candidate.id === selectedTuningCandidateId) ?? null;
+  const tuningPreviewFresh = Boolean(tuningCandidatePreview && tuningSearchFresh && tuningCandidatePreview.receipt.sourceDigest === doctorReport.sourceDigest);
+  const isProtectedTuningVariation = activeProjectLibraryEntry?.origin === "variation" && Boolean(activeProjectLibraryEntry.parentLibraryId);
+  const foundationSearchFresh = doctorReportFresh && foundationSearchResult?.sourceDigest === doctorReport.sourceDigest;
+  const selectedFoundationCandidate = foundationSearchResult?.candidates.find((candidate) => candidate.id === selectedFoundationId) ?? null;
+  const foundationPreviewFresh = Boolean(foundationCandidatePreview && foundationSearchFresh && foundationCandidatePreview.receipt.sourceDigest === doctorReport.sourceDigest);
+  const isProtectedFoundationVariation = activeProjectLibraryEntry?.origin === "variation" && Boolean(activeProjectLibraryEntry.parentLibraryId);
+  const spatialLayoutSearchFresh = doctorReportFresh && spatialLayoutSearchResult?.sourceDigest === doctorReport.sourceDigest;
+  const selectedSpatialLayoutCandidate = spatialLayoutSearchResult?.candidates.find((candidate) => candidate.id === selectedSpatialLayoutCandidateId) ?? null;
+  const spatialLayoutPreviewFresh = Boolean(spatialLayoutCandidatePreview && spatialLayoutSearchFresh && spatialLayoutCandidatePreview.receipt.sourceDigest === doctorReport.sourceDigest);
+  const isProtectedSpatialVariation = activeProjectLibraryEntry?.origin === "variation" && Boolean(activeProjectLibraryEntry.parentLibraryId);
+  const agentRoute = useMemo(() => routeGameStudioWork(project, { prompt: directedPrompt, track: aiTrack, framework: runtimePreference }), [aiTrack, directedPrompt, project, runtimePreference]);
+  const pendingAiRequests = useMemo(() => (project.agentRequests ?? []).filter((request) => request.status === "pending"), [project.agentRequests]);
+  const selectedResearchReport = useMemo(() => researchReports.find((report) => report.id === selectedResearchId) ?? researchReports[0] ?? null, [researchReports, selectedResearchId]);
+  const selectedResearchSources = useMemo(() => new Map((selectedResearchReport?.sources ?? []).map((source) => [source.id, source])), [selectedResearchReport]);
+  const selectedResearchEngine = useMemo(() => RESEARCH_ENGINES.find((engine) => engine.id === researchEngine) ?? RESEARCH_ENGINES[0], [researchEngine]);
+  const visibleMapWidthDraft = mapSizeDraftMapId === (project.activeMapId ?? "map-main") ? mapWidthDraft : String(project.width);
+  const visibleMapHeightDraft = mapSizeDraftMapId === (project.activeMapId ?? "map-main") ? mapHeightDraft : String(project.height);
+  const selectedMapSizePreset = useMemo(() => MAP_SIZE_PRESETS.find((preset) => preset.width === Number(visibleMapWidthDraft) && preset.height === Number(visibleMapHeightDraft))?.id ?? "custom", [visibleMapHeightDraft, visibleMapWidthDraft]);
+  const selectedAssetLibraryCategory = useMemo(() => CC0_ASSET_CATEGORIES.find((category) => category.id === assetLibraryCategory) ?? CC0_ASSET_CATEGORIES[0], [assetLibraryCategory]);
+  const visibleCc0Packs = useMemo(() => CC0_ASSET_PACKS.filter((pack) => pack.categories.includes(assetLibraryCategory)), [assetLibraryCategory]);
+  const installedPackById = useMemo(() => new Map((assetPackManifest?.packs ?? []).map((pack) => [pack.id, pack])), [assetPackManifest]);
+  const focusedPackAsset = useMemo(() => selectedAssetPackIndex?.assets.find((asset) => asset.id === focusedPackAssetId) ?? null, [focusedPackAssetId, selectedAssetPackIndex]);
+  const filteredPackAssets = useMemo(() => {
+    const query = assetPackSearch.trim().toLowerCase();
+    return (selectedAssetPackIndex?.assets ?? []).filter((asset) => {
+      if (assetPackKindFilter !== "all" && asset.kind !== assetPackKindFilter) return false;
+      return !query || `${asset.name} ${asset.path} ${asset.archiveId} ${asset.kind}`.toLowerCase().includes(query);
+    });
+  }, [assetPackKindFilter, assetPackSearch, selectedAssetPackIndex]);
+  const assetPackPageCount = Math.max(1, Math.ceil(filteredPackAssets.length / 120));
+  const visiblePackAssets = useMemo(() => filteredPackAssets.slice(assetPackPage * 120, assetPackPage * 120 + 120), [assetPackPage, filteredPackAssets]);
+  const activeMapOutOfBounds = useMemo(() => project.objects.filter((object) => {
+    const bounds = object.visualBounds
+      ? { x: object.x + object.visualBounds.offsetX, y: object.y + object.visualBounds.offsetY, width: object.visualBounds.width, height: object.visualBounds.height }
+      : { x: object.x, y: object.y, width: object.width, height: object.height };
+    return bounds.x < 0 || bounds.y < 0 || bounds.x + bounds.width > project.width || bounds.y + bounds.height > project.height;
+  }).length, [project.height, project.objects, project.width]);
+  const memoryLedger = useMemo(() => decodedMemoryLedger(project.assets ?? []), [project.assets]);
+  const providerStatuses = companionHealth?.providers;
+  const localCopilotStatus = companionHealth?.localCopilot;
+  const selectedProviderStatus = providerStatuses?.[aiProvider];
+  const selectedActiveConnection = companionHealth?.activeProviderConnections?.find((connection) => connection.provider === aiProvider) ?? null;
+
+  const syncHistoryState = useCallback(() => {
+    setHistoryState({ canUndo: historyRef.current.length > 0, canRedo: futureRef.current.length > 0 });
+  }, []);
+
+  const syncDirectedBriefControls = useCallback((brief?: DirectedBrief) => {
+    if (!brief) return;
+    directorBriefRef.current = brief;
+    setAiBrief(brief.userPrompt);
+    setGameGenre(brief.genre);
+    setCoreGameLoop(brief.coreLoop);
+    setMovementTemplate(brief.movementTemplate ?? "auto");
+    setGameFormat(brief.format);
+    setProgressionMode(brief.progression);
+    setCampaignScope(brief.campaignScope ?? "auto");
+    setPromptVariant(brief.promptVariant ?? "");
+    setProviderPromptDraft(brief.promptGeneration ? { ...brief.promptGeneration, prompt: brief.composedPrompt } : null);
+  }, []);
+
+  const showToast = useCallback((message: string) => {
+    setToast(message);
+    if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
+    toastTimerRef.current = window.setTimeout(() => setToast("Autosaved on this device"), 2200);
+  }, []);
+
+  const appendConsole = useCallback((type: string, message: string, detail?: string, tone: "good" | "bad" | "neutral" = "neutral", url?: string) => {
+    setLoopConsole((entries) => [...entries.slice(-199), { sequence: (entries.at(-1)?.sequence ?? 0) + 1, type, message, detail, tone, url }]);
+  }, []);
+
+  const commitPreferenceMemory = useCallback((next: PreferenceMemory, message: string) => {
+    preferenceMemoryRef.current = next;
+    setPreferenceMemory(next);
+    showToast(message);
+    window.dispatchEvent(new CustomEvent("looplab:preference-memory-changed", { detail: { memory: preferenceMemoryView(next) } }));
+    return next;
+  }, [showToast]);
+
+  const currentPlaytestSource = useCallback((state: RuntimeState) => {
+    const current = syncActiveMap(projectRef.current);
+    const authoredMaps = current.maps?.length ? current.maps : [{
+      id: current.activeMapId ?? "map-main",
+      width: current.width,
+      height: current.height,
+    }];
+    return {
+      projectId: activeProjectLibraryIdRef.current || "local-project",
+      projectName: current.name,
+      iterationId: current.iteration?.id ?? null,
+      sourceDigest: analyzeProject(current).sourceDigest,
+      startMapId: state.activeMapId,
+      startSpawnId: null,
+      mapBounds: authoredMaps.map((map) => ({ mapId: map.id, width: map.width, height: map.height })),
+    };
+  }, []);
+
+  const publishActivePlaytest = useCallback((draft: PlaytestDraft | null) => {
+    activePlaytestRef.current = draft;
+    const view = draft ? playtestActiveSessionView(draft) as ActivePlaytestView : null;
+    setActivePlaytestView(view);
+    window.dispatchEvent(new CustomEvent("looplab:playtest-observation-changed", { detail: { activeSession: view } }));
+    return view;
+  }, []);
+
+  const commitPlaytestLedger = useCallback((next: PlaytestLedger, message: string) => {
+    playtestLedgerRef.current = next;
+    setPlaytestLedger(next);
+    showToast(message);
+    const currentSourceDigest = analyzeProject(syncActiveMap(projectRef.current)).sourceDigest;
+    window.dispatchEvent(new CustomEvent("looplab:playtest-observation-changed", { detail: playtestLedgerView(next, activePlaytestRef.current, { currentSourceDigest }) }));
+    return next;
+  }, [showToast]);
+
+  const recordPreviewInputForPlaytest = useCallback((code: string, pressed: boolean, source: "keyboard" | "touch" | "gamepad" | "headless" | "lifecycle") => {
+    const draft = activePlaytestRef.current;
+    if (!draft) return false;
+    const action = resolvePlaytestAction(code, projectRef.current.inputActions ?? []);
+    if (!action) return false;
+    const recorded = recordPlaytestInput(draft, { action, pressed, source }, performance.now());
+    if (recorded) publishActivePlaytest(draft);
+    return recorded;
+  }, [publishActivePlaytest]);
+
+  const observePlaytestRuntime = useCallback((engine: RuntimeEngine, events: RuntimeEvent[] = []) => {
+    const draft = activePlaytestRef.current;
+    if (!draft) return;
+    const now = performance.now();
+    const active = !previewPausedRef.current && document.visibilityState === "visible" && document.hasFocus();
+    setPlaytestSessionActive(draft, active, now, active ? "preview-active" : document.visibilityState !== "visible" ? "document-hidden" : !document.hasFocus() ? "window-unfocused" : "preview-paused");
+    const state = engine.getState();
+    const eventCount = events.length ? recordPlaytestEvents(draft, events, state, now) : 0;
+    const sampled = active ? recordPlaytestSample(draft, state, now) : false;
+    if (eventCount > 0 || sampled || draft.limitReached) publishActivePlaytest(draft);
+  }, [publishActivePlaytest]);
+
+  const startPlaytestRecording = useCallback((options: { consent: boolean; reset?: boolean }) => {
+    if (activePlaytestRef.current) throw new Error("A playtest observation is already recording.");
+    if (options.consent !== true) throw new Error("Playtest recording requires explicit consent.");
+    const engine = runtimeEngineRef.current;
+    if (!engine) throw new Error("Preview runtime is not active. Enter Preview before recording.");
+    if (options.reset !== false) {
+      keysRef.current.forEach((code) => engine.setInput(code, false));
+      keysRef.current.clear();
+      engine.reset();
+      engine.drainEvents();
+      const state = engine.getState();
+      runtimeRef.current = engine.getObjects();
+      setRuntimeState(state);
+      setCollected(state.collectedCount);
+      setPreviewWon(state.won);
+      setRuntimeTick((tick) => tick + 1);
+    }
+    const state = engine.getState();
+    const active = !previewPausedRef.current && document.visibilityState === "visible" && document.hasFocus();
+    const draft = startPlaytestSession(
+      { consent: true, source: currentPlaytestSource(state) },
+      { monotonicNow: performance.now(), active, tickRate: 60, startMode: options.reset === false ? "current-preview" : "authored-reset" },
+    ) as PlaytestDraft;
+    if (active) recordPlaytestSample(draft, state, performance.now());
+    publishActivePlaytest(draft);
+    appendConsole("playtest.recording.started", "Local human playtest recording started", "Semantic actions, bounded world samples, and canonical runtime events only. No network telemetry or automatic preference inference.", "good");
+    showToast("Playtest recording started");
+    return playtestActiveSessionView(draft) as ActivePlaytestView;
+  }, [appendConsole, currentPlaytestSource, publishActivePlaytest, showToast]);
+
+  const finishPlaytestRecording = useCallback((input: { outcome?: PlaytestOutcome; rating?: PlaytestRating; tags?: string[]; note?: string } = {}) => {
+    const draft = activePlaytestRef.current;
+    if (!draft) throw new Error("No playtest observation is recording.");
+    const engine = runtimeEngineRef.current;
+    if (engine) {
+      const now = performance.now();
+      recordPlaytestSample(draft, engine.getState(), now);
+    }
+    const completed = finishPlaytestSession(draft, input, { monotonicNow: performance.now() }) as PlaytestSession;
+    const next = addPlaytestSession(playtestLedgerRef.current, completed) as PlaytestLedger;
+    publishActivePlaytest(null);
+    commitPlaytestLedger(next, "Playtest observation saved locally");
+    setSelectedPlaytestSessionId(completed.id);
+    setShowPlaytestHeatmap(true);
+    setPlaytestRatingDraft(completed.feedback.rating);
+    setPlaytestTagsDraft(completed.feedback.tags);
+    setPlaytestNoteDraft(completed.feedback.note);
+    appendConsole("playtest.recording.completed", "Local human playtest observation saved", Math.round(completed.activeDurationMs / 1000) + " active seconds · " + completed.summary.counts.respawns + " respawns · " + completed.summary.counts.resets + " resets · observational only", "good");
+    return completed;
+  }, [appendConsole, commitPlaytestLedger, publishActivePlaytest]);
+
+  const discardPlaytestRecording = useCallback(() => {
+    if (!activePlaytestRef.current) throw new Error("No playtest observation is recording.");
+    publishActivePlaytest(null);
+    appendConsole("playtest.recording.discarded", "Active playtest observation discarded", "No completed session or project data was changed.", "neutral");
+    showToast("Playtest recording discarded");
+    return { discarded: true };
+  }, [appendConsole, publishActivePlaytest, showToast]);
+
+  const savePlaytestFeedback = useCallback((id: string, feedback: { rating?: PlaytestRating; tags?: string[]; note?: string }) => {
+    const next = updatePlaytestFeedback(playtestLedgerRef.current, id, feedback) as PlaytestLedger;
+    commitPlaytestLedger(next, "Explicit playtest feedback saved");
+    const session = getPlaytestSession(next, id) as PlaytestSession;
+    setPlaytestRatingDraft(session.feedback.rating);
+    setPlaytestTagsDraft(session.feedback.tags);
+    setPlaytestNoteDraft(session.feedback.note);
+    return session;
+  }, [commitPlaytestLedger]);
+
+  const selectPlaytestSession = useCallback((id: string | null) => {
+    setSelectedPlaytestSessionId(id);
+    setPlaytestReplayPreview(null);
+    if (!id) {
+      setPlaytestRatingDraft("unrated");
+      setPlaytestTagsDraft([]);
+      setPlaytestNoteDraft("");
+      setShowPlaytestHeatmap(false);
+      return;
+    }
+    const session = playtestLedgerRef.current.sessions.find((candidate) => candidate.id === id);
+    if (!session) return;
+    setPlaytestRatingDraft(session.feedback.rating);
+    setPlaytestTagsDraft(session.feedback.tags);
+    setPlaytestNoteDraft(session.feedback.note);
+    setShowPlaytestHeatmap(true);
+  }, []);
+
+  useEffect(() => {
+    if (mode === "play" || !activePlaytestView) return;
+    const timer = window.setTimeout(() => {
+      if (!activePlaytestRef.current) return;
+      try {
+        finishPlaytestRecording({ outcome: "left-preview" });
+      } catch (error) {
+        appendConsole("playtest.recording.failed", "Playtest observation could not be closed", error instanceof Error ? error.message : String(error), "bad");
+      }
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [activePlaytestView, appendConsole, finishPlaytestRecording, mode]);
+
+  useEffect(() => {
+    if (!activePlaytestView?.limitReached) return;
+    const timer = window.setTimeout(() => {
+      if (!activePlaytestRef.current) return;
+      try {
+        finishPlaytestRecording({ outcome: "timeout" });
+      } catch (error) {
+        appendConsole("playtest.recording.failed", "Timed playtest observation could not be closed", error instanceof Error ? error.message : String(error), "bad");
+      }
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [activePlaytestView, appendConsole, finishPlaytestRecording]);
+
+  const togglePreferenceDimension = useCallback((id: string, target: "statement" | "candidate") => {
+    const setter = target === "statement" ? setPreferenceDimensions : setCandidatePreferenceDimensions;
+    setter((current) => current.includes(id)
+      ? current.length > 1 ? current.filter((dimension) => dimension !== id) : current
+      : [...current, id]);
+  }, []);
+
+  const savePreferenceStatement = useCallback(() => {
+    try {
+      const tags = preferenceContextTags.split(",").map((tag) => tag.trim()).filter(Boolean);
+      const context = preferenceScope === "all-games"
+        ? { genres: [], coreLoops: [], movementTemplates: [], formats: [], progressionModes: [], campaignScopes: [], tags }
+        : { ...activePreferenceContext, tags: [...new Set([...activePreferenceContext.tags, ...tags])] };
+      const existing = editingPreferenceId ? preferenceMemoryRef.current.entries.find((entry) => entry.id === editingPreferenceId) : null;
+      const next = existing
+        ? updatePreferenceEntry(preferenceMemoryRef.current, existing.id, {
+            ...(existing.kind === "statement" ? { statement: preferenceStatementDraft } : { rationale: preferenceStatementDraft }),
+            dimensions: preferenceDimensions,
+          }) as PreferenceMemory
+        : addPreferenceStatement(preferenceMemoryRef.current, { statement: preferenceStatementDraft, dimensions: preferenceDimensions, context }) as PreferenceMemory;
+      commitPreferenceMemory(next, existing ? "Preference updated" : "Explicit preference remembered");
+      setPreferenceStatementDraft("");
+      setPreferenceContextTags("");
+      setPreferenceDimensions(["overall-fit"]);
+      setEditingPreferenceId(null);
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Preference could not be saved");
+    }
+  }, [activePreferenceContext, commitPreferenceMemory, editingPreferenceId, preferenceContextTags, preferenceDimensions, preferenceScope, preferenceStatementDraft, showToast]);
+
+  const editPreferenceMemoryEntry = useCallback((entry: PreferenceEntry) => {
+    setEditingPreferenceId(entry.id);
+    setPreferenceStatementDraft(entry.kind === "statement" ? entry.statement ?? "" : entry.rationale ?? "");
+    setPreferenceDimensions(entry.dimensions);
+    setPreferenceContextTags(entry.context.tags.join(", "));
+    setPreferenceScope(Object.values(entry.context).some((values) => values.length > 0) ? "current-context" : "all-games");
+  }, []);
+
+  const removePreferenceMemoryEntry = useCallback((id: string) => {
+    try {
+      commitPreferenceMemory(removePreferenceEntry(preferenceMemoryRef.current, id) as PreferenceMemory, "Preference removed");
+      if (editingPreferenceId === id) {
+        setEditingPreferenceId(null);
+        setPreferenceStatementDraft("");
+      }
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Preference could not be removed");
+    }
+  }, [commitPreferenceMemory, editingPreferenceId, showToast]);
+
+  const clearAllPreferenceMemory = useCallback(() => {
+    if (!window.confirm("Clear every explicit LoopLab studio preference stored in this browser? This does not change any game project.")) return;
+    commitPreferenceMemory(clearPreferenceMemory(preferenceMemoryRef.current) as PreferenceMemory, "Preference memory cleared");
+    setEditingPreferenceId(null);
+    setPreferenceStatementDraft("");
+  }, [commitPreferenceMemory]);
+
+  const downloadPreferenceMemory = useCallback(() => {
+    const blob = new Blob([`${JSON.stringify(preferenceMemoryRef.current, null, 2)}\n`], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = "looplab-preference-memory.json";
+    anchor.click();
+    URL.revokeObjectURL(url);
+    showToast("Preference memory exported");
+  }, [showToast]);
+
+  const importPreferenceMemory = useCallback(async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    try {
+      const next = parsePreferenceMemory(JSON.parse(await file.text())) as PreferenceMemory;
+      commitPreferenceMemory(next, `${next.entries.length} explicit preferences imported`);
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Preference memory file is invalid");
+    }
+  }, [commitPreferenceMemory, showToast]);
+
+  const recordIterationPreference = useCallback((preferred: "first" | "second") => {
+    if (!iterationComparison) return;
+    try {
+      const chosen = iterationComparison[preferred];
+      const other = iterationComparison[preferred === "first" ? "second" : "first"];
+      const next = recordPairwisePreference(preferenceMemoryRef.current, {
+        preferredCandidateId: chosen.id,
+        otherCandidateId: other.id,
+        preferredSourceDigest: chosen.sourceDigest,
+        otherSourceDigest: other.sourceDigest,
+        comparisonDigest: iterationComparison.digest,
+        rationale: candidatePreferenceRationale,
+        dimensions: candidatePreferenceDimensions,
+        context: activePreferenceContext,
+      }) as PreferenceMemory;
+      commitPreferenceMemory(next, `Remembered preference for ${chosen.id}`);
+      setCandidatePreferenceRationale("");
+      setCandidatePreferenceDimensions(["overall-fit"]);
+      appendConsole("preference.recorded", `User explicitly preferred ${chosen.id}`, `${candidatePreferenceDimensions.join(", ")} · source-bound comparison ${iterationComparison.digest}`, "good");
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Candidate preference could not be recorded");
+    }
+  }, [activePreferenceContext, appendConsole, candidatePreferenceDimensions, candidatePreferenceRationale, commitPreferenceMemory, iterationComparison, showToast]);
+
+  const runAcceptanceProof = useCallback(() => {
+    try {
+      const outcome = applyAgentCommand(project, { op: "run_acceptance_suite" });
+      const result = outcome.result as AcceptanceSuiteResult;
+      const detail = `${result.passedCount}/${result.executableCount} executable tests passed · ${result.specifiedCount} spec-only · ${result.failedCount} failed · ${result.invalidCount} invalid`;
+      appendConsole("acceptance.completed", `Deterministic acceptance suite: ${result.status}`, detail, result.passed ? "good" : result.failedCount || result.invalidCount ? "bad" : "neutral");
+      showToast(`Acceptance suite ${result.status}: ${result.passedCount}/${result.executableCount} passed`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Acceptance suite could not run";
+      appendConsole("acceptance.failed", message, "No project data was changed.", "bad");
+      showToast(message);
+    }
+  }, [appendConsole, project, showToast]);
+
+  const requestAiPromptDraft = useCallback(async (request: Partial<DirectedBrief> & { provider?: AgentProvider; providerMode?: ProviderRouteMode; requiredConstraints?: string[]; currentPrompt?: string; attempt?: number; context?: Record<string, unknown> } = {}) => {
+    if (promptGenerationActiveRef.current) throw new Error("An AI prompt generation is already running.");
+    const provider = request.provider ?? aiProvider;
+    const providerMode = request.providerMode ?? "fallback";
+    const providerRoute = resolveProviderRoute({ providers: companionHealth?.providers ?? {} }, { requestedProvider: provider, mode: providerMode });
+    const routedProvider = providerRoute.selectedProvider as AgentProvider | null;
+    const providerStatus = routedProvider ? companionHealth?.providers[routedProvider] : companionHealth?.providers[provider];
+    if (!companionOnline) {
+      const message = "The managed AI companion is offline. Retry Prompt did not generate anything.";
+      appendConsole("brief.prompt.blocked", message, "Restart Looplab with npm run dev, then retry with an authenticated provider.", "bad");
+      showToast(message);
+      throw new Error(message);
+    }
+    if (!routedProvider || !providerStatus?.ready) {
+      const message = `No AI provider path is ready. ${providerRoute.selectionReason}`;
+      appendConsole("brief.prompt.blocked", message, providerRoute.candidates.map((candidate) => `${candidate.label}: ${candidate.state}`).join(" · "), "bad");
+      showToast(message);
+      throw new Error(message);
+    }
+    const liveBrief = directorBriefRef.current;
+    const liveInputs = liveBrief
+      ? { genre: liveBrief.genre, coreLoop: liveBrief.coreLoop, movementTemplate: liveBrief.movementTemplate, format: liveBrief.format, progression: liveBrief.progression, userPrompt: liveBrief.userPrompt, promptVariant: liveBrief.promptVariant }
+      : { ...directedSelections, userPrompt: aiBrief, promptVariant };
+    const baseBrief = composeDirectedGameBrief({ ...liveInputs, ...request });
+    const requiredConstraints = Array.isArray(request.requiredConstraints) ? request.requiredConstraints.map((value) => String(value).trim()).filter(Boolean) : directedGameSummary(baseBrief);
+    const currentPrompt = typeof request.currentPrompt === "string" && request.currentPrompt.trim()
+      ? request.currentPrompt.trim()
+      : liveBrief?.composedPrompt ?? baseBrief.composedPrompt;
+    const attempt = request.attempt ?? ++promptGenerationAttemptRef.current;
+    promptGenerationActiveRef.current = true;
+    setPromptGenerating(true);
+    appendConsole("brief.prompt.ai.requested", `Asking ${providerStatus.label} for prompt variation ${attempt}`, `${requiredConstraints.length} directed constraints · requested ${provider}${providerRoute.fallbackUsed ? `, routed to ${routedProvider}` : ""} · the exact user description must be preserved.`, "neutral");
+    try {
+      const currentProject = syncActiveMap(projectRef.current);
+      const currentDoctor = analyzeProject(currentProject);
+      const requestedPreferenceContext = request.context?.preferenceContext;
+      const promptPreferenceContext = requestedPreferenceContext
+        ? normalizeAppliedPreferenceContext(requestedPreferenceContext) as AppliedPreferenceContext
+        : selectAppliedPreferenceContext(preferenceMemoryRef.current, preferenceContextForProject(baseBrief, currentProject), { enabled: usePreferenceMemoryForRun }) as AppliedPreferenceContext;
+      const providerContext = {
+        projectName: currentProject.name,
+        projectLibraryId: activeProjectLibraryIdRef.current,
+        track: aiTrack,
+        activeMapId: currentProject.activeMapId,
+        mapIds: (currentProject.maps ?? []).map((map) => map.id),
+        runtimeProfile: currentProject.runtimeProfile,
+        doctor: { profile: currentDoctor.profile, score: currentDoctor.score, errorCount: currentDoctor.errorCount, warningCount: currentDoctor.warningCount, sourceDigest: currentDoctor.sourceDigest, nextActions: currentDoctor.nextActions },
+        gameplayProgram: { policy: LOOPLAB_GAMEPLAY_RULE_POLICY, inspection: inspectGameplayProgram(currentProject) },
+        motionBodies: { policy: LOOPLAB_MOTION_BODY_POLICY, inspection: inspectMotionBodies(currentProject, { strict: true }) },
+        combatProgram: { policy: LOOPLAB_COMBAT_POLICY, inspection: inspectCombatProgram(currentProject) },
+        actorProgram: { policy: LOOPLAB_ACTOR_POLICY, inspection: inspectActorProgram(currentProject) },
+        verbArchitecture: { policy: LOOPLAB_VERB_ARCHITECTURE_POLICY, inspection: inspectVerbArchitecture(currentProject) },
+        ...(request.context ?? {}),
+        preferenceContext: promptPreferenceContext,
+      };
+      appendConsole("preference.context.prepared", `${promptPreferenceContext.entries.length} explicit preference${promptPreferenceContext.entries.length === 1 ? "" : "s"} supplied to prompt generation`, promptPreferenceContext.entries.length ? `Receipt ${promptPreferenceContext.receiptDigest}` : "No relevant enabled preference matched this game context.", "good");
+      const response = await companionFetch(`${COMPANION_URL}/prompt-drafts`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          provider,
+          requestedProvider: provider,
+          providerMode,
+          userPrompt: baseBrief.userPrompt,
+          basePrompt: baseBrief.composedPrompt,
+          currentPrompt,
+          requiredConstraints,
+          attempt,
+          context: providerContext,
+        }),
+      });
+      const body = await response.json() as { ok?: boolean; draft?: ProviderPromptDraft; error?: string };
+      if (!response.ok || !body.draft) throw new Error(body.error ?? "The selected provider returned no prompt draft.");
+      if (body.draft.basePrompt !== baseBrief.composedPrompt) throw new Error("The companion returned a prompt for a different provider input.");
+      const actualProvider = body.draft.provider;
+      const actualProviderStatus = companionHealth?.providers[actualProvider];
+      const draft = { ...body.draft, provider: actualProvider, requiredConstraints, basePrompt: baseBrief.composedPrompt, comparisonPrompt: currentPrompt };
+      const designBrief = composeProviderGeneratedGameBrief(baseBrief, draft) as DirectedBrief;
+      const storedDraft = { ...body.draft, provider: actualProvider, requiredConstraints, basePrompt: baseBrief.composedPrompt } as ProviderPromptDraft;
+      setProviderPromptDraft(storedDraft);
+      syncDirectedBriefControls(designBrief);
+      const beforeProject = syncActiveMap(projectRef.current);
+      const generatedProject = syncActiveMap({ ...beforeProject, designBrief });
+      const nextProject = recordAgentProjectChange(beforeProject, generatedProject, { op: "retry_prompt" }, { channel: "provider" }) as GameProject;
+      projectRef.current = nextProject;
+      setProject(nextProject);
+      window.dispatchEvent(new CustomEvent("looplab:project-changed", { detail: { project: cloneProject(nextProject) } }));
+      appendConsole("brief.prompt.ai.completed", `${actualProviderStatus?.label ?? actualProvider} generated “${designBrief.promptGeneration?.title ?? "New game direction"}”`, `${designBrief.composedPrompt.length} characters · similarity ${Math.round((body.draft.similarityToPrevious ?? 0) * 100)}% · ${actualProvider === provider ? "requested path used" : `fell back from ${provider}`} · provider provenance saved.`, "good");
+      if (body.draft.usage) appendConsole("usage.prompt.completed", usageReceiptMessage(body.draft.usage, "Prompt run"), usageReceiptDetail(body.draft.usage), "good");
+      showToast(`${actualProviderStatus?.label ?? actualProvider} prompt ready`);
+      return { draft: storedDraft, designBrief };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "AI prompt generation failed";
+      appendConsole("brief.prompt.ai.failed", message, "The current prompt was kept unchanged. No local template was substituted.", "bad");
+      showToast(message);
+      throw error;
+    } finally {
+      promptGenerationActiveRef.current = false;
+      setPromptGenerating(false);
+    }
+  }, [aiBrief, aiProvider, aiTrack, appendConsole, companionHealth, companionOnline, directedSelections, promptVariant, showToast, syncDirectedBriefControls, usePreferenceMemoryForRun]);
+
+  const retryPromptDraft = useCallback(() => {
+    void requestAiPromptDraft().catch(() => {});
+  }, [requestAiPromptDraft]);
+
+  const copyPromptDraft = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(directedPrompt);
+      showToast("Current provider prompt copied");
+    } catch {
+      showToast("Clipboard access was blocked; select the prompt text to copy it");
+    }
+  }, [directedPrompt, showToast]);
+
+  const copyAgentProjectContext = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(JSON.stringify(agentProjectContext, null, 2));
+      showToast(`${agentContextView === "map" ? "Map" : "Campaign"} context copied`);
+    } catch {
+      showToast("Clipboard access was blocked; run get_project_context in the command bridge");
+    }
+  }, [agentContextView, agentProjectContext, showToast]);
+
+  const appendResearchEvent = useCallback((event: ResearchEvent) => {
+    setResearchEvents((events) => [...events.slice(-99), { ...event, sequence: event.sequence ?? (events.at(-1)?.sequence ?? 0) + 1 }]);
+  }, []);
+
+  const scanProviderConnections = useCallback(async (announce = true) => {
+    setProviderScanRunning(true);
+    if (announce) appendConsole("provider.scan.started", "Scanning Codex, Claude, API credentials, and optional local AI", "Only availability and authentication state are checked; local detection lists models without loading or invoking one, and secret values are never returned.");
+    try {
+      const response = await companionFetch(`${COMPANION_URL}/providers?refresh=1`, { cache: "no-store" });
+      const scan = await response.json() as Pick<CompanionHealth, "ok" | "checkedAt" | "readyCount" | "providers" | "localCopilot"> & { error?: string };
+      if (!response.ok || !scan.providers) throw new Error(scan.error ?? "The provider scan failed.");
+      setCompanionOnline(true);
+      setCompanionHealth((current) => ({
+        ok: true,
+        name: current?.name ?? "Looplab AI Companion",
+        version: current?.version ?? "1.2.0",
+        activeJobs: current?.activeJobs ?? 0,
+        activeConnections: current?.activeConnections ?? 0,
+        checkedAt: scan.checkedAt,
+        readyCount: scan.readyCount,
+        providers: scan.providers,
+        localCopilot: scan.localCopilot,
+      }));
+      if (announce) {
+        for (const id of PROVIDER_IDS) {
+          const provider = scan.providers[id];
+          appendConsole(`provider.${provider.state}`, provider.summary, provider.detail, provider.ready ? "good" : provider.state === "needs-key" || provider.state === "needs-login" ? "neutral" : "bad");
+        }
+        if (scan.localCopilot) appendConsole(`local-copilot.${scan.localCopilot.state}`, scan.localCopilot.summary, scan.localCopilot.detail, scan.localCopilot.ready ? "good" : "neutral");
+        appendConsole("provider.scan.completed", `${scan.readyCount} of ${PROVIDER_IDS.length} connections are ready`, `Checked ${new Date(scan.checkedAt).toLocaleTimeString()}`, scan.readyCount ? "good" : "bad");
+      }
+      return scan.providers;
+    } catch (error) {
+      setCompanionOnline(false);
+      setCompanionHealth(null);
+      const message = error instanceof Error ? error.message : "The local companion is offline.";
+      if (announce) appendConsole("companion.offline", message, "The Looplab launcher starts it automatically. If this tab was opened separately, restart with npm run dev.", "bad");
+      return null;
+    } finally {
+      setProviderScanRunning(false);
+    }
+  }, [appendConsole]);
+
+  const runProviderAction = useCallback(async (provider: ProviderStatus) => {
+    const action = provider.action;
+    if (action.kind === "none") {
+      await scanProviderConnections(true);
+      return;
+    }
+    if (action.kind === "open-url" && action.url) {
+      window.open(action.url, "_blank", "noopener,noreferrer");
+      appendConsole("provider.key.setup", `Opened the official ${provider.label} key page`, `Create the key, return to Looplab, and paste it into the masked connection field.`);
+      showToast("Create the key, then paste it into Looplab");
+      return;
+    }
+    if (action.kind === "copy-command" && action.command) {
+      try {
+        await navigator.clipboard.writeText(action.command);
+        appendConsole("provider.install.command", `${provider.label} install command copied`, action.command, "neutral");
+        showToast("Install command copied");
+      } catch {
+        appendConsole("provider.install.command", `Run this command to install ${provider.label}`, action.command, "neutral");
+      }
+      return;
+    }
+    if (action.kind !== "login" && action.kind !== "native-key") return;
+
+    setProviderLoginsRunning((current) => current.includes(provider.id) ? current : [...current, provider.id]);
+    appendConsole(
+      action.kind === "native-key" ? "provider.key.requested" : "provider.login.requested",
+      action.kind === "native-key" ? `Opening a masked key field for ${provider.label}` : `Launching ${provider.label} sign-in`,
+      action.kind === "native-key" ? "Fallback path: paste the key into the separate Windows dialog, then choose Save & verify." : provider.loginCommand ?? undefined,
+    );
+    if (action.kind === "native-key") showToast("Fallback Windows key dialog opened");
+    try {
+      const response = await companionFetch(`${COMPANION_URL}/providers/${provider.id}/connect`, { method: "POST" });
+      const created = await response.json() as { ok?: boolean; resumed?: boolean; eventsUrl?: string; cancelUrl?: string; error?: string };
+      if (!response.ok || !created.eventsUrl) throw new Error(created.error ?? "The sign-in flow could not start.");
+      if (created.resumed) appendConsole("provider.login.resumed", `Reattached to the existing ${provider.label} sign-in`, "Earlier sign-in messages and the secure provider link will replay below.");
+      providerEventSourcesRef.current.get(provider.id)?.close();
+      const source = openCompanionEventStream(`${COMPANION_URL}${created.eventsUrl}`);
+      providerEventSourcesRef.current.set(provider.id, source);
+      source.onmessage = (event) => {
+        const value = JSON.parse(event.data) as { type?: string; message?: string; url?: string };
+        const type = String(value.type ?? "provider.login.output");
+        const terminal = type.endsWith("completed") || type.endsWith("failed") || type.endsWith("cancelled");
+        appendConsole(type, String(value.message ?? type.replaceAll(".", " ")), value.url ? "Open the secure provider page to continue." : undefined, type.endsWith("completed") ? "good" : type.endsWith("failed") ? "bad" : "neutral", value.url);
+        if (terminal) {
+          source.close();
+          if (providerEventSourcesRef.current.get(provider.id) === source) providerEventSourcesRef.current.delete(provider.id);
+          setProviderLoginsRunning((current) => current.filter((id) => id !== provider.id));
+          void scanProviderConnections(false);
+        }
+      };
+      source.onerror = () => {
+        if (source.closed) return;
+        source.close();
+        if (providerEventSourcesRef.current.get(provider.id) === source) providerEventSourcesRef.current.delete(provider.id);
+        setProviderLoginsRunning((current) => current.filter((id) => id !== provider.id));
+        appendConsole("provider.login.stream", "The sign-in event stream closed before completion", "Scan connections to confirm the final state.", "bad");
+      };
+    } catch (error) {
+      setProviderLoginsRunning((current) => current.filter((id) => id !== provider.id));
+      const message = error instanceof Error ? error.message : "The sign-in flow could not start.";
+      appendConsole("provider.login.failed", message, provider.detail, "bad");
+      showToast(message);
+    }
+  }, [appendConsole, scanProviderConnections, showToast]);
+
+  const cancelProviderLogin = useCallback(async (connection: ActiveProviderConnection) => {
+    try {
+      const response = await companionFetch(`${COMPANION_URL}${connection.cancelUrl}`, { method: "POST" });
+      const result = await response.json() as { ok?: boolean; error?: string };
+      if (!response.ok || !result.ok) throw new Error(result.error ?? "The sign-in could not be cancelled.");
+      providerEventSourcesRef.current.get(connection.provider)?.close();
+      providerEventSourcesRef.current.delete(connection.provider);
+      setProviderLoginsRunning((current) => current.filter((id) => id !== connection.provider));
+      appendConsole("provider.login.cancelled", `${connection.provider === "claude" ? "Claude Code" : "Codex"} sign-in cancelled`, "Start a fresh sign-in whenever you are ready.");
+      await scanProviderConnections(true);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "The sign-in could not be cancelled.";
+      appendConsole("provider.login.cancel.failed", message, undefined, "bad");
+      showToast(message);
+    }
+  }, [appendConsole, scanProviderConnections, showToast]);
+
+  const saveProviderKey = useCallback(async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (aiProvider !== "openai" && aiProvider !== "anthropic") return;
+    const key = providerKeyDraft.trim();
+    if (key.length < 20 || /\s/.test(key)) {
+      showToast("Paste the complete API key without spaces");
+      return;
+    }
+    setProviderKeySaving(true);
+    setProviderKeyDraft("");
+    appendConsole("provider.key.saving", `Encrypting the ${aiProvider === "openai" ? "OpenAI" : "Anthropic"} key locally`, "Sent only to the Looplab companion at 127.0.0.1; never added to the project, console, or export.");
+    try {
+      const response = await companionFetch(`${COMPANION_URL}/providers/${aiProvider}/key`, {
+        method: "POST",
+        cache: "no-store",
+        credentials: "omit",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ key }),
+      });
+      const result = await response.json() as { ok?: boolean; ready?: boolean; summary?: string; error?: string };
+      if (!response.ok || !result.ok || !result.ready) throw new Error(result.error ?? result.summary ?? "Provider verification did not pass.");
+      appendConsole("provider.key.completed", result.summary ?? `${aiProvider} is connected`, "Windows current-user encryption is active.", "good");
+      showToast(`${aiProvider === "openai" ? "OpenAI" : "Anthropic"} connected`);
+      await scanProviderConnections(false);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "The API key could not be stored.";
+      appendConsole("provider.key.failed", message, "The field was cleared. Paste the key again to retry; no plaintext key was saved in the project or logs.", "bad");
+      showToast(message);
+    } finally {
+      setProviderKeySaving(false);
+    }
+  }, [aiProvider, appendConsole, providerKeyDraft, scanProviderConnections, showToast]);
+
+  const commit = useCallback(
+    (update: GameProject | ((current: GameProject) => GameProject), message?: string) => {
+      const before = syncActiveMap(project);
+      const rawNext = typeof update === "function" ? update(project) : update;
+      const invalidated = invalidateVerifiedAuthoring(before, syncActiveMap(rawNext), { reason: message ?? "Workbench edit changed authored game state" }) as GameProject;
+      const next = recordAgentProjectChange(before, invalidated, { op: "workbench_edit" }, { channel: "mouse" }) as GameProject;
+      historyRef.current = [...historyRef.current.slice(-(HISTORY_LIMIT - 1)), cloneProject(before)];
+      futureRef.current = [];
+      setProject(next);
+      syncHistoryState();
+      if (message) showToast(next.iteration?.parentId === before.iteration?.id && next.iteration?.status === "candidate" ? `${message} · new candidate created` : message);
+    },
+    [project, showToast, syncHistoryState],
+  );
+
+  const applyProjectFromAgent = useCallback((next: GameProject, message: string) => {
+    const previous = projectRef.current;
+    const syncedNext = syncActiveMap(next);
+    historyRef.current = [...historyRef.current.slice(-(HISTORY_LIMIT - 1)), cloneProject(previous)];
+    futureRef.current = [];
+    projectRef.current = syncedNext;
+    setProject(syncedNext);
+    syncDirectedBriefControls(syncedNext.designBrief);
+    setTuningContractDraft(syncedNext.tuningContract ? JSON.stringify(syncedNext.tuningContract, null, 2) : "");
+    setSpatialLayoutContractDraft(syncedNext.spatialLayoutContract ? JSON.stringify(syncedNext.spatialLayoutContract, null, 2) : "");
+    setCombatProgramDraft(syncedNext.combatProgram ? JSON.stringify(syncedNext.combatProgram, null, 2) : "");
+    setActorProgramDraft(syncedNext.actorProgram ? JSON.stringify(syncedNext.actorProgram, null, 2) : "");
+    setPresentationProgramDraft(syncedNext.presentationProgram ? JSON.stringify(syncedNext.presentationProgram, null, 2) : "");
+    setGameShellDraft(syncedNext.gameShell ? JSON.stringify(syncedNext.gameShell, null, 2) : "");
+    setTuningSearchResult(null);
+    setSelectedTuningCandidateId(null);
+    setTuningCandidatePreview(null);
+    setFoundationSearchResult(null);
+    setSelectedFoundationId(null);
+    setFoundationCandidatePreview(null);
+    setSpatialLayoutSearchResult(null);
+    setSelectedSpatialLayoutCandidateId(null);
+    setSpatialLayoutCandidatePreview(null);
+    syncHistoryState();
+    showToast(message);
+    window.dispatchEvent(new CustomEvent("looplab:project-changed", { detail: { project: cloneProject(syncedNext) } }));
+  }, [showToast, syncDirectedBriefControls, syncHistoryState]);
+
+  const configureExportProfile = useCallback((changes: { profile?: "strict" | "hosted"; portableSaves?: boolean; autoSave?: boolean; restoreOnBoot?: boolean }) => {
+    try {
+      const current = syncActiveMap(project);
+      const profile = changes.profile ?? (current.release?.exportProfile === "hosted" ? "hosted" : "strict");
+      const existingSave = current.saveProgram;
+      const enteringHosted = changes.profile === "hosted" && current.release?.exportProfile !== "hosted";
+      const outcome = applyAgentCommand(current, {
+        op: "set_export_profile",
+        profile,
+        portableSaves: profile === "hosted" ? true : changes.portableSaves ?? existingSave?.portableCodes ?? true,
+        autoSave: changes.autoSave ?? (enteringHosted ? true : existingSave?.hosted?.autoSave ?? true),
+        restoreOnBoot: changes.restoreOnBoot ?? (enteringHosted ? true : existingSave?.hosted?.restoreOnBoot ?? true),
+        expectedSourceDigest: analyzeProject(current).sourceDigest,
+      });
+      commit(outcome.project as GameProject, profile === "hosted" ? "Hosted saves enabled with portable fallback" : "Strict one-file export selected");
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "The export profile could not be changed");
+    }
+  }, [commit, project, showToast]);
+
+  const applyMapSize = useCallback(() => {
+    const width = Math.round(Number(visibleMapWidthDraft));
+    const height = Math.round(Number(visibleMapHeightDraft));
+    if (!Number.isFinite(width) || !Number.isFinite(height) || width < 64 || height < 64 || width > 8192 || height > 8192) {
+      showToast("Map width and height must each be between 64 and 8192 pixels");
+      return;
+    }
+    try {
+      const mapId = project.activeMapId ?? activeMap?.id ?? "map-main";
+      const outcome = applyAgentCommand(syncActiveMap(project), { op: "update_map", id: mapId, changes: { width, height } });
+      setMode("edit");
+      setMapWidthDraft(String(width));
+      setMapHeightDraft(String(height));
+      setMapSizeDraftMapId(mapId);
+      commit(outcome.project as GameProject, `${activeMap?.name ?? "Map"} resized to ${width} × ${height}`);
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "The active map could not be resized");
+    }
+  }, [activeMap, commit, project, showToast, visibleMapHeightDraft, visibleMapWidthDraft]);
+
+  const resetHistory = useCallback((next: GameProject) => {
+    historyRef.current = [];
+    futureRef.current = [];
+    const synced = syncActiveMap(next);
+    projectRef.current = synced;
+    setProject(synced);
+    syncDirectedBriefControls(next.designBrief);
+    setTuningContractDraft(next.tuningContract ? JSON.stringify(next.tuningContract, null, 2) : "");
+    setSpatialLayoutContractDraft(next.spatialLayoutContract ? JSON.stringify(next.spatialLayoutContract, null, 2) : "");
+    setCombatProgramDraft(next.combatProgram ? JSON.stringify(next.combatProgram, null, 2) : "");
+    setActorProgramDraft(next.actorProgram ? JSON.stringify(next.actorProgram, null, 2) : "");
+    setPresentationProgramDraft(next.presentationProgram ? JSON.stringify(next.presentationProgram, null, 2) : "");
+    setGameShellDraft(next.gameShell ? JSON.stringify(next.gameShell, null, 2) : "");
+    setTuningSearchResult(null);
+    setSelectedTuningCandidateId(null);
+    setTuningCandidatePreview(null);
+    setFoundationSearchResult(null);
+    setSelectedFoundationId(null);
+    setFoundationCandidatePreview(null);
+    setSpatialLayoutSearchResult(null);
+    setSelectedSpatialLayoutCandidateId(null);
+    setSpatialLayoutCandidatePreview(null);
+    setSelectedId(null);
+    setMode("edit");
+    syncHistoryState();
+  }, [syncDirectedBriefControls, syncHistoryState]);
+
+  const upsertProjectLibraryEntry = useCallback((entry: ProjectLibraryEntry) => {
+    const nextEntries = projectLibraryRef.current.some((candidate) => candidate.id === entry.id)
+      ? projectLibraryRef.current.map((candidate) => candidate.id === entry.id ? entry : candidate)
+      : [...projectLibraryRef.current, entry];
+    projectLibraryRef.current = nextEntries;
+    setProjectLibrary(nextEntries);
+    void persistProjectLibraryEntry(entry).then((persisted) => {
+      if (!persisted) showToast("Project library storage is unavailable; export a .loop.json backup");
+    });
+  }, [showToast]);
+
+  const snapshotActiveProject = useCallback(() => {
+    const id = activeProjectLibraryIdRef.current;
+    if (!id) return null;
+    const current = projectLibraryRef.current.find((entry) => entry.id === id);
+    const entry: ProjectLibraryEntry = {
+      ...(current ?? makeProjectLibraryEntry(projectRef.current, { id, origin: "local", sourceLabel: "Local Looplab project" })),
+      name: projectRef.current.name,
+      folderName: projectFolderName ?? current?.folderName ?? null,
+      updatedAt: new Date().toISOString(),
+      project: cloneProject(syncActiveMap(projectRef.current)),
+    };
+    upsertProjectLibraryEntry(entry);
+    return entry;
+  }, [projectFolderName, upsertProjectLibraryEntry]);
+
+  const replaceSharedProjectCatalog = useCallback((projects: SharedProjectSummary[]) => {
+    const bounded = projects.filter((entry) => SHARED_PROJECT_ID_PATTERN.test(entry.id)).slice(0, LOOPLAB_SHARED_PROJECT_STORE_POLICY.maximumProjects);
+    sharedProjectCatalogRef.current = bounded;
+    setSharedProjectCatalog(bounded);
+    setSharedProjectCatalogReady(true);
+    return bounded;
+  }, []);
+
+  const upsertSharedProjectSummary = useCallback((summary: SharedProjectSummary) => {
+    const current = sharedProjectCatalogRef.current;
+    const next = current.some((entry) => entry.id === summary.id)
+      ? current.map((entry) => entry.id === summary.id ? summary : entry)
+      : [...current, summary].sort((left, right) => left.id.localeCompare(right.id));
+    replaceSharedProjectCatalog(next);
+  }, [replaceSharedProjectCatalog]);
+
+  const refreshSharedProjectCatalog = useCallback(async (announce = false) => {
+    const response = await listCompanionProjects();
+    const projects = replaceSharedProjectCatalog(response.projects);
+    if (announce) appendConsole("project.shared.listed", `${projects.length} shared project${projects.length === 1 ? "" : "s"} found`, `${LOOPLAB_SHARED_PROJECT_STORE_POLICY.relativeRoot} · compact summaries only`, "good");
+    return { ...response, projects };
+  }, [appendConsole, replaceSharedProjectCatalog]);
+
+  const mountSharedProject = useCallback(async (rawId: string, announce = true, replaceMountedDraft = false) => {
+    const id = rawId.trim().toLowerCase();
+    if (!SHARED_PROJECT_ID_PATTERN.test(id)) throw new Error("Shared project ID must be a lowercase slug without path characters.");
+    const mountedDraft = projectLibraryRef.current.find((entry) => entry.sharedProjectId === id);
+    if (mountedDraft && !replaceMountedDraft && ["pending", "conflict", "rebased", "offline"].includes(mountedDraft.sharedSyncStatus ?? "synced")) {
+      throw new Error(`Shared project ${id} already has a ${mountedDraft.sharedSyncStatus} local draft. Preserve it as a variation or finish the explicit rebase/save workflow before replacing the mounted bytes.`);
+    }
+    snapshotActiveProject();
+    const response = await readCompanionProject(id);
+    const normalized = ensureMapModel(ensureBrowser2DProject(response.project, { migrateLegacyRenderer: true }));
+    const validation = validateProject(normalized);
+    if (!validation.valid) throw new Error(`Shared project ${id} is invalid: ${validation.errors.join(" ")}`);
+    const existing = projectLibraryRef.current.find((entry) => entry.sharedProjectId === id);
+    const entry = makeProjectLibraryEntry(normalized, {
+      id: existing?.id ?? sharedProjectLibraryId(id),
+      name: response.summary.name,
+      origin: response.summary.origin,
+      sourceLabel: response.summary.sourceLabel,
+      folderName: response.summary.folderName,
+      parentLibraryId: response.summary.parentLibraryId,
+      storage: "shared",
+      sharedProjectId: id,
+      sharedSourceDigest: response.sourceDigest,
+      sharedRevisionDigest: response.revisionDigest,
+      sharedBaseProject: response.project,
+      sharedProjectPath: response.summary.projectPath,
+      sharedSyncStatus: "synced",
+    });
+    entry.updatedAt = response.summary.updatedAt;
+    upsertProjectLibraryEntry(entry);
+    upsertSharedProjectSummary(response.summary);
+    activeProjectLibraryIdRef.current = entry.id;
+    setActiveProjectLibraryId(entry.id);
+    setProjectFolderName(entry.folderName ?? null);
+    writeLocalStorage(PROJECT_LIBRARY_ACTIVE_KEY, entry.id);
+    resetHistory(entry.project);
+    if (announce) {
+      appendConsole("project.shared.mounted", `${entry.name} mounted as the loop target`, `${response.summary.projectPath} · source ${response.sourceDigest} · revision ${response.revisionDigest} · companion bytes are authoritative`, "good");
+      showToast(`${entry.name} mounted from the shared store`);
+    }
+    return { entry, project: cloneProject(entry.project), sourceDigest: response.sourceDigest, revisionDigest: response.revisionDigest, summary: response.summary, validation };
+  }, [appendConsole, resetHistory, showToast, snapshotActiveProject, upsertProjectLibraryEntry, upsertSharedProjectSummary]);
+
+  const queueSharedProjectSave = useCallback((inputEntry: ProjectLibraryEntry, projectToSave: GameProject, options: {
+    id?: string;
+    expectedRevisionDigest?: string | null;
+    createOnly?: boolean;
+    announce?: boolean;
+  } = {}) => {
+    const requestedId = String(options.id ?? inputEntry.sharedProjectId ?? inputEntry.id).trim().toLowerCase();
+    if (!SHARED_PROJECT_ID_PATTERN.test(requestedId)) return Promise.reject(new Error("Shared project ID must be a lowercase slug without path characters."));
+    const previous = sharedProjectSaveQueuesRef.current.get(requestedId) ?? Promise.resolve(null);
+    const task = previous.catch(() => null).then(async () => {
+      const latestEntry = projectLibraryRef.current.find((entry) => entry.id === inputEntry.id) ?? inputEntry;
+      const expectedRevisionDigest = options.expectedRevisionDigest !== undefined ? options.expectedRevisionDigest : latestEntry.sharedRevisionDigest ?? null;
+      const createOnly = options.createOnly ?? !expectedRevisionDigest;
+      if (!createOnly && !expectedRevisionDigest) throw new Error("Updating a shared project requires its exact latest revisionDigest.");
+      const pending: ProjectLibraryEntry = {
+        ...latestEntry,
+        project: cloneProject(projectToSave),
+        storage: "shared",
+        sharedProjectId: requestedId,
+        sharedSyncStatus: "pending",
+        updatedAt: new Date().toISOString(),
+      };
+      upsertProjectLibraryEntry(pending);
+      sharedProjectSavingRef.current.add(requestedId);
+      try {
+        const parent = pending.parentLibraryId?.startsWith("shared:") ? pending.parentLibraryId.slice(7) : pending.parentLibraryId;
+        const stored = await writeCompanionProject(requestedId, syncActiveMap(projectToSave), {
+          expectedRevisionDigest,
+          createOnly,
+          metadata: {
+            origin: pending.origin,
+            sourceLabel: pending.sourceLabel,
+            folderName: pending.folderName ?? null,
+            parentLibraryId: parent && SHARED_PROJECT_ID_PATTERN.test(parent) ? parent : null,
+          },
+        });
+        const synced: ProjectLibraryEntry = {
+          ...pending,
+          name: stored.summary.name,
+          sourceLabel: stored.summary.sourceLabel,
+          folderName: stored.summary.folderName,
+          parentLibraryId: stored.summary.parentLibraryId,
+          updatedAt: stored.summary.updatedAt,
+          sharedSourceDigest: stored.sourceDigest,
+          sharedRevisionDigest: stored.revisionDigest,
+          sharedBaseProject: syncActiveMap(projectToSave),
+          sharedProjectPath: stored.summary.projectPath,
+          sharedSyncStatus: "synced",
+        };
+        upsertProjectLibraryEntry(synced);
+        upsertSharedProjectSummary(stored.summary);
+        sharedProjectSaveErrorsRef.current.delete(requestedId);
+        if (options.announce) appendConsole("project.shared.saved", `${synced.name} saved to the shared store`, `${stored.summary.projectPath} · revision ${stored.revisionDigest}${stored.idempotent ? " · already current" : ""}`, "good");
+        return stored;
+      } catch (error) {
+        const conflict = error instanceof SharedProjectRequestError && (error.statusCode === 409 || error.statusCode === 412 || error.statusCode === 428);
+        const currentEntry = projectLibraryRef.current.find((entry) => entry.id === pending.id) ?? pending;
+        upsertProjectLibraryEntry({ ...currentEntry, project: cloneProject(projectToSave), sharedSyncStatus: conflict ? "conflict" : "offline" });
+        const code = error instanceof SharedProjectRequestError ? error.code : "shared-project-unreachable";
+        const failureKey = `${code}:${error instanceof SharedProjectRequestError ? String(error.got ?? "") : error instanceof Error ? error.message : String(error)}`;
+        if (sharedProjectSaveErrorsRef.current.get(requestedId) !== failureKey) {
+          sharedProjectSaveErrorsRef.current.set(requestedId, failureKey);
+          appendConsole(
+            conflict ? "project.shared.conflict" : "project.shared.offline",
+            conflict ? `${pending.name} has a newer shared version; local draft preserved` : `${pending.name} remains cached locally`,
+            error instanceof SharedProjectRequestError ? error.repairAction ?? error.message : "The companion shared store is unavailable. Autosave will retry after reconnecting.",
+            conflict ? "bad" : "neutral",
+          );
+        }
+        throw error;
+      } finally {
+        sharedProjectSavingRef.current.delete(requestedId);
+      }
+    });
+    sharedProjectSaveQueuesRef.current.set(requestedId, task.catch(() => null));
+    return task;
+  }, [appendConsole, upsertProjectLibraryEntry, upsertSharedProjectSummary]);
+
+  const previewMountedSharedProjectRebase = useCallback(async (id: string, expectedBaseRevisionDigest: string, expectedRemoteRevisionDigest: string) => {
+    const entry = projectLibraryRef.current.find((candidate) => candidate.sharedProjectId === id);
+    if (!entry || entry.id !== activeProjectLibraryIdRef.current) throw new Error("The shared project must be mounted and selected before rebasing it.");
+    if (!entry.sharedBaseProject || !entry.sharedRevisionDigest) throw new Error("This cached project predates rebase snapshots. Preserve the local draft as a variation, then mount the shared project again to establish a base.");
+    if (entry.sharedRevisionDigest !== expectedBaseRevisionDigest) throw new Error(`[stale-rebase-base] Expected ${expectedBaseRevisionDigest}, but the mounted base is ${entry.sharedRevisionDigest}. Inspect the project library again.`);
+    const localProject = cloneProject(syncActiveMap(projectRef.current));
+    const remote = await readCompanionProject(id);
+    if (remote.revisionDigest !== expectedRemoteRevisionDigest) throw new Error(`[stale-rebase-remote] Expected ${expectedRemoteRevisionDigest}, but the shared project is now ${remote.revisionDigest}. List shared projects and preview again.`);
+    const preview = previewSharedProjectRebase({
+      baseProject: entry.sharedBaseProject,
+      localProject,
+      remoteProject: remote.project,
+      baseRevisionDigest: expectedBaseRevisionDigest,
+      remoteRevisionDigest: expectedRemoteRevisionDigest,
+    });
+    const validation = validateProject(preview.mergedProject);
+    const prototypeDoctor = analyzeProject(preview.mergedProject, { profile: "prototype" });
+    const productionDoctor = analyzeProject(preview.mergedProject, { profile: "production" });
+    const receipt = Object.fromEntries(Object.entries(preview).filter(([key]) => key !== "mergedProject"));
+    return {
+      ok: true,
+      sharedProjectId: id,
+      ...receipt,
+      validation,
+      doctors: {
+        prototype: { sourceDigest: prototypeDoctor.sourceDigest, score: prototypeDoctor.score, errorCount: prototypeDoctor.errorCount, warningCount: prototypeDoctor.warningCount, canPromote: prototypeDoctor.canPromote },
+        production: { sourceDigest: productionDoctor.sourceDigest, score: productionDoctor.score, errorCount: productionDoctor.errorCount, warningCount: productionDoctor.warningCount, canPromote: productionDoctor.canPromote },
+      },
+      nextAction: !preview.applicable
+        ? "Resolve every reported path deliberately; LoopLab never chooses a winner for same-field or delete-versus-edit conflicts."
+        : !validation.valid
+          ? "Repair the merged project validation errors before applying this rebase."
+          : "Apply this exact digest-bound receipt, run Project Doctor and playtest gates, then save explicitly against the current remote revision.",
+    };
+  }, []);
+
+  const applyMountedSharedProjectRebase = useCallback(async (
+    id: string,
+    expectedBaseRevisionDigest: string,
+    expectedLocalRevisionDigest: string,
+    expectedRemoteRevisionDigest: string,
+    expectedRebaseDigest: string,
+  ) => {
+    const entry = projectLibraryRef.current.find((candidate) => candidate.sharedProjectId === id);
+    if (!entry || entry.id !== activeProjectLibraryIdRef.current) throw new Error("The shared project must be mounted and selected before applying a rebase.");
+    if (!entry.sharedBaseProject || !entry.sharedRevisionDigest) throw new Error("The mounted project has no canonical rebase base. Preserve the local draft as a variation, then mount again.");
+    if (entry.sharedRevisionDigest !== expectedBaseRevisionDigest) throw new Error(`[stale-rebase-base] Expected ${expectedBaseRevisionDigest}, but the mounted base is ${entry.sharedRevisionDigest}.`);
+    const localProject = cloneProject(syncActiveMap(projectRef.current));
+    const actualLocalRevisionDigest = sharedProjectRevisionDigest(localProject);
+    if (actualLocalRevisionDigest !== expectedLocalRevisionDigest) throw new Error(`[stale-rebase-local] Expected ${expectedLocalRevisionDigest}, but the local draft is now ${actualLocalRevisionDigest}. Preview again; no project state changed.`);
+    const remote = await readCompanionProject(id);
+    if (remote.revisionDigest !== expectedRemoteRevisionDigest) throw new Error(`[stale-rebase-remote] Expected ${expectedRemoteRevisionDigest}, but the shared project is now ${remote.revisionDigest}. Preview again; no project state changed.`);
+    const preview = previewSharedProjectRebase({
+      baseProject: entry.sharedBaseProject,
+      localProject,
+      remoteProject: remote.project,
+      baseRevisionDigest: expectedBaseRevisionDigest,
+      remoteRevisionDigest: expectedRemoteRevisionDigest,
+    });
+    if (preview.rebaseDigest !== expectedRebaseDigest) throw new Error(`[stale-rebase-receipt] Expected ${expectedRebaseDigest}, but the exact inputs produce ${preview.rebaseDigest}. Preview again; no project state changed.`);
+    if (!preview.applicable) throw new Error(`Rebase has ${preview.conflicts.length + preview.conflictOverflow} unresolved conflict(s); LoopLab will not choose a winner.`);
+    const validation = validateProject(preview.mergedProject);
+    if (!validation.valid) throw new Error(`Merged shared project is invalid: ${validation.errors.join(" ")}`);
+    const rebased: ProjectLibraryEntry = {
+      ...entry,
+      name: preview.mergedProject.name,
+      project: cloneProject(preview.mergedProject),
+      updatedAt: new Date().toISOString(),
+      sharedSourceDigest: remote.sourceDigest,
+      sharedRevisionDigest: remote.revisionDigest,
+      sharedBaseProject: cloneProject(remote.project),
+      sharedProjectPath: remote.summary.projectPath,
+      sharedSyncStatus: "rebased",
+    };
+    upsertProjectLibraryEntry(rebased);
+    upsertSharedProjectSummary(remote.summary);
+    resetHistory(rebased.project);
+    const prototypeDoctor = analyzeProject(rebased.project, { profile: "prototype" });
+    const productionDoctor = analyzeProject(rebased.project, { profile: "production" });
+    appendConsole("project.shared.rebased", `${rebased.name} rebased without overwriting the shared project`, `Receipt ${preview.rebaseDigest} · review and run gates, then save explicitly against ${remote.revisionDigest}.`, "good");
+    return {
+      ok: true,
+      changed: preview.changed,
+      saved: false,
+      sharedProjectId: id,
+      rebaseDigest: preview.rebaseDigest,
+      baseRevisionDigest: preview.baseRevisionDigest,
+      localRevisionDigest: preview.localRevisionDigest,
+      remoteRevisionDigest: preview.remoteRevisionDigest,
+      mergedRevisionDigest: preview.mergedRevisionDigest,
+      syncStatus: "rebased",
+      validation,
+      doctors: {
+        prototype: { sourceDigest: prototypeDoctor.sourceDigest, score: prototypeDoctor.score, errorCount: prototypeDoctor.errorCount, warningCount: prototypeDoctor.warningCount, canPromote: prototypeDoctor.canPromote },
+        production: { sourceDigest: productionDoctor.sourceDigest, score: productionDoctor.score, errorCount: productionDoctor.errorCount, warningCount: productionDoctor.warningCount, canPromote: productionDoctor.canPromote },
+      },
+      nextAction: "Run the required Doctor, replay, playtest, and release gates. Then call save_shared_project with expectedRevisionDigest equal to remoteRevisionDigest.",
+    };
+  }, [appendConsole, resetHistory, upsertProjectLibraryEntry, upsertSharedProjectSummary]);
+
+  const activateProjectLibraryEntry = useCallback(async (id: string, announce = true) => {
+    const entry = projectLibraryRef.current.find((candidate) => candidate.id === id);
+    const catalogId = id.startsWith("shared:") ? id.slice(7) : null;
+    if (!entry && catalogId) return (await mountSharedProject(catalogId, announce)).project;
+    if (!entry) throw new Error("That project is no longer in the project library.");
+    const remoteSummary = entry.sharedProjectId ? sharedProjectCatalogRef.current.find((candidate) => candidate.id === entry.sharedProjectId) : null;
+    const revisionConflict = entry.sharedProjectId && remoteSummary && remoteSummary.revisionDigest !== entry.sharedRevisionDigest;
+    if (revisionConflict && entry.sharedSyncStatus !== "conflict") upsertProjectLibraryEntry({ ...entry, sharedSyncStatus: "conflict" });
+    snapshotActiveProject();
+    activeProjectLibraryIdRef.current = entry.id;
+    setActiveProjectLibraryId(entry.id);
+    setProjectFolderName(entry.folderName ?? null);
+    writeLocalStorage(PROJECT_LIBRARY_ACTIVE_KEY, entry.id);
+    resetHistory(cloneProject(entry.project));
+    if (announce) {
+      appendConsole(revisionConflict ? "project.shared.conflict" : "project.selected", `${entry.name} is now the loop target`, revisionConflict ? "Local draft preserved. Preview a three-way rebase against the current shared revision; selecting a project never replaces the draft." : `${entry.sourceLabel} · AI generation and improvement passes will use this project.`, revisionConflict ? "bad" : "good");
+      showToast(`${entry.name} selected`);
+    }
+    return cloneProject(entry.project);
+  }, [appendConsole, mountSharedProject, resetHistory, showToast, snapshotActiveProject, upsertProjectLibraryEntry]);
+
+  const registerProjectInLibrary = useCallback((nextProject: GameProject, options: { id?: string; origin: ProjectLibraryEntry["origin"]; sourceLabel: string; folderName?: string | null; parentLibraryId?: string | null }) => {
+    snapshotActiveProject();
+    const entry = makeProjectLibraryEntry(syncActiveMap(nextProject), options);
+    upsertProjectLibraryEntry(entry);
+    activeProjectLibraryIdRef.current = entry.id;
+    setActiveProjectLibraryId(entry.id);
+    setProjectFolderName(entry.folderName ?? null);
+    writeLocalStorage(PROJECT_LIBRARY_ACTIVE_KEY, entry.id);
+    resetHistory(entry.project);
+    return entry;
+  }, [resetHistory, snapshotActiveProject, upsertProjectLibraryEntry]);
+
+  const createProjectVariation = useCallback((requestedName?: string) => {
+    const base = cloneProject(syncActiveMap(projectRef.current));
+    const baseLibraryId = activeProjectLibraryIdRef.current;
+    snapshotActiveProject();
+    const name = requestedName?.trim() || nextProjectVariationName(base.name, projectLibraryRef.current.map((entry) => entry.name));
+    const iterationId = `variation-v${String(Date.now()).slice(-8)}`;
+    const outcome = applyAgentCommand(base, { op: "create_variation", name, id: iterationId, parentId: base.iteration?.id ?? null, objective: `Develop ${name} without changing ${base.name}` });
+    const entry = registerProjectInLibrary(outcome.project as GameProject, { origin: "variation", sourceLabel: `Variation of ${base.name}`, parentLibraryId: baseLibraryId });
+    appendConsole("project.variation.created", `${entry.name} created and selected`, `Base preserved: ${base.name} · parent iteration ${base.iteration?.id ?? "unversioned"} · child ${iterationId}`, "good");
+    showToast(`${entry.name} created · base preserved`);
+    return entry;
+  }, [appendConsole, registerProjectInLibrary, showToast, snapshotActiveProject]);
+
+  const undo = useCallback(() => {
+    const previous = historyRef.current.pop();
+    if (!previous) return;
+    futureRef.current.push(cloneProject(project));
+    setProject(recordAgentProjectChange(syncActiveMap(project), syncActiveMap(previous), { op: "undo" }, { channel: "history", category: "history" }) as GameProject);
+    setSelectedId(null);
+    syncHistoryState();
+    showToast("Undid last change");
+  }, [project, showToast, syncHistoryState]);
+
+  const redo = useCallback(() => {
+    const next = futureRef.current.pop();
+    if (!next) return;
+    historyRef.current.push(cloneProject(project));
+    setProject(recordAgentProjectChange(syncActiveMap(project), syncActiveMap(next), { op: "redo" }, { channel: "history", category: "history" }) as GameProject);
+    setSelectedId(null);
+    syncHistoryState();
+    showToast("Redid change");
+  }, [project, showToast, syncHistoryState]);
+
+  const updateObject = useCallback(
+    (id: string, changes: Partial<GameObject>, message?: string) => {
+      commit(
+        (current) => ({
+          ...current,
+          objects: current.objects.map((object) =>
+            object.id === id ? { ...object, ...changes } : object,
+          ),
+        }),
+        message,
+      );
+    },
+    [commit],
+  );
+
+  const addTraversalPath = useCallback(() => {
+    try {
+      const outcome = applyAgentCommand(syncActiveMap(project), { op: "add_traversal_path", path: { id: `rail-${Date.now()}`, name: `Rail ${(project.traversalPaths?.length ?? 0) + 1}`, kind: "rail" } });
+      const path = outcome.result?.path as TraversalPath;
+      commit(outcome.project as GameProject, `${path.name} added as authored traversal data`);
+      setSelectedId(null);
+      setSelectedPathId(path.id);
+      setShowPaths(true);
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "The traversal path could not be added");
+    }
+  }, [commit, project, showToast]);
+
+  const updateTraversalPath = useCallback((id: string, changes: Partial<TraversalPath>, message?: string) => {
+    try {
+      const outcome = applyAgentCommand(syncActiveMap(project), { op: "update_traversal_path", id, changes });
+      commit(outcome.project as GameProject, message ?? "Traversal path updated");
+      setShowPaths(true);
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "The traversal path could not be updated");
+    }
+  }, [commit, project, showToast]);
+
+  const removeTraversalPath = useCallback((id: string) => {
+    try {
+      const outcome = applyAgentCommand(syncActiveMap(project), { op: "remove_traversal_path", id });
+      commit(outcome.project as GameProject, "Traversal path removed");
+      setSelectedPathId(null);
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "The traversal path could not be removed");
+    }
+  }, [commit, project, showToast]);
+
+  const setProjectionMode = useCallback((type: ProjectionContract["type"]) => {
+    try {
+      let outcome = applyAgentCommand(syncActiveMap(project), {
+        op: "set_map_projection",
+        projection: type === "dimetric-2:1"
+          ? { type, tileWidth: 128, tileHeight: 64, elevationStep: 32, originX: project.width / 2, originY: 92, worldUnitsPerTile: 128 }
+          : { type, tileWidth: project.grid, tileHeight: project.grid },
+      });
+      if (type === "dimetric-2:1" && !(outcome.project.navigation?.layers?.length)) {
+        outcome = applyAgentCommand(outcome.project, { op: "add_navigation_layer", layer: { id: "ground-route", name: "Ground route", color: "#5b5cf0", zMin: 0, zMax: 1 } });
+      }
+      commit(outcome.project as GameProject, type === "dimetric-2:1" ? "2.5D dimetric map mode enabled" : "Orthographic map mode enabled");
+      setEditorElevation(0);
+      setMapTool("select");
+      setShowPaths(true);
+      setShowColliders(type === "dimetric-2:1");
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "The map projection could not be changed");
+    }
+  }, [commit, project, showToast]);
+
+  const initializeTileProgram = useCallback(() => {
+    try {
+      const base = syncActiveMap(project);
+      const assetIds = (project.assets ?? []).filter((asset) => asset.type === "tileset").map((asset) => asset.id);
+      const suggestion = applyAgentCommand(base, { op: "suggest_tile_program", mapId: base.activeMapId, assetIds }).result as { available: boolean; program?: TileProgram; reasons?: string[] };
+      if (!suggestion.available || !suggestion.program) throw new Error(suggestion.reasons?.join(" ") || "Add or generate a tileset before creating a tile program.");
+      const outcome = applyAgentCommand(base, { op: "set_tile_program", mapId: base.activeMapId, program: suggestion.program });
+      commit(outcome.project as GameProject, "Canonical tile layers created");
+      setSelectedTileLayerId(suggestion.program.layers[0]?.id ?? "");
+      setSelectedTileCollisionLayerId(suggestion.program.collisionLayers[0]?.id ?? "");
+      setSelectedTileId(suggestion.program.palette[0]?.id ?? "");
+      setSelectedTileCollisionProfileId(suggestion.program.collisionProfiles[0]?.id ?? "");
+      setMapTool("tiles");
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "The tile program could not be created");
+    }
+  }, [commit, project, showToast]);
+
+  const updateTileProgram = useCallback((change: (program: TileProgram) => TileProgram, message: string) => {
+    if (!activeTileProgram) return;
+    try {
+      const program = change(JSON.parse(JSON.stringify(activeTileProgram)) as TileProgram);
+      const outcome = applyAgentCommand(syncActiveMap(project), { op: "set_tile_program", mapId: project.activeMapId, program });
+      if (outcome.changed) commit(outcome.project as GameProject, message);
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "The tile program could not be updated");
+    }
+  }, [activeTileProgram, commit, project, showToast]);
+
+  const addTileLayer = useCallback((role: TileVisualLayer["role"] = "interleaved") => {
+    const id = `tile-layer-${Date.now()}`;
+    updateTileProgram((program) => ({ ...program, layers: [...program.layers, { id, name: `Tile layer ${program.layers.length + 1}`, role, visible: true, locked: false, opacity: 1, blendMode: "normal", supportZ: editorElevation, chunks: [], terrainChunks: [] }] }), "Tile layer added");
+    setSelectedTileLayerId(id);
+  }, [editorElevation, updateTileProgram]);
+
+  const addTileCollisionLayer = useCallback(() => {
+    const id = `tile-collision-${Date.now()}`;
+    updateTileProgram((program) => ({ ...program, collisionLayers: [...program.collisionLayers, { id, name: `Collision layer ${program.collisionLayers.length + 1}`, visible: true, locked: false, zMin: editorElevation, zMax: editorElevation + 1, chunks: [] }] }), "Tile collision layer added");
+    setSelectedTileCollisionLayerId(id);
+  }, [editorElevation, updateTileProgram]);
+
+  const applyTileBrushAt = (world: { x: number; y: number }) => {
+    if (!activeTileProgram || !project.activeMapId) return;
+    const logicalCellSize = activeProjection.type === "dimetric-2:1" ? Number(activeProjection.worldUnitsPerTile ?? 128) : activeTileProgram.cellWidth;
+    const logicalCellHeight = activeProjection.type === "dimetric-2:1" ? Number(activeProjection.worldUnitsPerTile ?? 128) : activeTileProgram.cellHeight;
+    const x = Math.floor(world.x / Math.max(1, logicalCellSize));
+    const y = Math.floor(world.y / Math.max(1, logicalCellHeight));
+    if (x < 0 || y < 0 || x >= activeTileProgram.columns || y >= activeTileProgram.rows) {
+      showToast("Choose a tile cell inside the authored map bounds");
+      return;
+    }
+    const operation: Record<string, unknown> = { kind: tileBrushMode, x, y };
+    if (tileBrushMode === "paint-tile" || tileBrushMode === "erase-tile" || tileBrushMode === "paint-terrain" || tileBrushMode === "erase-terrain") operation.layerId = activeTileLayerId;
+    else operation.layerId = activeTileCollisionLayerId;
+    if (tileBrushMode === "paint-tile") operation.tileId = activeTileId;
+    if (tileBrushMode === "paint-terrain") operation.terrainId = activeTerrainId;
+    if (tileBrushMode === "paint-collision") operation.profileId = activeTileCollisionProfileId;
+    if (!operation.layerId || (tileBrushMode === "paint-tile" && !activeTileId) || (tileBrushMode === "paint-terrain" && !activeTerrainId) || (tileBrushMode === "paint-collision" && !activeTileCollisionProfileId)) {
+      showToast("Choose the required layer and brush value first");
+      return;
+    }
+    try {
+      const base = syncActiveMap(project);
+      const patch = { schemaVersion: "looplab-tile-patch/v1", mapId: project.activeMapId, operations: [operation] };
+      const preview = applyAgentCommand(base, { op: "preview_tile_patch", patch }).result as { applicable: boolean; applyCommand?: AgentCommand; doctor?: { newBlockers?: Array<{ message?: string }> } };
+      if (!preview.applicable || !preview.applyCommand) throw new Error(preview.doctor?.newBlockers?.map((finding) => finding.message).filter(Boolean).join(" ") || "Project Doctor rejected this tile edit.");
+      const outcome = applyAgentCommand(base, preview.applyCommand);
+      if (outcome.changed) commit(outcome.project as GameProject, `Tile ${tileBrushMode.replaceAll("-", " ")} at ${x}, ${y}`);
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "The tile edit could not be applied");
+    }
+  };
+
+  const applyNavigationCommand = useCallback((command: AgentCommand, message: string) => {
+    try {
+      const outcome = applyAgentCommand(syncActiveMap(project), command);
+      if (outcome.changed) commit(outcome.project as GameProject, message);
+      return outcome;
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "The navigation edit could not be applied");
+      return null;
+    }
+  }, [commit, project, showToast]);
+
+  const addNavigationLayer = useCallback(() => {
+    const nextZ = navigation.layers.reduce((highest, layer) => Math.max(highest, layer.zMax), 0);
+    const palette = ["#5b5cf0", "#17b7d4", "#8c67d7", "#d5842f", "#62626b"];
+    const outcome = applyNavigationCommand({
+      op: "add_navigation_layer",
+      layer: { id: `route-layer-${Date.now()}`, name: `Route layer ${navigation.layers.length + 1}`, color: palette[navigation.layers.length % palette.length], zMin: nextZ, zMax: nextZ + 1 },
+    }, "Navigation layer added");
+    const layer = outcome?.result?.layer as NavigationLayer | undefined;
+    if (layer) setEditorElevation(layer.zMin);
+  }, [applyNavigationCommand, navigation.layers]);
+
+  const finishNavigationArea = useCallback(() => {
+    if (!navigationAreaDraft || navigationAreaDraft.points.length < 3) {
+      showToast("Place at least three points before finishing the area");
+      return;
+    }
+    const outcome = applyNavigationCommand({
+      op: "add_navigation_area",
+      area: {
+        id: `nav-area-${Date.now()}`,
+        name: `${navigationAreaDraft.kind === "blocked" ? "Blocked" : "Walkable"} area ${navigation.areas.length + 1}`,
+        kind: navigationAreaDraft.kind,
+        points: navigationAreaDraft.points,
+        layerId: activeNavigationLayer?.id,
+        zMin: editorElevation,
+        zMax: editorElevation + 1,
+      },
+    }, "Navigation area added");
+    const area = outcome?.result?.area as NavigationArea | undefined;
+    if (area) setSelectedNavigationAreaId(area.id);
+    setNavigationAreaDraft(null);
+    setMapTool("select");
+  }, [activeNavigationLayer?.id, applyNavigationCommand, editorElevation, navigation.areas.length, navigationAreaDraft, showToast]);
+
+  const finishCollisionChain = useCallback(() => {
+    if (!collisionChainDraft || collisionChainDraft.points.length < 2) {
+      showToast("Place at least two points before finishing the collision chain");
+      return;
+    }
+    try {
+      const chainId = `collision-chain-${uid()}`;
+      const geometry: CollisionGeometry = {
+        schemaVersion: LOOPLAB_COLLISION_GEOMETRY_SCHEMA,
+        collisionOwner: "authored-map",
+        tuning: { ...(activeCollisionGeometry?.tuning ?? LOOPLAB_COLLISION_GEOMETRY_DEFAULT_TUNING) },
+        chains: [
+          ...(activeCollisionGeometry?.chains ?? []),
+          {
+            id: chainId,
+            name: `Collision chain ${(activeCollisionGeometry?.chains.length ?? 0) + 1}`,
+            enabled: true,
+            role: collisionChainDraft.role,
+            oneWay: collisionChainDraft.oneWay,
+            frontFace: "right",
+            zMin: collisionChainDraft.zMin,
+            zMax: collisionChainDraft.zMax,
+            points: collisionChainDraft.points.map((point, index) => ({ ...point, id: `point-${String(index + 1).padStart(2, "0")}` })),
+          },
+        ],
+      };
+      const outcome = applyAgentCommand(syncActiveMap(project), { op: "set_collision_geometry", mapId: project.activeMapId, geometry });
+      commit(outcome.project as GameProject, "Authored collision chain added");
+      setSelectedCollisionChainId(chainId);
+      setCollisionChainDraft(null);
+      setMapTool("select");
+      setShowColliders(true);
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "The collision chain could not be saved");
+    }
+  }, [activeCollisionGeometry, collisionChainDraft, commit, project, showToast]);
+
+  const removeSelectedCollisionChain = useCallback(() => {
+    if (!selectedCollisionChain || !activeCollisionGeometry) return;
+    try {
+      const remaining = activeCollisionGeometry.chains.filter((chain) => chain.id !== selectedCollisionChain.id);
+      const outcome = remaining.length
+        ? applyAgentCommand(syncActiveMap(project), { op: "set_collision_geometry", mapId: project.activeMapId, geometry: { ...activeCollisionGeometry, chains: remaining } })
+        : applyAgentCommand(syncActiveMap(project), { op: "remove_collision_geometry", mapId: project.activeMapId });
+      commit(outcome.project as GameProject, "Authored collision chain removed");
+      setSelectedCollisionChainId(null);
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "The collision chain could not be removed");
+    }
+  }, [activeCollisionGeometry, commit, project, selectedCollisionChain, showToast]);
+
+  const clearNavigationTest = useCallback(() => setNavigationTest({ from: null, to: null, result: null }), []);
+
+  const attachObjectToSupport = useCallback((id: string, mode: "auto" | "floor" | "surface" | "free" = "auto", surfaceId?: string) => {
+    try {
+      const map = mapFromProject(project, project.activeMapId ?? "map-main", activeMap?.name ?? "Map");
+      const snapped = snapObjectToSupport(map, id, { mode, surfaceId, tolerance: 2, projection: project.projection }, project.assets ?? []);
+      commit({ ...project, objects: project.objects.map((object) => object.id === id ? snapped.object as GameObject : object) }, mode === "free" ? "Surface requirement removed" : `Snapped to ${snapped.surface?.name ?? "map floor"}`);
+      setShowColliders(true);
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "That object could not be attached to a surface");
+    }
+  }, [activeMap, commit, project, showToast]);
+
+  const openAssetGenerator = useCallback((target: "tiles" | "hero" | "enemy" | "pickup" | "prop" | "effect" | "ui") => {
+    if (target === "tiles") setAssetLabTab("tiles");
+    else {
+      setAssetLabTab("sprites");
+      setSpriteKind(target);
+    }
+    setGeneratedAsset(null);
+    setShowAssetLab(true);
+  }, []);
+
+  const openAssetLibrary = useCallback((category: AssetLibraryCategoryId = "tileset") => {
+    setAssetLibraryCategory(category);
+    setAssetLabTab("library");
+    setGeneratedAsset(null);
+    setShowAssetLab(true);
+  }, []);
+
+  const refreshAssetPackManifest = useCallback(async () => {
+    try {
+      const manifest = await fetchInstalledPackManifest();
+      assetPackManifestRef.current = manifest;
+      setAssetPackManifest(manifest);
+      setAssetPackManifestError(null);
+      return manifest;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "The installed pack library could not be loaded.";
+      setAssetPackManifestError(message);
+      throw error;
+    }
+  }, []);
+
+  const openInstalledAssetPack = useCallback(async (packId: string) => {
+    setSelectedAssetPackId(packId);
+    setSelectedAssetPackIndex(null);
+    setSelectedPackAssetIds([]);
+    setFocusedPackAssetId(null);
+    setAssetPackSearch("");
+    setAssetPackKindFilter("all");
+    setAssetPackPage(0);
+    setAssetPackLoading(true);
+    try {
+      const cached = assetPackIndexRef.current.get(packId);
+      const index = cached ?? await fetchInstalledPackIndex(packId);
+      assetPackIndexRef.current.set(packId, index);
+      setSelectedAssetPackIndex(index);
+      setFocusedPackAssetId(index.assets[0]?.id ?? null);
+      return index;
+    } catch (error) {
+      setSelectedAssetPackId(null);
+      showToast(error instanceof Error ? error.message : "That pack could not be opened.");
+      throw error;
+    } finally {
+      setAssetPackLoading(false);
+    }
+  }, [showToast]);
+
+  const closeInstalledAssetPack = useCallback(() => {
+    setSelectedAssetPackId(null);
+    setSelectedAssetPackIndex(null);
+    setSelectedPackAssetIds([]);
+    setFocusedPackAssetId(null);
+    setAssetPackSearch("");
+    setAssetPackKindFilter("all");
+    setAssetPackPage(0);
+  }, []);
+
+  const togglePackAssetSelection = useCallback((assetId: string) => {
+    setFocusedPackAssetId(assetId);
+    setSelectedPackAssetIds((current) => {
+      if (current.includes(assetId)) return current.filter((id) => id !== assetId);
+      if (current.length >= 50) {
+        showToast("Select up to 50 files per import pass");
+        return current;
+      }
+      return [...current, assetId];
+    });
+  }, [showToast]);
+
+  const importSelectedPackAssets = useCallback(async () => {
+    const index = selectedAssetPackIndex;
+    if (!index || selectedPackAssetIds.length === 0) return;
+    setAssetPackImporting(true);
+    appendConsole("asset.pack.import.started", `Importing ${selectedPackAssetIds.length} file${selectedPackAssetIds.length === 1 ? "" : "s"} from ${index.pack.title}`, "Selected files will be embedded into the project; collision remains authored-map-only.");
+    try {
+      const records = selectedPackAssetIds.map((id) => index.assets.find((asset) => asset.id === id)).filter((asset): asset is InstalledPackAsset => Boolean(asset));
+      const imported = await Promise.all(records.map((asset) => importInstalledPackAsset(index, asset)));
+      const existingSources = new Set([
+        ...(project.assets ?? []).map((asset) => asset.source?.assetId).filter(Boolean),
+        ...(project.resources ?? []).map((resource) => resource.source.assetId),
+      ]);
+      const assets = imported.map((entry) => entry.asset).filter((asset): asset is GeneratedAsset => asset !== null && !existingSources.has(asset.source?.assetId));
+      const resources = imported.map((entry) => entry.resource).filter((resource): resource is ProjectResource => resource !== null && !existingSources.has(resource.source.assetId));
+      if (!assets.length && !resources.length) {
+        showToast("Those files are already in this project");
+        return;
+      }
+      commit({ ...project, assets: [...(project.assets ?? []), ...assets], resources: [...(project.resources ?? []), ...resources] }, `${assets.length + resources.length} pack file${assets.length + resources.length === 1 ? "" : "s"} imported`);
+      appendConsole("asset.pack.import.completed", `${assets.length + resources.length} project file${assets.length + resources.length === 1 ? "" : "s"} imported`, `${assets.length} visual asset${assets.length === 1 ? "" : "s"} · ${resources.length} audio/font/data resource${resources.length === 1 ? "" : "s"}`, "good");
+      setSelectedPackAssetIds([]);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "The selected pack files could not be imported.";
+      appendConsole("asset.pack.import.failed", message, undefined, "bad");
+      showToast(message);
+    } finally {
+      setAssetPackImporting(false);
+    }
+  }, [appendConsole, commit, project, selectedAssetPackIndex, selectedPackAssetIds, showToast]);
+
+  const addObject = useCallback(
+    (kind: ObjectKind, x?: number, y?: number) => {
+      const draft = makeObject(kind, x ?? project.width / 2 - 35, y ?? project.height / 2 - 35);
+      if (isDimetric && x === undefined && y === undefined) {
+        const world = screenToWorld({ x: project.width / 2, y: project.height / 2 }, activeProjection, editorElevation);
+        const anchor = groundAnchorOffset(draft, project.assets ?? []);
+        draft.x = world.x - anchor.x;
+        draft.y = world.y - anchor.y;
+        draft.z = editorElevation;
+        draft.supportZ = editorElevation;
+        if (draft.collider) draft.collider = { ...draft.collider, zMin: editorElevation, zMax: editorElevation + (draft.collisionHeight ?? 1) };
+      }
+      draft.x = Math.max(0, Math.round(draft.x / project.grid) * project.grid);
+      draft.y = Math.max(0, Math.round(draft.y / project.grid) * project.grid);
+      commit(
+        { ...project, objects: [...project.objects, draft] },
+        `${objectMeta[kind].label} added`,
+      );
+      setSelectedId(draft.id);
+      setMobileTab("stage");
+    },
+    [activeProjection, commit, editorElevation, isDimetric, project],
+  );
+
+  const objectKindForAsset = useCallback((asset: GeneratedAsset): ObjectKind => {
+    if (asset.type === "tileset") return "platform";
+    const generatedKind = String(asset.generator.kind ?? "prop");
+    if (generatedKind === "hero") return "player";
+    if (generatedKind === "enemy") return "hazard";
+    if (generatedKind === "pickup") return "coin";
+    return "decor";
+  }, []);
+
+  const placeExistingAsset = useCallback(
+    (asset: GeneratedAsset, frame = 0) => {
+      const kind = objectKindForAsset(asset);
+      const draft = makeObject(kind, project.width / 2 - asset.frameWidth, project.height / 2 - asset.frameHeight);
+      draft.name = asset.type === "tileset" ? `${asset.name} tile ${frame + 1}` : asset.name;
+      draft.width = asset.frameWidth * 2;
+      draft.height = asset.frameHeight * 2;
+      draft.assetId = asset.id;
+      draft.assetFrame = Math.max(0, Math.min(asset.frames - 1, frame));
+      const generatedKind = String(asset.generator.kind ?? "prop");
+      draft.role = generatedKind === "prop" || generatedKind === "effect" || generatedKind === "ui" ? generatedKind : undefined;
+      draft.collider = authoredColliderForPlacement({ ...draft, role: draft.role }) as Collider;
+      draft.visualBounds = visualBoundsForAsset(asset, draft.width, draft.height);
+      draft.anchorMode = asset.anchorMode ?? (generatedKind === "effect" || generatedKind === "ui" ? "center" : "ground");
+      draft.collisionOwner = "authored-map";
+      const groundX = Math.round((project.width / 2) / project.grid) * project.grid;
+      const groundY = Math.round((project.height / 2) / project.grid) * project.grid;
+      const anchor = groundAnchorOffset(draft, [asset]);
+      draft.groundAnchor = { offsetX: anchor.x, offsetY: anchor.y };
+      draft.x = Math.max(0, groundX - anchor.x);
+      draft.y = Math.max(0, groundY - anchor.y);
+      if (generatedKind === "prop") {
+        draft.requiresSupport = true;
+      }
+      let placed = draft;
+      if (draft.requiresSupport) {
+        const placementMap = mapFromProject({ ...project, objects: [...project.objects, draft] }, project.activeMapId ?? "map-main", activeMap?.name ?? "Map");
+        placed = snapObjectToSupport(placementMap, draft.id, { mode: "auto", tolerance: 2, projection: project.projection }, project.assets ?? []).object as GameObject;
+      }
+      commit({ ...project, objects: [...project.objects, placed] }, `${asset.name} placed${placed.requiresSupport ? " on a support surface" : ""}`);
+      setSelectedId(placed.id);
+      setMobileTab("stage");
+    },
+    [activeMap, commit, objectKindForAsset, project],
+  );
+
+  const saveGeneratedAsset = useCallback(
+    (place: boolean) => {
+      if (!generatedAsset) return;
+      const measurement = measuredAssetSummary(generatedAsset);
+      if (measurement?.failedInvariants.length) {
+        showToast("Measured asset QA must pass before this asset can be saved or placed");
+        return;
+      }
+      if (assetGenerationMode === "ai" && !aiArtPresentationState(generatedAsset).verified) {
+        showToast("Measured asset QA must pass before this provider art can be saved or placed");
+        return;
+      }
+      const asset: GeneratedAsset = { ...generatedAsset, id: uid() };
+      let next: GameProject = { ...project, assets: [...(project.assets ?? []), asset] };
+      let placed: GameObject | null = null;
+      if (place) {
+        const kind = objectKindForAsset(asset);
+        placed = makeObject(kind, project.width / 2 - asset.frameWidth, project.height / 2 - asset.frameHeight);
+        placed.name = asset.type === "tileset" ? `${asset.name} tile ${selectedTileFrame + 1}` : asset.name;
+        placed.width = asset.frameWidth * 2;
+        placed.height = asset.frameHeight * 2;
+        placed.assetId = asset.id;
+        placed.assetFrame = asset.type === "tileset" ? selectedTileFrame : 0;
+        const generatedKind = String(asset.generator.kind ?? "prop");
+        placed.role = generatedKind === "prop" || generatedKind === "effect" || generatedKind === "ui" ? generatedKind : undefined;
+        placed.collider = authoredColliderForPlacement({ ...placed, role: placed.role }) as Collider;
+        placed.visualBounds = visualBoundsForAsset(asset, placed.width, placed.height);
+        placed.anchorMode = asset.anchorMode ?? (generatedKind === "effect" || generatedKind === "ui" ? "center" : "ground");
+        placed.collisionOwner = "authored-map";
+        const groundX = Math.round((project.width / 2) / project.grid) * project.grid;
+        const groundY = Math.round((project.height / 2) / project.grid) * project.grid;
+        const anchor = groundAnchorOffset(placed, [asset]);
+        placed.groundAnchor = { offsetX: anchor.x, offsetY: anchor.y };
+        placed.x = Math.max(0, groundX - anchor.x);
+        placed.y = Math.max(0, groundY - anchor.y);
+        if (generatedKind === "prop") {
+          placed.requiresSupport = true;
+          const placementMap = mapFromProject({ ...project, assets: [...(project.assets ?? []), asset], objects: [...project.objects, placed] }, project.activeMapId ?? "map-main", activeMap?.name ?? "Map");
+          placed = snapObjectToSupport(placementMap, placed.id, { mode: "auto", tolerance: 2, projection: project.projection }, [...(project.assets ?? []), asset]).object as GameObject;
+        } else if (generatedKind === "effect" || generatedKind === "ui") placed.role = generatedKind;
+        next = { ...next, objects: [...next.objects, placed] };
+      }
+      commit(next, place ? `${asset.name} generated and placed` : `${asset.name} saved to library`);
+      if (placed) {
+        setSelectedId(placed.id);
+        setMobileTab("stage");
+      }
+      setShowAssetLab(false);
+    },
+    [activeMap, assetGenerationMode, commit, generatedAsset, objectKindForAsset, project, selectedTileFrame, showToast],
+  );
+
+  const importSpriteFrames = useCallback(async (event: ChangeEvent<HTMLInputElement>) => {
+    const files = [...(event.target.files ?? [])];
+    event.target.value = "";
+    if (!files.length) return;
+    setAssetLabTab("sprites");
+    try {
+      const frames = await Promise.all(files.map(async (file) => {
+        const url = URL.createObjectURL(file);
+        try {
+          const image = new Image();
+          image.src = url;
+          await image.decode();
+          const canvas = document.createElement("canvas");
+          canvas.width = image.naturalWidth;
+          canvas.height = image.naturalHeight;
+          const context = canvas.getContext("2d", { willReadFrequently: true });
+          if (!context) throw new Error("Canvas is unavailable.");
+          context.imageSmoothingEnabled = false;
+          context.drawImage(image, 0, 0);
+          return { width: canvas.width, height: canvas.height, pixels: context.getImageData(0, 0, canvas.width, canvas.height).data };
+        } finally {
+          URL.revokeObjectURL(url);
+        }
+      }));
+      const usesGroundAnchor = spriteKind !== "effect" && spriteKind !== "ui";
+      const packed = packSpriteAtlas(frames, { frameWidth: spriteSize, frameHeight: spriteSize, columns: Math.min(8, files.length), maximumColors: 16, frameKind: "sprite", anchorMode: usesGroundAnchor ? "ground" : "center", requireTransparency: true });
+      setGeneratedAsset({
+        id: "generator-preview",
+        name: `${spriteKind[0].toUpperCase()}${spriteKind.slice(1)} imported atlas`,
+        type: "sprite",
+        dataUrl: pixelsToDataUrl(packed),
+        width: packed.width,
+        height: packed.height,
+        frameWidth: packed.frameWidth,
+        frameHeight: packed.frameHeight,
+        frames: packed.frames,
+        columns: packed.columns,
+        anchorX: usesGroundAnchor ? packed.anchorX : 0.5,
+        anchorY: usesGroundAnchor ? packed.anchorY : 0.5,
+        opaqueBounds: { x: Math.round(packed.frameWidth * .18), y: Math.round(packed.frameHeight * .08), width: Math.round(packed.frameWidth * .64), height: Math.round(packed.frameHeight * .92) },
+        collisionPolicy: "authored-only",
+        anchorMode: usesGroundAnchor ? "ground" : "center",
+        invariants: { identityReference: files[0].name, palette: packed.palette, frameCount: packed.frames, sharedScale: true, groundAnchor: usesGroundAnchor, transparentBackground: !packed.analysis.failedInvariants.includes("missing-transparent-border"), analysisMeasured: true, maxSilhouetteDrift: silhouetteDriftLimitForRole(spriteKind), maxAnchorVariance: 1 },
+        analysis: packed.analysis,
+        generator: { kind: spriteKind, palette: "locked-import", size: spriteSize, seed: files.map((file) => file.name).join("|") },
+      });
+      showToast(`${files.length} frame${files.length === 1 ? "" : "s"} normalized and packed`);
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Could not normalize those sprite frames");
+    }
+  }, [showToast, spriteKind, spriteSize]);
+
+  const runAiArtGeneration = useCallback(async () => {
+    if (aiArtRunning) return;
+    setAssetGenerationMode("ai");
+    setGeneratedAsset(null);
+    setAiArtUsage(null);
+    setAiArtRunning(true);
+    const role = currentAiArtRole;
+    const actions = aiArtActions.split(/\r?\n|\|/).map((value) => value.trim()).filter(Boolean);
+    try {
+      const created = await submitAiArtJob({
+        role,
+        prompt: aiArtPrompt,
+        identity: generatorSeed,
+        actions,
+        targetFrameSize: assetLabTab === "tiles" ? tileSize : spriteSize,
+        quality: aiArtQuality,
+        background: aiArtBackground,
+        projection: project.projection?.type === "dimetric-2:1" ? "dimetric-2:1" : "orthographic",
+        visualIdentity: project.visualIdentity,
+        useVisualIdentity: aiArtUseVisualIdentity,
+        referenceConsent: aiArtReferenceConsent,
+        referenceAssets: aiArtReferenceAssets,
+      });
+      setAiArtJob(created);
+      appendConsole("asset.job.accepted", `AI art job ${created.jobId.slice(0, 8)} accepted`, "The companion will submit exactly one image request and retain this job ID until completion.");
+      const result = await waitForAiArtJob(created, (event) => {
+        const tone = event.type.endsWith("failed") ? "bad" : event.type.endsWith("completed") ? "good" : "neutral";
+        appendConsole(event.type, event.message ?? event.type, event.error, tone);
+      });
+      const asset = await normalizeAiArtSource(result);
+      setGeneratedAsset(asset);
+      setAiArtUsage(result.usage);
+      const presentation = aiArtPresentationState(asset);
+      if (presentation.verified) {
+        appendConsole("asset.measured.completed", `${asset.name} passed measured QA across ${asset.frames} frame${asset.frames === 1 ? "" : "s"}`, usageReceiptMessage(result.usage, "AI art usage"), "good");
+        showToast("AI art measured and normalized; review it before saving");
+      } else {
+        appendConsole("asset.measured.rejected", `${asset.name} was retained for review but cannot be saved or placed`, presentation.failedInvariants.join(" · ") || "Measured QA was incomplete.", "bad");
+        showToast("AI art needs correction; inspect the measured QA findings");
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "AI art generation failed.";
+      appendConsole("asset.job.failed", message, "No asset was added and the current project is unchanged.", "bad");
+      showToast(message);
+    } finally {
+      setAiArtRunning(false);
+      setAiArtReferenceConsent(false);
+    }
+  }, [aiArtActions, aiArtBackground, aiArtPrompt, aiArtQuality, aiArtReferenceAssets, aiArtReferenceConsent, aiArtRunning, aiArtUseVisualIdentity, appendConsole, assetLabTab, currentAiArtRole, generatorSeed, project.projection, project.visualIdentity, showToast, spriteSize, tileSize]);
+
+  const cancelAiArtGeneration = useCallback(async () => {
+    if (!aiArtJob || !aiArtRunning) return;
+    try {
+      await companionFetch(`${COMPANION_URL}${aiArtJob.cancelUrl}`, { method: "POST" });
+      appendConsole("asset.cancel.requested", `Cancelling AI art job ${aiArtJob.jobId.slice(0, 8)}`, undefined, "neutral");
+    } catch (error) {
+      appendConsole("asset.cancel.failed", error instanceof Error ? error.message : "The AI art job could not be cancelled.", undefined, "bad");
+    }
+  }, [aiArtJob, aiArtRunning, appendConsole]);
+
+  const applyReleaseVerificationResult = useCallback((result: ReleaseVerificationResult) => {
+    if (!result.passed || !result.project || !result.html || !result.attestation || !result.doctor) throw new Error("Exact release verification did not return a complete passing result.");
+    const current = syncActiveMap(projectRef.current);
+    const currentDoctor = analyzeProject(current);
+    if (currentDoctor.sourceDigest !== result.sourceDigest) {
+      throw new Error(`[stale-source] Exact verification passed source ${result.sourceDigest}, but the selected project is now ${currentDoctor.sourceDigest}. The stale result was not applied.`);
+    }
+    const verifiedProject = syncActiveMap(result.project);
+    const verifiedDoctor = analyzeProject(verifiedProject);
+    if (verifiedDoctor.sourceDigest !== result.sourceDigest || result.attestation.source.sourceDigest !== result.sourceDigest) throw new Error("The returned release attestation is not bound to the current project source.");
+    const artifact = buildStandaloneArtifact(verifiedProject, { filename: result.attestation.subject.name });
+    if (artifact.html !== result.html || artifact.receipt.artifact.sha256 !== result.attestation.subject.digest.sha256) {
+      throw new Error("The final exporter did not reproduce the exact attested HTML bytes. The result was rejected.");
+    }
+
+    historyRef.current = [...historyRef.current.slice(-(HISTORY_LIMIT - 1)), cloneProject(current)];
+    futureRef.current = [];
+    projectRef.current = verifiedProject;
+    setProject(verifiedProject);
+    syncDirectedBriefControls(verifiedProject.designBrief);
+    syncHistoryState();
+    lastExportHtmlRef.current = result.html;
+    setExportPreviewHtml(result.html);
+    setLastExportReceipt(artifact.receipt as ExportReceipt);
+    const shortHash = result.attestation.subject.digest.sha256.slice(0, 12);
+    appendConsole("release.verification.applied", `Exact build ${shortHash} is source-bound and current`, `Doctor ${result.doctor.score}/100 · ${result.platformHarness.checks.length} hostile-browser checks · 0 provider tokens · $0.00`, "good");
+    showToast(`Exact one-file build verified · ${shortHash}`);
+    window.dispatchEvent(new CustomEvent("looplab:project-changed", { detail: { project: cloneProject(verifiedProject) } }));
+    return { attestation: result.attestation, receipt: artifact.receipt, doctor: result.doctor, platformHarness: result.platformHarness, usage: result.usage };
+  }, [appendConsole, showToast, syncDirectedBriefControls, syncHistoryState]);
+
+  const verifyExactRelease = useCallback(async (options: { jobId?: string; wait?: boolean; filename?: string } = {}) => {
+    const wait = options.wait !== false;
+    if (!options.jobId && !companionOnline) throw new Error("The managed local companion is offline. Start Looplab with npm run dev, then verify the exact build.");
+    if (wait) setReleaseVerificationRunning(true);
+    try {
+      const current = syncActiveMap(projectRef.current);
+      const safeName = current.name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "my-game";
+      const filename = options.filename?.trim() || `${safeName}.html`;
+      const descriptor = options.jobId ? releaseVerificationJobDescriptor(options.jobId) : await submitReleaseVerificationJob(current, filename);
+      setReleaseVerificationJob(descriptor);
+      appendConsole("release.verification.accepted", `Exact verification job ${descriptor.jobId.slice(0, 8)} accepted`, "Static audit, hostile scripts-only browser, replay, acceptance, terminal outcome, screenshots, and exact SHA-256 binding are running locally.");
+      if (!wait) return { ok: true, submitted: !options.jobId, job: descriptor, usage: { totalTokens: 0, estimatedUsd: 0 }, resume: { op: "verify_release", jobId: descriptor.jobId, wait: true } };
+      const result = await waitForReleaseVerificationJob(descriptor, (event) => {
+        const tone = event.type.endsWith("failed") ? "bad" : event.type.endsWith("completed") ? "good" : "neutral";
+        appendConsole(event.type, event.message ?? event.type, event.error, tone);
+      });
+      if (!result.passed) {
+        const message = `Exact release verification rejected the build with ${result.findings.length} finding${result.findings.length === 1 ? "" : "s"}.`;
+        appendConsole("release.verification.rejected", message, "The selected project was not changed. Inspect the retained job result and fix the measured findings.", "bad");
+        showToast(message);
+        return { ok: false, job: descriptor, result };
+      }
+      return { ok: true, job: descriptor, ...applyReleaseVerificationResult(result) };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Exact release verification failed.";
+      appendConsole("release.verification.failed", message, "The selected project was not changed.", "bad");
+      showToast(message);
+      throw error;
+    } finally {
+      if (wait) {
+        setReleaseVerificationRunning(false);
+        setReleaseVerificationJob(null);
+      }
+    }
+  }, [appendConsole, applyReleaseVerificationResult, companionOnline, showToast]);
+
+  const cancelExactReleaseVerification = useCallback(async () => {
+    if (!releaseVerificationJob) return;
+    try {
+      const response = await companionFetch(`${COMPANION_URL}${releaseVerificationJob.cancelUrl}`, { method: "POST" });
+      const value = await response.json() as { error?: string; status?: string };
+      if (!response.ok) throw new Error(value.error ?? "Exact release verification could not be cancelled.");
+      appendConsole("release.verification.cancel.requested", `Cancelling exact verification job ${releaseVerificationJob.jobId.slice(0, 8)}`, "The browser harness will close and the current project will remain unchanged.");
+    } catch (error) {
+      appendConsole("release.verification.cancel.failed", error instanceof Error ? error.message : "Exact release verification could not be cancelled.", undefined, "bad");
+    } finally {
+      setReleaseVerificationRunning(false);
+      setReleaseVerificationJob(null);
+    }
+  }, [appendConsole, releaseVerificationJob]);
+
+  const switchMap = useCallback((mapId: string) => {
+    const next = activateMap(project, mapId);
+    commit(next, "Map changed");
+    setSelectedId(null);
+    setSelectedPathId(null);
+    setSelectedPathPointIndex(null);
+    setSelectedNavigationNodeId(null);
+    setSelectedNavigationLinkId(null);
+    setSelectedNavigationAreaId(null);
+    setSelectedCollisionChainId(null);
+    setNavigationChainNodeId(null);
+    setNavigationAreaDraft(null);
+    setNavigationTest({ from: null, to: null, result: null });
+    setEditorElevation(next.navigation?.layers.find((layer) => layer.id === next.navigation?.activeLayerId)?.zMin ?? 0);
+    setMode("edit");
+  }, [commit, project]);
+
+  const setStartMap = useCallback((mapId: string) => {
+    try {
+      const outcome = applyAgentCommand(syncActiveMap(project), { op: "set_start_map", id: mapId });
+      commit(outcome.project as GameProject, `${maps.find((map) => map.id === mapId)?.name ?? "Map"} is now first`);
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "The first map could not be changed");
+    }
+  }, [commit, maps, project, showToast]);
+
+  const reorderMap = useCallback((mapId: string, direction: "up" | "down") => {
+    try {
+      const outcome = applyAgentCommand(syncActiveMap(project), { op: "reorder_map", id: mapId, direction });
+      if (outcome.changed) commit(outcome.project as GameProject, "Game route order changed");
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "The map could not be reordered");
+    }
+  }, [commit, project, showToast]);
+
+  const connectMaps = useCallback((sourceMapId: string, targetMapId: string) => {
+    try {
+      const source = maps.find((map) => map.id === sourceMapId);
+      const target = maps.find((map) => map.id === targetMapId);
+      const outcome = applyAgentCommand(syncActiveMap(project), { op: "connect_maps", sourceMapId, targetMapId, transition: "fade" });
+      commit(outcome.project as GameProject, `${source?.name ?? "Map"} now continues to ${target?.name ?? "the next map"}`);
+      setShowColliders(true);
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Those maps could not be connected");
+    }
+  }, [commit, maps, project, showToast]);
+
+  const createMap = useCallback(() => {
+    const synced = syncActiveMap(project);
+    const id = `map-${uid()}`;
+    const dimetric = synced.projection?.type === "dimetric-2:1";
+    const spawn = fitColliderToObject({ ...makeObject("spawn", dimetric ? synced.width * 0.46 : 82, dimetric ? synced.height * 0.46 : 410), id: `${id}-spawn`, name: "Entry spawn" });
+    const player = fitColliderToObject({ ...makeObject("player", dimetric ? synced.width * 0.5 : 120, dimetric ? synced.height * 0.5 : 402), id: `${id}-player`, name: "Player" });
+    const ground = fitColliderToObject({ ...makeObject("platform", 0, synced.height - 20), id: `${id}-ground`, name: "Ground", width: synced.width, height: 20 });
+    const map: GameMap = {
+      id,
+      name: `Map ${(synced.maps?.length ?? 0) + 1}`,
+      width: synced.width,
+      height: synced.height,
+      background: "#e7e0ce",
+      gravity: dimetric ? 0 : synced.gravity,
+      grid: synced.grid,
+      controlMode: dimetric ? "topdown" : synced.controlMode,
+      projection: synced.projection,
+      navigation: createNavigationModel(dimetric ? { layers: [{ id: "ground-route", name: "Ground route", color: "#5b5cf0", visible: true, locked: false, zMin: 0, zMax: 1 }], activeLayerId: "ground-route" } : {}) as NavigationModel,
+      objects: dimetric ? [player, spawn] : [player, ground, spawn],
+    };
+    let outcome = applyAgentCommand(synced, { op: "add_map", map });
+    outcome = applyAgentCommand(outcome.project, { op: "connect_maps", sourceMapId: synced.activeMapId, targetMapId: id, targetSpawnId: spawn.id, portalId: `${synced.activeMapId}-to-${id}`, transition: "fade" });
+    outcome = applyAgentCommand(outcome.project, { op: "connect_maps", sourceMapId: id, targetMapId: synced.activeMapId, portalId: `${id}-return`, portalName: `Return to ${activeMap?.name ?? "previous map"}`, portalX: 32, connectionRole: "route-return", reuseForwardExit: false, transition: "fade" });
+    const next = activateMap(outcome.project as GameProject, id);
+    commit(next, `${map.name} created`);
+    setSelectedId(`${id}-return`);
+    setMode("edit");
+  }, [activeMap?.name, commit, project]);
+
+  const createDimetricMap = useCallback(() => {
+    try {
+      const synced = syncActiveMap(project);
+      const id = `map-${uid()}`;
+      let outcome = applyAgentCommand(synced, { op: "add_dimetric_map", id, name: `Dimetric map ${(synced.maps?.length ?? 0) + 1}`, activate: false });
+      const map = outcome.result?.map as GameMap;
+      const spawn = map.objects.find((object) => object.kind === "spawn");
+      outcome = applyAgentCommand(outcome.project, { op: "connect_maps", sourceMapId: synced.activeMapId, targetMapId: id, targetSpawnId: spawn?.id, portalId: `${synced.activeMapId}-to-${id}`, transition: "fade" });
+      outcome = applyAgentCommand(outcome.project, { op: "connect_maps", sourceMapId: id, targetMapId: synced.activeMapId, portalId: `${id}-return`, portalName: `Return to ${activeMap?.name ?? "previous map"}`, connectionRole: "route-return", reuseForwardExit: false, transition: "fade" });
+      const next = activateMap(outcome.project as GameProject, id);
+      commit(next, `${map.name} created from the 2.5D workshop`);
+      setExperienceMode("workbench");
+      setMapStudioFocused(true);
+      setMobileTab("stage");
+      setSelectedId(null);
+      setMapTool("navigation");
+      setShowPaths(true);
+      setShowColliders(true);
+      setEditorElevation(0);
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "The dimetric map could not be created");
+    }
+  }, [activeMap, commit, project, showToast]);
+
+  const runResearch = useCallback(async (presetId?: string, options: { provider?: AgentProvider; providerMode?: ProviderRouteMode; query?: string; depth?: ResearchDepth; engine?: ResearchEngineId } = {}) => {
+    const preset = RESEARCH_PRESETS.find((entry) => entry.id === presetId);
+    const query = (options.query ?? preset?.query ?? researchQuery).trim();
+    const provider = options.provider ?? aiProvider;
+    const providerMode = options.providerMode ?? "fallback";
+    const depth = options.depth ?? researchDepth;
+    const engine = options.engine ?? researchEngine;
+    if (!query) {
+      const error = "Enter a research question first";
+      showToast(error);
+      return { accepted: false, error };
+    }
+    if (!companionOnline) {
+      const error = "The managed AI companion is reconnecting";
+      showToast(error);
+      return { accepted: false, error };
+    }
+    const providerRoute = resolveProviderRoute({ providers: providerStatuses ?? {} }, { requestedProvider: provider, mode: providerMode });
+    if (!providerRoute.selectedProvider) {
+      const error = `No AI provider path is ready. ${providerRoute.selectionReason}`;
+      showToast(error);
+      return { accepted: false, error, providerRoute };
+    }
+    setDirectorWorkspaceTab("research");
+    setResearchRunning(true);
+    setResearchEvents([]);
+    setResearchCancelUrl(null);
+    appendResearchEvent({ type: "research.requested", message: preset ? `${preset.label}: ${query}` : query, detail: `${depth} depth · requested ${provider}${providerRoute.fallbackUsed ? ` · routed to ${providerRoute.selectedProvider}` : ""}` });
+    try {
+      const response = await companionFetch(`${COMPANION_URL}/research-jobs`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ provider, requestedProvider: provider, providerMode, engine, query, depth, preset: preset?.id ?? "custom", gameBrief: directedPrompt }),
+      });
+      const created = await response.json() as { ok?: boolean; jobId?: string; requestedProvider?: AgentProvider | "auto"; provider?: AgentProvider; providerRoute?: Record<string, unknown>; eventsUrl?: string; resultUrl?: string; cancelUrl?: string; error?: string };
+      if (!response.ok || !created.eventsUrl || !created.resultUrl) throw new Error(created.error ?? "The research job could not start.");
+      setResearchCancelUrl(created.cancelUrl ?? null);
+      const source = openCompanionEventStream(`${COMPANION_URL}${created.eventsUrl}`);
+      researchEventSourceRef.current?.close();
+      researchEventSourceRef.current = source;
+      source.onmessage = (event) => {
+        const value = JSON.parse(event.data) as ResearchEvent;
+        appendResearchEvent(value);
+        if (value.type === "companion.research.completed") {
+          source.close();
+          void (async () => {
+            const resultResponse = await companionFetch(`${COMPANION_URL}${created.resultUrl}`, { cache: "no-store" });
+            const result = await resultResponse.json() as { report?: ResearchReport; error?: string };
+            if (!resultResponse.ok || !result.report) throw new Error(result.error ?? "Research returned no report.");
+            setResearchReports((reports) => [result.report!, ...reports.filter((report) => report.id !== result.report!.id)].slice(0, 20));
+            setSelectedResearchId(result.report.id);
+            setResearchView("report");
+            setResearchRunning(false);
+            setResearchCancelUrl(null);
+            showToast(`Research ready · ${result.report.sources.length} cited sources`);
+          })().catch((error) => {
+            setResearchRunning(false);
+            setResearchCancelUrl(null);
+            appendResearchEvent({ type: "research.result.failed", error: error instanceof Error ? error.message : String(error) });
+          });
+        } else if (value.type === "companion.research.failed" || value.type === "companion.research.cancelled") {
+          source.close();
+          setResearchRunning(false);
+          setResearchCancelUrl(null);
+          showToast(value.error ?? value.message ?? "Research stopped");
+        }
+      };
+      source.onerror = () => {
+        if (source.closed) return;
+        appendResearchEvent({ type: "research.console.reconnecting", message: "Research console interrupted; the same durable job can be resumed from status." });
+      };
+      return { accepted: true, ...created };
+    } catch (error) {
+      setResearchRunning(false);
+      setResearchCancelUrl(null);
+      const message = error instanceof Error ? error.message : "Research could not start";
+      appendResearchEvent({ type: "research.failed", error: message });
+      showToast(message);
+      return { accepted: false, error: message };
+    }
+  }, [aiProvider, appendResearchEvent, companionOnline, directedPrompt, providerStatuses, researchDepth, researchEngine, researchQuery, showToast]);
+
+  const cancelResearch = useCallback(async () => {
+    if (!researchCancelUrl) return;
+    try {
+      await companionFetch(`${COMPANION_URL}${researchCancelUrl}`, { method: "POST" });
+    } finally {
+      researchEventSourceRef.current?.close();
+      setResearchRunning(false);
+      setResearchCancelUrl(null);
+    }
+  }, [researchCancelUrl]);
+
+  const applyResearchSuggestion = useCallback((suggestion: ResearchSuggestion) => {
+    setAiBrief((current) => current.includes(suggestion.promptAddition) ? current : `${current.trim()}\n\nResearch-backed direction:\n${suggestion.promptAddition}`.trim());
+    setDirectorWorkspaceTab("build");
+    showToast(`Added “${suggestion.title}” to the game brief`);
+  }, [showToast]);
+
+  const queueAiBuild = useCallback(async (overrides: { provider?: AgentProvider; providerMode?: ProviderRouteMode; contextBudgetTokens?: number; evaluationProfile?: LoopEvaluationProfile; runtimePreference?: "auto" | "canvas" | "phaser" | "pixi" | "melon"; narrativeMode?: "auto" | "include" | "exclude"; usePreferenceMemory?: boolean; excludePreferenceIds?: string[]; preferenceContext?: AppliedPreferenceContext } = {}) => {
+    const hasDirectedChoice = directedSummary.length > 0;
+    if (!aiBrief.trim() && !hasDirectedChoice) {
+      showToast("Describe the game or choose at least one game direction");
+      return { started: false, error: "Describe the game or choose at least one game direction." };
+    }
+    const conditions = loopConditions.split(/\r?\n/).map((condition) => condition.trim()).filter(Boolean);
+    const requestedContextBudget = Number(overrides.contextBudgetTokens ?? providerContextBudgetTokens);
+    const activeContextBudgetTokens = Number.isFinite(requestedContextBudget) ? Math.max(8_000, Math.min(200_000, Math.floor(requestedContextBudget))) : 96_000;
+    const activeEvaluationProfile = overrides.evaluationProfile ?? loopEvaluationProfile;
+    const activeRuntimePreference = overrides.runtimePreference ?? runtimePreference;
+    const activeNarrativeMode = overrides.narrativeMode ?? "auto";
+    const activeProvider = overrides.provider ?? aiProvider;
+    const activeProviderMode = overrides.providerMode ?? "fallback";
+    const activeProviderRoute = resolveProviderRoute({ providers: providerStatuses ?? {} }, { requestedProvider: activeProvider, mode: activeProviderMode });
+    const routedProvider = activeProviderRoute.selectedProvider as AgentProvider | null;
+    const activeProviderStatus = routedProvider ? providerStatuses?.[routedProvider] : providerStatuses?.[activeProvider];
+    const requestedStyleLocks = styleLocks.split(/\r?\n/).map((value) => value.trim()).filter(Boolean);
+    if (artDirectionMode === "locked" && requestedStyleLocks.length === 0) {
+      const message = "Add at least one explicit style lock, or choose Let AI explore / Preserve current identity.";
+      showToast(message);
+      return { started: false, error: message };
+    }
+    const activeStyleLocks = artDirectionMode === "locked" ? requestedStyleLocks : [];
+    const storedBrief = projectRef.current.designBrief as DirectedBrief | undefined;
+    const synchronousBrief = directorBriefRef.current;
+    const storedProviderPromptIsCurrent = Boolean(
+      storedBrief?.promptGeneration
+      && storedBrief.promptGeneration.basePrompt === preparedDirectedBrief.composedPrompt
+      && storedBrief.userPrompt === preparedDirectedBrief.userPrompt,
+    );
+    // Headless mutations can rerender the bridge between commands. The project ref is
+    // the authoritative store, so a current provider-authored prompt must win over a
+    // stale React closure when Generate follows rename, map, or metadata changes.
+    const designBrief = (synchronousBrief?.promptGeneration ? synchronousBrief : storedProviderPromptIsCurrent ? storedBrief : directedBrief) as DirectedBrief;
+    const prompt = designBrief.composedPrompt;
+    const requestBaseline = syncActiveMap({ ...projectRef.current, designBrief });
+    const runPreferenceContext = overrides.preferenceContext
+      ? normalizeAppliedPreferenceContext(overrides.preferenceContext) as AppliedPreferenceContext
+      : selectAppliedPreferenceContext(preferenceMemoryRef.current, preferenceContextForProject(designBrief, requestBaseline), {
+          enabled: overrides.usePreferenceMemory ?? usePreferenceMemoryForRun,
+          excludeEntryIds: overrides.excludePreferenceIds,
+        }) as AppliedPreferenceContext;
+    const requestHistory = [...historyRef.current];
+    const requestFuture = [...futureRef.current];
+    if (!companionOnline) {
+      const message = "The managed AI companion is offline. No generation request was queued or simulated.";
+      appendConsole("companion.blocked", message, "Restart Looplab with npm run dev, then generate with an authenticated provider.", "bad");
+      showToast(message);
+      return { started: false, error: message };
+    }
+    if (!routedProvider || !activeProviderStatus?.ready) {
+      const message = `No AI provider path is ready. ${activeProviderRoute.selectionReason}`;
+      appendConsole("provider.blocked", message, activeProviderRoute.candidates.map((candidate) => `${candidate.label}: ${candidate.state}`).join(" · "), "bad");
+      showToast(message);
+      return { started: false, error: message };
+    }
+    try {
+      setLoopConsole([]);
+      const baselineProject = requestBaseline;
+      const providerSeed = { ...baselineProject, qualityContracts: { ...(baselineProject.qualityContracts ?? {}), verbArchitectureRequired: true, gameplayProgramRequired: true } };
+      const activeAgentRoute = routeGameStudioWork(providerSeed, { prompt, track: aiTrack, framework: activeRuntimePreference, narrativeMode: activeNarrativeMode });
+      const providerBase = activeAgentRoute.context.narrative.included
+        ? { ...providerSeed, qualityContracts: { ...(providerSeed.qualityContracts ?? {}), narrativeContractRequired: true } }
+        : providerSeed;
+      const baselineDoctor = analyzeProject(providerBase);
+      appendConsole("doctor.before", `Preflight Project Doctor: ${baselineDoctor.score}/100`, `${baselineDoctor.errorCount} blockers · ${baselineDoctor.warningCount} warnings`, baselineDoctor.errorCount ? "bad" : "good");
+      const parentId = baselineProject.iteration?.id ?? null;
+      const iterationId = `${aiTrack}-v${String(Date.now()).slice(-8)}`;
+      appendConsole("project.loop-target.locked", `${baselineProject.name} selected as the provider baseline`, `${activeProjectLibraryEntry?.sourceLabel ?? "Current Looplab project"} · the selected library project is the only project this run can change.`, "good");
+      if (designBrief.promptGeneration) {
+        appendConsole(
+          "brief.provider-prompt.locked",
+          `Using AI-generated prompt “${designBrief.promptGeneration.title}”`,
+          `${designBrief.promptGeneration.provider}${designBrief.promptGeneration.model ? ` · ${designBrief.promptGeneration.model}` : ""} · ${designBrief.promptGeneration.id}`,
+          "good",
+        );
+      }
+      let next = applyAgentCommand(providerBase, { op: "begin_iteration", id: iterationId, parentId, track: aiTrack, objective: prompt }).project as GameProject;
+      next = { ...next, designBrief };
+      next = applyAgentCommand(next, { op: "queue_agent_request", prompt, designBrief, provider: routedProvider, track: aiTrack, loop: { strategy: loopStrategy, maxIterations: loopEnabled ? loopIterations : 1, currentIteration: 0, stopScore: loopStopScore, evaluationProfile: activeEvaluationProfile, contextBudgetTokens: activeContextBudgetTokens, requireNoBlockers: true, conditions, artDirectionMode, styleLocks: activeStyleLocks } }).project as GameProject;
+      next = {
+        ...next,
+        agentRequests: (next.agentRequests ?? []).map((request, index, requests) => index === requests.length - 1 ? { ...request, route: activeAgentRoute.route, agentPlan: activeAgentRoute.agentPlan, agentExecution: activeAgentRoute.agentExecution, runtimeSelection: activeAgentRoute.runtimeSelection, productionPlan: activeAgentRoute.productionPlan, boundaries: activeAgentRoute.boundaries, loop: { strategy: loopStrategy, maxIterations: loopEnabled ? loopIterations : 1, currentIteration: 0, stopScore: loopStopScore, evaluationProfile: activeEvaluationProfile, contextBudgetTokens: activeContextBudgetTokens, requireNoBlockers: true, conditions, artDirectionMode, styleLocks: activeStyleLocks } } : request),
+        workstreams: (next.workstreams ?? []).map((stream) => ({ ...stream, status: stream.id === aiTrack ? "active" : stream.status === "active" ? "pending" : stream.status })),
+      };
+      commit(next, `${loopEnabled ? "AI loop" : "One-pass generation"} queued as ${iterationId}`);
+      window.dispatchEvent(new CustomEvent("looplab:agent-requested", { detail: { iterationId, requestedProvider: activeProvider, provider: routedProvider, track: aiTrack, prompt, designBrief } }));
+      appendConsole("brief.directed", directedSummary.length ? `Directed brief: ${directedSummary.join(" · ")}` : "AI will infer the game direction from your vision", aiBrief.trim() || "Original game requested from the selected direction.", "good");
+      appendConsole("art-direction.policy", artDirectionMode === "explore" ? "Art direction is open to the AI" : artDirectionMode === "preserve" ? "Current visual identity will be preserved" : `${activeStyleLocks.length} user style lock${activeStyleLocks.length === 1 ? "" : "s"} active`, artDirectionMode === "locked" ? activeStyleLocks.join(" · ") : "Quality targets do not imply a palette, setting, rendering style, or character design.", "good");
+      appendConsole("preference.context.locked", `${runPreferenceContext.entries.length} explicit preference${runPreferenceContext.entries.length === 1 ? "" : "s"} selected for this run`, runPreferenceContext.entries.length ? `Soft guidance only · receipt ${runPreferenceContext.receiptDigest}` : runPreferenceContext.enabled ? "No enabled preference matched this game context." : "Preference memory is disabled for this run.", "good");
+      appendConsole("agents.planned", `Planned ${activeAgentRoute.agentPlan.length} truthful specialist reviews`, activeAgentRoute.agentPlan.map((agent) => agent.label).join(" → "), "good");
+      appendConsole("narrative.selection.locked", activeAgentRoute.context.narrative.included ? "Narrative Designer + Narrator/Dialogue Writer included" : "Narrative specialists not needed for this pass", `${activeAgentRoute.context.narrative.selectionSource.replaceAll("-", " ")} · ${activeAgentRoute.context.narrative.included ? "Structure, voice, readable delivery, runtime IDs, and evidence share one Narrative Contract." : "The provider will keep this mechanics-first instead of adding mandatory lore."}`, "good");
+      appendConsole("route.ready", `Routed ${activeAgentRoute.route.length} specialist stages`, activeAgentRoute.route.map((step) => step.label).join(" → "), "good");
+      appendConsole("runtime.selection.locked", `${activeAgentRoute.runtimeSelection.selectedFramework} selected by ${activeAgentRoute.runtimeSelection.selectionSource.replaceAll("-", " ")}`, `${activeAgentRoute.runtimeSelection.reasons.join(" ")} Delivery: ${activeAgentRoute.runtimeSelection.singleFile.delivery}.`, "good");
+      appendConsole("provider.context-budget", `Provider preflight budget: ${activeContextBudgetTokens.toLocaleString()} rough tokens`, "Looplab will plan bounded passes or stop before the provider call; completed usage remains the only billable measurement.", "good");
+      appendConsole("evaluation.profile.locked", `${activeEvaluationProfile === "auto" ? "Auto-select" : activeEvaluationProfile} acceptance profile requested`, activeEvaluationProfile === "auto" ? "Looplab will select once from the starting authored project, then freeze that profile for every candidate." : "This named profile remains frozen for every candidate in the run.", "good");
+      setLoopRunning(true);
+      setLoopPhase("generating");
+      appendConsole("companion.connecting", `Connecting to ${routedProvider}`, `${activeProviderRoute.fallbackUsed ? `Requested ${activeProvider}; using the next ready path. · ` : ""}${loopEnabled ? `Up to ${loopIterations} improvement passes · stop at ${loopStopScore}/100` : "Exactly one generation pass · no automatic rebuild loop"}`, "neutral");
+      const response = await companionFetch(`${COMPANION_URL}/jobs`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ project: next, provider: activeProvider, requestedProvider: activeProvider, providerMode: activeProviderMode, goal: prompt, iterations: loopEnabled ? loopIterations : 1, stopScore: loopStopScore, evaluationProfile: activeEvaluationProfile, contextBudgetTokens: activeContextBudgetTokens, strategy: loopStrategy, conditions, artDirectionMode, styleLocks: activeStyleLocks, preferenceContext: runPreferenceContext, track: aiTrack, framework: activeRuntimePreference, narrativeMode: activeNarrativeMode }),
+      });
+      const created = await response.json() as { ok: boolean; jobId?: string; requestedProvider?: AgentProvider | "auto"; provider?: AgentProvider; eventsUrl?: string; resultUrl?: string; cancelUrl?: string; error?: string };
+      if (!response.ok || !created.jobId || !created.eventsUrl || !created.resultUrl) throw new Error(created.error ?? "The companion could not start this loop.");
+      const source = openCompanionEventStream(`${COMPANION_URL}${created.eventsUrl}`);
+      eventSourceRef.current?.close();
+      eventSourceRef.current = source;
+      source.onmessage = (event) => {
+        const value = JSON.parse(event.data) as Record<string, unknown>;
+        const type = String(value.type ?? "agent.event");
+        const usageReceipt = (type === "usage.completed" ? value.receipt : type === "loop.completed" ? value.usage : null) as UsageReceipt | null;
+        const message = type === "provider.parity.locked" ? String(value.message ?? "Codex/Claude loop parity contract locked")
+          : type === "provider.pass-plan.prepared" ? String(value.message ?? "Provider pass plan prepared")
+          : type === "provider.pass.started" ? String(value.message ?? `Provider pass ${value.passId} started`)
+          : type === "provider.context.blocked" ? String(value.message ?? "Provider context preflight blocked the request")
+          : type === "iteration.started" ? `Iteration ${value.iteration} started at ${value.score}/100 · ${value.evaluationProfile ?? activeEvaluationProfile}`
+          : type === "provider.requested" ? `Calling ${value.provider} · ${value.model}`
+          : type === "provider.responded" ? `Model returned ${value.commandCount} coordinated change${value.commandCount === 1 ? "" : "s"}`
+          : type === "usage.completed" ? usageReceiptMessage(usageReceipt, `Iteration ${value.iteration} usage`)
+          : type === "iteration.accepted" ? `${value.version} passed ${value.evaluationProfile ?? activeEvaluationProfile}: ${Number(value.delta) >= 0 ? "+" : ""}${value.delta} → ${value.score}/100`
+          : type === "iteration.rejected" ? `Rejected iteration ${value.iteration}: ${value.reason}`
+          : type === "loop.stopped" ? `Loop stopped: ${String(value.reason).replaceAll("-", " ")}`
+          : type === "loop.completed" ? usageReceiptMessage(usageReceipt, loopEnabled ? "Loop total" : "Run total")
+          : type === "companion.completed" ? String(value.message ?? "Best candidate is ready")
+          : type.includes("failed") ? String(value.error ?? value.message ?? "Loop failed")
+          : String(value.message ?? type.replaceAll(".", " "));
+        const noAcceptedCandidate = value.outcome === "no-accepted-candidate" || value.changed === false;
+        const billingRequired = /no credits remaining|insufficient[_ -]quota|billing/i.test(String(value.reason ?? value.error ?? value.message ?? "")) && String(value.provider ?? created.provider ?? routedProvider) === "openai";
+        const tone = type.includes("failed") || type.includes("rejected") || type === "agent.stderr" || noAcceptedCandidate ? "bad" : type.includes("accepted") || type.includes("completed") ? "good" : "neutral";
+        const detail = billingRequired
+          ? "OpenAI authentication works, but this API project has no generation credit. Add billing credit, then Generate again; the current project is unchanged."
+          : usageReceipt ? usageReceiptDetail(usageReceipt)
+          : value.condition ? `Condition: ${value.condition}` : undefined;
+        appendConsole(type, message, detail, tone, billingRequired ? "https://platform.openai.com/settings/organization/billing/" : undefined);
+        if (type === "companion.cancelled") {
+          source.close();
+          projectRef.current = requestBaseline;
+          setProject(requestBaseline);
+          syncDirectedBriefControls(requestBaseline.designBrief);
+          historyRef.current = requestHistory;
+          futureRef.current = requestFuture;
+          syncHistoryState();
+          setLoopPhase("idle");
+          setLoopRunning(false);
+          appendConsole("generation.unchanged", "AI loop cancelled; restored the project from before this request", "No partial provider response, failed iteration, or pending request was kept.", "good");
+          showToast("AI loop cancelled · project unchanged");
+          return;
+        }
+        if (type === "companion.completed") {
+          source.close();
+          void (async () => {
+            const resultResponse = await companionFetch(`${COMPANION_URL}${created.resultUrl}`, { cache: "no-store" });
+            const result = await resultResponse.json() as { project?: GameProject; error?: string };
+            if (!result.project) throw new Error(result.error ?? "Companion returned no project.");
+            if (noAcceptedCandidate) {
+              const restored = {
+                ...baselineProject,
+                iterationHistory: result.project.iterationHistory ?? baselineProject.iterationHistory,
+                iterationArchive: result.project.iterationArchive ?? baselineProject.iterationArchive,
+                agentRequests: [...(baselineProject.agentRequests ?? []), ...(next.agentRequests ?? []).slice(-1).map((request) => ({ ...request, status: "rejected", summary: "No AI candidate passed the acceptance gates" }))],
+              };
+              const restoredProject = syncActiveMap(restored);
+              projectRef.current = recordAgentProjectChange(syncActiveMap(projectRef.current), restoredProject, { op: "provider_candidate_rejected" }, { channel: "provider", category: "lifecycle" }) as GameProject;
+              setProject(projectRef.current);
+              syncDirectedBriefControls(projectRef.current.designBrief);
+              syncHistoryState();
+              setLoopPhase("idle");
+              setLoopRunning(false);
+              appendConsole("generation.unchanged", "No AI candidate passed; restored the project from before this run", undefined, "bad");
+              showToast("AI proposal rejected · project unchanged");
+              return;
+            }
+            const completedProject = {
+              ...result.project,
+              agentRequests: (result.project.agentRequests ?? []).map((request) => request.status === "pending" ? { ...request, status: "completed", summary: "Loop completed by local AI companion" } : request),
+            };
+            historyRef.current = [...historyRef.current.slice(-(HISTORY_LIMIT - 1)), cloneProject(projectRef.current)];
+            futureRef.current = [];
+            const acceptedProject = syncActiveMap(completedProject);
+            projectRef.current = recordAgentProjectChange(syncActiveMap(projectRef.current), acceptedProject, { op: "provider_candidate_accepted" }, { channel: "provider" }) as GameProject;
+            setProject(projectRef.current);
+            syncDirectedBriefControls(projectRef.current.designBrief);
+            syncHistoryState();
+            const finalDoctor = analyzeProject(projectRef.current);
+            appendConsole("doctor.after", `Final Project Doctor: ${finalDoctor.score}/100`, `${finalDoctor.errorCount} blockers · digest ${finalDoctor.digest}`, finalDoctor.errorCount ? "bad" : "good");
+            const verified = completedProject.iteration?.status === "verified" || completedProject.iteration?.status === "promoted";
+            if (verified) {
+              setLoopPhase("idle");
+              setLoopRunning(false);
+              appendConsole("verification.ready", "Browser verification receipt is present", `Status: ${completedProject.iteration?.status}`, "good");
+              showToast("AI loop completed with a verified candidate");
+              return;
+            }
+
+            setLoopPhase("verifying");
+            setVerificationRunning(true);
+            appendConsole("verification.automatic.started", "Accepted candidate entered automatic browser QA", "Running deterministic gameplay checks and every authored map × configured device profile before the build finishes.");
+            await waitForAnimationFrames(3);
+            try {
+              const verifyGeneratedCandidate = postGenerationVerificationRef.current;
+              if (!verifyGeneratedCandidate) throw new Error("The browser QA runner is still starting. The accepted candidate was preserved as unverified.");
+              const verification = await verifyGeneratedCandidate();
+              appendConsole("verification.automatic.completed", `Candidate verified with ${verification.evidenceCount} source-bound receipts`, `${verification.runtimeCheckCount} runtime checks · ${verification.replayResults.passedCount}/${verification.replayResults.caseCount} replay fixtures · ${verification.captureCount} clean-play captures · digest ${verification.doctorDigest}`, "good");
+              if (verification.visualReadiness.requested && verification.visualReadiness.status !== "measurably-ready") {
+                appendConsole("visual.readiness.needs-art-pass", `Technical QA passed, but visual readiness is ${verification.visualReadiness.score ?? 0}/100`, verification.visualReadiness.checks.filter((check) => !check.passed).map((check) => check.detail).join(" "), "bad");
+                showToast("Technically verified · art pass still recommended");
+              } else showToast("AI build and automatic browser QA completed");
+            } catch (error) {
+              setShowDoctor(true);
+              const message = error instanceof Error ? error.message : "Automatic browser QA could not complete";
+              appendConsole("verification.automatic.failed", message, "The accepted candidate remains available and unverified. Fix the reported evidence failure, then run Verify again.", "bad");
+              showToast("AI candidate preserved · browser QA needs attention");
+            } finally {
+              setVerificationRunning(false);
+              setLoopPhase("idle");
+              setLoopRunning(false);
+            }
+          })().catch((error) => {
+            setVerificationRunning(false);
+            setLoopPhase("idle");
+            setLoopRunning(false);
+            appendConsole("result.failed", error instanceof Error ? error.message : String(error), undefined, "bad");
+          });
+        }
+      };
+      source.onerror = () => {
+        if (source.closed) return;
+        appendConsole("console.reconnecting", "Console stream interrupted; the same durable job can be resumed from status.", undefined, "bad");
+      };
+      return { started: true, jobId: created.jobId, eventsUrl: created.eventsUrl, resultUrl: created.resultUrl, cancelUrl: created.cancelUrl ?? `/jobs/${created.jobId}/cancel`, requestedProvider: activeProvider, provider: created.provider ?? routedProvider, mode: loopEnabled ? "loop" : "one-pass", runtimeSelection: activeAgentRoute.runtimeSelection, preferenceReceipt: { enabled: runPreferenceContext.enabled, selectedEntryIds: runPreferenceContext.selectedEntryIds, excludedEntryIds: runPreferenceContext.excludedEntryIds, receiptDigest: runPreferenceContext.receiptDigest } };
+    } catch (error) {
+      projectRef.current = requestBaseline;
+      setProject(requestBaseline);
+      syncDirectedBriefControls(requestBaseline.designBrief);
+      historyRef.current = requestHistory;
+      futureRef.current = requestFuture;
+      syncHistoryState();
+      setLoopPhase("idle");
+      setLoopRunning(false);
+      const message = error instanceof Error ? error.message : "Could not start AI generation";
+      appendConsole("loop.failed", message, undefined, "bad");
+      appendConsole("generation.unchanged", "AI job was not accepted; restored the project from before this request", "No failed iteration or pending request was kept.", "good");
+      showToast(message);
+      return { started: false, error: message };
+    }
+  }, [activeProjectLibraryEntry, aiBrief, aiProvider, aiTrack, appendConsole, artDirectionMode, commit, companionOnline, directedBrief, directedSummary, loopConditions, loopEnabled, loopEvaluationProfile, loopIterations, loopStopScore, loopStrategy, preparedDirectedBrief.composedPrompt, preparedDirectedBrief.userPrompt, providerContextBudgetTokens, providerStatuses, runtimePreference, showToast, styleLocks, syncDirectedBriefControls, syncHistoryState, usePreferenceMemoryForRun]);
+
+  const collectVerificationEvidence = useCallback(async (options: { visualOnly?: boolean } = {}) => {
+    if (visualReviewCaptureRunningRef.current) throw new Error("A visual review capture is already running.");
+    visualReviewCaptureRunningRef.current = true;
+    const visualOnly = options.visualOnly === true;
+    const previousVisualReview = visualReviewRef.current;
+    const previous = {
+      mode,
+      focused: previewFocusRef.current,
+      viewportPreset,
+      showColliders,
+      paused: previewPausedRef.current,
+      engine: runtimeEngineRef.current,
+      mobileTab,
+      transition: previewTransition,
+    };
+    try {
+      const current = syncActiveMap(projectRef.current);
+      const doctor = analyzeProject(current);
+      const verificationEligible = !doctor.gate.blocking || canCollectOfflineVerificationEvidence(current, doctor);
+      if (!verificationEligible && !visualOnly) throw new Error(`Project Doctor blocked evidence collection with ${doctor.errorCount} blocker(s) and ${doctor.warningCount} warning(s).`);
+      const createdAt = new Date().toISOString();
+      const playtest = createRuntimePlaytestEvidence(current, { sourceDigest: doctor.sourceDigest, createdAt, runner: "looplab-browser-runtime" }) as VerificationEvidence;
+      const replayEvidence = createReplayEvidence(current, { sourceDigest: doctor.sourceDigest, createdAt, runner: "looplab-browser-replay" }) as VerificationEvidence | null;
+      const requirements = verificationCoverageRequirements(current);
+      const configuredProfiles = (current.deviceProfiles ?? []).filter((profile) => profile && profile.id && Number(profile.width) > 0 && Number(profile.height) > 0);
+      const profiles: DeviceProfile[] = configuredProfiles.length
+        ? configuredProfiles
+        : [{ id: "desktop", name: "Desktop", width: 1440, height: 900, dpr: 1, touchTargetMin: 44 }];
+      const reviewMaps = current.maps?.length ? current.maps : [mapFromProject(current, current.activeMapId ?? "map-main", "Main map")];
+      const captures: VisualReviewCapture[] = [];
+      const screenshots: VerificationEvidence[] = [];
+      const responsiveEvidence: VerificationEvidence[] = [];
+      const runtimeJoinEvidence: VerificationEvidence[] = [];
+      const runtimeJoinPlan = buildRuntimeJoinPlan(current);
+      if (runtimeJoinPlan.status === "invalid") throw new Error(`Runtime-join plan is invalid: ${runtimeJoinPlan.issues.map((issue: { message: string }) => issue.message).join(" ")}`);
+      const publishCaptureEngine = (engine: RuntimeEngine) => {
+        const next = engine.getState();
+        runtimeRef.current = engine.getObjects();
+        setRuntimeState(next);
+        setRuntimeChoiceState(engine.getChoiceState());
+        setRuntimeHudState(engine.getHudState());
+        setCollected(next.collectedCount);
+        setPreviewWon(next.won);
+        setRuntimeTick(0);
+      };
+      const captureRuntimeFrame = async (profile: DeviceProfile) => {
+        const canvas = canvasRef.current;
+        if (!canvas || canvas.width <= 0 || canvas.height <= 0) throw new Error("The game canvas is not ready for runtime-join capture.");
+        const targetWidth = Math.max(1, Number(profile.width));
+        const targetHeight = Math.max(1, Number(profile.height));
+        const longest = 256;
+        const width = targetWidth >= targetHeight ? longest : Math.max(96, Math.round(longest * targetWidth / targetHeight));
+        const height = targetHeight >= targetWidth ? longest : Math.max(96, Math.round(longest * targetHeight / targetWidth));
+        const captureCanvas = document.createElement("canvas");
+        captureCanvas.width = width;
+        captureCanvas.height = height;
+        const context = captureCanvas.getContext("2d", { willReadFrequently: true });
+        if (!context) throw new Error("The runtime-join capture canvas is unavailable.");
+        context.imageSmoothingEnabled = false;
+        context.drawImage(canvas, 0, 0, width, height);
+        const pixels = context.getImageData(0, 0, width, height).data;
+        const blob = await new Promise<Blob>((resolve, reject) => captureCanvas.toBlob((value) => value ? resolve(value) : reject(new Error("The runtime join could not be encoded.")), "image/png"));
+        const sha256 = await sha256Hex(await blob.arrayBuffer());
+        return { width, height, pixels, sha256: `sha256:${sha256}`, byteLength: blob.size };
+      };
+      const collisionBox = (object: RuntimeObject) => {
+        const collider = object.collider;
+        if (!collider?.enabled) return null;
+        return {
+          left: Number(object.x) + Number(collider.offsetX ?? 0),
+          top: Number(object.y) + Number(collider.offsetY ?? 0),
+          right: Number(object.x) + Number(collider.offsetX ?? 0) + Number(collider.width ?? object.width),
+          bottom: Number(object.y) + Number(collider.offsetY ?? 0) + Number(collider.height ?? object.height),
+          zMin: Number(collider.zMin ?? object.z ?? 0),
+          zMax: Number(collider.zMax ?? (Number(object.z ?? 0) + Number(object.collisionHeight ?? 1))),
+        };
+      };
+      const boxesOverlap = (first: ReturnType<typeof collisionBox>, second: ReturnType<typeof collisionBox>) => Boolean(first && second
+        && first.left < second.right && first.right > second.left && first.top < second.bottom && first.bottom > second.top
+        && first.zMin < second.zMax && first.zMax > second.zMin);
+
+      setShowColliders(false);
+      setPreviewTransition(null);
+      enterPreview(false);
+      await waitForAnimationFrames(3);
+      const engine = createRuntimeModel(current) as RuntimeEngine;
+      runtimeEngineRef.current = engine;
+      keysRef.current.forEach((code) => engine.setInput(code, false));
+      keysRef.current.clear();
+      previewPausedRef.current = true;
+      setPreviewPaused(true);
+      engine.drainEvents();
+      publishCaptureEngine(engine);
+
+      for (const profile of profiles) {
+        setViewportPreset(profile.id);
+        await waitForAnimationFrames(2);
+        for (const map of reviewMaps) {
+          if (!engine.loadMap(map.id, null)) throw new Error(`Visual review could not load map ${map.id}.`);
+          engine.drainEvents();
+          publishCaptureEngine(engine);
+          await waitForAnimationFrames(3);
+          const canvas = canvasRef.current;
+          if (!canvas || canvas.width <= 0 || canvas.height <= 0) throw new Error("The game canvas is not ready for visual review.");
+          const bounds = canvas.getBoundingClientRect();
+          if (bounds.width <= 0 || bounds.height <= 0) throw new Error(`The game canvas is not visibly rendered for ${map.id} × ${profile.id}.`);
+          const captureScale = Math.max(1, Math.min(2, Number(profile.dpr ?? 1)));
+          const captureCanvas = document.createElement("canvas");
+          captureCanvas.width = Math.max(1, Math.round(bounds.width * captureScale));
+          captureCanvas.height = Math.max(1, Math.round(bounds.height * captureScale));
+          const captureContext = captureCanvas.getContext("2d");
+          if (!captureContext) throw new Error("The visual review capture canvas is unavailable.");
+          captureContext.imageSmoothingEnabled = false;
+          captureContext.drawImage(canvas, 0, 0, captureCanvas.width, captureCanvas.height);
+          const capturePixels = captureContext.getImageData(0, 0, captureCanvas.width, captureCanvas.height).data;
+          const contentStats = pixelContentStats(capturePixels);
+          const blob = await new Promise<Blob>((resolve, reject) => captureCanvas.toBlob((value) => value ? resolve(value) : reject(new Error("The rendered game could not be captured.")), "image/png"));
+          const sha256 = await sha256Hex(await blob.arrayBuffer());
+          const dataUrl = await blobToDataUrl(blob);
+          const actualViewport = { width: window.innerWidth, height: window.innerHeight, devicePixelRatio: window.devicePixelRatio };
+          const targetViewport = { width: Number(profile.width), height: Number(profile.height), devicePixelRatio: Number(profile.dpr ?? 1) };
+          const renderedBounds = { width: Math.round(bounds.width), height: Math.round(bounds.height) };
+          const id = `visual:${map.id}:${profile.id}:${sha256.slice(0, 16)}`;
+          const captureState = engine.getState();
+          const captureProjection = normalizeProjection(captureState.projection ?? map.projection, captureState) as ProjectionContract;
+          const scaleX = captureCanvas.width / Math.max(1, canvas.width);
+          const scaleY = captureCanvas.height / Math.max(1, canvas.height);
+          const toCaptureRect = (rect: { x: number; y: number; width: number; height: number }) => ({ x: rect.x * scaleX, y: rect.y * scaleY, width: rect.width * scaleX, height: rect.height * scaleY });
+          const runtimeObjects = engine.getObjects().filter((object) => !object.hidden && !("collected" in object && object.collected));
+          const runtimeObjectRect = (object: RuntimeObject) => {
+            const asset = object.assetId ? current.assets?.find((candidate) => candidate.id === object.assetId) : null;
+            if (!asset && captureProjection.type === "dimetric-2:1" && object.kind === "platform") {
+              const points = projectWorldRect(object, captureProjection, object.z ?? 0);
+              const xs = points.map((point) => point.x);
+              const ys = points.map((point) => point.y);
+              const drop = (object as GameObject).role === "ground-plane" ? 0 : Math.max(5, Number(captureProjection.elevationStep ?? 32) * Math.min(1, object.collisionHeight ?? 1));
+              const left = Math.min(...xs);
+              const top = Math.min(...ys);
+              const right = Math.max(...xs);
+              const bottom = Math.max(...ys) + drop;
+              return { x: left, y: top, width: right - left, height: bottom - top };
+            }
+            return objectScreenRect(object, captureProjection, current.assets ?? []);
+          };
+          const semanticTargets: Array<{ kind: string; severity: "error" | "warning" | "info"; label: string; detail: string; bounds: { x: number; y: number; width: number; height: number }; affectedIds?: string[]; sourceEvidenceIds?: string[]; metrics?: Record<string, unknown> }> = [];
+          const frameRect = { x: 0, y: 0, width: captureCanvas.width, height: captureCanvas.height };
+          const objectRects = runtimeObjects.map((object) => ({ object, bounds: toCaptureRect(runtimeObjectRect(object)) }));
+          for (const entry of objectRects) {
+            const visible = intersectVisualRects(entry.bounds, frameRect);
+            if (!visible) continue;
+            const clipped = visualBoundsExtendBeyondFrame(entry.bounds, captureCanvas.width, captureCanvas.height, 1);
+            if (clipped && (entry.object as GameObject).role !== "ground-plane") semanticTargets.push({
+              kind: "edge-clipping-risk",
+              severity: "warning",
+              label: `Edge-clipped ${entry.object.name ?? entry.object.id}`,
+              detail: "Known render bounds extend beyond the clean capture. Inspect culling and intended camera framing.",
+              bounds: visible,
+              affectedIds: [entry.object.id],
+              metrics: { fullBounds: entry.bounds },
+            });
+          }
+          const hud = playHudRef.current;
+          if (hud && visibleElement(hud)) {
+            const hudBounds = hud.getBoundingClientRect();
+            const hudOnCanvas = intersectVisualRects(
+              { x: (hudBounds.left - bounds.left) / bounds.width * captureCanvas.width, y: (hudBounds.top - bounds.top) / bounds.height * captureCanvas.height, width: hudBounds.width / bounds.width * captureCanvas.width, height: hudBounds.height / bounds.height * captureCanvas.height },
+              frameRect,
+            );
+            if (hudOnCanvas) {
+              const hudOverlaps = objectRects.filter((entry) => {
+                if (!isHudVisualReviewTarget(entry.object)) return false;
+                const overlap = intersectVisualRects(entry.bounds, hudOnCanvas);
+                return Boolean(overlap && overlap.width * overlap.height >= 24);
+              }).sort((first, second) => {
+                const firstOverlap = intersectVisualRects(first.bounds, hudOnCanvas)!;
+                const secondOverlap = intersectVisualRects(second.bounds, hudOnCanvas)!;
+                return secondOverlap.width * secondOverlap.height - firstOverlap.width * firstOverlap.height || first.object.id.localeCompare(second.object.id);
+              }).slice(0, 8);
+              for (const entry of hudOverlaps) {
+                const overlap = intersectVisualRects(entry.bounds, hudOnCanvas)!;
+                semanticTargets.push({
+                  kind: "hud-content-overlap",
+                  severity: "warning",
+                  label: `HUD crosses ${entry.object.name ?? entry.object.id}`,
+                  detail: "Measured HUD and rendered object rectangles overlap in this device profile. Inspect whether the landmark or gameplay cue remains readable.",
+                  bounds: overlap,
+                  affectedIds: [entry.object.id],
+                  metrics: { profileId: profile.id, hudBounds: hudOnCanvas },
+                });
+              }
+            }
+          }
+          for (const issue of doctor.issues.filter((candidate: { mapId?: string; objectId?: string; severity?: string }) => candidate.objectId && (!candidate.mapId || candidate.mapId === map.id))) {
+            const entry = objectRects.find((candidate) => candidate.object.id === issue.objectId);
+            if (!entry) continue;
+            semanticTargets.push({
+              kind: "doctor-finding",
+              severity: issue.severity === "error" ? "error" : issue.severity === "warning" ? "warning" : "info",
+              label: issue.code,
+              detail: issue.message,
+              bounds: entry.bounds,
+              affectedIds: [String(issue.objectId)],
+              sourceEvidenceIds: [issue.code],
+            });
+          }
+          const priorCapture = previousVisualReview?.captures.find((candidate) => candidate.mapId === map.id && candidate.profileId === profile.id) ?? null;
+          const baselineFrame = priorCapture ? await pixelFrameFromDataUrl(priorCapture.dataUrl) : null;
+          const perception = analyzeVisualPerception({
+            captureId: id,
+            sourceDigest: doctor.sourceDigest,
+            frame: { width: captureCanvas.width, height: captureCanvas.height, pixels: capturePixels },
+            baselineFrame,
+            baselineSha256: priorCapture?.sha256 ?? null,
+            semanticTargets,
+            options: { maximumSemanticTargets: 16, maximumRegions: 8, cellSize: 16, pixelThreshold: 36, minimumCellChangedRatio: 0.08, minimumRegionChangedPixels: 24 },
+          }) as VisualPerceptionReceipt;
+          perception.annotations = perception.annotations.map((annotation, index) => index < 12 ? { ...annotation, cropDataUrl: visualAnnotationCropDataUrl(captureCanvas, annotation) } : annotation);
+          const annotatedDataUrl = annotatedVisualDataUrl(captureCanvas, perception.annotations);
+          screenshots.push({
+            version: 2,
+            type: "screenshot",
+            id,
+            status: "passed",
+            sourceDigest: doctor.sourceDigest,
+            createdAt,
+            runner: "looplab-browser-clean-play",
+            mapId: map.id,
+            mapName: map.name,
+            profileId: profile.id,
+            profileName: profile.name ?? profile.id,
+            sha256: `sha256:${sha256}`,
+            width: captureCanvas.width,
+            height: captureCanvas.height,
+            byteLength: blob.size,
+            captureScale,
+            viewport: actualViewport,
+            targetViewport,
+            renderedBounds,
+            cleanPlay: true,
+            editorOverlays: false,
+            profileSimulation: "in-app-device-profile",
+            contentStats,
+            perception: {
+              schemaVersion: perception.schemaVersion,
+              annotationCount: perception.annotationCount,
+              comparison: perception.comparison,
+              kinds: [...new Set(perception.annotations.map((annotation) => annotation.kind))],
+            },
+          });
+          captures.push({
+            id,
+            mapId: map.id,
+            mapName: map.name,
+            profileId: profile.id,
+            profileName: profile.name ?? profile.id,
+            dataUrl,
+            annotatedDataUrl,
+            perception,
+            sha256: `sha256:${sha256}`,
+            width: captureCanvas.width,
+            height: captureCanvas.height,
+            renderedBounds,
+            targetViewport,
+            actualViewport,
+          });
+        }
+
+        for (const join of runtimeJoinPlan.joins) {
+          const sourceMap = reviewMaps.find((map) => map.id === join.sourceMapId);
+          const targetMap = reviewMaps.find((map) => map.id === join.targetMapId);
+          if (!sourceMap || !targetMap) throw new Error(`Runtime join ${join.portalId} references a map outside the visual review route.`);
+          engine.reset();
+          engine.drainEvents();
+          if (!engine.loadMap(join.sourceMapId, null)) throw new Error(`Runtime join could not load source map ${join.sourceMapId}.`);
+          engine.drainEvents();
+          engine.setInput("interact", false);
+          engine.update(1 / 60);
+          engine.drainEvents();
+          const sourceObjects = engine.getObjects();
+          const portal = sourceObjects.find((object) => object.id === join.portalId && object.kind === "portal");
+          const sourcePlayer = sourceObjects.find((object) => object.kind === "player");
+          const authoredTargetSpawn = targetMap.objects.find((object) => object.kind === "spawn" && object.id === join.targetSpawnId);
+          if (!portal || !sourcePlayer || !authoredTargetSpawn) throw new Error(`Runtime join ${join.portalId} is missing its portal, player, or exact target spawn.`);
+          sourcePlayer.x = Number(portal.x) + Math.max(0, (Number(portal.width) - Number(sourcePlayer.width)) / 2);
+          sourcePlayer.y = Number(portal.y) + Math.max(0, (Number(portal.height) - Number(sourcePlayer.height)) / 2);
+          const portalZ = Number(portal.supportZ ?? portal.z ?? 0);
+          const playerHeight = Number(sourcePlayer.collisionHeight ?? 1);
+          sourcePlayer.z = portalZ;
+          sourcePlayer.supportZ = portalZ;
+          if (sourcePlayer.collider) {
+            sourcePlayer.collider.zMin = portalZ;
+            sourcePlayer.collider.zMax = portalZ + playerHeight;
+          }
+          const sourceCollected = sourcePlayer.collected;
+          sourcePlayer.collected = true;
+          publishCaptureEngine(engine);
+          await waitForAnimationFrames(3);
+          const sourceFrame = await captureRuntimeFrame(profile);
+          sourcePlayer.collected = sourceCollected;
+
+          engine.setInput("interact", true);
+          const transitionEvents = engine.update(0.0001);
+          engine.setInput("interact", false);
+          const transitioned = engine.getState().activeMapId === join.targetMapId && transitionEvents.some((event) => event.type === "portal.entered" && event.objectId === join.portalId);
+          const targetObjects = engine.getObjects();
+          const targetPlayer = targetObjects.find((object) => object.kind === "player");
+          const runtimeTargetSpawn = targetObjects.find((object) => object.kind === "spawn" && object.id === join.targetSpawnId);
+          const expectedX = targetPlayer && runtimeTargetSpawn ? Number(runtimeTargetSpawn.x) + (Number(runtimeTargetSpawn.width) - Number(targetPlayer.width)) / 2 : Number.NaN;
+          const expectedY = targetPlayer && runtimeTargetSpawn ? Number(runtimeTargetSpawn.y) + Number(runtimeTargetSpawn.height) - Number(targetPlayer.height) : Number.NaN;
+          const exactSpawn = Boolean(targetPlayer && runtimeTargetSpawn) && Math.abs(Number(targetPlayer!.x) - expectedX) < 0.001 && Math.abs(Number(targetPlayer!.y) - expectedY) < 0.001;
+          const playerBox = targetPlayer ? collisionBox(targetPlayer) : null;
+          const targetTileColliders = engine.getTileRuntime().collisionObjects;
+          const landingClear = Boolean(targetPlayer) && ![...targetObjects, ...targetTileColliders].some((object) => object.id !== targetPlayer!.id && object.solid !== false && boxesOverlap(playerBox, collisionBox(object)));
+          if (!targetPlayer) throw new Error(`Runtime join ${join.portalId} lost the player after transition.`);
+          const targetCollected = targetPlayer.collected;
+          targetPlayer.collected = true;
+          publishCaptureEngine(engine);
+          await waitForAnimationFrames(3);
+          const targetFrame = await captureRuntimeFrame(profile);
+          targetPlayer.collected = targetCollected;
+          publishCaptureEngine(engine);
+
+          const edgeExtent = join.contract.targetEdge === "left" || join.contract.targetEdge === "right" ? targetMap.width : targetMap.height;
+          const captureExtent = join.contract.targetEdge === "left" || join.contract.targetEdge === "right" ? targetFrame.width : targetFrame.height;
+          const captureScale = captureExtent / Math.max(1, edgeExtent);
+          const pixelAnalysis = analyzeRuntimeJoinPixels({
+            sourceFrame,
+            targetFrame,
+            contract: {
+              ...join.contract,
+              overlapPixels: Math.round(Number(join.contract.overlapPixels ?? 0) * captureScale),
+              sampleDepth: Math.max(1, Math.round(Number(join.contract.sampleDepth ?? 8) * captureScale)),
+            },
+          });
+          const behaviorChecks = [
+            { id: "runtime-transition", passed: transitioned, detail: transitioned ? `Entered ${join.targetMapId} through ${join.portalId}.` : `The runtime did not enter ${join.targetMapId}.` },
+            { id: "exact-target-spawn", passed: join.contract.requireExactSpawn === false || exactSpawn, detail: exactSpawn ? `Player landed at exact spawn ${join.targetSpawnId}.` : `Player did not land at exact spawn ${join.targetSpawnId}.` },
+            { id: "clear-target-landing", passed: join.contract.requireClearLanding === false || landingClear, detail: landingClear ? "The destination collider is clear of solid authored geometry." : "The destination spawn overlaps solid authored geometry." },
+          ];
+          const checks = [...behaviorChecks, ...pixelAnalysis.checks].map((check) => ({ id: check.id, status: check.passed ? "passed" : "failed", detail: check.detail }));
+          runtimeJoinEvidence.push({
+            version: 2,
+            type: "runtime-join",
+            id: `runtime-join:${join.portalId}:${profile.id}:${targetFrame.sha256.slice(-16)}`,
+            status: checks.every((check) => check.status === "passed") ? "passed" : "failed",
+            sourceDigest: doctor.sourceDigest,
+            createdAt,
+            runner: "looplab-browser-runtime-join",
+            portalId: join.portalId,
+            sourceMapId: join.sourceMapId,
+            targetMapId: join.targetMapId,
+            targetSpawnId: join.targetSpawnId,
+            profileId: profile.id,
+            profileName: profile.name ?? profile.id,
+            sourceSha256: sourceFrame.sha256,
+            targetSha256: targetFrame.sha256,
+            sourceFrame: { width: sourceFrame.width, height: sourceFrame.height, byteLength: sourceFrame.byteLength },
+            targetFrame: { width: targetFrame.width, height: targetFrame.height, byteLength: targetFrame.byteLength },
+            contract: join.contract,
+            metrics: pixelAnalysis.metrics,
+            actualVisibleJoin: true,
+            playerExcluded: true,
+            nextUniqueContentInspected: true,
+            checks,
+          });
+        }
+
+        await waitForAnimationFrames(2);
+        const canvas = canvasRef.current;
+        const stage = stageViewportRef.current;
+        const wrap = canvasWrapRef.current;
+        const hud = playHudRef.current;
+        const controls = touchControlsRef.current;
+        if (!canvas || !stage || !wrap || !hud || !controls) throw new Error(`Responsive review DOM is incomplete for ${profile.id}.`);
+        const canvasBounds = canvas.getBoundingClientRect();
+        const stageBounds = stage.getBoundingClientRect();
+        const wrapBounds = wrap.getBoundingClientRect();
+        const hudBounds = hud.getBoundingClientRect();
+        const controlsBounds = controls.getBoundingClientRect();
+        const expectsTouch = Number(profile.width) <= 700;
+        const controlsVisible = visibleElement(controls);
+        const touchTargetMin = Math.max(1, Number(profile.touchTargetMin ?? 44));
+        const touchTargetsPass = !expectsTouch || [...controls.querySelectorAll("button")].every((button) => {
+          const bounds = button.getBoundingClientRect();
+          return bounds.width >= touchTargetMin && bounds.height >= touchTargetMin;
+        });
+        const checks = [
+          { id: "canvas-visible", passed: visibleElement(canvas), detail: `${Math.round(canvasBounds.width)}×${Math.round(canvasBounds.height)} rendered canvas.` },
+          { id: "profile-width-cap", passed: canvasBounds.width <= Number(profile.width) + 2, detail: `Rendered width ${Math.round(canvasBounds.width)}px; target cap ${profile.width}px.` },
+          { id: "hud-visible", passed: visibleElement(hud), detail: "Play HUD is visible in clean play mode." },
+          { id: "hud-contained", passed: rectContains(wrapBounds, hudBounds), detail: "Play HUD stays inside the game frame." },
+          { id: "profile-touch-controls", passed: expectsTouch === controlsVisible, detail: expectsTouch ? "Touch profile exposes controls." : "Desktop profile keeps touch controls hidden." },
+          { id: "touch-target-size", passed: touchTargetsPass, detail: expectsTouch ? `All touch buttons meet ${touchTargetMin}px.` : "Touch target sizing does not apply to this desktop profile." },
+          { id: "touch-controls-contained", passed: !expectsTouch || rectContains(stageBounds, controlsBounds), detail: expectsTouch ? "Touch controls stay inside the preview stage." : "No touch controls are rendered." },
+        ];
+        const responsivePassed = checks.every((check) => check.passed);
+        responsiveEvidence.push({
+          version: 2,
+          type: "responsive",
+          id: `responsive:${profile.id}:${doctor.sourceDigest}`,
+          status: responsivePassed ? "passed" : "failed",
+          sourceDigest: doctor.sourceDigest,
+          createdAt,
+          runner: "looplab-browser-layout-measurement",
+          profileId: profile.id,
+          profileName: profile.name ?? profile.id,
+          profileSimulation: "in-app-device-profile",
+          targetViewport: { width: Number(profile.width), height: Number(profile.height), devicePixelRatio: Number(profile.dpr ?? 1) },
+          viewport: { width: window.innerWidth, height: window.innerHeight, devicePixelRatio: window.devicePixelRatio },
+          renderedBounds: { width: Math.round(canvasBounds.width), height: Math.round(canvasBounds.height) },
+          expectsTouch,
+          checks: checks.map((check) => ({ id: check.id, status: check.passed ? "passed" : "failed", detail: check.detail })),
+        });
+      }
+
+      const evidenceRefs = [playtest, ...(replayEvidence ? [replayEvidence] : []), ...screenshots, ...responsiveEvidence, ...runtimeJoinEvidence];
+      const evidence = validateVerificationEvidence(evidenceRefs, { sourceDigest: doctor.sourceDigest, ...requirements });
+      const report: VisualReviewReport = {
+        version: 2,
+        sourceDigest: doctor.sourceDigest,
+        createdAt,
+        mapIds: requirements.requiredMapIds,
+        profileIds: requirements.requiredProfileIds,
+        requiredCaptureCount: requirements.requiredCaptureCount,
+        captures,
+        responsiveEvidence,
+        runtimeJoinEvidence,
+        evidenceRefs,
+        verificationEligible,
+        evidenceValid: evidence.valid,
+        doctorFindings: doctor.issues.filter((issue: { severity?: string }) => issue.severity === "error" || issue.severity === "warning").map((issue: { severity: string; code: string; message: string; mapId?: string; objectId?: string }) => ({ severity: issue.severity, code: issue.code, message: issue.message, mapId: issue.mapId ?? null, objectId: issue.objectId ?? null })),
+      };
+      visualReviewRef.current = report;
+      setVisualReview(report);
+      setSelectedVisualCaptureId(captures[0]?.id ?? null);
+      setSelectedVisualAnnotationId(captures[0]?.perception.annotations[0]?.id ?? null);
+      setShowVisualAnnotations(true);
+      setShowVisualReview(true);
+      const latestDigest = analyzeProject(syncActiveMap(projectRef.current)).sourceDigest;
+      if (latestDigest !== doctor.sourceDigest) throw new Error("The project changed during visual review. Re-run capture for the current candidate.");
+      if (!evidence.valid && !visualOnly) throw new Error(`Visual review failed: ${evidence.errors.join(" ")}`);
+      return { evidenceRefs, doctor, playtest, visualReview: visualReviewForHeadless(report) };
+    } finally {
+      setViewportPreset(previous.viewportPreset);
+      setShowColliders(previous.showColliders);
+      setPreviewTransition(previous.transition);
+      if (previous.mode === "play") {
+        if (previous.engine) {
+          runtimeEngineRef.current = previous.engine;
+          previewPausedRef.current = previous.paused;
+          setPreviewPaused(previous.paused);
+          const restoredState = previous.engine.getState();
+          runtimeRef.current = previous.engine.getObjects();
+          setRuntimeState(restoredState);
+          setRuntimeChoiceState(previous.engine.getChoiceState());
+          setRuntimeHudState(previous.engine.getHudState());
+          setCollected(restoredState.collectedCount);
+          setPreviewWon(restoredState.won);
+          setRuntimeTick((tick) => tick + 1);
+        } else enterPreview(previous.focused);
+        setPreviewFocusMode(previous.focused);
+        setMobileTab(previous.mobileTab);
+      } else {
+        runtimeEngineRef.current = null;
+        setRuntimeChoiceState(null);
+        setRuntimeHudState([]);
+        exitPreview();
+        setMobileTab(previous.mobileTab);
+      }
+      visualReviewCaptureRunningRef.current = false;
+    }
+  }, [enterPreview, exitPreview, mobileTab, mode, previewTransition, setPreviewFocusMode, showColliders, viewportPreset]);
+
+  const verifyCurrentCandidate = useCallback(async (): Promise<CandidateVerificationResult> => {
+    const evidence = await collectVerificationEvidence();
+    const outcome = applyCollectedVerificationEvidence(syncActiveMap(projectRef.current), evidence.evidenceRefs);
+    const verifiedProject = syncActiveMap(outcome.project as GameProject);
+    projectRef.current = verifiedProject;
+    setProject(verifiedProject);
+    syncDirectedBriefControls(verifiedProject.designBrief);
+    syncHistoryState();
+    return {
+      project: cloneProject(verifiedProject),
+      evidenceRefs: evidence.evidenceRefs,
+      evidenceCount: evidence.evidenceRefs.length,
+      runtimeCheckCount: evidence.playtest.checks instanceof Array ? evidence.playtest.checks.length : 0,
+      captureCount: visualReviewRef.current?.captures.length ?? 0,
+      runtimeJoinCount: visualReviewRef.current?.runtimeJoinEvidence.length ?? 0,
+      sourceDigest: evidence.doctor.sourceDigest,
+      doctorDigest: evidence.doctor.digest,
+      visualReadiness: evidence.doctor.visualReadiness as VisualReadinessReport,
+      replayResults: evidence.doctor.replayResults as ReplaySuiteResult,
+    };
+  }, [collectVerificationEvidence, syncDirectedBriefControls, syncHistoryState]);
+
+  useEffect(() => {
+    postGenerationVerificationRef.current = verifyCurrentCandidate;
+    return () => {
+      if (postGenerationVerificationRef.current === verifyCurrentCandidate) postGenerationVerificationRef.current = null;
+    };
+  }, [verifyCurrentCandidate]);
+
+  const runVisualReview = useCallback(async () => {
+    setVisualReviewRunning(true);
+    try {
+      appendConsole("visual.review.started", "Rendering every map across every configured device profile", "Clean play mode only · editor overlays disabled · actual and simulated viewports recorded separately.");
+      const outcome = await collectVerificationEvidence({ visualOnly: true });
+      const report = visualReviewRef.current;
+      appendConsole("visual.review.completed", `${report?.captures.length ?? 0}/${report?.requiredCaptureCount ?? 0} visual captures passed`, `${report?.profileIds.length ?? 0} responsive profiles · ${report?.runtimeJoinEvidence.filter((evidence) => evidence.status === "passed").length ?? 0}/${report?.runtimeJoinEvidence.length ?? 0} actual runtime joins · source ${outcome.doctor.sourceDigest}`, "good");
+      showToast("Visual QA matrix passed");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Visual QA could not complete";
+      appendConsole("visual.review.failed", message, "Open the visual review to inspect captured map and device evidence.", "bad");
+      showToast(message);
+    } finally {
+      setVisualReviewRunning(false);
+    }
+  }, [appendConsole, collectVerificationEvidence, showToast]);
+
+  const receiveVisualCritiqueResult = useCallback(async (job: VisualCritiqueJobDescriptor) => {
+    const response = await companionFetch(`${COMPANION_URL}${job.resultUrl}`, { cache: "no-store" });
+    const envelope = await response.json() as { result?: VisualCritiqueResult; usage?: UsageReceipt; error?: string };
+    if (!response.ok || !envelope.result) throw new Error(envelope.error ?? "The visual critique result is unavailable.");
+    setVisualCritique(envelope.result);
+    setVisualCritiqueJob({ ...job, status: "completed" });
+    if (job.request) setVisualCritiqueRequest(job.request);
+    setVisualCritiqueRunning(false);
+    setVisualCritiqueConsent(false);
+    appendConsole("visual.critique.ready", `AI visual critique found ${envelope.result.issues.length} grounded issue${envelope.result.issues.length === 1 ? "" : "s"}`, `${envelope.result.provider} · ${envelope.result.model} · ${usageReceiptMessage(envelope.result.usage, "Visual critique")}`, "good");
+    showToast("Grounded visual critique is ready");
+    return envelope.result;
+  }, [appendConsole, showToast]);
+
+  const startVisualCritique = useCallback(async ({ provider = visualCritiqueProvider, providerMode = "fallback", consent = visualCritiqueConsent, captureIds, captureFirst = true }: { provider?: AgentProvider; providerMode?: ProviderRouteMode; consent?: boolean; captureIds?: string[]; captureFirst?: boolean } = {}) => {
+    if (consent !== true) throw new Error("Explicit consent is required for this image submission.");
+    if (!companionOnline) throw new Error("The managed AI companion is reconnecting.");
+    const visualEligibleProviders = providerFamilyPaths(provider) as AgentProvider[];
+    const providerRoute = resolveProviderRoute({ providers: companionHealth?.providers ?? {} }, { requestedProvider: provider, mode: providerMode, eligibleProviders: visualEligibleProviders });
+    if (!providerRoute.selectedProvider) throw new Error(`No visual-critique provider path is ready. ${providerRoute.selectionReason}`);
+    let report = visualReviewRef.current;
+    const currentDoctor = analyzeProject(syncActiveMap(projectRef.current), { profile: "prototype" });
+    const currentSourceDigest = currentDoctor.sourceDigest;
+    if (!report || report.sourceDigest !== currentSourceDigest) {
+      if (captureFirst === false) throw new Error("No fresh visual review exists. Run capture_visual_review first or allow captureFirst.");
+      setVisualReviewRunning(true);
+      appendConsole("visual.critique.capturing", "Capturing a fresh source-bound visual matrix before AI critique", "Capture remains local until this consented submission is assembled.");
+      try {
+        await collectVerificationEvidence({ visualOnly: true });
+        report = visualReviewRef.current;
+      } finally {
+        setVisualReviewRunning(false);
+      }
+    }
+    if (!report || report.sourceDigest !== currentSourceDigest) throw new Error("A fresh visual review could not be prepared for the current project source.");
+    const requestedIds = Array.isArray(captureIds) && captureIds.length ? new Set(captureIds) : null;
+    const captures = report.captures.filter((capture) => !requestedIds || requestedIds.has(capture.id)).slice(0, 8);
+    if (!captures.length) throw new Error("No matching visual-review captures were selected.");
+    if (requestedIds && captures.length !== requestedIds.size) throw new Error("One or more requested visual-review capture IDs are missing from the current matrix.");
+    const payload = {
+      provider,
+      requestedProvider: provider,
+      providerMode,
+      consent: true,
+      sourceDigest: report.sourceDigest,
+      gameBrief: directorBriefRef.current?.composedPrompt ?? projectRef.current.designBrief?.composedPrompt ?? "",
+      artDirection: JSON.stringify({ mode: artDirectionMode, styleLocks: artDirectionMode === "locked" ? styleLocks.split(/\r?\n/).map((value) => value.trim()).filter(Boolean) : [] }),
+      visualIdentity: currentDoctor.visualIdentityReport?.present ? {
+        schemaVersion: "looplab-visual-identity-critique-context/v1",
+        identityDigest: currentDoctor.visualIdentityReport.identityDigest,
+        status: currentDoctor.visualIdentityReport.status,
+        intent: projectRef.current.visualIdentity?.intent ?? "",
+        directives: projectRef.current.visualIdentity?.directives ?? [],
+        references: projectRef.current.visualIdentity?.references ?? [],
+        exclusions: projectRef.current.visualIdentity?.exclusions ?? [],
+        issues: currentDoctor.visualIdentityReport.issues?.slice(0, 24) ?? [],
+        proofBoundary: currentDoctor.visualIdentityReport.proofBoundary,
+        imagePolicy: "Project reference pixels are not included here; this is bounded authoring context only.",
+      } : null,
+      captures: captures.map((capture) => ({
+        id: capture.id,
+        mapId: capture.mapId,
+        mapName: capture.mapName,
+        profileId: capture.profileId,
+        profileName: capture.profileName,
+        width: capture.width,
+        height: capture.height,
+        renderedBounds: capture.renderedBounds,
+        targetViewport: capture.targetViewport,
+        actualViewport: capture.actualViewport,
+        sha256: capture.sha256,
+        dataUrl: capture.dataUrl,
+        annotationSummary: capture.perception.annotations.map((annotation) => `${annotation.number}. ${annotation.label}: ${annotation.detail}`).slice(0, 24),
+      })),
+    };
+    setVisualCritiqueRunning(true);
+    appendConsole("visual.critique.requested", `Submitting ${captures.length} exact capture${captures.length === 1 ? "" : "s"} to ${providerRoute.selectedProvider}`, `${providerRoute.fallbackUsed ? `Requested ${provider}; routed to a ready fallback. · ` : ""}Explicit one-job consent · temporary provider input · advisory result only`);
+    try {
+      const response = await companionFetch(`${COMPANION_URL}/visual-critique-jobs`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+      const created = await response.json() as VisualCritiqueJobDescriptor & { ok?: boolean; error?: string };
+      if (!response.ok || !created.jobId || !created.eventsUrl || !created.resultUrl || !created.request) throw new Error(created.error ?? "The visual critique job could not start.");
+      setVisualCritiqueProvider(created.provider ?? providerRoute.selectedProvider as AgentProvider);
+      setVisualCritiqueJob(created);
+      setVisualCritiqueRequest(created.request);
+      setVisualCritiqueConsent(false);
+      const source = openCompanionEventStream(`${COMPANION_URL}${created.eventsUrl}`);
+      visualCritiqueEventSourceRef.current?.close();
+      visualCritiqueEventSourceRef.current = source;
+      source.onmessage = (event) => {
+        const value = JSON.parse(event.data) as VisualCritiqueEvent;
+        if (value.message) appendConsole(value.type, value.message, value.receipt || value.usage ? usageReceiptDetail(value.receipt ?? value.usage!) : undefined, value.type.endsWith(".failed") ? "bad" : value.type.endsWith(".completed") ? "good" : "neutral");
+        if (value.type === "companion.visual-critique.completed") {
+          source.close();
+          visualCritiqueEventSourceRef.current = null;
+          void receiveVisualCritiqueResult(created).catch((error) => {
+            const message = error instanceof Error ? error.message : String(error);
+            setVisualCritiqueRunning(false);
+            appendConsole("visual.critique.result.failed", message, "The selected project remains unchanged.", "bad");
+            showToast(message);
+          });
+        } else if (value.type === "companion.visual-critique.failed" || value.type === "companion.visual-critique.cancelled") {
+          source.close();
+          visualCritiqueEventSourceRef.current = null;
+          setVisualCritiqueRunning(false);
+          showToast(value.error ?? value.message ?? "Visual critique stopped");
+        }
+      };
+      source.onerror = () => {
+        if (!source.closed) appendConsole("visual.critique.console.reconnecting", "Visual critique console interrupted; resume the same durable job from status", created.jobId);
+      };
+      return { accepted: true, job: created, sourceDigest: report.sourceDigest, captureSetDigest: created.request.captureSetDigest, resume: { op: "get_visual_critique_job", jobId: created.jobId, includeResult: true } };
+    } catch (error) {
+      setVisualCritiqueRunning(false);
+      throw error;
+    }
+  }, [appendConsole, artDirectionMode, collectVerificationEvidence, companionHealth?.providers, companionOnline, receiveVisualCritiqueResult, showToast, styleLocks, visualCritiqueConsent, visualCritiqueProvider]);
+
+  const cancelVisualCritique = useCallback(async (job = visualCritiqueJob) => {
+    if (!job) return;
+    const response = await companionFetch(`${COMPANION_URL}${job.cancelUrl}`, { method: "POST" });
+    const value = await response.json() as { error?: string };
+    if (!response.ok) throw new Error(value.error ?? "The visual critique job could not be cancelled.");
+    visualCritiqueEventSourceRef.current?.close();
+    visualCritiqueEventSourceRef.current = null;
+    setVisualCritiqueRunning(false);
+    appendConsole("visual.critique.cancelled", "Visual critique cancelled", "Temporary captures are deleted; the selected project was not changed.");
+  }, [appendConsole, visualCritiqueJob]);
+
+  const verifyCandidate = useCallback(async () => {
+    setVerificationRunning(true);
+    try {
+      appendConsole("verification.started", "Running deterministic playtest and the clean-play visual matrix", "Every authored map × configured device profile is bound to the current Project Doctor source digest.");
+      const verification = await verifyCurrentCandidate();
+      appendConsole("verification.completed", `Candidate verified with ${verification.evidenceCount} evidence receipts`, `${verification.runtimeCheckCount} runtime checks · ${verification.replayResults.passedCount}/${verification.replayResults.caseCount} replay fixtures · ${verification.runtimeJoinCount} runtime joins · ${verification.captureCount} clean-play captures · digest ${verification.doctorDigest}`, "good");
+      if (verification.visualReadiness.requested && verification.visualReadiness.status !== "measurably-ready") {
+        appendConsole("visual.readiness.needs-art-pass", `Technical QA passed, but visual readiness is ${verification.visualReadiness.score ?? 0}/100`, verification.visualReadiness.checks.filter((check) => !check.passed).map((check) => check.detail).join(" "), "bad");
+        showToast("Candidate verified technically · art pass recommended");
+      } else showToast("Candidate verified across every map and device profile");
+    } catch (error) {
+      setShowDoctor(true);
+      const message = error instanceof Error ? error.message : "Candidate needs fixes before verification";
+      appendConsole("verification.failed", message, "The candidate remains unverified.", "bad");
+      showToast(message);
+    } finally {
+      setVerificationRunning(false);
+    }
+  }, [appendConsole, showToast, verifyCurrentCandidate]);
+
+  const promoteCandidate = useCallback(() => {
+    try {
+      const outcome = promoteVerifiedIteration(syncActiveMap(project));
+      commit(outcome.project as GameProject, "Verified candidate promoted");
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Verify this candidate before promotion");
+    }
+  }, [commit, project, showToast]);
+
+  const toggleIterationComparison = useCallback((id: string) => {
+    setIterationCompareIds((current) => current.includes(id)
+      ? current.filter((candidate) => candidate !== id)
+      : [...current.slice(-1), id]);
+  }, []);
+
+  const restoreIterationCandidate = useCallback((id: string) => {
+    try {
+      const outcome = applyAgentCommand(syncActiveMap(projectRef.current), { op: "restore_iteration", id });
+      const restored = outcome.project as GameProject;
+      commit(restored, `Restored ${id} as a new editable child`);
+      setIterationCompareIds([id, restored.iteration?.id ?? id]);
+      appendConsole("iteration.restored", `${id} restored without overwriting history`, `New editable candidate: ${restored.iteration?.id ?? "candidate"} · rerun verification before promotion`, "good");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "This iteration could not be restored";
+      appendConsole("iteration.restore.failed", message, undefined, "bad");
+      showToast(message);
+    }
+  }, [appendConsole, commit, showToast]);
+
+  const focusDoctorIssue = useCallback((issue: { mapId?: string; objectId?: string }) => {
+    let next = project;
+    if (issue.mapId && issue.mapId !== project.activeMapId) next = activateMap(project, issue.mapId);
+    if (next !== project) commit(next, "Opened issue location");
+    if (issue.objectId) setSelectedId(issue.objectId);
+    setExperienceMode("workbench");
+    setShowColliders(true);
+    setMobileTab(issue.objectId ? "inspect" : "stage");
+  }, [commit, project]);
+
+  const copyLoopCommand = useCallback(async () => {
+    const safeName = project.name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "my-game";
+    const goal = directedPrompt.replace(/\r?\n/g, " ").replace(/"/g, "'");
+    const command = `npm run loop -- --provider ${aiProvider} --project ${safeName}.loop.json --iterations ${loopEnabled ? loopIterations : 1} --stop-score ${loopStopScore} --evaluation-profile ${loopEvaluationProfile} --context-budget-tokens ${providerContextBudgetTokens} --goal "${goal}"`;
+    try {
+      await navigator.clipboard.writeText(command);
+      showToast("Headless AI loop command copied");
+    } catch {
+      showToast(command);
+    }
+  }, [aiProvider, directedPrompt, loopEnabled, loopEvaluationProfile, loopIterations, loopStopScore, project.name, providerContextBudgetTokens, showToast]);
+
+  const deleteSelected = useCallback(() => {
+    if (!selected) return;
+    commit(
+      { ...project, objects: project.objects.filter((object) => object.id !== selected.id) },
+      `${selected.name} removed`,
+    );
+    setSelectedId(null);
+  }, [commit, project, selected]);
+
+  const duplicateSelected = useCallback(() => {
+    if (!selected) return;
+    const copy = { ...selected, id: uid(), name: `${selected.name} copy`, x: selected.x + project.grid, y: selected.y + project.grid };
+    commit({ ...project, objects: [...project.objects, copy] }, "Object duplicated");
+    setSelectedId(copy.id);
+  }, [commit, project, selected]);
+
+  useEffect(() => {
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (cancelled) return;
+      try {
+        const saved = readLocalStorage(STORAGE_KEY);
+        if (saved) {
+          const draft = parseStoredProjectDraft(saved);
+          if (draft.project && Array.isArray(draft.project.objects)) {
+            const migrated = ensureBrowser2DProject(draft.project, { migrateLegacyRenderer: true });
+            const synced = syncActiveMap(migrated);
+            localDraftLoadedRef.current = true;
+            localDraftSavedAtRef.current = draft.savedAt;
+            projectRef.current = synced;
+            setProject(synced);
+            syncDirectedBriefControls(migrated.designBrief);
+          }
+        }
+        const savedResearch = readLocalStorage(RESEARCH_STORAGE_KEY);
+        if (savedResearch) {
+          const parsedResearch = JSON.parse(savedResearch) as ResearchReport[];
+          if (Array.isArray(parsedResearch)) {
+            setResearchReports(parsedResearch.slice(0, 20));
+            setSelectedResearchId(parsedResearch[0]?.id ?? null);
+          }
+        }
+        const savedPreferences = readLocalStorage(PREFERENCE_MEMORY_STORAGE_KEY);
+        if (savedPreferences) {
+          const parsedPreferences = parsePreferenceMemory(JSON.parse(savedPreferences)) as PreferenceMemory;
+          preferenceMemoryRef.current = parsedPreferences;
+          setPreferenceMemory(parsedPreferences);
+        }
+        const savedPlaytests = readLocalStorage(PLAYTEST_LEDGER_STORAGE_KEY);
+        if (savedPlaytests) {
+          const parsedPlaytests = parsePlaytestLedger(JSON.parse(savedPlaytests)) as PlaytestLedger;
+          playtestLedgerRef.current = parsedPlaytests;
+          setPlaytestLedger(parsedPlaytests);
+          selectPlaytestSession(parsedPlaytests.sessions.at(-1)?.id ?? null);
+        }
+      } catch {
+        // A malformed local draft should never block the starter project.
+      }
+      setReady(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [selectPlaytestSession, syncDirectedBriefControls]);
+
+  useEffect(() => {
+    if (!ready || projectLibraryReady) return;
+    let cancelled = false;
+    void readProjectLibraryEntries().then((storedEntries) => {
+      if (cancelled) return;
+      const currentProject = cloneProject(syncActiveMap(projectRef.current));
+      const validEntries = storedEntries.flatMap((entry) => {
+        try {
+          const normalized = ensureMapModel(ensureBrowser2DProject(entry.project, { migrateLegacyRenderer: true }));
+          return validateProject(normalized).valid ? [{ ...entry, name: normalized.name, project: normalized }] : [];
+        } catch {
+          return [];
+        }
+      });
+      let entries = validEntries.length ? validEntries : projectLibraryRef.current;
+      const savedActiveId = readLocalStorage(PROJECT_LIBRARY_ACTIVE_KEY);
+      let activeEntry = (savedActiveId ? entries.find((entry) => entry.id === savedActiveId) : null)
+        ?? entries.find((entry) => entry.project.iteration?.id === currentProject.iteration?.id && entry.name === currentProject.name)
+        ?? null;
+      if (!activeEntry) {
+        activeEntry = makeProjectLibraryEntry(currentProject, { id: savedActiveId || projectLibraryId(currentProject.name), origin: "local", sourceLabel: "Recovered local Looplab project" });
+        entries = [...entries, activeEntry];
+      } else {
+        const localSavedAt = localDraftLoadedRef.current && localDraftSavedAtRef.current ? Date.parse(localDraftSavedAtRef.current) : Number.NaN;
+        const librarySavedAt = Date.parse(activeEntry.updatedAt);
+        if (Number.isFinite(localSavedAt) && (!Number.isFinite(librarySavedAt) || localSavedAt > librarySavedAt)) {
+          activeEntry = { ...activeEntry, name: currentProject.name, updatedAt: localDraftSavedAtRef.current as string, project: currentProject };
+          entries = entries.map((entry) => entry.id === activeEntry?.id ? activeEntry as ProjectLibraryEntry : entry);
+        } else {
+          const restored = cloneProject(activeEntry.project);
+          projectRef.current = restored;
+          setProject(restored);
+          syncDirectedBriefControls(restored.designBrief);
+        }
+      }
+      projectLibraryRef.current = entries;
+      activeProjectLibraryIdRef.current = activeEntry.id;
+      setProjectLibrary(entries);
+      setActiveProjectLibraryId(activeEntry.id);
+      setProjectFolderName(activeEntry.folderName ?? null);
+      writeLocalStorage(PROJECT_LIBRARY_ACTIVE_KEY, activeEntry.id);
+      void persistProjectLibraryEntry(activeEntry).then((persisted) => {
+        if (!persisted) showToast("Project library storage is unavailable; export a .loop.json backup");
+      });
+      setProjectLibraryReady(true);
+      void refreshSharedProjectCatalog(false).then((response) => {
+        if (cancelled) return;
+        const selected = projectLibraryRef.current.find((entry) => entry.id === activeProjectLibraryIdRef.current);
+        const remote = selected?.sharedProjectId ? response.projects.find((entry) => entry.id === selected.sharedProjectId) : null;
+        if (selected?.sharedProjectId && remote && remote.revisionDigest !== selected.sharedRevisionDigest) {
+          const conflicted = { ...selected, sharedSyncStatus: "conflict" as const };
+          upsertProjectLibraryEntry(conflicted);
+          appendConsole("project.shared.conflict", `${selected.name} has a newer shared revision`, "Local draft preserved. Preview a three-way rebase; startup never replaces cached work.", "bad");
+        }
+      }).catch(() => {
+        if (!cancelled) setSharedProjectCatalogReady(false);
+      });
+    });
+    return () => { cancelled = true; };
+  }, [appendConsole, projectLibraryReady, ready, refreshSharedProjectCatalog, showToast, syncDirectedBriefControls, upsertProjectLibraryEntry]);
+
+  useEffect(() => {
+    if (!ready || !projectLibraryReady || projectLocalStorageDisabledRef.current) return;
+    const savedAt = new Date().toISOString();
+    const envelope: StoredProjectDraft = { version: 2, savedAt, project: syncActiveMap(project) };
+    if (!writeLocalStorage(STORAGE_KEY, JSON.stringify(envelope))) {
+      projectLocalStorageDisabledRef.current = true;
+      queueMicrotask(() => showToast("Browser draft storage is full; IndexedDB autosave continues. Export a .loop.json backup."));
+      return;
+    }
+    localDraftLoadedRef.current = true;
+    localDraftSavedAtRef.current = savedAt;
+  }, [project, projectLibraryReady, ready, showToast]);
+
+  useEffect(() => {
+    if (!ready || !projectLibraryReady || !activeProjectLibraryId) return;
+    const timer = window.setTimeout(() => {
+      const existing = projectLibraryRef.current.find((entry) => entry.id === activeProjectLibraryId);
+      const entry: ProjectLibraryEntry = {
+        ...(existing ?? makeProjectLibraryEntry(project, { id: activeProjectLibraryId, origin: "local", sourceLabel: "Local Looplab project" })),
+        name: project.name,
+        folderName: projectFolderName ?? existing?.folderName ?? null,
+        updatedAt: new Date().toISOString(),
+        project: cloneProject(syncActiveMap(project)),
+      };
+      const entries = projectLibraryRef.current.some((candidate) => candidate.id === entry.id)
+        ? projectLibraryRef.current.map((candidate) => candidate.id === entry.id ? entry : candidate)
+        : [...projectLibraryRef.current, entry];
+      projectLibraryRef.current = entries;
+      setProjectLibrary(entries);
+      void persistProjectLibraryEntry(entry);
+      if (entry.storage === "shared" && entry.sharedSyncStatus !== "conflict" && entry.sharedSyncStatus !== "rebased") void queueSharedProjectSave(entry, entry.project).catch(() => {});
+    }, 180);
+    return () => window.clearTimeout(timer);
+  }, [activeProjectLibraryId, project, projectFolderName, projectLibraryReady, queueSharedProjectSave, ready]);
+
+  useEffect(() => {
+    if (!ready || researchLocalStorageDisabledRef.current) return;
+    if (!writeLocalStorage(RESEARCH_STORAGE_KEY, JSON.stringify(researchReports.slice(0, 20)))) {
+      researchLocalStorageDisabledRef.current = true;
+      queueMicrotask(() => showToast("Research history exceeded browser draft storage and will remain session-only"));
+    }
+  }, [ready, researchReports, showToast]);
+
+  useEffect(() => {
+    preferenceMemoryRef.current = preferenceMemory;
+    if (!ready || preferenceLocalStorageDisabledRef.current) return;
+    if (!writeLocalStorage(PREFERENCE_MEMORY_STORAGE_KEY, JSON.stringify(preferenceMemory))) {
+      preferenceLocalStorageDisabledRef.current = true;
+      queueMicrotask(() => showToast("Preference memory storage is unavailable; export a JSON backup before closing LoopLab"));
+    }
+  }, [preferenceMemory, ready, showToast]);
+
+  useEffect(() => {
+    playtestLedgerRef.current = playtestLedger;
+    if (!ready || playtestLocalStorageDisabledRef.current) return;
+    if (!writeLocalStorage(PLAYTEST_LEDGER_STORAGE_KEY, JSON.stringify(playtestLedger))) {
+      playtestLocalStorageDisabledRef.current = true;
+      queueMicrotask(() => showToast("Playtest observation storage is unavailable; inspect or export the ledger before closing LoopLab"));
+    }
+  }, [playtestLedger, ready, showToast]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetchInstalledPackManifest().then((manifest) => {
+      if (cancelled) return;
+      assetPackManifestRef.current = manifest;
+      setAssetPackManifest(manifest);
+      setAssetPackManifestError(null);
+    }).catch((error) => {
+      if (!cancelled) setAssetPackManifestError(error instanceof Error ? error.message : "The installed pack library could not be loaded.");
+    });
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => () => researchEventSourceRef.current?.close(), []);
+  useEffect(() => () => visualCritiqueEventSourceRef.current?.close(), []);
+
+  useEffect(() => {
+    let cancelled = false;
+    const providerEventSources = providerEventSourcesRef.current;
+    const check = async () => {
+      try {
+        const response = await companionFetch(`${COMPANION_URL}/health`, { cache: "no-store" });
+        if (!response.ok) throw new Error("Companion unavailable");
+        const health = await response.json() as CompanionHealth;
+        if (cancelled) return;
+        setCompanionOnline(true);
+        setCompanionHealth(health);
+        try {
+          const presenceResponse = await companionFetch(`${COMPANION_URL}/agent-presence`, { cache: "no-store" });
+          if (presenceResponse.ok) {
+            const presence = await presenceResponse.json() as AgentPresenceView & { ok?: boolean };
+            if (!cancelled) setAgentPresenceView(presence);
+          } else if (presenceResponse.status === 404 && !cancelled) setAgentPresenceView(null);
+        } catch {
+          if (!cancelled) setAgentPresenceView(null);
+        }
+        const digest = `online:${PROVIDER_IDS.map((id) => `${id}:${health.providers[id]?.state ?? "unknown"}`).join("|")}|local-copilot:${health.localCopilot?.state ?? "unknown"}`;
+        if (companionDigestRef.current !== digest) {
+          companionDigestRef.current = digest;
+          appendConsole("companion.checked", `Local companion online · ${health.readyCount}/${PROVIDER_IDS.length} providers ready`, `${PROVIDER_IDS.map((id) => `${health.providers[id]?.label ?? id}: ${health.providers[id]?.state ?? "unknown"}`).join(" · ")} · Local AI copilot: ${health.localCopilot?.state ?? "unknown"}`, health.readyCount ? "good" : "bad");
+        }
+      } catch {
+        if (cancelled) return;
+        setCompanionOnline(false);
+        setCompanionHealth(null);
+        setAgentPresenceView(null);
+        if (companionDigestRef.current !== "offline") {
+          companionDigestRef.current = "offline";
+          appendConsole("companion.offline", "Managed AI companion was not detected", window.location.hostname === "localhost" ? "Restart Looplab with npm run dev; its launcher owns the companion automatically." : "This hosted page cannot launch a program on your computer. Use the local Looplab launcher for provider access.", "bad");
+        }
+      }
+    };
+    void check();
+    const timer = window.setInterval(check, 5000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+      eventSourceRef.current?.close();
+      for (const source of providerEventSources.values()) source.close();
+      providerEventSources.clear();
+    };
+  }, [appendConsole]);
+
+  useEffect(() => {
+    if (!companionOnline || !ready || !projectLibraryReady) return;
+    let cancelled = false;
+    const timer = window.setTimeout(() => void refreshSharedProjectCatalog(false).then((response) => {
+      if (cancelled) return;
+      const active = projectLibraryRef.current.find((entry) => entry.id === activeProjectLibraryIdRef.current);
+      if (!active) return;
+      const remote = active.sharedProjectId ? response.projects.find((entry) => entry.id === active.sharedProjectId) : null;
+      if (remote && remote.revisionDigest !== active.sharedRevisionDigest) {
+        upsertProjectLibraryEntry({ ...active, sharedSyncStatus: "conflict" });
+        appendConsole("project.shared.conflict", `${active.name} changed while this browser was offline`, "Local draft preserved. Mount the shared project, inspect the intervening change, and rebase deliberately.", "bad");
+        return;
+      }
+      if (active.storage === "shared" && active.sharedSyncStatus !== "conflict" && active.sharedSyncStatus !== "rebased") void queueSharedProjectSave(active, cloneProject(projectRef.current)).catch(() => {});
+    }).catch(() => {}), 0);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [appendConsole, companionOnline, projectLibraryReady, queueSharedProjectSave, ready, refreshSharedProjectCatalog, upsertProjectLibraryEntry]);
+
+  useEffect(() => {
+    projectRef.current = syncActiveMap(project);
+  }, [project]);
+
+  useEffect(() => {
+    agentPresenceViewRef.current = agentPresenceView;
+  }, [agentPresenceView]);
+
+  useEffect(() => {
+    const feed = project.authoring?.agentChangeFeed;
+    if (!feed?.feedId || !feed.currentCursor) return;
+    const previous = agentChangeNotificationRef.current;
+    if (previous.feedId !== feed.feedId) {
+      agentChangeNotificationRef.current = { feedId: feed.feedId, cursor: feed.currentCursor };
+      return;
+    }
+    if (previous.cursor === feed.currentCursor) return;
+    agentChangeNotificationRef.current = { feedId: feed.feedId, cursor: feed.currentCursor };
+    const event = feed.events.at(-1) ?? null;
+    window.dispatchEvent(new CustomEvent("looplab:agent-change-recorded", { detail: { currentCursor: feed.currentCursor, event } }));
+  }, [project.authoring?.agentChangeFeed]);
+
+  useEffect(() => {
+    projectLibraryRef.current = projectLibrary;
+  }, [projectLibrary]);
+
+  useEffect(() => {
+    sharedProjectCatalogRef.current = sharedProjectCatalog;
+  }, [sharedProjectCatalog]);
+
+  useEffect(() => {
+    activeProjectLibraryIdRef.current = activeProjectLibraryId;
+  }, [activeProjectLibraryId]);
+
+  useEffect(() => {
+    if (!showAssetLab || assetLabTab === "library" || assetGenerationMode !== "local") return;
+    const previewFrame = window.requestAnimationFrame(() => {
+      try {
+        const generated = assetLabTab === "tiles"
+          ? generateTilesetPixels({ theme: tileTheme, tileSize, seed: generatorSeed })
+          : generateSpritePixels({ kind: spriteKind, palette: spritePalette, size: spriteSize, seed: generatorSeed });
+        const dataUrl = pixelsToDataUrl(generated);
+        const usesGroundAnchor = assetLabTab === "tiles" || (spriteKind !== "effect" && spriteKind !== "ui");
+        const frameKind = assetLabTab === "tiles" ? "tile" : "sprite";
+        const measured = analyzeSpriteFrames(sliceAtlasFrames(generated), { frameKind, anchorMode: usesGroundAnchor ? "ground" : "center", requireTransparency: frameKind === "sprite" });
+        const name = assetLabTab === "tiles"
+          ? `${tileTheme[0].toUpperCase()}${tileTheme.slice(1)} tiles`
+          : `${spriteKind[0].toUpperCase()}${spriteKind.slice(1)} sprite`;
+        setGeneratedAsset({
+          id: "generator-preview",
+          name,
+          type: generated.kind === "tileset" ? "tileset" : "sprite",
+          dataUrl,
+          width: generated.width,
+          height: generated.height,
+          frameWidth: generated.frameWidth,
+          frameHeight: generated.frameHeight,
+          frames: generated.frames,
+          columns: generated.columns,
+          anchorX: generated.anchorX,
+          anchorY: generated.anchorY,
+          opaqueBounds: generated.opaqueBounds,
+          collisionPolicy: "authored-only",
+          anchorMode: usesGroundAnchor ? "ground" : "center",
+          invariants: assetLabTab === "sprites" ? { identityReference: generatorSeed, palette: extractPalette(generated.pixels, 16), facingDirection: "right", frameCount: generated.frames, sharedScale: true, groundAnchor: usesGroundAnchor, transparentBackground: !measured.failedInvariants.includes("missing-transparent-border"), analysisMeasured: true, maxSilhouetteDrift: silhouetteDriftLimitForRole(spriteKind), maxAnchorVariance: 1 } : { analysisMeasured: true, tileEdgeMeasured: true },
+          analysis: { ...measured, paletteDriftBeforeLock: 0, onPalette: true, sharedScale: true, decodedMemoryBytes: generated.width * generated.height * 4 },
+          generator: assetLabTab === "tiles"
+            ? { theme: tileTheme, tileSize, seed: generatorSeed, seamless: Boolean("seamless" in generated ? generated.seamless : true) }
+            : { kind: spriteKind, palette: spritePalette, size: spriteSize, seed: generatorSeed },
+        });
+      } catch {
+        setGeneratedAsset(null);
+      }
+    });
+    return () => window.cancelAnimationFrame(previewFrame);
+  }, [assetGenerationMode, assetLabTab, generatorSeed, showAssetLab, spriteKind, spritePalette, spriteSize, tileSize, tileTheme]);
+
+  useEffect(() => {
+    type AgentBridge = {
+      ready: boolean;
+      version: string;
+      manifest: ReturnType<typeof getAgentManifest>;
+      getProject: () => GameProject;
+      validate: () => ReturnType<typeof validateProject>;
+      exportHtml: () => string;
+      exportArtifact: () => ReturnType<typeof buildStandaloneArtifact>;
+      run: (command: AgentCommand) => Promise<AgentRunResult>;
+    };
+    type AgentCommandEnvelope = { id?: string; command?: AgentCommand };
+    const agentWindow = window as Window & { looplabAgent?: AgentBridge };
+
+    const applyCoordinationFromAgent = (next: GameProject, message: string) => {
+      const coordinated = cloneProject(next);
+      projectRef.current = coordinated;
+      setProject(coordinated);
+      showToast(message);
+      const detail = { project: cloneProject(coordinated), ledger: getAgentWorkLedger(coordinated, { eventLimit: 6 }) };
+      window.dispatchEvent(new CustomEvent("looplab:project-changed", { detail }));
+      window.dispatchEvent(new CustomEvent("looplab:work-ledger-changed", { detail }));
+    };
+
+    const buildGeneratedAsset = (command: AgentCommand): GeneratedAsset => {
+      const isTiles = command.op === "generate_tiles";
+      const generatedRole = String(command.kind ?? "hero");
+      const usesGroundAnchor = isTiles || (generatedRole !== "effect" && generatedRole !== "ui");
+      const generated = isTiles
+        ? generateTilesetPixels({
+            theme: String(command.theme ?? "meadow"),
+            tileSize: Number(command.tileSize ?? 32),
+            seed: String(command.seed ?? "looplab"),
+          })
+        : generateSpritePixels({
+            kind: String(command.kind ?? "hero"),
+            palette: String(command.palette ?? "violet"),
+            size: Number(command.size ?? 32),
+            seed: String(command.seed ?? "looplab"),
+          });
+      const label = isTiles
+        ? `${String(command.theme ?? "meadow")} tiles`
+        : `${String(command.kind ?? "hero")} sprite`;
+      const frameKind = isTiles ? "tile" : "sprite";
+      const measured = analyzeSpriteFrames(sliceAtlasFrames(generated), { frameKind, anchorMode: usesGroundAnchor ? "ground" : "center", requireTransparency: !isTiles });
+      return {
+        id: typeof command.id === "string" ? command.id : uid(),
+        name: typeof command.name === "string" ? command.name : label,
+        type: generated.kind === "tileset" ? "tileset" : "sprite",
+        dataUrl: pixelsToDataUrl(generated),
+        width: generated.width,
+        height: generated.height,
+        frameWidth: generated.frameWidth,
+        frameHeight: generated.frameHeight,
+        frames: generated.frames,
+        columns: generated.columns,
+        anchorX: generated.anchorX,
+        anchorY: generated.anchorY,
+        opaqueBounds: generated.opaqueBounds,
+        collisionPolicy: "authored-only",
+        anchorMode: usesGroundAnchor ? "ground" : "center",
+        invariants: isTiles ? { analysisMeasured: true, tileEdgeMeasured: true } : { identityReference: String(command.seed ?? "looplab"), palette: String(command.palette ?? "violet"), facingDirection: "right", frameCount: generated.frames, sharedScale: true, groundAnchor: usesGroundAnchor, transparentBackground: !measured.failedInvariants.includes("missing-transparent-border"), analysisMeasured: true, maxSilhouetteDrift: silhouetteDriftLimitForRole(generatedRole), maxAnchorVariance: 1 },
+        analysis: { ...measured, onPalette: true, sharedScale: true, decodedMemoryBytes: generated.width * generated.height * 4 },
+        generator: isTiles
+          ? { theme: String(command.theme ?? "meadow"), tileSize: Number(command.tileSize ?? 32), seed: String(command.seed ?? "looplab"), seamless: Boolean("seamless" in generated ? generated.seamless : true) }
+          : { kind: String(command.kind ?? "hero"), palette: String(command.palette ?? "violet"), size: Number(command.size ?? 32), seed: String(command.seed ?? "looplab") },
+      };
+    };
+
+    const publishPreviewState = (engine: RuntimeEngine, events: RuntimeEvent[] = [], simulationSteps = 0) => {
+      if (activePlaytestRef.current && simulationSteps > 0) advancePlaytestSimulationTick(activePlaytestRef.current, simulationSteps);
+      presentationRuntimeRef.current?.handleEvents(events);
+      const next = engine.getState();
+      observePlaytestRuntime(engine, events);
+      runtimeRef.current = engine.getObjects();
+      setRuntimeState(next);
+      setRuntimeChoiceState(engine.getChoiceState());
+      setRuntimeHudState(engine.getHudState());
+      setCollected(next.collectedCount);
+      setPreviewWon(next.won);
+      setRuntimeTick((tick) => tick + 1);
+      return next;
+    };
+    const bridge: AgentBridge = {
+      ready: true,
+      version: LOOPLAB_PROTOCOL_VERSION,
+      manifest: getAgentManifest(),
+      getProject: () => cloneProject(projectRef.current),
+      validate: () => validateProject(projectRef.current),
+      exportHtml: () => buildHeadlessHtml(projectRef.current),
+      exportArtifact: () => buildStandaloneArtifact(projectRef.current),
+      run: async (command) => {
+        try {
+          if (!command || typeof command.op !== "string") throw new Error("Command requires a string op field.");
+          const inputValidation = validateLooplabCommandInput(command);
+          if (!inputValidation.valid) {
+            throw new Error(`[invalid-command] ${inputValidation.errors.join(" ")}`);
+          }
+          if (Object.prototype.hasOwnProperty.call(command, "expectedSourceDigest")) {
+            const expectedSourceDigest = String(command.expectedSourceDigest ?? "").trim();
+            if (!expectedSourceDigest) throw new Error("expectedSourceDigest must be a non-empty Project Doctor source digest.");
+            const actualSourceDigest = analyzeProject(syncActiveMap(projectRef.current)).sourceDigest;
+            if (expectedSourceDigest !== actualSourceDigest) {
+              throw new Error(`[stale-source] Command expected ${expectedSourceDigest}, but the selected project is now ${actualSourceDigest}. Inspect the current project and rebase the edit instead of applying it to stale state.`);
+            }
+          }
+          if (command.op === "get_preference_memory") {
+            const memory = preferenceMemoryView(preferenceMemoryRef.current);
+            const context = preferenceContextForProject(directorBriefRef.current ?? directedBrief, projectRef.current);
+            const appliedContext = selectAppliedPreferenceContext(preferenceMemoryRef.current, context, {
+              enabled: command.enabled,
+              excludeEntryIds: command.excludeEntryIds,
+              limit: command.limit,
+            });
+            return { ok: true, memory, appliedContext };
+          }
+          if (command.op === "get_applied_preferences") {
+            const context = (Object.prototype.hasOwnProperty.call(command, "context")
+              ? command.context
+              : preferenceContextForProject(directorBriefRef.current ?? directedBrief, projectRef.current)) as Record<string, unknown>;
+            return { ok: true, appliedContext: selectAppliedPreferenceContext(preferenceMemoryRef.current, context, { enabled: command.enabled, excludeEntryIds: command.excludeEntryIds, limit: command.limit }) };
+          }
+          if (command.op === "set_preference_memory_enabled") {
+            if (typeof command.enabled !== "boolean") throw new Error("set_preference_memory_enabled requires enabled=true or enabled=false.");
+            const memory = commitPreferenceMemory(setPreferenceMemoryEnabled(preferenceMemoryRef.current, command.enabled) as PreferenceMemory, command.enabled ? "Preference memory enabled" : "Preference memory disabled");
+            return { ok: true, memory: preferenceMemoryView(memory) };
+          }
+          if (command.op === "add_preference_statement") {
+            const context = Object.prototype.hasOwnProperty.call(command, "context") ? command.context : preferenceContextForProject(directorBriefRef.current ?? directedBrief, projectRef.current);
+            const memory = commitPreferenceMemory(addPreferenceStatement(preferenceMemoryRef.current, { statement: command.statement, dimensions: command.dimensions, context, enabled: command.enabled }) as PreferenceMemory, "Explicit preference remembered");
+            return { ok: true, memory: preferenceMemoryView(memory), entry: memory.entries.at(-1) ?? null };
+          }
+          if (command.op === "record_candidate_preference") {
+            const preferredCandidateId = typeof command.preferredCandidateId === "string" ? command.preferredCandidateId.trim() : "";
+            const otherCandidateId = typeof command.otherCandidateId === "string" ? command.otherCandidateId.trim() : "";
+            if (!preferredCandidateId || !otherCandidateId) throw new Error("record_candidate_preference requires preferredCandidateId and otherCandidateId.");
+            const comparison = applyAgentCommand(syncActiveMap(projectRef.current), { op: "compare_iterations", ids: [preferredCandidateId, otherCandidateId] }).result as IterationComparison;
+            const preferred = comparison.first.id === preferredCandidateId ? comparison.first : comparison.second.id === preferredCandidateId ? comparison.second : null;
+            const other = comparison.first.id === otherCandidateId ? comparison.first : comparison.second.id === otherCandidateId ? comparison.second : null;
+            if (!preferred || !other) throw new Error("Candidate IDs do not match the source-bound comparison result.");
+            const context = Object.prototype.hasOwnProperty.call(command, "context") ? command.context : preferenceContextForProject(directorBriefRef.current ?? directedBrief, projectRef.current);
+            const memory = commitPreferenceMemory(recordPairwisePreference(preferenceMemoryRef.current, { preferredCandidateId, otherCandidateId, preferredSourceDigest: preferred.sourceDigest, otherSourceDigest: other.sourceDigest, comparisonDigest: comparison.digest, rationale: command.rationale, dimensions: command.dimensions, context, enabled: command.enabled }) as PreferenceMemory, `Remembered preference for ${preferredCandidateId}`);
+            return { ok: true, memory: preferenceMemoryView(memory), entry: memory.entries.at(-1) ?? null, comparisonDigest: comparison.digest };
+          }
+          if (command.op === "update_preference_entry") {
+            const id = String(command.id ?? "").trim();
+            if (!id || !command.changes || typeof command.changes !== "object") throw new Error("update_preference_entry requires id and changes.");
+            const memory = commitPreferenceMemory(updatePreferenceEntry(preferenceMemoryRef.current, id, command.changes) as PreferenceMemory, "Preference updated");
+            return { ok: true, memory: preferenceMemoryView(memory), entry: memory.entries.find((entry) => entry.id === id) ?? null };
+          }
+          if (command.op === "remove_preference_entry") {
+            const id = String(command.id ?? "").trim();
+            if (!id) throw new Error("remove_preference_entry requires id.");
+            const memory = commitPreferenceMemory(removePreferenceEntry(preferenceMemoryRef.current, id) as PreferenceMemory, "Preference removed");
+            return { ok: true, memory: preferenceMemoryView(memory) };
+          }
+          if (command.op === "clear_preference_memory") {
+            const memory = commitPreferenceMemory(clearPreferenceMemory(preferenceMemoryRef.current) as PreferenceMemory, "Preference memory cleared");
+            return { ok: true, memory: preferenceMemoryView(memory) };
+          }
+          if (command.op === "import_preference_memory") {
+            const memory = commitPreferenceMemory(parsePreferenceMemory(command.memory) as PreferenceMemory, "Preference memory imported");
+            return { ok: true, memory: preferenceMemoryView(memory) };
+          }
+          if (command.op === "get_playtest_sessions") {
+            const currentSourceDigest = analyzeProject(syncActiveMap(projectRef.current)).sourceDigest;
+            const view = playtestLedgerView(playtestLedgerRef.current, activePlaytestRef.current, { currentSourceDigest });
+            const id = typeof command.id === "string" ? command.id.trim() : "";
+            if (id) return { ok: true, view, session: getPlaytestSession(playtestLedgerRef.current, id) };
+            return { ok: true, view, ...(command.includeDetail === true ? { ledger: parsePlaytestLedger(playtestLedgerRef.current) } : {}) };
+          }
+          if (command.op === "get_active_playtest_session") {
+            return { ok: true, activeSession: activePlaytestRef.current ? playtestActiveSessionView(activePlaytestRef.current) : null, policy: LOOPLAB_PLAYTEST_OBSERVATION_POLICY };
+          }
+          if (command.op === "start_playtest_session") {
+            if (command.consent !== true) throw new Error("start_playtest_session requires explicit consent=true.");
+            if (!runtimeEngineRef.current) {
+              enterPreview(false);
+              await waitForAnimationFrames(3);
+            }
+            const activeSession = startPlaytestRecording({ consent: true, reset: command.reset !== false });
+            return { ok: true, activeSession, policy: LOOPLAB_PLAYTEST_OBSERVATION_POLICY };
+          }
+          if (command.op === "finish_playtest_session") {
+            const session = finishPlaytestRecording({
+              outcome: command.outcome as PlaytestOutcome | undefined,
+              rating: command.rating as PlaytestRating | undefined,
+              tags: Array.isArray(command.tags) ? command.tags.map(String) : undefined,
+              note: typeof command.note === "string" ? command.note : undefined,
+            });
+            return { ok: true, session, view: playtestLedgerView(playtestLedgerRef.current, null, { currentSourceDigest: analyzeProject(syncActiveMap(projectRef.current)).sourceDigest }) };
+          }
+          if (command.op === "discard_playtest_session") return { ok: true, ...discardPlaytestRecording() };
+          if (command.op === "update_playtest_feedback") {
+            const id = String(command.id ?? "").trim();
+            if (!id) throw new Error("update_playtest_feedback requires id.");
+            const session = savePlaytestFeedback(id, {
+              rating: command.rating as PlaytestRating | undefined,
+              tags: Array.isArray(command.tags) ? command.tags.map(String) : undefined,
+              note: typeof command.note === "string" ? command.note : undefined,
+            });
+            return { ok: true, session };
+          }
+          if (command.op === "remove_playtest_session") {
+            const id = String(command.id ?? "").trim();
+            if (!id) throw new Error("remove_playtest_session requires id.");
+            const ledger = commitPlaytestLedger(removePlaytestSession(playtestLedgerRef.current, id) as PlaytestLedger, "Playtest observation removed");
+            if (selectedPlaytestSessionId === id) selectPlaytestSession(null);
+            return { ok: true, view: playtestLedgerView(ledger, activePlaytestRef.current, { currentSourceDigest: analyzeProject(syncActiveMap(projectRef.current)).sourceDigest }) };
+          }
+          if (command.op === "clear_playtest_sessions") {
+            const ledger = commitPlaytestLedger(clearPlaytestSessions(playtestLedgerRef.current) as PlaytestLedger, "Playtest observations cleared");
+            selectPlaytestSession(null);
+            return { ok: true, view: playtestLedgerView(ledger, activePlaytestRef.current, { currentSourceDigest: analyzeProject(syncActiveMap(projectRef.current)).sourceDigest }) };
+          }
+          if (command.op === "import_playtest_sessions") {
+            if (activePlaytestRef.current) throw new Error("Finish or discard the active observation before importing a ledger.");
+            const ledger = commitPlaytestLedger(parsePlaytestLedger(command.ledger) as PlaytestLedger, "Playtest observations imported");
+            selectPlaytestSession(ledger.sessions.at(-1)?.id ?? null);
+            return { ok: true, view: playtestLedgerView(ledger, null, { currentSourceDigest: analyzeProject(syncActiveMap(projectRef.current)).sourceDigest }) };
+          }
+          if (command.op === "get_agent_presence") {
+            const projectQuery = typeof command.projectId === "string" && command.projectId ? `?projectId=${encodeURIComponent(command.projectId)}` : "";
+            const response = await companionFetch(`${COMPANION_URL}/agent-presence${projectQuery}`, { cache: "no-store" });
+            const value = await response.json() as AgentPresenceView & { ok?: boolean; error?: string };
+            if (!response.ok) throw new Error(value.error ?? "Agent presence is unavailable.");
+            setAgentPresenceView(value);
+            return { ok: true, presence: value };
+          }
+          if (command.op === "register_agent_presence") {
+            const current = syncActiveMap(projectRef.current);
+            const clientKind = String(command.clientKind);
+            const requestedPresenceId = typeof command.presenceId === "string" && command.presenceId ? command.presenceId : `${clientKind}-${typeof crypto.randomUUID === "function" ? crypto.randomUUID() : uid()}`;
+            const leaseToken = typeof command.leaseToken === "string" && command.leaseToken
+              ? command.leaseToken
+              : agentPresenceLeaseRef.current.get(requestedPresenceId);
+            const payload = {
+              presenceId: requestedPresenceId,
+              ...(leaseToken ? { leaseToken } : {}),
+              clientKind,
+              displayName: String(command.displayName),
+              ...(typeof command.status === "string" ? { status: command.status } : {}),
+              projectId: typeof command.projectId === "string" && command.projectId ? command.projectId : activeProjectLibraryIdRef.current,
+              sourceDigest: typeof command.sourceDigest === "string" && command.sourceDigest ? command.sourceDigest : analyzeProject(current).sourceDigest,
+              ...(typeof command.operation === "string" ? { operation: command.operation } : {}),
+              ...(Array.isArray(command.workItemIds) ? { workItemIds: command.workItemIds } : {}),
+              ...(typeof command.ttlSeconds === "number" ? { ttlSeconds: command.ttlSeconds } : {}),
+            };
+            const response = await companionFetch(`${COMPANION_URL}/agent-presence`, {
+              method: "POST",
+              headers: { "content-type": "application/json" },
+              body: JSON.stringify(payload),
+            });
+            const value = await response.json() as { ok?: boolean; error?: string; leaseToken?: string; heartbeatAfterSeconds?: number; presence?: AgentPresenceEntry; created?: boolean; renewed?: boolean };
+            if (!response.ok || !value.presence || !value.leaseToken) throw new Error(value.error ?? "Agent presence could not be registered.");
+            agentPresenceLeaseRef.current.set(value.presence.presenceId, value.leaseToken);
+            const listResponse = await companionFetch(`${COMPANION_URL}/agent-presence`, { cache: "no-store" });
+            const presence = listResponse.ok ? await listResponse.json() as AgentPresenceView : null;
+            if (presence) setAgentPresenceView(presence);
+            window.dispatchEvent(new CustomEvent("looplab:agent-presence-changed", { detail: { action: value.created ? "registered" : "renewed", presence: value.presence } }));
+            return { ok: true, ...value, resume: { op: "register_agent_presence", presenceId: value.presence.presenceId, leaseToken: value.leaseToken, clientKind: value.presence.clientKind, displayName: value.presence.displayName } };
+          }
+          if (command.op === "leave_agent_presence") {
+            const presenceId = String(command.presenceId);
+            const leaseToken = typeof command.leaseToken === "string" && command.leaseToken
+              ? command.leaseToken
+              : agentPresenceLeaseRef.current.get(presenceId);
+            if (!leaseToken) throw new Error("leave_agent_presence requires the leaseToken returned by registration or cached in this browser session.");
+            const response = await companionFetch(`${COMPANION_URL}/agent-presence/${encodeURIComponent(presenceId)}/leave`, {
+              method: "POST",
+              headers: { "content-type": "application/json" },
+              body: JSON.stringify({ leaseToken }),
+            });
+            const value = await response.json() as { ok?: boolean; error?: string; left?: boolean; presence?: AgentPresenceEntry };
+            if (!response.ok) throw new Error(value.error ?? "Agent presence could not be released.");
+            agentPresenceLeaseRef.current.delete(presenceId);
+            const listResponse = await companionFetch(`${COMPANION_URL}/agent-presence`, { cache: "no-store" });
+            const presence = listResponse.ok ? await listResponse.json() as AgentPresenceView : null;
+            if (presence) setAgentPresenceView(presence);
+            window.dispatchEvent(new CustomEvent("looplab:agent-presence-changed", { detail: { action: "left", presenceId } }));
+            return { ok: true, ...value, presenceState: presence };
+          }
+          if (command.op === "get_director_state") {
+            const currentProject = syncActiveMap(projectRef.current);
+            const currentDoctor = analyzeProject(currentProject);
+            const currentBrief = directorBriefRef.current ?? directedBrief;
+            const providerRoute = resolveProviderRoute({ providers: companionHealth?.providers ?? {} }, { requestedProvider: aiProvider });
+            return {
+              ok: true,
+              provider: aiProvider,
+              providerReady: providerRoute.selectedProvider !== null,
+              providerRoute,
+              designBrief: currentBrief,
+              preparedProviderInput: preparedDirectedBrief.composedPrompt,
+              activePrompt: currentBrief.composedPrompt,
+              projectContext: { name: currentProject.name, activeMapId: currentProject.activeMapId, mapIds: (currentProject.maps ?? []).map((map) => map.id), runtimeProfile: currentProject.runtimeProfile, sourceDigest: currentDoctor.sourceDigest },
+              doctor: { profile: currentDoctor.profile, score: currentDoctor.score, errorCount: currentDoctor.errorCount, warningCount: currentDoctor.warningCount, nextActions: currentDoctor.nextActions },
+              gameplayProgram: { policy: LOOPLAB_GAMEPLAY_RULE_POLICY, inspection: inspectGameplayProgram(currentProject) },
+              motionBodies: { policy: LOOPLAB_MOTION_BODY_POLICY, inspection: inspectMotionBodies(currentProject, { strict: true }) },
+              combatProgram: { policy: LOOPLAB_COMBAT_POLICY, inspection: inspectCombatProgram(currentProject) },
+              actorProgram: { policy: LOOPLAB_ACTOR_POLICY, inspection: inspectActorProgram(currentProject) },
+              verbArchitecture: { policy: LOOPLAB_VERB_ARCHITECTURE_POLICY, inspection: inspectVerbArchitecture(currentProject) },
+              runtimeRouting: routeGameStudioWork(currentProject, { prompt: currentBrief.composedPrompt, track: aiTrack, framework: runtimePreference }),
+              agentPresence: agentPresenceViewRef.current,
+              providerParity: { schemaVersion: providerParityContract.schemaVersion, sharedContractDigest: providerParityContract.sharedContractDigest, contractDigest: providerParityContract.contractDigest, providers: providerParityContract.providers, parityBoundary: providerParityContract.parityBoundary },
+              preferenceMemory: (() => {
+                const memory = preferenceMemoryView(preferenceMemoryRef.current);
+                const applied = selectAppliedPreferenceContext(preferenceMemoryRef.current, preferenceContextForProject(currentBrief, currentProject), { enabled: usePreferenceMemoryForRun });
+                return { enabled: memory.enabled, entryCount: memory.entryCount, enabledEntryCount: memory.enabledEntryCount, digest: memory.digest, applied: { enabled: applied.enabled, selectedEntryIds: applied.selectedEntryIds, receiptDigest: applied.receiptDigest }, policy: memory.policy };
+              })(),
+              loop: { enabled: loopEnabled, strategy: loopStrategy, iterations: loopIterations, stopScore: loopStopScore, stopPolicy: "required-passes-first", evaluationProfile: loopEvaluationProfile, contextBudgetTokens: providerContextBudgetTokens, conditions: loopConditions.split(/\r?\n/).map((value) => value.trim()).filter(Boolean), artDirectionMode, styleLocks: artDirectionMode === "locked" ? styleLocks.split(/\r?\n/).map((value) => value.trim()).filter(Boolean) : [], running: loopRunning, phase: loopPhase },
+              track: aiTrack,
+              headlessSuperset: true,
+            };
+          }
+          if (command.op === "configure_director") {
+            const configured = reconcileDirectedGameBrief({ ...(directorBriefRef.current ?? directedBrief), ...command });
+            syncDirectedBriefControls(configured as DirectedBrief);
+            if (["openai", "anthropic", "codex", "claude"].includes(String(command.provider ?? ""))) setAiProvider(command.provider as AgentProvider);
+            if (typeof command.track === "string" && command.track) setAiTrack(command.track);
+            if (["auto", "canvas", "phaser", "pixi", "melon"].includes(String(command.framework ?? command.runtimePreference ?? ""))) setRuntimePreference(String(command.framework ?? command.runtimePreference) as "auto" | "canvas" | "phaser" | "pixi" | "melon");
+            const loop = command.loop && typeof command.loop === "object" ? command.loop as Record<string, unknown> : command;
+            if (typeof loop.enabled === "boolean") setLoopEnabled(loop.enabled);
+            if (["improve", "explore", "cycle"].includes(String(loop.strategy ?? ""))) setLoopStrategy(loop.strategy as LoopStrategy);
+            if (loop.iterations !== undefined) setLoopIterations(Math.max(1, Math.min(20, Number(loop.iterations))));
+            if (loop.stopScore !== undefined) setLoopStopScore(Math.max(0, Math.min(100, Number(loop.stopScore))));
+            if (["auto", "general", "platformer", "top-down", "connected-world", "systems"].includes(String(loop.evaluationProfile ?? ""))) setLoopEvaluationProfile(loop.evaluationProfile as LoopEvaluationProfile);
+            if (loop.contextBudgetTokens !== undefined) {
+              const requestedBudget = Number(loop.contextBudgetTokens);
+              if (Number.isFinite(requestedBudget)) setProviderContextBudgetTokens(Math.max(8_000, Math.min(200_000, Math.floor(requestedBudget))));
+            }
+            if (Array.isArray(loop.conditions)) setLoopConditions(loop.conditions.map((value) => String(value).trim()).filter(Boolean).join("\n"));
+            const requestedArtMode = String(loop.artDirectionMode ?? (loop.artDirection as Record<string, unknown> | undefined)?.mode ?? "");
+            if (["explore", "preserve", "locked"].includes(requestedArtMode)) setArtDirectionMode(requestedArtMode as ArtDirectionMode);
+            const requestedStyleLocks = loop.styleLocks ?? (loop.artDirection as Record<string, unknown> | undefined)?.locks;
+            if (Array.isArray(requestedStyleLocks)) setStyleLocks(requestedStyleLocks.map((value) => String(value).trim()).filter(Boolean).join("\n"));
+            return { ok: true, designBrief: configured, message: "Director configuration accepted. Headless callers may also bypass UI fields and call the companion endpoints with arbitrary project, goal, and constraints." };
+          }
+          if (command.op === "get_prompt_draft") {
+            const currentBrief = directorBriefRef.current ?? directedBrief;
+            return { ok: true, designBrief: currentBrief, composedPrompt: currentBrief.composedPrompt, providerGenerated: Boolean(currentBrief.promptGeneration), promptGeneration: currentBrief.promptGeneration ?? null };
+          }
+          if (command.op === "retry_prompt") return { ok: true, ...await requestAiPromptDraft(command as Partial<DirectedBrief> & { provider?: AgentProvider; providerMode?: ProviderRouteMode; requiredConstraints?: string[]; currentPrompt?: string; attempt?: number; context?: Record<string, unknown> }) };
+          if (command.op === "start_ai_build") {
+            const requestedEvaluationProfile = ["auto", "general", "platformer", "top-down", "connected-world", "systems"].includes(String(command.evaluationProfile ?? "")) ? command.evaluationProfile as LoopEvaluationProfile : undefined;
+            const requestedRuntime = ["auto", "canvas", "phaser", "pixi", "melon"].includes(String(command.framework ?? command.runtimePreference ?? "")) ? String(command.framework ?? command.runtimePreference) as "auto" | "canvas" | "phaser" | "pixi" | "melon" : undefined;
+            const requestedNarrativeMode = ["auto", "include", "exclude"].includes(String(command.narrativeMode ?? "")) ? command.narrativeMode as "auto" | "include" | "exclude" : undefined;
+            if (Object.prototype.hasOwnProperty.call(command, "usePreferenceMemory") && typeof command.usePreferenceMemory !== "boolean") throw new Error("start_ai_build usePreferenceMemory must be a Boolean.");
+            if (Object.prototype.hasOwnProperty.call(command, "excludePreferenceIds") && (!Array.isArray(command.excludePreferenceIds) || command.excludePreferenceIds.some((id) => typeof id !== "string"))) throw new Error("start_ai_build excludePreferenceIds must be an array of preference entry ID strings.");
+            if (Object.prototype.hasOwnProperty.call(command, "preferenceContext") && (!command.preferenceContext || typeof command.preferenceContext !== "object" || Array.isArray(command.preferenceContext))) throw new Error("start_ai_build preferenceContext must be a canonical applied preference context object.");
+            const requestedPreferenceContext = command.preferenceContext ? normalizeAppliedPreferenceContext(command.preferenceContext) as AppliedPreferenceContext : undefined;
+            const requestedProviderMode = ["fallback", "strict"].includes(String(command.providerMode ?? "")) ? command.providerMode as ProviderRouteMode : undefined;
+            const started = await queueAiBuild({ provider: ["openai", "anthropic", "codex", "claude"].includes(String(command.provider ?? "")) ? command.provider as AgentProvider : undefined, providerMode: requestedProviderMode, contextBudgetTokens: typeof command.contextBudgetTokens === "number" ? command.contextBudgetTokens : undefined, evaluationProfile: requestedEvaluationProfile, runtimePreference: requestedRuntime, narrativeMode: requestedNarrativeMode, usePreferenceMemory: typeof command.usePreferenceMemory === "boolean" ? command.usePreferenceMemory : undefined, excludePreferenceIds: command.excludePreferenceIds as string[] | undefined, preferenceContext: requestedPreferenceContext });
+            return { ok: started.started, ...started };
+          }
+          if (command.op === "start_research") {
+            const requestedProvider = ["openai", "anthropic", "codex", "claude"].includes(String(command.provider ?? "")) ? command.provider as AgentProvider : aiProvider;
+            const requestedProviderMode = ["fallback", "strict"].includes(String(command.providerMode ?? "")) ? command.providerMode as ProviderRouteMode : "fallback";
+            const requestedDepth = ["quick", "standard", "deep", "exhaustive"].includes(String(command.depth ?? "")) ? command.depth as ResearchDepth : undefined;
+            const requestedQuery = String(command.query ?? command.goal ?? "").trim() || undefined;
+            const started = await runResearch(typeof command.presetId === "string" ? command.presetId : typeof command.preset === "string" ? command.preset : undefined, { provider: requestedProvider, providerMode: requestedProviderMode, query: requestedQuery, depth: requestedDepth });
+            return { ok: started.accepted, endpoint: `${COMPANION_URL}/research-jobs`, ...started };
+          }
+          if (command.op === "get_local_copilot_status") {
+            const response = await companionFetch(`${COMPANION_URL}/local-copilot${command.refresh === true ? "?refresh=1" : ""}`, { cache: "no-store" });
+            const value = await response.json() as { ok?: boolean; localCopilot?: LocalCopilotStatus; error?: string };
+            if (!response.ok || !value.localCopilot) throw new Error(value.error ?? "Local copilot status is unavailable.");
+            return { ok: true, localCopilot: value.localCopilot };
+          }
+          if (command.op === "start_local_copilot") {
+            const task = String(command.task ?? command.goal ?? "").trim();
+            if (!task) throw new Error("start_local_copilot requires a bounded task.");
+            const current = syncActiveMap(projectRef.current);
+            const currentDoctor = analyzeProject(current, { profile: "prototype" });
+            const expectedSourceDigest = typeof command.sourceDigest === "string" && command.sourceDigest.trim() ? command.sourceDigest.trim() : currentDoctor.sourceDigest;
+            if (expectedSourceDigest !== currentDoctor.sourceDigest) throw new Error("start_local_copilot rejected stale sourceDigest; inspect the selected project again before requesting advice.");
+            const releaseDoctor = analyzeProject(current, { profile: "production" });
+            const suppliedContext = command.context && typeof command.context === "object" && !Array.isArray(command.context) ? command.context as Record<string, unknown> : null;
+            const context = {
+              schemaVersion: "looplab-local-copilot-context/v1",
+              project: summarizeProject(current),
+              readiness: {
+                current: { profile: currentDoctor.profile, score: currentDoctor.score, blocking: currentDoctor.gate.blocking, errors: currentDoctor.errorCount, warnings: currentDoctor.warningCount },
+                release: { profile: releaseDoctor.profile, score: releaseDoctor.score, blocking: releaseDoctor.gate.blocking, errors: releaseDoctor.errorCount, warnings: releaseDoctor.warningCount },
+              },
+              supplied: suppliedContext,
+              omissions: ["embedded asset bytes", "provider credentials", "exported HTML", "browser images", "complete project source"],
+            };
+            const response = await companionFetch(`${COMPANION_URL}/local-copilot/jobs`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ task, mode: command.mode, sourceDigest: expectedSourceDigest, model: command.model, context }),
+            });
+            const value = await response.json() as LocalCopilotJobDescriptor & { ok?: boolean; error?: string };
+            if (!response.ok || !value.jobId) throw new Error(value.error ?? "Local copilot work could not be started.");
+            return { ok: true, accepted: true, job: value, sourceDigest: expectedSourceDigest, resume: { op: "get_local_copilot_job", jobId: value.jobId, includeResult: true } };
+          }
+          if (command.op === "get_local_copilot_job") {
+            const jobId = String(command.jobId ?? "").trim();
+            if (!jobId) throw new Error("get_local_copilot_job requires jobId.");
+            const descriptor = localCopilotJobDescriptor(jobId);
+            const statusResponse = await companionFetch(`${COMPANION_URL}${descriptor.statusUrl}`, { cache: "no-store" });
+            const status = await statusResponse.json() as Record<string, unknown> & { error?: string; status?: string };
+            if (!statusResponse.ok) throw new Error(status.error ?? "Local copilot job status is unavailable.");
+            let result = null;
+            if (command.includeResult === true && status.status === "completed") {
+              const resultResponse = await companionFetch(`${COMPANION_URL}${descriptor.resultUrl}`, { cache: "no-store" });
+              result = await resultResponse.json();
+              if (!resultResponse.ok) throw new Error((result as { error?: string })?.error ?? "Local copilot result is unavailable.");
+            }
+            return { ok: true, job: status, result, resume: status.status === "running" ? { op: "get_local_copilot_job", jobId, includeResult: true } : null };
+          }
+          if (command.op === "cancel_local_copilot_job") {
+            const jobId = String(command.jobId ?? "").trim();
+            if (!jobId) throw new Error("cancel_local_copilot_job requires jobId.");
+            const response = await companionFetch(`${COMPANION_URL}${localCopilotJobDescriptor(jobId).cancelUrl}`, { method: "POST" });
+            const value = await response.json() as Record<string, unknown> & { error?: string };
+            if (!response.ok) throw new Error(value.error ?? "Local copilot job could not be cancelled.");
+            return value;
+          }
+          if (command.op === "verify_release") {
+            return await verifyExactRelease({
+              jobId: typeof command.jobId === "string" ? command.jobId : undefined,
+              wait: command.wait !== false,
+              filename: typeof command.filename === "string" ? command.filename : undefined,
+            });
+          }
+          if (command.op === "get_release_verification_job") {
+            const jobId = String(command.jobId ?? "").trim();
+            if (!jobId) throw new Error("get_release_verification_job requires jobId.");
+            const descriptor = releaseVerificationJobDescriptor(jobId);
+            const inspected = await readReleaseVerificationJob(descriptor, command.includeResult === true);
+            return { ok: true, job: inspected.status, result: inspected.result?.result ?? null, resultEnvelope: inspected.result, resume: { op: "verify_release", jobId, wait: true } };
+          }
+          if (command.op === "cancel_release_verification_job") {
+            const jobId = String(command.jobId ?? "").trim();
+            if (!jobId) throw new Error("cancel_release_verification_job requires jobId.");
+            const response = await companionFetch(`${COMPANION_URL}${releaseVerificationJobDescriptor(jobId).cancelUrl}`, { method: "POST" });
+            const value = await response.json() as Record<string, unknown> & { error?: string };
+            if (!response.ok) throw new Error(value.error ?? "Exact release verification could not be cancelled.");
+            return value;
+          }
+          if (command.op === "get_manifest") return { ok: true, manifest: command.compact === false ? getAgentManifest() : getCompactAgentManifest() };
+          if (command.op === "list_projects") {
+            const loadedSharedIds = new Set(projectLibraryRef.current.map((entry) => entry.sharedProjectId).filter((id): id is string => Boolean(id)));
+            return {
+              ok: true,
+              schemaVersion: LOOPLAB_SHARED_PROJECT_STORE_SCHEMA,
+              activeProjectId: activeProjectLibraryIdRef.current,
+              sharedCatalogReady: sharedProjectCatalogReady,
+              projects: [
+                ...projectLibraryRef.current.map((entry) => ({ id: entry.id, name: entry.name, origin: entry.origin, sourceLabel: entry.sourceLabel, folderName: entry.folderName ?? null, parentLibraryId: entry.parentLibraryId ?? null, updatedAt: entry.updatedAt, iteration: compactProjectLibraryIteration(entry.project.iteration), mapCount: entry.project.maps?.length ?? 1, storage: entry.storage, sharedProjectId: entry.sharedProjectId ?? null, sourceDigest: entry.sharedSourceDigest ?? null, revisionDigest: entry.sharedRevisionDigest ?? null, projectPath: entry.sharedProjectPath ?? null, syncStatus: entry.sharedSyncStatus ?? "local-only", mounted: true })),
+                ...sharedProjectCatalogRef.current.filter((entry) => !loadedSharedIds.has(entry.id)).map((entry) => ({ ...entry, id: sharedProjectLibraryId(entry.id), sharedProjectId: entry.id, storage: "shared", syncStatus: "not-mounted", mounted: false })),
+              ],
+            };
+          }
+          if (command.op === "list_shared_projects") return { ...(await refreshSharedProjectCatalog(true)), authority: "companion", cacheAuthority: false };
+          if (command.op === "mount_shared_project") {
+            const id = String(command.id ?? "").trim();
+            const mounted = await mountSharedProject(id);
+            return command.compact === true
+              ? { ok: true, changed: true, activeProjectId: mounted.entry.id, sharedProjectId: id, sourceDigest: mounted.sourceDigest, revisionDigest: mounted.revisionDigest, summary: mounted.summary, projectSummary: summarizeProject(mounted.project), validation: mounted.validation }
+              : { ok: true, changed: true, activeProjectId: mounted.entry.id, sharedProjectId: id, sourceDigest: mounted.sourceDigest, revisionDigest: mounted.revisionDigest, summary: mounted.summary, project: mounted.project, validation: mounted.validation };
+          }
+          if (command.op === "preview_shared_project_rebase") {
+            return await previewMountedSharedProjectRebase(
+              String(command.id ?? "").trim(),
+              String(command.expectedBaseRevisionDigest ?? "").trim(),
+              String(command.expectedRemoteRevisionDigest ?? "").trim(),
+            );
+          }
+          if (command.op === "apply_shared_project_rebase") {
+            return await applyMountedSharedProjectRebase(
+              String(command.id ?? "").trim(),
+              String(command.expectedBaseRevisionDigest ?? "").trim(),
+              String(command.expectedLocalRevisionDigest ?? "").trim(),
+              String(command.expectedRemoteRevisionDigest ?? "").trim(),
+              String(command.expectedRebaseDigest ?? "").trim(),
+            );
+          }
+          if (command.op === "save_shared_project") {
+            const id = String(command.id ?? "").trim();
+            if (!SHARED_PROJECT_ID_PATTERN.test(id)) throw new Error("save_shared_project requires a stable lowercase shared project ID.");
+            const createOnly = command.createOnly === true;
+            const expectedRevisionDigest = typeof command.expectedRevisionDigest === "string" && command.expectedRevisionDigest ? command.expectedRevisionDigest : null;
+            if (!createOnly && !expectedRevisionDigest) throw new Error("save_shared_project updates require expectedRevisionDigest from the latest shared read.");
+            const activeEntry = projectLibraryRef.current.find((entry) => entry.id === activeProjectLibraryIdRef.current);
+            if (!activeEntry) throw new Error("The selected browser project is not available to save.");
+            const stored = await queueSharedProjectSave(activeEntry, cloneProject(projectRef.current), { id, expectedRevisionDigest, createOnly, announce: true });
+            return { ok: true, changed: stored.changed, created: stored.created, idempotent: stored.idempotent, activeProjectId: activeEntry.id, sharedProjectId: id, sourceDigest: stored.sourceDigest, revisionDigest: stored.revisionDigest, summary: stored.summary, validation: stored.validation };
+          }
+          if (command.op === "import_html") {
+            const html = String(command.html ?? command.contents ?? "");
+            if (!html.trim()) throw new Error("import_html requires the complete Looplab HTML in html or contents.");
+            const filename = typeof command.filename === "string" && command.filename.trim() ? command.filename.trim() : "imported-game.html";
+            const imported = parseEditableProject(filename, html);
+            const entry = registerProjectInLibrary(imported, { origin: "file", sourceLabel: filename });
+            setExperienceMode("director");
+            setMapStudioFocused(false);
+            setDirectorWorkspaceTab("build");
+            appendConsole("project.html.imported", `${entry.name} imported into the project library`, `${filename} · ${imported.maps?.length ?? 1} editable map tab(s)`, "good");
+            const validation = validateProject(imported);
+            if (command.compact === true) {
+              const doctor = analyzeProject(imported, { profile: "prototype" });
+              return { ok: true, changed: true, activeProjectId: entry.id, entry: { ...entry, project: undefined }, projectSummary: summarizeProject(imported), sourceDigest: doctor.sourceDigest, validation };
+            }
+            return { ok: true, activeProjectId: entry.id, entry: { ...entry, project: undefined }, project: cloneProject(imported), validation };
+          }
+          if (command.op === "select_project") {
+            if (typeof command.id !== "string" || !command.id) throw new Error("select_project requires a project-library id.");
+            const selectedProject = await activateProjectLibraryEntry(command.id);
+            const validation = validateProject(selectedProject);
+            if (command.compact === true) {
+              const doctor = analyzeProject(selectedProject, { profile: "prototype" });
+              return { ok: true, changed: true, activeProjectId: command.id, projectSummary: summarizeProject(selectedProject), sourceDigest: doctor.sourceDigest, validation };
+            }
+            return { ok: true, activeProjectId: command.id, project: selectedProject, validation };
+          }
+          if (command.op === "create_variation") {
+            const entry = createProjectVariation(typeof command.name === "string" ? command.name : undefined);
+            const validation = validateProject(entry.project);
+            if (command.compact === true) {
+              const doctor = analyzeProject(entry.project, { profile: "prototype" });
+              return { ok: true, changed: true, activeProjectId: entry.id, entry: { ...entry, project: undefined }, projectSummary: summarizeProject(entry.project), sourceDigest: doctor.sourceDigest, validation };
+            }
+            return { ok: true, activeProjectId: entry.id, entry: { ...entry, project: undefined }, project: cloneProject(entry.project), validation };
+          }
+          if (command.op === "get_project") return { ok: true, project: cloneProject(projectRef.current), validation: validateProject(projectRef.current) };
+          if (command.op === "validate") return { ok: true, validation: validateProject(projectRef.current) };
+          if (command.op === "doctor" || command.op === "get_doctor") return { ok: true, doctor: analyzeProject(projectRef.current, { profile: command.profile }) };
+          if (command.op === "get_visual_readiness") {
+            const doctor = analyzeProject(projectRef.current, { profile: command.profile });
+            return { ok: true, sourceDigest: doctor.sourceDigest, visualReadiness: doctor.visualReadiness };
+          }
+          if (command.op === "route_work") return { ok: true, route: routeGameStudioWork(projectRef.current, { prompt: command.prompt ?? command.goal, track: command.track, dimension: command.dimension, framework: command.framework ?? command.runtimePreference, narrativeMode: command.narrativeMode }) };
+          if (command.op === "get_pending_requests") return { ok: true, requests: cloneProject({ ...projectRef.current, objects: [], agentRequests: (projectRef.current.agentRequests ?? []).filter((request) => request.status === "pending") }).agentRequests ?? [] };
+          if (command.op === "run_post_generation_qa") {
+            setVerificationRunning(true);
+            appendConsole("verification.headless.started", "Headless browser QA started", "The same deterministic runtime and clean-play visual matrix used after AI generation is running.");
+            try {
+              const verification = await verifyCurrentCandidate();
+              appendConsole("verification.headless.completed", `Candidate verified with ${verification.evidenceCount} source-bound receipts`, `${verification.runtimeCheckCount} runtime checks · ${verification.runtimeJoinCount} runtime joins · ${verification.captureCount} clean-play captures · digest ${verification.doctorDigest}`, "good");
+              return { ok: true, ...verification };
+            } catch (error) {
+              setShowDoctor(true);
+              const message = error instanceof Error ? error.message : "Headless browser QA could not complete";
+              appendConsole("verification.headless.failed", message, "The candidate remains unverified.", "bad");
+              throw error;
+            } finally {
+              setVerificationRunning(false);
+            }
+          }
+          if (command.op === "capture_visual_review") return { ok: true, ...await collectVerificationEvidence({ visualOnly: true }) };
+          if (command.op === "collect_verification_evidence") return { ok: true, ...await collectVerificationEvidence() };
+          if (command.op === "verify_iteration") return { ok: true, ...await verifyCurrentCandidate() };
+          if (command.op === "promote_iteration") {
+            const outcome = promoteVerifiedIteration(syncActiveMap(projectRef.current));
+            if (outcome.changed) applyProjectFromAgent(outcome.project as GameProject, "Verified candidate promoted");
+            return { ok: true, ...outcome };
+          }
+          if (command.op === "get_visual_review") return { ok: true, report: visualReviewForHeadless(visualReviewRef.current, { includeThumbnails: command.includeThumbnails === true, includeAnnotatedImages: command.includeAnnotatedImages === true, includeCrops: command.includeCrops === true }) };
+          if (command.op === "select_visual_review_capture") {
+            const report = visualReviewRef.current;
+            if (!report) throw new Error("No visual review exists. Run capture_visual_review first.");
+            const captureId = String(command.captureId ?? command.id ?? "");
+            const capture = report.captures.find((candidate) => candidate.id === captureId);
+            if (!capture) throw new Error(`Visual review capture was not found: ${captureId}`);
+            setSelectedVisualCaptureId(capture.id);
+            setSelectedVisualAnnotationId(capture.perception.annotations[0]?.id ?? null);
+            setShowVisualAnnotations(true);
+            setShowVisualReview(true);
+            return { ok: true, capture: visualReviewCaptureForHeadless(capture, { includeThumbnails: command.includeThumbnail !== false, includeAnnotatedImages: command.includeAnnotatedImage === true, includeCrops: command.includeCrops === true }), sourceDigest: report.sourceDigest };
+          }
+          if (command.op === "start_visual_critique") {
+            const started = await startVisualCritique({
+              provider: command.provider as AgentProvider,
+              providerMode: ["fallback", "strict"].includes(String(command.providerMode ?? "")) ? command.providerMode as ProviderRouteMode : undefined,
+              consent: command.consent === true,
+              captureIds: Array.isArray(command.captureIds) ? command.captureIds.map(String) : undefined,
+              captureFirst: command.captureFirst !== false,
+            });
+            return { ok: true, ...started };
+          }
+          if (command.op === "get_visual_critique_job") {
+            const jobId = String(command.jobId ?? "").trim();
+            if (!jobId) throw new Error("get_visual_critique_job requires jobId.");
+            const descriptor = visualCritiqueJobDescriptor(jobId);
+            const response = await companionFetch(`${COMPANION_URL}${descriptor.statusUrl}`, { cache: "no-store" });
+            const status = await response.json() as {
+              ok?: boolean;
+              jobId?: string;
+              provider?: AgentProvider;
+              status?: string;
+              request?: VisualCritiqueRequestSummary;
+              usage?: UsageReceipt | null;
+              error?: string | null;
+              [key: string]: unknown;
+            };
+            if (!response.ok) throw new Error(String(status.error ?? "The visual critique job could not be read."));
+            const hydrated: VisualCritiqueJobDescriptor = {
+              ...descriptor,
+              provider: status.provider,
+              status: String(status.status ?? "running"),
+              request: status.request,
+            };
+            setVisualCritiqueJob(hydrated);
+            if (status.request) setVisualCritiqueRequest(status.request);
+            setVisualCritiqueRunning(hydrated.status === "starting" || hydrated.status === "running");
+            let result: VisualCritiqueResult | null = null;
+            if (command.includeResult === true && hydrated.status === "completed") result = await receiveVisualCritiqueResult(hydrated);
+            return {
+              ok: true,
+              job: status,
+              result,
+              resume: hydrated.status === "starting" || hydrated.status === "running"
+                ? { op: "get_visual_critique_job", jobId, includeResult: true }
+                : null,
+            };
+          }
+          if (command.op === "cancel_visual_critique_job") {
+            const jobId = String(command.jobId ?? "").trim();
+            if (!jobId) throw new Error("cancel_visual_critique_job requires jobId.");
+            const descriptor = visualCritiqueJob?.jobId === jobId ? visualCritiqueJob : visualCritiqueJobDescriptor(jobId);
+            await cancelVisualCritique(descriptor);
+            return { ok: true, jobId, status: "cancelled" };
+          }
+          if (command.op === "get_visual_critique") {
+            return {
+              ok: true,
+              available: Boolean(visualCritique),
+              fresh: visualCritiqueFresh,
+              currentSourceDigest: doctorReport.sourceDigest,
+              request: visualCritiqueRequest,
+              critique: visualCritique,
+              staleReason: visualCritique && !visualCritiqueFresh ? "The project source or exact capture set changed. Capture and submit a new consented job." : null,
+              authority: {
+                advisoryOnly: true,
+                mutatesProject: false,
+                verificationEvidence: false,
+                automaticWinner: null,
+                aestheticApproval: "not-proven",
+              },
+            };
+          }
+          if (command.op === "find_visual_reference") {
+            const signature = Array.isArray(command.signature)
+              ? command.signature
+              : typeof command.dataUrl === "string"
+                ? await signatureFromDataUrl(command.dataUrl)
+                : null;
+            const outcome = applyAgentCommand(projectRef.current, { op: "find_reference", id: command.id, label: command.label, signature });
+            return { ok: true, ...outcome.result as Record<string, unknown> };
+          }
+          if (command.op === "get_asset_library_state") {
+            const manifest = assetPackManifestRef.current ?? await refreshAssetPackManifest();
+            return {
+              ok: true,
+              manifest,
+              ui: {
+                open: showAssetLab && assetLabTab === "library",
+                category: assetLibraryCategory,
+                selectedPackId: selectedAssetPackId,
+                selectedAssetIds: selectedPackAssetIds,
+                focusedAssetId: focusedPackAssetId,
+                query: assetPackSearch,
+                kind: assetPackKindFilter,
+                page: assetPackPage,
+              },
+            };
+          }
+          if (command.op === "list_asset_packs") {
+            const manifest = assetPackManifestRef.current ?? await refreshAssetPackManifest();
+            const category = typeof command.category === "string" ? command.category : null;
+            const query = String(command.query ?? "").trim().toLowerCase();
+            const packs = manifest.packs.filter((pack) => (!category || pack.categories.includes(category)) && (!query || `${pack.title} ${pack.author} ${pack.description} ${pack.categories.join(" ")}`.toLowerCase().includes(query)));
+            return { ok: true, packCount: packs.length, installedAssetCount: packs.reduce((sum, pack) => sum + pack.installedAssetCount, 0), packs };
+          }
+          if (command.op === "select_asset_pack") {
+            const packId = String(command.packId ?? command.id ?? "");
+            if (!packId) throw new Error("select_asset_pack requires packId.");
+            setAssetLabTab("library");
+            setShowAssetLab(true);
+            const index = await openInstalledAssetPack(packId);
+            const category = index.pack.categories[0] as AssetLibraryCategoryId | undefined;
+            if (category) setAssetLibraryCategory(category);
+            return { ok: true, pack: index.pack, installedAssetCount: index.assets.length, archiveOnlyAssetCount: index.archiveOnly.length };
+          }
+          if (command.op === "list_pack_assets") {
+            const packId = String(command.packId ?? "");
+            if (!packId) throw new Error("list_pack_assets requires packId.");
+            const index = assetPackIndexRef.current.get(packId) ?? await fetchInstalledPackIndex(packId);
+            assetPackIndexRef.current.set(packId, index);
+            const query = String(command.query ?? "").trim().toLowerCase();
+            const kind = typeof command.kind === "string" && command.kind !== "all" ? command.kind : null;
+            const archiveId = typeof command.archiveId === "string" ? command.archiveId : null;
+            const matching = index.assets.filter((asset) => (!kind || asset.kind === kind) && (!archiveId || asset.archiveId === archiveId) && (!query || `${asset.name} ${asset.path} ${asset.directory} ${asset.kind}`.toLowerCase().includes(query)));
+            const limit = Math.max(1, Math.min(500, Number(command.limit ?? 120)));
+            const offset = Math.max(0, Number(command.offset ?? 0));
+            return {
+              ok: true,
+              pack: index.pack,
+              total: matching.length,
+              offset,
+              limit,
+              assets: matching.slice(offset, offset + limit),
+              archiveOnly: command.includeArchiveOnly === true ? index.archiveOnly.slice(0, 500) : undefined,
+            };
+          }
+          if (command.op === "preview_pack_asset") {
+            const packId = String(command.packId ?? "");
+            const assetId = String(command.assetId ?? command.id ?? "");
+            if (!packId || !assetId) throw new Error("preview_pack_asset requires packId and assetId.");
+            const index = assetPackIndexRef.current.get(packId) ?? await fetchInstalledPackIndex(packId);
+            assetPackIndexRef.current.set(packId, index);
+            const asset = index.assets.find((candidate) => candidate.id === assetId);
+            if (!asset) throw new Error("The requested pack asset was not found.");
+            if (command.open !== false) {
+              setShowAssetLab(true);
+              setAssetLabTab("library");
+              setSelectedAssetPackId(packId);
+              setSelectedAssetPackIndex(index);
+              setFocusedPackAssetId(assetId);
+            }
+            return { ok: true, pack: index.pack, asset, previewUrl: asset.previewable ? asset.url : null };
+          }
+          if (command.op === "select_pack_assets") {
+            const packId = String(command.packId ?? "");
+            const assetIds = Array.isArray(command.assetIds) ? command.assetIds.map(String) : [];
+            if (!packId || assetIds.length === 0) throw new Error("select_pack_assets requires packId and a non-empty assetIds array.");
+            if (assetIds.length > 50) throw new Error("Select at most 50 pack files per pass.");
+            const index = assetPackIndexRef.current.get(packId) ?? await fetchInstalledPackIndex(packId);
+            assetPackIndexRef.current.set(packId, index);
+            const selectedAssets = assetIds.map((id) => index.assets.find((asset) => asset.id === id));
+            if (selectedAssets.some((asset) => !asset?.selectable)) throw new Error("One or more requested pack assets are unavailable or archive-only.");
+            setSelectedAssetPackId(packId);
+            setSelectedAssetPackIndex(index);
+            setSelectedPackAssetIds(assetIds);
+            setFocusedPackAssetId(assetIds[0]);
+            if (command.open === true) {
+              setShowAssetLab(true);
+              setAssetLabTab("library");
+            }
+            return { ok: true, packId, selectedAssetIds: assetIds, assets: selectedAssets };
+          }
+          if (command.op === "import_pack_assets") {
+            const packId = String(command.packId ?? "");
+            const assetIds = Array.isArray(command.assetIds) ? command.assetIds.map(String) : [];
+            if (!packId || assetIds.length === 0) throw new Error("import_pack_assets requires packId and a non-empty assetIds array.");
+            if (assetIds.length > 50) throw new Error("Import at most 50 pack files per pass.");
+            const index = assetPackIndexRef.current.get(packId) ?? await fetchInstalledPackIndex(packId);
+            assetPackIndexRef.current.set(packId, index);
+            const records = assetIds.map((id) => index.assets.find((asset) => asset.id === id));
+            if (records.some((asset) => !asset?.selectable)) throw new Error("One or more requested pack assets are unavailable or archive-only.");
+            const imported = await Promise.all((records as InstalledPackAsset[]).map((asset) => importInstalledPackAsset(index, asset)));
+            const existingSources = new Set([
+              ...(projectRef.current.assets ?? []).map((asset) => asset.source?.assetId).filter(Boolean),
+              ...(projectRef.current.resources ?? []).map((resource) => resource.source.assetId),
+            ]);
+            let visualAssets = imported.map((entry) => entry.asset).filter((asset): asset is GeneratedAsset => asset !== null && !existingSources.has(asset.source?.assetId));
+            const resources = imported.map((entry) => entry.resource).filter((resource): resource is ProjectResource => resource !== null && !existingSources.has(resource.source.assetId));
+            if (command.frameWidth != null || command.frameHeight != null) {
+              visualAssets = visualAssets.map((asset) => {
+                const frameWidth = Math.floor(Number(command.frameWidth ?? asset.width));
+                const frameHeight = Math.floor(Number(command.frameHeight ?? asset.height));
+                if (frameWidth < 1 || frameHeight < 1 || asset.width % frameWidth !== 0 || asset.height % frameHeight !== 0) throw new Error(`${asset.name} cannot be sliced into exact ${frameWidth}×${frameHeight} frames.`);
+                const columns = asset.width / frameWidth;
+                const availableFrames = columns * (asset.height / frameHeight);
+                const frames = command.frames == null ? availableFrames : Math.max(1, Math.min(availableFrames, Math.floor(Number(command.frames))));
+                return {
+                  ...asset,
+                  frameWidth,
+                  frameHeight,
+                  columns,
+                  frames,
+                  invariants: { ...asset.invariants, frameCount: frames, sharedScale: true },
+                  analysis: { ...asset.analysis, spriteSheetSliced: true },
+                };
+              });
+            }
+            if (!visualAssets.length && !resources.length) return { ok: true, changed: false, reason: "already-imported", project: cloneProject(projectRef.current) };
+            const before = projectRef.current;
+            let next = before;
+            const placed: GameObject[] = [];
+            for (const asset of visualAssets) {
+              next = applyAgentCommand(next, { op: "add_asset", asset }).project as GameProject;
+              if (command.place === true) {
+                const kind = objectKindForAsset(asset);
+                const generatedKind = String(asset.generator.kind ?? "prop");
+                const scale = Math.max(0.125, Math.min(16, Number(command.scale ?? 1)));
+                const outcome = applyAgentCommand(next, {
+                  op: "add_object",
+                  kind,
+                  object: {
+                    name: asset.name,
+                    x: Number(command.x ?? 120) + placed.length * Number(command.spacing ?? 24),
+                    y: Number(command.y ?? 120),
+                    width: asset.frameWidth * scale,
+                    height: asset.frameHeight * scale,
+                    assetId: asset.id,
+                    assetFrame: 0,
+                    anchorMode: asset.anchorMode ?? "ground",
+                    collisionOwner: "authored-map",
+                    role: ["prop", "effect", "ui"].includes(generatedKind) ? generatedKind : undefined,
+                    requiresSupport: generatedKind === "prop",
+                    groundAnchor: { offsetX: asset.anchorX * asset.frameWidth * scale, offsetY: asset.anchorY * asset.frameHeight * scale },
+                    visualBounds: visualBoundsForAsset(asset, asset.frameWidth * scale, asset.frameHeight * scale),
+                    collider: authoredColliderForPlacement({ kind, role: generatedKind, width: asset.frameWidth * scale, height: asset.frameHeight * scale }),
+                  },
+                });
+                next = outcome.project as GameProject;
+                let object = outcome.result.object as GameObject;
+                if (generatedKind === "prop") {
+                  const attached = applyAgentCommand(next, { op: "attach_to_support", id: object.id, mode: command.supportMode ?? "auto", surfaceId: command.supportSurfaceId, tolerance: command.supportTolerance ?? 2 });
+                  next = attached.project as GameProject;
+                  object = attached.result.object as GameObject;
+                }
+                placed.push(object);
+              }
+            }
+            if (resources.length) next = { ...next, resources: [...(next.resources ?? []), ...resources] };
+            next = invalidateVerifiedAuthoring(before, next, { reason: `Imported ${visualAssets.length + resources.length} verified CC0 pack files` }) as GameProject;
+            applyProjectFromAgent(next, `${visualAssets.length + resources.length} verified pack files imported`);
+            appendConsole("asset.pack.import.completed", `${visualAssets.length + resources.length} files imported from ${index.pack.title}`, `${visualAssets.length} visual · ${resources.length} resource · ${placed.length} placed`, "good");
+            return { ok: true, changed: true, pack: index.pack, assets: visualAssets.map((asset) => ({ ...asset, dataUrl: "[embedded data URL]" })), resources: resources.map((resource) => ({ ...resource, dataUrl: "[embedded data URL]" })), placed, project: cloneProject(next) };
+          }
+          if (command.op === "prepare_export") {
+            const artifact = buildStandaloneArtifact(projectRef.current, { filename: typeof command.filename === "string" ? command.filename : undefined });
+            lastExportHtmlRef.current = artifact.html;
+            setExportPreviewHtml(artifact.html);
+            setLastExportReceipt(artifact.receipt as ExportReceipt);
+            appendConsole("export.receipt.prepared", artifact.receipt.status === "release-ready" ? `${artifact.receipt.filename} is release-ready` : `${artifact.receipt.filename} prepared as an auditable draft`, `${formatBytes(artifact.receipt.artifact.byteLength)} · ${artifact.receipt.artifact.uploadFileCount} upload file · source ${artifact.receipt.source.sourceDigest}`, artifact.receipt.status === "release-ready" ? "good" : "neutral");
+            return { ok: true, receipt: artifact.receipt };
+          }
+          if (command.op === "export_html") {
+            const artifact = buildStandaloneArtifact(projectRef.current, { filename: typeof command.filename === "string" ? command.filename : undefined });
+            lastExportHtmlRef.current = artifact.html;
+            setExportPreviewHtml(artifact.html);
+            setLastExportReceipt(artifact.receipt as ExportReceipt);
+            appendConsole("export.receipt.completed", artifact.receipt.status === "release-ready" ? `${artifact.receipt.filename} returned as a release-ready artifact` : `${artifact.receipt.filename} returned as an auditable draft`, `${formatBytes(artifact.receipt.artifact.byteLength)} · ${artifact.receipt.artifact.uploadFileCount} upload file · source ${artifact.receipt.source.sourceDigest}`, artifact.receipt.status === "release-ready" ? "good" : "neutral");
+            return { ok: true, html: artifact.html, receipt: artifact.receipt };
+          }
+          if (command.op === "set_mode") {
+            if (command.mode !== "edit" && command.mode !== "play") throw new Error("mode must be edit or play.");
+            if (command.mode === "play") {
+              previewPausedRef.current = false;
+              setPreviewPaused(false);
+              const focused = command.focus !== false;
+              enterPreview(focused);
+              return { ok: true, mode: command.mode, focus: focused };
+            }
+            exitPreview();
+            return { ok: true, mode: command.mode, focus: false };
+          }
+          if (command.op === "get_preview_state") {
+            const engine = runtimeEngineRef.current;
+            if (!engine) throw new Error("Preview runtime is not active. Run set_mode with mode play, then wait one animation frame.");
+            const runtimeProject = cloneProject({ ...projectRef.current, objects: engine.getObjects() });
+            return {
+              ok: true,
+              state: { ...engine.getState(), paused: previewPausedRef.current },
+              performance: { ...previewPerformanceRef.current, samples: undefined, fixedStepHz: 60, maximumCatchUpSteps: 5 },
+              presentation: presentationRuntimeRef.current?.getStatus() ?? null,
+              workspace: { focused: previewFocusRef.current, viewportPreset },
+              objects: runtimeProject.objects,
+              renderEntries: engine.renderEntries().map((entry) => ({ objectId: entry.object.id, sliceId: entry.slice?.id ?? null, depth: entry.depth })),
+            };
+          }
+          if (command.op === "preview_input") {
+            const engine = runtimeEngineRef.current;
+            if (!engine) throw new Error("Preview runtime is not active. Run set_mode with mode play first.");
+            const code = String(command.code ?? command.action ?? "");
+            if (!code) throw new Error("preview_input requires a code or action.");
+            const pressed = command.pressed !== false;
+            if (pressed) keysRef.current.add(code);
+            else keysRef.current.delete(code);
+            engine.setInput(code, pressed);
+            recordPreviewInputForPlaytest(code, pressed, "headless");
+            return { ok: true, code, pressed, state: { ...engine.getState(), paused: previewPausedRef.current } };
+          }
+          if (command.op === "preview_pause") {
+            const engine = runtimeEngineRef.current;
+            if (!engine) throw new Error("Preview runtime is not active. Run set_mode with mode play first.");
+            keysRef.current.forEach((code) => {
+              engine.setInput(code, false);
+              recordPreviewInputForPlaytest(code, false, "lifecycle");
+            });
+            keysRef.current.clear();
+            previewPausedRef.current = true;
+            setPreviewPaused(true);
+            void presentationRuntimeRef.current?.suspend();
+            if (activePlaytestRef.current) {
+              setPlaytestSessionActive(activePlaytestRef.current, false, performance.now(), "preview-paused");
+              publishActivePlaytest(activePlaytestRef.current);
+            }
+            return { ok: true, state: { ...engine.getState(), paused: true } };
+          }
+          if (command.op === "preview_resume") {
+            const engine = runtimeEngineRef.current;
+            if (!engine) throw new Error("Preview runtime is not active. Run set_mode with mode play first.");
+            previewPausedRef.current = false;
+            setPreviewPaused(false);
+            void presentationRuntimeRef.current?.resume();
+            if (activePlaytestRef.current) {
+              setPlaytestSessionActive(activePlaytestRef.current, document.visibilityState === "visible" && document.hasFocus(), performance.now(), "preview-resumed");
+              publishActivePlaytest(activePlaytestRef.current);
+            }
+            return { ok: true, state: { ...engine.getState(), paused: false } };
+          }
+          if (command.op === "preview_step") {
+            const engine = runtimeEngineRef.current;
+            if (!engine) throw new Error("Preview runtime is not active. Run set_mode with mode play first.");
+            if (!previewPausedRef.current) throw new Error("Pause the preview before deterministic stepping.");
+            const presentationDeltaMs = Math.max(1, Math.min(1_000, Number(command.deltaMs ?? 16.6667)));
+            let remaining = presentationDeltaMs / 1_000;
+            const events: RuntimeEvent[] = [];
+            let simulationSteps = 0;
+            while (remaining > 0.000_001) {
+              const step = Math.min(remaining, 1 / 60);
+              events.push(...engine.update(step));
+              previewPerformanceRef.current.fixedStepCount += 1;
+              simulationSteps += 1;
+              remaining -= step;
+            }
+            presentationRuntimeRef.current?.update(presentationDeltaMs);
+            const next = publishPreviewState(engine, events, simulationSteps);
+            const runtimeProject = cloneProject({ ...projectRef.current, objects: engine.getObjects() });
+            return { ok: true, state: { ...next, paused: true }, objects: runtimeProject.objects, events, performance: { ...previewPerformanceRef.current, samples: undefined, fixedStepHz: 60, maximumCatchUpSteps: 5 } };
+          }
+          if (command.op === "preview_reset") {
+            const engine = runtimeEngineRef.current;
+            if (!engine) throw new Error("Preview runtime is not active. Run set_mode with mode play first.");
+            if (activePlaytestRef.current) recordPlaytestReset(activePlaytestRef.current, engine.getState(), performance.now());
+            keysRef.current.forEach((code) => {
+              engine.setInput(code, false);
+              recordPreviewInputForPlaytest(code, false, "lifecycle");
+            });
+            keysRef.current.clear();
+            presentationRuntimeRef.current?.reset();
+            engine.reset();
+            engine.drainEvents();
+            const next = publishPreviewState(engine);
+            return { ok: true, state: { ...next, paused: previewPausedRef.current } };
+          }
+          if (command.op === "preview_load_map") {
+            const engine = runtimeEngineRef.current;
+            if (!engine) throw new Error("Preview runtime is not active. Run set_mode with mode play first.");
+            const mapId = String(command.mapId ?? "");
+            if (!mapId || !engine.loadMap(mapId, typeof command.spawnId === "string" ? command.spawnId : null)) throw new Error("preview_load_map requires an existing mapId.");
+            const events = engine.drainEvents();
+            const next = publishPreviewState(engine, events);
+            return { ok: true, state: { ...next, paused: previewPausedRef.current }, events };
+          }
+          if (command.op === "apply_batch") {
+            if (!Array.isArray(command.commands) || command.commands.length === 0) throw new Error("apply_batch requires a non-empty commands array.");
+            if (command.allowNewBlockers === true) throw new Error("Project Doctor cannot be bypassed with allowNewBlockers.");
+            const before = projectRef.current;
+            const beforeDoctor = analyzeProject(before);
+            const expectedSourceDigest = String(command.expectedSourceDigest ?? "").trim();
+            if (!expectedSourceDigest) throw new Error("apply_batch requires expectedSourceDigest from the Project Doctor report that the agent inspected.");
+            if (expectedSourceDigest !== beforeDoctor.sourceDigest) throw new Error(`[stale-source] Batch expected ${expectedSourceDigest}, but the selected project is now ${beforeDoctor.sourceDigest}. Inspect the current project and rebuild the batch against that revision.`);
+            let next = before;
+            const results: unknown[] = [];
+            for (const entry of command.commands as AgentCommand[]) {
+              if (entry.op === "generate_tiles" || entry.op === "generate_sprite") {
+                const asset = buildGeneratedAsset(entry);
+                next = applyAgentCommand(next, { op: "add_asset", asset }).project as GameProject;
+                let object: GameObject | null = null;
+                if (entry.place !== false) {
+                  const kind = objectKindForAsset(asset);
+                  const scale = Number(entry.scale ?? 2);
+                  const generatedKind = String(asset.generator.kind ?? "prop");
+                  const outcome = applyAgentCommand(next, {
+                    op: "add_object",
+                    kind,
+                    object: {
+                      id: entry.objectId,
+                      name: entry.objectName ?? asset.name,
+                      x: Number(entry.x ?? 120),
+                      y: Number(entry.y ?? 120),
+                      width: asset.frameWidth * scale,
+                      height: asset.frameHeight * scale,
+                      assetId: asset.id,
+                      assetFrame: Number(entry.frame ?? 0),
+                      anchorMode: asset.anchorMode ?? "ground",
+                      collisionOwner: "authored-map",
+                      role: generatedKind === "prop" || generatedKind === "effect" || generatedKind === "ui" ? generatedKind : undefined,
+                      requiresSupport: generatedKind === "prop",
+                      groundAnchor: { offsetX: asset.anchorX <= 1 ? asset.anchorX * asset.frameWidth * scale : asset.anchorX * scale, offsetY: asset.anchorY <= 1 ? asset.anchorY * asset.frameHeight * scale : asset.anchorY * scale },
+                      visualBounds: visualBoundsForAsset(asset, asset.frameWidth * scale, asset.frameHeight * scale),
+                      collider: authoredColliderForPlacement({ kind, role: generatedKind, width: asset.frameWidth * scale, height: asset.frameHeight * scale }),
+                    },
+                  });
+                  next = outcome.project as GameProject;
+                  object = outcome.result.object as GameObject;
+                  if (generatedKind === "prop") {
+                    const attached = applyAgentCommand(next, { op: "attach_to_support", id: object.id, mode: entry.supportMode ?? "auto", surfaceId: entry.supportSurfaceId, tolerance: entry.supportTolerance ?? 2 });
+                    next = attached.project as GameProject;
+                    object = attached.result.object as GameObject;
+                  }
+                }
+                results.push({ op: entry.op, asset: { ...asset, dataUrl: "[embedded PNG]" }, object });
+              } else {
+                const outcome = applyAgentCommand(next, entry);
+                next = outcome.project as GameProject;
+                results.push({ op: entry.op, result: outcome.result });
+              }
+            }
+            const afterDoctor = analyzeProject(next);
+            const newBlockers = introducedDoctorErrors(beforeDoctor.issues, afterDoctor.issues);
+            if (newBlockers.length) throw new Error(`Batch rejected: it introduces ${newBlockers.length} new Project Doctor blocker(s): ${newBlockers.map((issue) => issue.code).join(", ")}.`);
+            if (typeof command.requestId === "string") {
+              next = applyAgentCommand(next, { op: "complete_agent_request", id: command.requestId, status: "completed", summary: command.summary ?? "Agent build pass applied" }).project as GameProject;
+            }
+            applyProjectFromAgent(next, typeof command.summary === "string" ? command.summary : `Agent applied ${command.commands.length} coordinated changes`);
+            return { ok: true, changed: JSON.stringify(before) !== JSON.stringify(next), results, doctor: afterDoctor, project: cloneProject(next) };
+          }
+          if (command.op === "select_object") {
+            const object = typeof command.id === "string"
+              ? projectRef.current.objects.find((candidate) => candidate.id === command.id)
+              : projectRef.current.objects.find((candidate) => candidate.name === command.name);
+            if (!object) throw new Error("Object was not found.");
+            setSelectedId(object.id);
+            return { ok: true, object: cloneProject({ ...projectRef.current, objects: [object] }).objects[0] };
+          }
+          if (command.op === "load_template") {
+            const template = command.template === "dimetric" ? createTemplate("dimetric") as GameProject : command.template === "kinetic" ? kineticCityStarter() : command.template === "systems" ? createTemplate("systems") as GameProject : command.template === "topdown" ? topDownStarter() : command.template === "platformer" ? platformerStarter() : blankStarter();
+            const entry = registerProjectInLibrary(template, { origin: "starter", sourceLabel: `Built-in ${template.name} project` });
+            return { ok: true, activeProjectId: entry.id, project: cloneProject(template) };
+          }
+          if (command.op === "get_ai_asset_job") {
+            const jobId = String(command.jobId ?? "").trim();
+            if (!jobId) throw new Error("get_ai_asset_job requires jobId.");
+            const descriptor = aiArtJobDescriptor(jobId);
+            const statusResponse = await companionFetch(`${COMPANION_URL}${descriptor.statusUrl}`, { cache: "no-store" });
+            const status = await statusResponse.json() as Record<string, unknown> & { error?: string; status?: string };
+            if (!statusResponse.ok) throw new Error(status.error ?? "The AI art job status is unavailable.");
+            if (command.includeResult === true && status.status === "completed") {
+              const resultResponse = await companionFetch(`${COMPANION_URL}${descriptor.resultUrl}`, { cache: "no-store" });
+              const result = await resultResponse.json() as Record<string, unknown>;
+              return { ok: resultResponse.ok, job: status, ...result };
+            }
+            return { ok: true, job: status, resume: { op: "generate_ai_asset", jobId, wait: true, attach: command.attach !== false, place: command.place === true } };
+          }
+          if (command.op === "cancel_ai_asset_job") {
+            const jobId = String(command.jobId ?? "").trim();
+            if (!jobId) throw new Error("cancel_ai_asset_job requires jobId.");
+            const response = await companionFetch(`${COMPANION_URL}${aiArtJobDescriptor(jobId).cancelUrl}`, { method: "POST" });
+            const value = await response.json() as Record<string, unknown> & { error?: string };
+            if (!response.ok) throw new Error(value.error ?? "The AI art job could not be cancelled.");
+            return value;
+          }
+          if (command.op === "generate_ai_asset") {
+            const existingJobId = String(command.jobId ?? "").trim();
+            const sourceRole = String(command.role ?? command.kind ?? "character");
+            const role = sourceRole === "hero" ? "character" : sourceRole;
+            const descriptor = existingJobId ? aiArtJobDescriptor(existingJobId) : await submitAiArtJob({
+              role,
+              prompt: command.prompt,
+              identity: command.identity ?? command.seed,
+              actions: command.actions,
+              targetFrameSize: command.targetFrameSize ?? command.size,
+              quality: command.quality,
+              background: command.background,
+              projection: command.projection ?? projectRef.current.projection?.type,
+              palette: command.palette,
+              model: command.model,
+              visualIdentity: projectRef.current.visualIdentity,
+              useVisualIdentity: command.useVisualIdentity !== false,
+              referenceConsent: command.referenceConsent === true,
+              referenceAssets: (projectRef.current.assets ?? []).filter((asset) => (projectRef.current.visualIdentity?.references ?? []).some((reference) => reference.assetId === asset.id)).map((asset) => {
+                const imageDelivery = (projectRef.current.visualIdentity?.references ?? []).some((reference) => reference.assetId === asset.id && reference.delivery === "image");
+                return imageDelivery ? asset : { ...asset, dataUrl: undefined };
+              }),
+
+            });
+            if (command.wait === false) return { ok: true, submitted: !existingJobId, job: descriptor, resume: { op: "generate_ai_asset", jobId: descriptor.jobId, wait: true, attach: command.attach !== false, place: command.place === true } };
+            const result = await waitForAiArtJob(descriptor, (event) => appendConsole(event.type, event.message ?? event.type, event.error, event.type.endsWith("failed") ? "bad" : event.type.endsWith("completed") ? "good" : "neutral"));
+            const asset = await normalizeAiArtSource(result);
+            asset.id = typeof command.id === "string" && command.id ? command.id : uid();
+            asset.name = typeof command.name === "string" && command.name ? command.name : asset.name;
+            const presentation = aiArtPresentationState(asset);
+            if (!presentation.verified) {
+              appendConsole("asset.measured.rejected", `${asset.name} failed measured asset QA and was not attached`, presentation.failedInvariants.join(" · ") || "Measured QA was incomplete.", "bad");
+              return { ok: false, rejected: true, jobId: descriptor.jobId, asset, failedInvariants: presentation.failedInvariants, usage: result.usage, project: cloneProject(projectRef.current) };
+            }
+            let next = projectRef.current;
+            if (command.attach !== false || command.place === true) next = applyAgentCommand(next, { op: "add_asset", asset }).project;
+            let object: GameObject | null = null;
+            if (command.place === true) {
+              const kind = objectKindForAsset(asset);
+              const generatedKind = String(asset.generator.kind ?? "prop");
+              const scale = Number(command.scale ?? 2);
+              const outcome = applyAgentCommand(next, {
+                op: "add_object",
+                kind,
+                object: {
+                  id: command.objectId,
+                  name: command.objectName ?? asset.name,
+                  x: Number(command.x ?? 120),
+                  y: Number(command.y ?? 120),
+                  width: asset.frameWidth * scale,
+                  height: asset.frameHeight * scale,
+                  assetId: asset.id,
+                  assetFrame: Number(command.frame ?? 0),
+                  anchorMode: asset.anchorMode ?? "ground",
+                  collisionOwner: "authored-map",
+                  role: generatedKind === "prop" || generatedKind === "effect" || generatedKind === "ui" ? generatedKind : undefined,
+                  requiresSupport: generatedKind === "prop",
+                  groundAnchor: { offsetX: asset.anchorX <= 1 ? asset.anchorX * asset.frameWidth * scale : asset.anchorX * scale, offsetY: asset.anchorY <= 1 ? asset.anchorY * asset.frameHeight * scale : asset.anchorY * scale },
+                  visualBounds: visualBoundsForAsset(asset, asset.frameWidth * scale, asset.frameHeight * scale),
+                  collider: authoredColliderForPlacement({ kind, role: generatedKind, width: asset.frameWidth * scale, height: asset.frameHeight * scale }),
+                },
+              });
+              next = outcome.project;
+              object = outcome.result.object as GameObject;
+              if (generatedKind === "prop") {
+                const attached = applyAgentCommand(next, { op: "attach_to_support", id: object.id, mode: command.supportMode ?? "auto", surfaceId: command.supportSurfaceId, tolerance: command.supportTolerance ?? 2 });
+                next = attached.project;
+                object = attached.result.object as GameObject;
+              }
+            }
+            if (next !== projectRef.current) applyProjectFromAgent(next, `AI generated ${asset.name}`);
+            appendConsole("asset.measured.completed", `${asset.name} measured, normalized, and ready`, usageReceiptMessage(result.usage, "AI art usage"), "good");
+            return { ok: true, jobId: descriptor.jobId, asset, object, usage: result.usage, project: cloneProject(next) };
+          }
+          if (command.op === "generate_tiles" || command.op === "generate_sprite") {
+            const asset = buildGeneratedAsset(command);
+            const measurement = measuredAssetSummary(asset);
+            if (measurement?.failedInvariants.length) return { ok: false, rejected: true, asset, failedInvariants: measurement.failedInvariants, project: cloneProject(projectRef.current) };
+            let next = projectRef.current;
+            if (command.attach !== false || command.place === true) next = applyAgentCommand(next, { op: "add_asset", asset }).project;
+            let object: GameObject | null = null;
+            if (command.place === true) {
+              const kind = objectKindForAsset(asset);
+              const generatedKind = String(asset.generator.kind ?? "prop");
+              const scale = Number(command.scale ?? 2);
+              const outcome = applyAgentCommand(next, {
+                op: "add_object",
+                kind,
+                object: {
+                  name: asset.name,
+                  x: Number(command.x ?? 120),
+                  y: Number(command.y ?? 120),
+                  width: asset.frameWidth * scale,
+                  height: asset.frameHeight * scale,
+                  assetId: asset.id,
+                  assetFrame: Number(command.frame ?? 0),
+                  anchorMode: asset.anchorMode ?? "ground",
+                  collisionOwner: "authored-map",
+                  role: generatedKind === "prop" || generatedKind === "effect" || generatedKind === "ui" ? generatedKind : undefined,
+                  requiresSupport: generatedKind === "prop",
+                  groundAnchor: { offsetX: asset.anchorX <= 1 ? asset.anchorX * asset.frameWidth * scale : asset.anchorX * scale, offsetY: asset.anchorY <= 1 ? asset.anchorY * asset.frameHeight * scale : asset.anchorY * scale },
+                  visualBounds: visualBoundsForAsset(asset, asset.frameWidth * scale, asset.frameHeight * scale),
+                  collider: authoredColliderForPlacement({ kind, role: generatedKind, width: asset.frameWidth * scale, height: asset.frameHeight * scale }),
+                },
+              });
+              next = outcome.project;
+              object = outcome.result.object as GameObject;
+              if (generatedKind === "prop") {
+                const attached = applyAgentCommand(next, { op: "attach_to_support", id: object.id, mode: command.supportMode ?? "auto", surfaceId: command.supportSurfaceId, tolerance: command.supportTolerance ?? 2 });
+                next = attached.project;
+                object = attached.result.object as GameObject;
+              }
+            }
+            if (next !== projectRef.current) applyProjectFromAgent(next, `Agent generated ${asset.name}`);
+            return { ok: true, asset, object, project: cloneProject(next) };
+          }
+
+          const resolvedCommand = (command.op === "preview_playtest_replay" || command.op === "promote_playtest_replay")
+            ? {
+                ...command,
+                session: command.session ?? getPlaytestSession(playtestLedgerRef.current, String(command.sessionId ?? selectedPlaytestSessionId ?? "")),
+              }
+            : command;
+          const outcome = applyAgentCommand(projectRef.current, resolvedCommand);
+          if (outcome.changed) {
+            if (typeof command.op === "string" && LOOPLAB_AGENT_WORK_LEDGER_MUTATIONS.includes(command.op)) applyCoordinationFromAgent(outcome.project, `Shared work updated · ${command.op}`);
+            else applyProjectFromAgent(outcome.project, `Agent applied ${command.op}`);
+          }
+          const compactResponse = command.compact === true || (["get_agent_changes", "get_work_ledger", "get_project_context"].includes(String(command.op)) && command.compact !== false);
+          if (compactResponse) return { ok: true, changed: outcome.changed, result: outcome.result, validation: outcome.validation };
+          return { ok: true, ...outcome };
+        } catch (error) {
+          return { ok: false, error: error instanceof Error ? error.message : String(error) };
+        }
+      },
+    };
+
+    agentBridgeRunRef.current = bridge.run;
+    const onAgentCommand = (event: Event) => {
+      const detail = (event as CustomEvent<AgentCommandEnvelope>).detail;
+      const requestId = typeof detail?.id === "string" ? detail.id.slice(0, 128) : "";
+      if (!requestId || !detail?.command) return;
+      void bridge.run(detail.command).then((result) => {
+        document.dispatchEvent(new CustomEvent("looplab:agent-response", { detail: { id: requestId, result } }));
+      }).catch((error) => {
+        document.dispatchEvent(new CustomEvent("looplab:agent-response", {
+          detail: { id: requestId, result: { ok: false, error: error instanceof Error ? error.message : String(error) } },
+        }));
+      });
+    };
+    document.addEventListener("looplab:agent-command", onAgentCommand);
+    let windowBridgeInstalled = false;
+    try {
+      agentWindow.looplabAgent = bridge;
+      windowBridgeInstalled = agentWindow.looplabAgent === bridge;
+    } catch {
+      // Hardened browser contexts can make window non-extensible; the DOM event bridge remains available.
+    }
+    if (!agentReadyRef.current) {
+      agentReadyRef.current = true;
+      const readyDetail = { version: LOOPLAB_PROTOCOL_VERSION, manifest: bridge.manifest, transports: { window: windowBridgeInstalled, domEvents: true } };
+      window.dispatchEvent(new CustomEvent("looplab:ready", { detail: readyDetail }));
+      document.dispatchEvent(new CustomEvent("looplab:ready", { detail: readyDetail }));
+    }
+    return () => {
+      document.removeEventListener("looplab:agent-command", onAgentCommand);
+      if (agentBridgeRunRef.current === bridge.run) agentBridgeRunRef.current = null;
+      if (windowBridgeInstalled && agentWindow.looplabAgent === bridge) delete agentWindow.looplabAgent;
+    };
+  }, [activateProjectLibraryEntry, aiProvider, aiTrack, appendConsole, applyMountedSharedProjectRebase, applyProjectFromAgent, artDirectionMode, assetLabTab, assetLibraryCategory, assetPackKindFilter, assetPackPage, assetPackSearch, cancelVisualCritique, collectVerificationEvidence, commitPlaytestLedger, commitPreferenceMemory, companionHealth?.providers, createProjectVariation, directedBrief, directedPrompt, discardPlaytestRecording, doctorReport.sourceDigest, enterPreview, exitPreview, finishPlaytestRecording, focusedPackAssetId, loopConditions, loopEnabled, loopEvaluationProfile, loopIterations, loopPhase, loopRunning, loopStopScore, loopStrategy, mountSharedProject, objectKindForAsset, observePlaytestRuntime, openInstalledAssetPack, preparedDirectedBrief.composedPrompt, previewMountedSharedProjectRebase, providerContextBudgetTokens, providerParityContract, publishActivePlaytest, queueAiBuild, queueSharedProjectSave, receiveVisualCritiqueResult, recordPreviewInputForPlaytest, refreshAssetPackManifest, refreshSharedProjectCatalog, registerProjectInLibrary, requestAiPromptDraft, runResearch, runtimePreference, savePlaytestFeedback, selectPlaytestSession, selectedAssetPackId, selectedPackAssetIds, selectedPlaytestSessionId, sharedProjectCatalogReady, showAssetLab, showToast, startPlaytestRecording, startVisualCritique, styleLocks, syncDirectedBriefControls, syncHistoryState, usePreferenceMemoryForRun, verifyCurrentCandidate, verifyExactRelease, viewportPreset, visualCritique, visualCritiqueFresh, visualCritiqueJob, visualCritiqueRequest]);
+
+  const setPreviewInput = useCallback((code: string, pressed: boolean, source: "keyboard" | "touch" | "gamepad" | "headless" | "lifecycle" = "keyboard") => {
+    if (pressed) keysRef.current.add(code);
+    else keysRef.current.delete(code);
+    runtimeEngineRef.current?.setInput(code, pressed);
+    recordPreviewInputForPlaytest(code, pressed, source);
+    if (pressed && (source === "keyboard" || source === "touch")) void presentationRuntimeRef.current?.unlock();
+  }, [recordPreviewInputForPlaytest]);
+
+  const releasePreviewInputs = useCallback(() => {
+    keysRef.current.forEach((code) => {
+      runtimeEngineRef.current?.setInput(code, false);
+      recordPreviewInputForPlaytest(code, false, "lifecycle");
+    });
+    keysRef.current.clear();
+  }, [recordPreviewInputForPlaytest]);
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      const editingText = target?.tagName === "INPUT" || target?.tagName === "TEXTAREA" || target?.tagName === "SELECT";
+      if (mode === "play") {
+        if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Space"].includes(event.code)) event.preventDefault();
+        if (event.code === "Escape") {
+          releasePreviewInputs();
+          if (previewFocusRef.current) setPreviewFocusMode(false);
+          else exitPreview();
+        } else if (event.code === "KeyF" && !editingText) {
+          event.preventDefault();
+          setPreviewFocusMode(!previewFocusRef.current);
+        } else if (!editingText) {
+          setPreviewInput(event.code, true);
+        }
+        return;
+      }
+      if (editingText) return;
+      if ((event.metaKey || event.ctrlKey) && event.code === "KeyZ") {
+        event.preventDefault();
+        if (event.shiftKey) redo();
+        else undo();
+      } else if ((event.metaKey || event.ctrlKey) && event.code === "KeyY") {
+        event.preventDefault();
+        redo();
+      } else if ((event.metaKey || event.ctrlKey) && event.code === "KeyD") {
+        event.preventDefault();
+        duplicateSelected();
+      } else if (event.code === "Delete" || event.code === "Backspace") {
+        event.preventDefault();
+        deleteSelected();
+      } else if (event.code === "KeyP") {
+        enterPreview();
+      } else if (event.code === "Slash" && event.shiftKey) {
+        setShowHelp(true);
+      } else if (selected && ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(event.code)) {
+        event.preventDefault();
+        const distance = event.shiftKey ? project.grid : 1;
+        const dx = event.code === "ArrowLeft" ? -distance : event.code === "ArrowRight" ? distance : 0;
+        const dy = event.code === "ArrowUp" ? -distance : event.code === "ArrowDown" ? distance : 0;
+        updateObject(selected.id, {
+          x: Math.max(0, Math.min(project.width - selected.width, selected.x + dx)),
+          y: Math.max(0, Math.min(project.height - selected.height, selected.y + dy)),
+        });
+      }
+    };
+    const updateRecorderFocus = (active: boolean, reason: string) => {
+      const draft = activePlaytestRef.current;
+      if (!draft) return;
+      setPlaytestSessionActive(draft, active, performance.now(), reason);
+      publishActivePlaytest(draft);
+    };
+    const onKeyUp = (event: KeyboardEvent) => setPreviewInput(event.code, false, "keyboard");
+    const onBlur = () => {
+      releasePreviewInputs();
+      void presentationRuntimeRef.current?.suspend();
+      updateRecorderFocus(false, "window-unfocused");
+    };
+    const onFocus = () => {
+      if (document.visibilityState === "visible" && !previewPausedRef.current) updateRecorderFocus(true, "window-focused");
+    };
+    const onVisibilityChange = () => {
+      const visible = document.visibilityState === "visible";
+      if (!visible) releasePreviewInputs();
+      if (!visible) void presentationRuntimeRef.current?.suspend();
+      updateRecorderFocus(visible && !previewPausedRef.current && document.hasFocus(), visible ? "document-visible" : "document-hidden");
+    };
+    window.addEventListener("keydown", onKeyDown, { passive: false });
+    window.addEventListener("keyup", onKeyUp);
+    window.addEventListener("blur", onBlur);
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("keyup", onKeyUp);
+      window.removeEventListener("blur", onBlur);
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      releasePreviewInputs();
+    };
+  }, [deleteSelected, duplicateSelected, enterPreview, exitPreview, mode, project.grid, project.height, project.width, publishActivePlaytest, redo, releasePreviewInputs, selected, setPreviewFocusMode, setPreviewInput, undo, updateObject]);
+
+  const showRuntimeTransition = useCallback((event: RuntimeEvent) => {
+    const mapName = event.mapName ?? "Linked map";
+    const kind = event.transition ?? "instant";
+    if (previewTransitionTimerRef.current) window.clearTimeout(previewTransitionTimerRef.current);
+    setPreviewTransition({ mapName, kind });
+    previewTransitionTimerRef.current = window.setTimeout(() => setPreviewTransition(null), kind === "instant" ? 450 : 900);
+    showToast(`Entered ${mapName}`);
+  }, [showToast]);
+
+  const syncRuntimeSnapshot = useCallback((engine: RuntimeEngine, events: RuntimeEvent[] = [], simulationSteps = 0) => {
+    if (activePlaytestRef.current && simulationSteps > 0) advancePlaytestSimulationTick(activePlaytestRef.current, simulationSteps);
+    presentationRuntimeRef.current?.handleEvents(events);
+    const next = engine.getState();
+    observePlaytestRuntime(engine, events);
+    const nextChoiceState = engine.getChoiceState();
+    const nextHudState = engine.getHudState();
+    runtimeRef.current = engine.getObjects();
+    setRuntimeState((current) => (
+      current.activeMapId === next.activeMapId &&
+      current.mapName === next.mapName &&
+      current.width === next.width &&
+      current.height === next.height &&
+      current.background === next.background &&
+      current.gravity === next.gravity &&
+      current.controlMode === next.controlMode &&
+      current.collectedCount === next.collectedCount &&
+      current.activeTraversalPathId === next.activeTraversalPathId &&
+      current.gameplayRevision === next.gameplayRevision &&
+      current.won === next.won
+        ? current
+        : next
+    ));
+    setRuntimeChoiceState((current) => JSON.stringify(current) === JSON.stringify(nextChoiceState) ? current : nextChoiceState);
+    setRuntimeHudState((current) => JSON.stringify(current) === JSON.stringify(nextHudState) ? current : nextHudState);
+    setCollected((current) => current === next.collectedCount ? current : next.collectedCount);
+    setPreviewWon((current) => current === next.won ? current : next.won);
+    const mapChange = events.find((event) => event.type === "map.changed");
+    if (mapChange) showRuntimeTransition(mapChange);
+  }, [observePlaytestRuntime, showRuntimeTransition]);
+
+  const resetRuntime = useCallback(() => {
+    const currentEngine = runtimeEngineRef.current;
+    if (activePlaytestRef.current && currentEngine) recordPlaytestReset(activePlaytestRef.current, currentEngine.getState(), performance.now());
+    releasePreviewInputs();
+    previewPausedRef.current = false;
+    setPreviewPaused(false);
+    presentationRuntimeRef.current?.reset();
+    const engine = createRuntimeModel(syncActiveMap(project)) as RuntimeEngine;
+    runtimeEngineRef.current = engine;
+    previewPerformanceRef.current = { currentFrameMs: 0, p95FrameMs: 0, fixedStepCount: 0, droppedCatchUpEvents: 0, longFrames: 0, samples: [] };
+    setPreviewPerformance({ currentFrameMs: 0, p95FrameMs: 0, fixedStepCount: 0, droppedCatchUpEvents: 0, longFrames: 0 });
+    engine.drainEvents();
+    if (previewTransitionTimerRef.current) window.clearTimeout(previewTransitionTimerRef.current);
+    setPreviewTransition(null);
+    syncRuntimeSnapshot(engine);
+    setRuntimeTick((tick) => tick + 1);
+  }, [project, releasePreviewInputs, syncRuntimeSnapshot]);
+
+  const loadPreviewMap = useCallback((mapId: string) => {
+    const engine = runtimeEngineRef.current;
+    if (!engine?.loadMap(mapId, null)) return;
+    const events = engine.drainEvents();
+    syncRuntimeSnapshot(engine, events);
+    setRuntimeTick((tick) => tick + 1);
+  }, [syncRuntimeSnapshot]);
+
+  useEffect(() => {
+    if (mode !== "play") {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      runtimeEngineRef.current = null;
+      previewPausedRef.current = false;
+      releasePreviewInputs();
+      void presentationRuntimeRef.current?.suspend();
+      return;
+    }
+    let last = performance.now();
+    let accumulator = 0;
+    let publishCountdown = 0;
+    let gamepadInputs = new Set<string>();
+    const fixedStep = 1 / 60;
+    const maximumCatchUpSteps = 5;
+    const syncGamepadInputs = (engine: RuntimeEngine) => {
+      const canPoll = document.visibilityState === "visible" && document.hasFocus() && typeof navigator.getGamepads === "function";
+      const next = new Set(canPoll ? readGamepadInputCodes(navigator.getGamepads()) : []);
+      for (const code of gamepadInputs) if (!next.has(code)) {
+        engine.setInput(code, false);
+        recordPreviewInputForPlaytest(code, false, "gamepad");
+      }
+      for (const code of next) if (!gamepadInputs.has(code)) {
+        engine.setInput(code, true);
+        recordPreviewInputForPlaytest(code, true, "gamepad");
+      }
+      gamepadInputs = next;
+    };
+    const frame = (now: number) => {
+      const engine = runtimeEngineRef.current;
+      const elapsedMs = Math.max(0, now - last);
+      last = now;
+      const perf = previewPerformanceRef.current;
+      perf.currentFrameMs = elapsedMs;
+      perf.samples.push(elapsedMs);
+      if (perf.samples.length > 240) perf.samples.shift();
+      if (elapsedMs > 50) perf.longFrames += 1;
+      if (engine && !previewPausedRef.current) {
+        presentationRuntimeRef.current?.update(elapsedMs);
+        syncGamepadInputs(engine);
+        accumulator += Math.min(elapsedMs / 1000, 0.25);
+        const events: RuntimeEvent[] = [];
+        let steps = 0;
+        while (accumulator >= fixedStep && steps < maximumCatchUpSteps) {
+          events.push(...engine.update(fixedStep));
+          accumulator -= fixedStep;
+          perf.fixedStepCount += 1;
+          steps += 1;
+        }
+        if (accumulator >= fixedStep) {
+          perf.droppedCatchUpEvents += 1;
+          accumulator %= fixedStep;
+        }
+        if (steps > 0) {
+          syncRuntimeSnapshot(engine, events, steps);
+          setRuntimeTick((tick) => tick + 1);
+        }
+      }
+      const ordered = [...perf.samples].sort((first, second) => first - second);
+      perf.p95FrameMs = ordered[Math.max(0, Math.ceil(ordered.length * 0.95) - 1)] ?? 0;
+      if (publishCountdown <= 0) {
+        setPreviewPerformance({ currentFrameMs: perf.currentFrameMs, p95FrameMs: perf.p95FrameMs, fixedStepCount: perf.fixedStepCount, droppedCatchUpEvents: perf.droppedCatchUpEvents, longFrames: perf.longFrames });
+        publishCountdown = 15;
+      } else publishCountdown -= 1;
+      rafRef.current = requestAnimationFrame(frame);
+    };
+    rafRef.current = requestAnimationFrame((now) => {
+      resetRuntime();
+      last = now;
+      accumulator = 0;
+      rafRef.current = requestAnimationFrame(frame);
+    });
+    return () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      for (const code of gamepadInputs) runtimeEngineRef.current?.setInput(code, false);
+      gamepadInputs.clear();
+    };
+  }, [mode, recordPreviewInputForPlaytest, releasePreviewInputs, resetRuntime, syncRuntimeSnapshot]);
+
+  const drawObject = useCallback((context: CanvasRenderingContext2D, object: GameObject | RuntimeObject, slice: RuntimeSlice | null = null) => {
+    if (("collected" in object && object.collected) || object.hidden) return;
+    context.save();
+    context.globalAlpha = Math.max(0, Math.min(1, Number(object.opacity ?? 1)));
+    const asset = object.assetId ? project.assets?.find((candidate) => candidate.id === object.assetId) : null;
+    const projection = normalizeProjection(mode === "play" ? runtimeState.projection ?? activeProjection : activeProjection, mode === "play" ? runtimeState : project) as ProjectionContract;
+    if (!asset && projection.type === "dimetric-2:1" && object.kind === "platform") {
+      const sourceTotal = Math.max(1, Number(object.height));
+      const sourceY = slice ? Math.max(0, Math.min(sourceTotal, Number(slice.sourceY ?? 0))) : 0;
+      const sourceHeight = slice ? Math.max(0, Math.min(sourceTotal - sourceY, Number(slice.height ?? sourceTotal))) : sourceTotal;
+      if (sourceHeight <= 0) {
+        context.restore();
+        return;
+      }
+      const band = { ...object, y: object.y + sourceY, height: sourceHeight };
+      const top = projectWorldRect(band, projection, object.z ?? 0);
+      context.fillStyle = object.color;
+      strokeProjectedPolygon(context, top);
+      context.fill();
+      context.strokeStyle = "rgba(255,255,255,.28)";
+      context.lineWidth = slice ? 1 : 2;
+      context.stroke();
+      const isGroundPlane = (object as GameObject).role === "ground-plane";
+      const isLastSlice = !slice || sourceY + sourceHeight >= sourceTotal;
+      if (!isGroundPlane && isLastSlice) {
+        const drop = Math.max(5, Number(projection.elevationStep ?? 32) * Math.min(1, object.collisionHeight ?? 1));
+        context.fillStyle = "rgba(35,35,39,.38)";
+        strokeProjectedPolygon(context, [top[2], top[3], { x: top[3].x, y: top[3].y + drop }, { x: top[2].x, y: top[2].y + drop }]);
+        context.fill();
+      }
+      context.restore();
+      return;
+    }
+    const placement = objectScreenPlacement(object, projection, project.assets ?? []);
+    context.translate(placement.x - object.x, placement.y - object.y);
+    if (mode === "play") {
+      const feedbackTransform = presentationRuntimeRef.current?.getObjectTransform(object.id) ?? { scaleX: 1, scaleY: 1 };
+      if (feedbackTransform.scaleX !== 1 || feedbackTransform.scaleY !== 1) {
+        const anchorX = object.x + object.width / 2;
+        const anchorY = object.y + object.height;
+        context.translate(anchorX, anchorY); context.scale(feedbackTransform.scaleX, feedbackTransform.scaleY); context.translate(-anchorX, -anchorY);
+      }
+    }
+    const sourceTotal = Math.max(1, Number(asset?.frameHeight ?? object.height));
+    const sliceSourceY = slice ? Math.max(0, Math.min(sourceTotal, Number(slice.sourceY ?? 0))) : 0;
+    const sliceSourceHeight = slice ? Math.max(0, Math.min(sourceTotal - sliceSourceY, Number(slice.height ?? sourceTotal))) : sourceTotal;
+    const sliceBounds = slice ? {
+      sourceY: sliceSourceY,
+      sourceHeight: sliceSourceHeight,
+      destinationY: object.y + (sliceSourceY / sourceTotal) * object.height,
+      destinationHeight: (sliceSourceHeight / sourceTotal) * object.height,
+    } : null;
+    if (sliceBounds) {
+      context.beginPath();
+      context.rect(object.x, sliceBounds.destinationY, object.width, sliceBounds.destinationHeight);
+      context.clip();
+    }
+    if (asset) {
+      let cached = assetImageCacheRef.current.get(asset.id);
+      if (!cached || cached.source !== asset.dataUrl) {
+        const image = new Image();
+        cached = { source: asset.dataUrl, image };
+        assetImageCacheRef.current.set(asset.id, cached);
+        image.onload = () => setAssetRenderTick((tick) => tick + 1);
+        image.src = asset.dataUrl;
+      }
+      if (cached.image.complete && cached.image.naturalWidth) {
+        let requestedFrame = object.assetFrame ?? 0;
+        if (mode === "play" && asset.frames > 1 && object.kind === "coin") requestedFrame = Math.floor(runtimeTick / 8) % asset.frames;
+        if (mode === "play" && asset.frames > 1 && object.kind === "player") {
+          const velocityX = "vx" in object ? Math.abs(Number(object.vx || 0)) : 0;
+          const velocityY = "vy" in object ? Number(object.vy || 0) : 0;
+          requestedFrame = runtimeState.activeTraversalPathId ? Math.min(3, asset.frames - 1)
+            : Math.abs(velocityY) > 48 ? Math.min(2, asset.frames - 1)
+              : velocityX > 18 ? Math.min(Math.floor(runtimeTick / 8) % 2, asset.frames - 1)
+                : 0;
+        }
+        const frame = Math.max(0, Math.min(asset.frames - 1, requestedFrame));
+        const sourceX = (frame % asset.columns) * asset.frameWidth;
+        const frameSourceY = Math.floor(frame / asset.columns) * asset.frameHeight;
+        context.imageSmoothingEnabled = false;
+        if (sliceBounds) {
+          context.drawImage(
+            cached.image,
+            sourceX,
+            frameSourceY + sliceBounds.sourceY,
+            asset.frameWidth,
+            sliceBounds.sourceHeight,
+            object.x,
+            sliceBounds.destinationY,
+            object.width,
+            sliceBounds.destinationHeight,
+          );
+        } else {
+          context.drawImage(cached.image, sourceX, frameSourceY, asset.frameWidth, asset.frameHeight, object.x, object.y, object.width, object.height);
+        }
+        context.restore();
+        return;
+      }
+    }
+    context.fillStyle = object.color;
+
+    if (object.kind === "coin") {
+      context.beginPath();
+      context.arc(object.x + object.width / 2, object.y + object.height / 2, Math.min(object.width, object.height) / 2, 0, Math.PI * 2);
+      context.fill();
+      context.strokeStyle = "#24241e";
+      context.lineWidth = 3;
+      context.stroke();
+      context.fillStyle = "rgba(255,255,255,.7)";
+      context.fillRect(object.x + object.width * 0.28, object.y + object.height * 0.19, 4, 8);
+    } else if (object.kind === "hazard") {
+      const count = Math.max(1, Math.round(object.width / 24));
+      context.beginPath();
+      context.moveTo(object.x, object.y + object.height);
+      for (let index = 0; index < count; index += 1) {
+        const start = object.x + index * (object.width / count);
+        context.lineTo(start + object.width / count / 2, object.y);
+        context.lineTo(start + object.width / count, object.y + object.height);
+      }
+      context.closePath();
+      context.fill();
+    } else if (object.kind === "portal") {
+      context.globalAlpha = 0.9;
+      context.strokeStyle = object.color;
+      context.lineWidth = 7;
+      context.beginPath();
+      context.roundRect(object.x + 5, object.y + 4, object.width - 10, object.height + 8, 18);
+      context.stroke();
+      context.globalAlpha = 0.22;
+      context.fillStyle = object.color;
+      context.fill();
+    } else if (object.kind === "goal") {
+      context.fillRect(object.x + 5, object.y, 5, object.height);
+      context.beginPath();
+      context.moveTo(object.x + 10, object.y + 3);
+      context.lineTo(object.x + object.width, object.y + 14);
+      context.lineTo(object.x + 10, object.y + 28);
+      context.closePath();
+      context.fill();
+    } else if (object.kind === "spawn") {
+      context.globalAlpha = mode === "play" ? 0.25 : 0.78;
+      context.strokeStyle = object.color;
+      context.lineWidth = 5;
+      context.setLineDash([9, 7]);
+      context.strokeRect(object.x + 5, object.y + 5, object.width - 10, object.height - 5);
+    } else {
+      context.beginPath();
+      context.roundRect(object.x, object.y, object.width, object.height, object.kind === "player" ? 9 : 4);
+      context.fill();
+      if (object.kind === "player") {
+        context.fillStyle = "#fff";
+        context.fillRect(object.x + object.width * 0.2, object.y + object.height * 0.24, 8, 9);
+        context.fillRect(object.x + object.width * 0.62, object.y + object.height * 0.24, 8, 9);
+        context.fillStyle = "#22221b";
+        context.fillRect(object.x + object.width * 0.25, object.y + object.height * 0.28, 3, 4);
+        context.fillRect(object.x + object.width * 0.67, object.y + object.height * 0.28, 3, 4);
+        context.fillRect(object.x + object.width * 0.35, object.y + object.height * 0.65, object.width * 0.3, 4);
+      }
+      if (object.kind === "platform") {
+        context.fillStyle = "rgba(255,255,255,.35)";
+        context.fillRect(object.x, object.y, object.width, 5);
+      }
+      if (object.kind === "decor") {
+        context.globalAlpha = 0.22;
+        context.fillStyle = "#fff";
+        context.beginPath();
+        context.arc(object.x + object.width * 0.3, object.y + object.height * 0.3, Math.min(object.width, object.height) * 0.18, 0, Math.PI * 2);
+        context.fill();
+      }
+    }
+    context.restore();
+  }, [activeProjection, mode, project, runtimeState, runtimeTick]);
+
+  const drawTileEntry = useCallback((context: CanvasRenderingContext2D, entry: TileRuntimeEntry, projection: ProjectionContract) => {
+    const asset = project.assets?.find((candidate) => candidate.id === entry.assetId);
+    if (!asset) return;
+    let cached = assetImageCacheRef.current.get(asset.id);
+    if (!cached || cached.source !== asset.dataUrl) {
+      const image = new Image();
+      cached = { source: asset.dataUrl, image };
+      assetImageCacheRef.current.set(asset.id, cached);
+      image.onload = () => setAssetRenderTick((tick) => tick + 1);
+      image.src = asset.dataUrl;
+    }
+    if (!cached.image.complete || !cached.image.naturalWidth) return;
+    const anchorPoint = projection.type === "dimetric-2:1"
+      ? worldToScreen({ x: entry.worldX, y: entry.worldY, z: entry.z }, projection)
+      : { x: entry.worldX, y: entry.worldY };
+    const width = Number(entry.destinationWidth || asset.frameWidth || 1);
+    const height = Number(entry.destinationHeight || asset.frameHeight || 1);
+    const anchorX = entry.anchor === "bottom-center" || entry.anchor === "center" ? width / 2 : 0;
+    const anchorY = entry.anchor === "bottom-left" || entry.anchor === "bottom-center" ? height : entry.anchor === "center" ? height / 2 : 0;
+    const x = Math.round(anchorPoint.x - anchorX + Number(entry.drawOffsetX || 0));
+    const y = Math.round(anchorPoint.y - anchorY + Number(entry.drawOffsetY || 0));
+    const frame = Math.max(0, Math.min(Number(asset.frames || 1) - 1, Number(entry.frame || 0)));
+    const columns = Math.max(1, Number(asset.columns || 1));
+    const sourceX = (frame % columns) * Number(asset.frameWidth || width);
+    const sourceY = Math.floor(frame / columns) * Number(asset.frameHeight || height);
+    const blendModes = new Set<GlobalCompositeOperation>(["source-over", "multiply", "screen", "overlay", "darken", "lighten"]);
+    const composite = entry.blendMode === "normal" ? "source-over" : entry.blendMode as GlobalCompositeOperation;
+    context.save();
+    context.imageSmoothingEnabled = false;
+    context.globalAlpha = Math.max(0, Math.min(1, Number(entry.opacity ?? 1)));
+    context.globalCompositeOperation = blendModes.has(composite) ? composite : "source-over";
+    context.translate(x, y);
+    if (entry.flipD) context.transform(0, height / width, width / height, 0, 0, 0);
+    if (entry.flipH) { context.translate(width, 0); context.scale(-1, 1); }
+    if (entry.flipV) { context.translate(0, height); context.scale(1, -1); }
+    context.drawImage(cached.image, sourceX, sourceY, asset.frameWidth, asset.frameHeight, 0, 0, width, height);
+    context.restore();
+  }, [project.assets]);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const context = canvas.getContext("2d");
+    if (!context) return;
+    const viewWidth = mode === "play" ? runtimeState.width : project.width;
+    const viewHeight = mode === "play" ? runtimeState.height : project.height;
+    const viewBackground = mode === "play" ? runtimeState.background : project.background;
+    context.clearRect(0, 0, canvas.width, canvas.height);
+    context.fillStyle = viewBackground;
+    context.fillRect(0, 0, viewWidth, viewHeight);
+    const activePresentation = mode === "play" ? presentationRuntimeRef.current : null;
+    if (activePresentation) {
+      const offset = activePresentation.getCameraOffset();
+      context.save();
+      context.translate(offset.x, offset.y);
+    }
+
+    if (mode === "edit") {
+      context.save();
+      context.strokeStyle = "rgba(35,35,27,.09)";
+      context.lineWidth = 1;
+      if (isDimetric) {
+        const step = Math.max(project.grid, activeProjection.worldUnitsPerTile ?? 128);
+        const boundary = projectWorldRect({ x: 0, y: 0, width: project.width, height: project.height }, activeProjection, 0);
+        context.fillStyle = "rgba(232,232,228,.22)";
+        strokeProjectedPolygon(context, boundary);
+        context.fill();
+        context.strokeStyle = "rgba(52,52,58,.24)";
+        context.stroke();
+        for (let x = 0; x <= project.width; x += step) {
+          const first = worldToScreen({ x, y: 0, z: 0 }, activeProjection);
+          const second = worldToScreen({ x, y: project.height, z: 0 }, activeProjection);
+          context.beginPath(); context.moveTo(first.x, first.y); context.lineTo(second.x, second.y); context.stroke();
+        }
+        for (let y = 0; y <= project.height; y += step) {
+          const first = worldToScreen({ x: 0, y, z: 0 }, activeProjection);
+          const second = worldToScreen({ x: project.width, y, z: 0 }, activeProjection);
+          context.beginPath(); context.moveTo(first.x, first.y); context.lineTo(second.x, second.y); context.stroke();
+        }
+      } else {
+        for (let x = project.grid; x < project.width; x += project.grid) {
+          context.beginPath();
+          context.moveTo(x + 0.5, 0);
+          context.lineTo(x + 0.5, project.height);
+          context.stroke();
+        }
+        for (let y = project.grid; y < project.height; y += project.grid) {
+          context.beginPath();
+          context.moveTo(0, y + 0.5);
+          context.lineTo(project.width, y + 0.5);
+          context.stroke();
+        }
+      }
+      context.restore();
+    }
+
+    const objects: (GameObject | RuntimeObject)[] = mode === "play" ? runtimeRef.current : project.objects;
+    const tileRuntime = mode === "play" ? runtimeEngineRef.current?.getTileRuntime() ?? editorTileRuntime : editorTileRuntime;
+    const tileProjection = mode === "play" ? normalizeProjection(runtimeState.projection ?? activeProjection, runtimeState) as ProjectionContract : activeProjection;
+    tileRuntime.visualEntries.filter((entry) => entry.role === "ground-static").forEach((entry) => drawTileEntry(context, entry, tileProjection));
+    const objectEntries: Array<{ kind: "object"; id: string; depth: number; object: GameObject | RuntimeObject; slice: RuntimeSlice | null }> = mode === "play" && runtimeEngineRef.current
+      ? runtimeEngineRef.current.renderEntries().map((entry) => ({ kind: "object", id: entry.object.id, depth: entry.depth, object: entry.object, slice: entry.slice }))
+      : objects.flatMap<{ object: GameObject | RuntimeObject; slice: RuntimeSlice | null }>((object) => object.depthSlices?.length
+        ? object.depthSlices.map((slice) => ({ object, slice: slice as RuntimeSlice }))
+        : [{ object, slice: null }]).map((entry) => ({ kind: "object", id: `${entry.object.id}:${entry.slice?.id ?? "whole"}`, depth: spatialDepthKey(entry.object, activeProjection) + Number(entry.slice?.depthBias ?? 0), object: entry.object, slice: entry.slice }));
+    const interleaved: Array<{ kind: "object" | "tile"; id: string; depth: number; object?: GameObject | RuntimeObject; slice?: RuntimeSlice | null; tile?: TileRuntimeEntry }> = [
+      ...objectEntries,
+      ...tileRuntime.visualEntries.filter((entry) => entry.role === "interleaved").map((entry) => ({ kind: "tile" as const, id: entry.id, depth: entry.depth, tile: entry })),
+    ].sort((first, second) => first.depth - second.depth || first.id.localeCompare(second.id));
+    interleaved.forEach((entry) => entry.kind === "tile" ? drawTileEntry(context, entry.tile!, tileProjection) : drawObject(context, entry.object!, entry.slice ?? null));
+    tileRuntime.visualEntries.filter((entry) => entry.role === "foreground").forEach((entry) => drawTileEntry(context, entry, tileProjection));
+
+    const visibleTraversalPaths = mode === "play" ? runtimeEngineRef.current?.getTraversalPaths() ?? [] : project.traversalPaths ?? [];
+    if (((mode === "edit" && showPaths) || mode === "play") && visibleTraversalPaths.length > 0) {
+      context.save();
+      for (const path of visibleTraversalPaths) {
+        if (path.points.length < 2) continue;
+        const pathProjection = mode === "play" ? normalizeProjection(runtimeState.projection ?? activeProjection, runtimeState) as ProjectionContract : activeProjection;
+        const screenPoints = path.points.map((point) => pathProjection.type === "dimetric-2:1" ? worldToScreen(point, pathProjection) : { x: point.x, y: point.y });
+        const isSelectedPath = mode === "play" ? path.id === runtimeState.activeTraversalPathId : path.id === selectedPathId;
+        if (mode === "play" && !isSelectedPath) continue;
+        context.strokeStyle = isSelectedPath ? "#c8ff4d" : mode === "play" ? "rgba(232,238,255,.82)" : "#5b5cf0";
+        context.fillStyle = isSelectedPath ? "#c8ff4d" : mode === "play" ? "rgba(232,238,255,.92)" : "#5b5cf0";
+        context.lineWidth = isSelectedPath ? 5 : 3;
+        context.setLineDash(mode === "play" || isSelectedPath ? [] : [10, 6]);
+        context.beginPath();
+        context.moveTo(screenPoints[0].x, screenPoints[0].y);
+        screenPoints.slice(1).forEach((point) => context.lineTo(point.x, point.y));
+        context.stroke();
+        context.setLineDash([4, 4]);
+        context.globalAlpha = 0.75;
+        context.beginPath();
+        const radiusScale = pathProjection.type === "dimetric-2:1" ? pathProjection.tileWidth / 2 / (pathProjection.worldUnitsPerTile ?? 128) : 1;
+        context.arc(screenPoints[0].x, screenPoints[0].y, Math.max(6, path.entryRadius * radiusScale), 0, Math.PI * 2);
+        context.stroke();
+        context.globalAlpha = 1;
+        context.setLineDash([]);
+        screenPoints.forEach((point, index) => {
+          context.fillStyle = isSelectedPath && selectedPathPointIndex === index ? "#ffffff" : isSelectedPath ? "#c8ff4d" : "#5b5cf0";
+          context.fillRect(point.x - 4, point.y - 4, 8, 8);
+          if (index === path.points.length - 1) {
+            context.beginPath();
+            context.arc(point.x, point.y, 8, 0, Math.PI * 2);
+            context.stroke();
+          }
+        });
+        context.font = "800 10px ui-monospace, monospace";
+        if (mode === "edit") context.fillText(`${path.name} · ${path.direction} · z${path.points[0].z ?? 0}`, screenPoints[0].x + 10, Math.max(14, screenPoints[0].y - 18));
+      }
+      context.restore();
+    }
+    if (activePresentation) {
+      activePresentation.drawWorld(context);
+      context.restore();
+    }
+
+    if (mode === "edit" && showPaths) {
+      const visibleLayers = new Map(navigation.layers.filter((layer) => layer.visible !== false).map((layer) => [layer.id, layer]));
+      const nodeById = new Map(navigation.nodes.map((node) => [node.id, node]));
+      const projectPoint = (point: { x: number; y: number; z?: number }) => isDimetric ? worldToScreen(point, activeProjection) : { x: point.x, y: point.y };
+      context.save();
+      for (const area of navigation.areas) {
+        if (area.layerId && !visibleLayers.has(area.layerId)) continue;
+        const points = area.points.map((point) => projectPoint({ ...point, z: point.z ?? area.zMin }));
+        if (points.length < 3) continue;
+        strokeProjectedPolygon(context, points);
+        context.fillStyle = area.kind === "blocked" ? "rgba(194,65,58,.18)" : "rgba(60,74,98,.16)";
+        context.strokeStyle = area.id === selectedNavigationAreaId ? "#ffffff" : area.kind === "blocked" ? "#c2413a" : "#626b7c";
+        context.lineWidth = area.id === selectedNavigationAreaId ? 3 : 2;
+        context.fill();
+        context.stroke();
+      }
+      if (navigationAreaDraft?.points.length) {
+        const points = navigationAreaDraft.points.map(projectPoint);
+        context.beginPath();
+        context.moveTo(points[0].x, points[0].y);
+        points.slice(1).forEach((point) => context.lineTo(point.x, point.y));
+        context.strokeStyle = navigationAreaDraft.kind === "blocked" ? "#c2413a" : "#626b7c";
+        context.lineWidth = 3;
+        context.setLineDash([7, 5]);
+        context.stroke();
+        context.setLineDash([]);
+        points.forEach((point) => context.fillRect(point.x - 4, point.y - 4, 8, 8));
+      }
+      for (const link of navigation.links) {
+        if (link.layerId && !visibleLayers.has(link.layerId)) continue;
+        const from = nodeById.get(link.a);
+        const to = nodeById.get(link.b);
+        if (!from || !to) continue;
+        const first = projectPoint(from);
+        const second = projectPoint(to);
+        const layer = link.layerId ? visibleLayers.get(link.layerId) : null;
+        context.strokeStyle = link.id === selectedNavigationLinkId ? "#ffffff" : layer?.color ?? "#4c4c55";
+        context.lineWidth = link.id === selectedNavigationLinkId ? 4 : Math.max(2, Math.min(5, link.cost));
+        context.setLineDash(link.cost > 1 ? [7, 5] : []);
+        context.beginPath(); context.moveTo(first.x, first.y); context.lineTo(second.x, second.y); context.stroke();
+        context.setLineDash([]);
+        if (link.oneWay) {
+          const amount = 0.58;
+          const x = first.x + (second.x - first.x) * amount;
+          const y = first.y + (second.y - first.y) * amount;
+          const angle = Math.atan2(second.y - first.y, second.x - first.x);
+          context.save(); context.translate(x, y); context.rotate(angle); context.fillStyle = context.strokeStyle; context.beginPath(); context.moveTo(7, 0); context.lineTo(-5, -5); context.lineTo(-5, 5); context.closePath(); context.fill(); context.restore();
+        }
+      }
+      for (const node of navigation.nodes) {
+        if (node.layerId && !visibleLayers.has(node.layerId)) continue;
+        const point = projectPoint(node);
+        const layer = node.layerId ? visibleLayers.get(node.layerId) : null;
+        context.fillStyle = node.id === selectedNavigationNodeId ? "#ffffff" : layer?.color ?? "#4c4c55";
+        context.strokeStyle = "#24242a";
+        context.lineWidth = 2;
+        context.beginPath(); context.arc(point.x, point.y, node.id === selectedNavigationNodeId ? 7 : 5, 0, Math.PI * 2); context.fill(); context.stroke();
+        if (node.destinationId) {
+          context.fillStyle = "#24242a";
+          context.font = "800 9px ui-monospace, monospace";
+          context.fillText(node.destinationId, point.x + 9, point.y - 8);
+        }
+      }
+      if (navigationTest.result?.ok && navigationTest.result.points.length > 1) {
+        const points = navigationTest.result.points.map(projectPoint);
+        context.strokeStyle = "#d5842f";
+        context.lineWidth = 6;
+        context.beginPath(); context.moveTo(points[0].x, points[0].y); points.slice(1).forEach((point) => context.lineTo(point.x, point.y)); context.stroke();
+      }
+      for (const marker of [navigationTest.from, navigationTest.to]) if (marker) {
+        const point = projectPoint(marker);
+        context.fillStyle = marker === navigationTest.from ? "#24242a" : "#d5842f";
+        context.beginPath(); context.arc(point.x, point.y, 8, 0, Math.PI * 2); context.fill();
+      }
+      for (const actor of authoredRoutePaths) {
+        if (actor.points.length === 0) continue;
+        const points = actor.sourceScreenSpace ? actor.points : actor.points.map(projectPoint);
+        const selectedActor = actor.id === (selectedAuthoredRouteActorId ?? authoredRoutePaths[0]?.id);
+        context.strokeStyle = selectedActor ? "#6d4de3" : "#505057";
+        context.fillStyle = context.strokeStyle;
+        context.lineWidth = selectedActor ? 4 : 2;
+        context.setLineDash(selectedActor ? [] : [6, 5]);
+        context.beginPath();
+        context.moveTo(points[0].x, points[0].y);
+        points.slice(1).forEach((point) => context.lineTo(point.x, point.y));
+        context.stroke();
+        context.setLineDash([]);
+        points.forEach((point, index) => { context.beginPath(); context.arc(point.x, point.y, index === 0 ? 5 : 3, 0, Math.PI * 2); context.fill(); });
+        context.font = "800 9px ui-monospace, monospace";
+        context.fillText(`${actor.name} · ${actor.schedule.length} timed steps`, points[0].x + 8, Math.max(12, points[0].y - 8));
+      }
+      context.restore();
+    }
+
+    if (showColliders) {
+      context.save();
+      context.lineWidth = 2;
+      const overlayProjection = mode === "play" ? normalizeProjection(runtimeState.projection ?? activeProjection, runtimeState) as ProjectionContract : activeProjection;
+      objects.forEach((object) => {
+        const box = collisionBox(object);
+        if (box) {
+          context.strokeStyle = object.collider?.trigger ? "#ff3b74" : "#17b7d4";
+          context.fillStyle = object.collider?.trigger ? "rgba(255,59,116,.12)" : "rgba(23,183,212,.12)";
+          if (overlayProjection.type === "dimetric-2:1") {
+            const points = projectWorldRect(box, overlayProjection, box.zMin);
+            strokeProjectedPolygon(context, points);
+            context.fill();
+            context.stroke();
+            const top = worldToScreen({ x: box.x + box.width / 2, y: box.y + box.height / 2, z: box.zMax }, overlayProjection);
+            const bottom = worldToScreen({ x: box.x + box.width / 2, y: box.y + box.height / 2, z: box.zMin }, overlayProjection);
+            context.beginPath(); context.moveTo(bottom.x, bottom.y); context.lineTo(top.x, top.y); context.stroke();
+          } else {
+            context.fillRect(box.x, box.y, box.width, box.height);
+            context.strokeRect(box.x, box.y, box.width, box.height);
+          }
+        }
+        if (object.anchorMode === "ground") {
+          const anchor = groundAnchorOffset(object, project.assets ?? []);
+          const worldAnchor = { x: object.x + anchor.x, y: object.y + anchor.y, z: object.z ?? 0 };
+          const screenAnchor = overlayProjection.type === "dimetric-2:1" ? worldToScreen(worldAnchor, overlayProjection) : worldAnchor;
+          context.strokeStyle = "#3f3f47";
+          context.beginPath();
+          context.moveTo(screenAnchor.x - 6, screenAnchor.y);
+          context.lineTo(screenAnchor.x + 6, screenAnchor.y);
+          context.moveTo(screenAnchor.x, screenAnchor.y - 6);
+          context.lineTo(screenAnchor.x, screenAnchor.y + 6);
+          context.stroke();
+        }
+        if (object.requiresSupport || object.supportContact) {
+          const footprint = supportFootprintRect(object);
+          const contact = resolveSupportContact(activeMapSnapshot, object, project.assets ?? [], { projection: overlayProjection });
+          const contactColor = contact.valid ? "#626b7c" : "#ff6b45";
+          context.save();
+          context.strokeStyle = contactColor;
+          context.fillStyle = contact.valid ? "rgba(98,107,124,.14)" : "rgba(255,107,69,.16)";
+          context.setLineDash([4, 3]);
+          const footprintLabel = overlayProjection.type === "dimetric-2:1" ? worldToScreen({ x: footprint.x, y: footprint.y, z: object.supportZ ?? object.z ?? 0 }, overlayProjection) : { x: footprint.x, y: footprint.y };
+          if (overlayProjection.type === "dimetric-2:1") {
+            strokeProjectedPolygon(context, projectWorldRect(footprint, overlayProjection, object.supportZ ?? object.z ?? 0));
+            context.fill();
+            context.stroke();
+          } else {
+            context.fillRect(footprint.x, footprint.y, footprint.width, footprint.height);
+            context.strokeRect(footprint.x, footprint.y, footprint.width, footprint.height);
+          }
+          context.setLineDash([]);
+          if (Number.isFinite(contact.expected) && project.controlMode === "platformer" && overlayProjection.type !== "dimetric-2:1") {
+            context.beginPath();
+            context.moveTo(contact.anchor.x, contact.anchor.y);
+            context.lineTo(contact.anchor.x, Number(contact.expected));
+            context.stroke();
+          }
+          context.fillStyle = contactColor;
+          context.font = "700 9px ui-monospace, monospace";
+          context.fillText(contact.valid ? "SUPPORTED" : String(contact.status ?? "UNSUPPORTED").toUpperCase(), footprintLabel.x, Math.max(10, footprintLabel.y - 5));
+          context.restore();
+        }
+      });
+      tileRuntime.collisionObjects.forEach((object) => {
+        const box = collisionBox(object);
+        if (!box) return;
+        context.save();
+        context.strokeStyle = "#d5842f";
+        context.fillStyle = "rgba(213,132,47,.18)";
+        context.setLineDash([5, 3]);
+        if (overlayProjection.type === "dimetric-2:1") {
+          strokeProjectedPolygon(context, projectWorldRect(box, overlayProjection, box.zMin));
+          context.fill();
+          context.stroke();
+        } else {
+          context.fillRect(box.x, box.y, box.width, box.height);
+          context.strokeRect(box.x, box.y, box.width, box.height);
+        }
+        context.setLineDash([]);
+        context.fillStyle = "#8b541d";
+        context.font = "700 8px ui-monospace, monospace";
+        const label = overlayProjection.type === "dimetric-2:1" ? worldToScreen({ x: box.x, y: box.y, z: box.zMin }, overlayProjection) : { x: box.x, y: box.y };
+        context.fillText("TILE COLLISION", label.x + 3, label.y + 10);
+        context.restore();
+      });
+      const drawCollisionChain = (chain: Pick<CollisionGeometryChain, "id" | "name" | "enabled" | "role" | "zMin" | "points">, draft = false) => {
+        if (chain.points.length < 1) return;
+        const projected = chain.points.map((point) => overlayProjection.type === "dimetric-2:1"
+          ? worldToScreen({ x: point.x, y: point.y, z: chain.zMin }, overlayProjection)
+          : { x: point.x, y: point.y });
+        const selectedChain = draft || chain.id === selectedCollisionChainId;
+        context.save();
+        context.strokeStyle = draft ? "#d5842f" : selectedChain ? "#6d4de3" : "#4b4b50";
+        context.fillStyle = context.strokeStyle;
+        context.lineWidth = selectedChain ? 4 : 2;
+        context.setLineDash(chain.enabled === false || draft ? [7, 5] : []);
+        context.beginPath();
+        context.moveTo(projected[0].x, projected[0].y);
+        projected.slice(1).forEach((point) => context.lineTo(point.x, point.y));
+        context.stroke();
+        context.setLineDash([]);
+        projected.forEach((point, index) => {
+          const size = selectedChain ? 8 : 6;
+          context.fillRect(point.x - size / 2, point.y - size / 2, size, size);
+          if (selectedChain) {
+            context.fillStyle = "#24242a";
+            context.font = "700 9px ui-monospace, monospace";
+            context.fillText(String(index + 1), point.x + 6, point.y - 6);
+            context.fillStyle = context.strokeStyle;
+          }
+        });
+        for (let index = 0; index < chain.points.length - 1; index += 1) {
+          const from = chain.points[index];
+          const to = chain.points[index + 1];
+          const length = Math.hypot(to.x - from.x, to.y - from.y);
+          if (length <= 0.000001) continue;
+          const middle = { x: (from.x + to.x) / 2, y: (from.y + to.y) / 2, z: chain.zMin };
+          const normal = { x: (to.y - from.y) / length, y: -(to.x - from.x) / length };
+          const start = overlayProjection.type === "dimetric-2:1" ? worldToScreen(middle, overlayProjection) : middle;
+          const normalEndWorld = { x: middle.x + normal.x * 14, y: middle.y + normal.y * 14, z: middle.z };
+          const end = overlayProjection.type === "dimetric-2:1" ? worldToScreen(normalEndWorld, overlayProjection) : normalEndWorld;
+          context.beginPath(); context.moveTo(start.x, start.y); context.lineTo(end.x, end.y); context.stroke();
+        }
+        const first = projected[0];
+        context.font = "800 9px ui-monospace, monospace";
+        context.fillText(draft ? `NEW ${chain.role.toUpperCase()}` : `${chain.name} · ${chain.role.toUpperCase()}`, first.x + 8, Math.max(11, first.y - 9));
+        context.restore();
+      };
+      (activeCollisionGeometry?.chains ?? []).forEach((chain) => drawCollisionChain(chain));
+      if (collisionChainDraft) drawCollisionChain({ id: "collision-draft", name: "New collision", enabled: true, role: collisionChainDraft.role, zMin: collisionChainDraft.zMin, points: collisionChainDraft.points }, true);
+      context.restore();
+    }
+
+    if (mode === "edit" && selected) {
+      context.save();
+      context.strokeStyle = "#4b4b50";
+      context.lineWidth = 3;
+      context.setLineDash([8, 5]);
+      const selectedAsset = selected.assetId ? project.assets?.find((asset) => asset.id === selected.assetId) : null;
+      if (isDimetric && selected.kind === "platform" && !selectedAsset) {
+        const polygon = projectWorldRect(selected, activeProjection, selected.z ?? 0);
+        strokeProjectedPolygon(context, polygon);
+        context.stroke();
+        context.setLineDash([]);
+        context.fillStyle = "#4b4b50";
+        polygon.forEach((point) => context.fillRect(point.x - 4, point.y - 4, 8, 8));
+      } else {
+        const rect = objectScreenRect(selected, activeProjection, project.assets ?? []);
+        context.strokeRect(rect.x - 5, rect.y - 5, rect.width + 10, rect.height + 10);
+        context.fillStyle = "#4b4b50";
+        [[rect.x - 8, rect.y - 8], [rect.x + rect.width + 2, rect.y - 8], [rect.x - 8, rect.y + rect.height + 2], [rect.x + rect.width + 2, rect.y + rect.height + 2]].forEach(([x, y]) => context.fillRect(x, y, 6, 6));
+      }
+      context.restore();
+    }
+    if (activePresentation) activePresentation.drawOverlay(context, viewWidth, viewHeight);
+  }, [activeCollisionGeometry, activeMapSnapshot, activeProjection, assetRenderTick, authoredRoutePaths, collisionChainDraft, drawObject, drawTileEntry, editorTileRuntime, isDimetric, mode, navigation, navigationAreaDraft, navigationTest, project, runtimeState, runtimeTick, selected, selectedAuthoredRouteActorId, selectedCollisionChainId, selectedNavigationAreaId, selectedNavigationLinkId, selectedNavigationNodeId, selectedPathId, selectedPathPointIndex, showColliders, showPaths]);
+
+  const pointerPosition = (event: ReactPointerEvent<HTMLCanvasElement>) => {
+    const bounds = event.currentTarget.getBoundingClientRect();
+    return {
+      x: ((event.clientX - bounds.left) / bounds.width) * project.width,
+      y: ((event.clientY - bounds.top) / bounds.height) * project.height,
+    };
+  };
+
+  const onCanvasPointerDown = (event: ReactPointerEvent<HTMLCanvasElement>) => {
+    if (mode !== "edit") return;
+    const point = pointerPosition(event);
+    const worldAt = (z = editorElevation) => isDimetric ? screenToWorld(point, activeProjection, z) : { x: point.x, y: point.y, z };
+    if (captureMode) {
+      event.currentTarget.setPointerCapture(event.pointerId);
+      setCaptureRegion({ startX: point.x, startY: point.y, x: point.x, y: point.y, width: 0, height: 0 });
+      setSelectedId(null);
+      return;
+    }
+
+    if (mapTool === "tiles") {
+      applyTileBrushAt(worldAt(0));
+      return;
+    }
+
+    if (mapTool === "collision-chain") {
+      const candidates = (activeCollisionGeometry?.chains ?? []).flatMap((chain) => chain.points.map((chainPoint, pointIndex) => {
+        const screen = isDimetric ? worldToScreen({ ...chainPoint, z: chain.zMin }, activeProjection) : chainPoint;
+        return { chain, chainPoint, pointIndex, distance: Math.hypot(point.x - screen.x, point.y - screen.y) };
+      })).sort((first, second) => first.distance - second.distance);
+      const hitPoint = candidates[0]?.distance <= 12 ? candidates[0] : null;
+      if (hitPoint) {
+        setSelectedId(null);
+        setSelectedPathId(null);
+        setSelectedCollisionChainId(hitPoint.chain.id);
+        setCollisionChainDraft(null);
+        event.currentTarget.setPointerCapture(event.pointerId);
+        collisionPointDragRef.current = { chainId: hitPoint.chain.id, pointIndex: hitPoint.pointIndex, z: hitPoint.chain.zMin, before: cloneProject(project) };
+        return;
+      }
+      const world = worldAt();
+      setSelectedId(null);
+      setSelectedPathId(null);
+      setSelectedCollisionChainId(null);
+      setShowColliders(true);
+      setCollisionChainDraft((current) => {
+        const draft = current ?? { points: [], role: collisionChainRole, oneWay: collisionChainOneWay, zMin: editorElevation, zMax: editorElevation + 1 };
+        return { ...draft, points: [...draft.points, { id: `point-${String(draft.points.length + 1).padStart(2, "0")}`, x: world.x, y: world.y }] };
+      });
+      return;
+    }
+
+    if (mapTool === "traversal") {
+      const candidates = (project.traversalPaths ?? []).flatMap((path) => path.points.map((pathPoint, pointIndex) => {
+        const screen = isDimetric ? worldToScreen(pathPoint, activeProjection) : pathPoint;
+        return { path, pathPoint, pointIndex, distance: Math.hypot(point.x - screen.x, point.y - screen.y) };
+      })).sort((first, second) => first.distance - second.distance);
+      const hitPoint = candidates[0]?.distance <= 12 ? candidates[0] : null;
+      if (hitPoint) {
+        setSelectedId(null);
+        setSelectedPathId(hitPoint.path.id);
+        setSelectedPathPointIndex(hitPoint.pointIndex);
+        event.currentTarget.setPointerCapture(event.pointerId);
+        pathPointDragRef.current = { pathId: hitPoint.path.id, pointIndex: hitPoint.pointIndex, z: hitPoint.pathPoint.z ?? editorElevation, before: cloneProject(project) };
+        return;
+      }
+      const world = worldAt();
+      if (selectedPath) {
+        updateTraversalPath(selectedPath.id, { points: [...selectedPath.points, { x: world.x, y: world.y, z: editorElevation }] }, "Traversal point added");
+        setSelectedPathPointIndex(selectedPath.points.length);
+      } else {
+        try {
+          const outcome = applyAgentCommand(syncActiveMap(project), { op: "add_traversal_path", path: { id: `route-${Date.now()}`, name: `Traversal ${(project.traversalPaths?.length ?? 0) + 1}`, kind: "route", routeLayer: activeNavigationLayer?.id, points: [{ x: world.x, y: world.y, z: editorElevation }, { x: Math.min(project.width, world.x + project.grid * 2), y: world.y, z: editorElevation }] } });
+          const path = outcome.result?.path as TraversalPath;
+          commit(outcome.project as GameProject, "Traversal path started");
+          setSelectedPathId(path.id);
+          setSelectedPathPointIndex(0);
+        } catch (error) {
+          showToast(error instanceof Error ? error.message : "The traversal path could not be started");
+        }
+      }
+      return;
+    }
+
+    if (mapTool === "navigation") {
+      const candidates = navigation.nodes.map((node) => {
+        const screen = isDimetric ? worldToScreen(node, activeProjection) : node;
+        return { node, distance: Math.hypot(point.x - screen.x, point.y - screen.y) };
+      }).sort((first, second) => first.distance - second.distance);
+      const hitNode = candidates[0]?.distance <= 13 ? candidates[0].node : null;
+      if (hitNode) {
+        if (navigationChainNodeId && navigationChainNodeId !== hitNode.id && !navigation.links.some((link) => link.a === navigationChainNodeId && link.b === hitNode.id)) {
+          applyNavigationCommand({ op: "connect_navigation_nodes", a: navigationChainNodeId, b: hitNode.id, layerId: activeNavigationLayer?.id }, "Navigation nodes connected");
+        }
+        setSelectedId(null);
+        setSelectedPathId(null);
+        setSelectedNavigationNodeId(hitNode.id);
+        setSelectedNavigationLinkId(null);
+        setNavigationChainNodeId(hitNode.id);
+        if (!activeNavigationLayer?.locked) {
+          event.currentTarget.setPointerCapture(event.pointerId);
+          navigationNodeDragRef.current = { nodeId: hitNode.id, z: hitNode.z, before: cloneProject(project) };
+        }
+        return;
+      }
+      try {
+        let working = syncActiveMap(project);
+        let layer = activeNavigationLayer;
+        if (!layer) {
+          const layerOutcome = applyAgentCommand(working, { op: "add_navigation_layer", layer: { id: "ground-route", name: "Ground route", color: "#5b5cf0", zMin: editorElevation, zMax: editorElevation + 1 } });
+          working = layerOutcome.project as GameProject;
+          layer = layerOutcome.result?.layer as NavigationLayer;
+        }
+        if (!layer) throw new Error("A navigation layer could not be created.");
+        const world = worldAt(layer.zMin);
+        let outcome = applyAgentCommand(working, { op: "add_navigation_node", node: { id: `nav-node-${Date.now()}`, x: world.x, y: world.y, z: layer.zMin, layerId: layer.id } });
+        const node = outcome.result?.node as NavigationNode;
+        if (navigationChainNodeId && outcome.project.navigation?.nodes.some((candidate: NavigationNode) => candidate.id === navigationChainNodeId)) {
+          outcome = applyAgentCommand(outcome.project, { op: "connect_navigation_nodes", a: navigationChainNodeId, b: node.id, layerId: layer.id });
+        }
+        commit(outcome.project as GameProject, "Navigation node added");
+        setSelectedNavigationNodeId(node.id);
+        setNavigationChainNodeId(node.id);
+        setEditorElevation(node.z);
+      } catch (error) {
+        showToast(error instanceof Error ? error.message : "The navigation node could not be added");
+      }
+      return;
+    }
+
+    if (mapTool === "walkable-area" || mapTool === "blocked-area") {
+      const kind = mapTool === "blocked-area" ? "blocked" : "walkable";
+      const world = worldAt();
+      setNavigationAreaDraft((current) => ({ kind, points: current?.kind === kind ? [...current.points, world] : [world] }));
+      return;
+    }
+
+    if (mapTool === "test-route") {
+      const world = worldAt();
+      if (!navigationTest.from || navigationTest.to) {
+        setNavigationTest({ from: world, to: null, result: null });
+      } else {
+        const result = findNavigationPath(navigation, navigationTest.from, world, { layerIds: activeNavigationLayer ? [activeNavigationLayer.id] : undefined, elevationScale: activeProjection.elevationStep ?? 32 }) as NavigationTestState["result"];
+        setNavigationTest({ from: navigationTest.from, to: world, result });
+      }
+      return;
+    }
+
+    const hit = [...project.objects].sort((first, second) => spatialDepthKey(second, activeProjection) - spatialDepthKey(first, activeProjection)).find((object) => {
+      const asset = object.assetId ? project.assets?.find((candidate) => candidate.id === object.assetId) : null;
+      if (isDimetric && object.kind === "platform" && !asset) return pointInsidePolygon(point, projectWorldRect(object, activeProjection, object.z ?? 0));
+      return pointInsideRect(point, objectScreenRect(object, activeProjection, project.assets ?? []));
+    });
+    setSelectedId(hit?.id ?? null);
+    setSelectedPathId(null);
+    setSelectedPathPointIndex(null);
+    setSelectedNavigationNodeId(null);
+    setSelectedNavigationLinkId(null);
+    setSelectedNavigationAreaId(null);
+    if (hit) {
+      const world = isDimetric ? screenToWorld(point, activeProjection, hit.z ?? 0) : { x: point.x, y: point.y, z: hit.z ?? 0 };
+      event.currentTarget.setPointerCapture(event.pointerId);
+      dragRef.current = { id: hit.id, offsetX: world.x - hit.x, offsetY: world.y - hit.y, z: hit.z ?? 0, before: cloneProject(project) };
+    }
+  };
+
+  const onCanvasPointerMove = (event: ReactPointerEvent<HTMLCanvasElement>) => {
+    if (captureMode && captureRegion) {
+      const point = pointerPosition(event);
+      setCaptureRegion((current) => current ? {
+        ...current,
+        x: Math.min(current.startX, point.x),
+        y: Math.min(current.startY, point.y),
+        width: Math.abs(point.x - current.startX),
+        height: Math.abs(point.y - current.startY),
+      } : null);
+      return;
+    }
+    const point = pointerPosition(event);
+    const collisionDrag = collisionPointDragRef.current;
+    if (collisionDrag && mode === "edit") {
+      const world = isDimetric ? screenToWorld(point, activeProjection, collisionDrag.z) : { x: point.x, y: point.y, z: collisionDrag.z };
+      setProject((current) => {
+        const geometry = current.collisionGeometry ?? current.maps?.find((map) => map.id === current.activeMapId)?.collisionGeometry;
+        if (!geometry) return current;
+        return {
+          ...current,
+          collisionGeometry: {
+            ...geometry,
+            chains: geometry.chains.map((chain) => chain.id === collisionDrag.chainId
+              ? { ...chain, points: chain.points.map((entry, index) => index === collisionDrag.pointIndex ? { ...entry, x: Math.max(0, Math.min(current.width, world.x)), y: Math.max(0, Math.min(current.height, world.y)) } : entry) }
+              : chain),
+          },
+        };
+      });
+      return;
+    }
+    const pathDrag = pathPointDragRef.current;
+    if (pathDrag && mode === "edit") {
+      const world = isDimetric ? screenToWorld(point, activeProjection, pathDrag.z) : { x: point.x, y: point.y, z: pathDrag.z };
+      setProject((current) => ({ ...current, traversalPaths: (current.traversalPaths ?? []).map((path) => path.id === pathDrag.pathId ? { ...path, points: path.points.map((entry, index) => index === pathDrag.pointIndex ? { x: Math.max(0, Math.min(current.width, world.x)), y: Math.max(0, Math.min(current.height, world.y)), z: pathDrag.z } : entry) } : path) }));
+      return;
+    }
+    const nodeDrag = navigationNodeDragRef.current;
+    if (nodeDrag && mode === "edit") {
+      const world = isDimetric ? screenToWorld(point, activeProjection, nodeDrag.z) : { x: point.x, y: point.y, z: nodeDrag.z };
+      setProject((current) => {
+        const nextNavigation = createNavigationModel(current.navigation) as NavigationModel;
+        nextNavigation.nodes = nextNavigation.nodes.map((node) => node.id === nodeDrag.nodeId ? { ...node, x: Math.max(0, Math.min(current.width, world.x)), y: Math.max(0, Math.min(current.height, world.y)), z: nodeDrag.z } : node);
+        return { ...current, navigation: nextNavigation };
+      });
+      return;
+    }
+    const drag = dragRef.current;
+    if (!drag || mode !== "edit") return;
+    const world = isDimetric ? screenToWorld(point, activeProjection, drag.z) : { x: point.x, y: point.y, z: drag.z };
+    setProject((current) => ({
+      ...current,
+      objects: current.objects.map((object) => {
+        if (object.id !== drag.id) return object;
+        const nextX = Math.round((world.x - drag.offsetX) / current.grid) * current.grid;
+        const nextY = Math.round((world.y - drag.offsetY) / current.grid) * current.grid;
+        return {
+          ...object,
+          x: Math.max(0, Math.min(current.width - object.width, nextX)),
+          y: Math.max(0, Math.min(current.height - object.height, nextY)),
+        };
+      }),
+    }));
+  };
+
+  const onCanvasPointerUp = (event: ReactPointerEvent<HTMLCanvasElement>) => {
+    if (captureMode && captureRegion) {
+      if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+      const region = {
+        x: Math.max(0, Math.round(captureRegion.x)),
+        y: Math.max(0, Math.round(captureRegion.y)),
+        width: Math.min(project.width - captureRegion.x, Math.round(captureRegion.width)),
+        height: Math.min(project.height - captureRegion.y, Math.round(captureRegion.height)),
+      };
+      if (region.width >= 8 && region.height >= 8) {
+        const crop = document.createElement("canvas");
+        crop.width = region.width;
+        crop.height = region.height;
+        const context = crop.getContext("2d");
+        if (context) {
+          context.drawImage(event.currentTarget, region.x, region.y, region.width, region.height, 0, 0, region.width, region.height);
+          const reference: VisualReference = {
+            id: `reference-${uid()}`,
+            label: `${activeMap?.name ?? "Map"} area ${(project.visualReferences?.length ?? 0) + 1}`,
+            mapId: project.activeMapId ?? "map-main",
+            ...region,
+            dataUrl: crop.toDataURL("image/png"),
+            signature: signatureFromCanvas(crop, { x: 0, y: 0, width: crop.width, height: crop.height }),
+            createdAt: new Date().toISOString(),
+          };
+          commit({ ...project, visualReferences: [...(project.visualReferences ?? []), reference] }, "Visual anchor saved with exact map coordinates");
+        }
+      } else showToast("Drag a larger area to save a visual anchor");
+      setCaptureRegion(null);
+      setCaptureMode(false);
+      return;
+    }
+    const authoredCollisionDrag = collisionPointDragRef.current;
+    if (authoredCollisionDrag) {
+      collisionPointDragRef.current = null;
+      if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+      historyRef.current = [...historyRef.current.slice(-(HISTORY_LIMIT - 1)), authoredCollisionDrag.before];
+      futureRef.current = [];
+      setProject((current) => {
+        const before = syncActiveMap(authoredCollisionDrag.before);
+        const next = syncActiveMap(current);
+        const invalidated = invalidateVerifiedAuthoring(before, next, { reason: "Authored collision control point moved" }) as GameProject;
+        return recordAgentProjectChange(before, invalidated, { op: "set_collision_geometry", mapId: next.activeMapId, geometry: next.collisionGeometry }, { channel: "mouse" }) as GameProject;
+      });
+      syncHistoryState();
+      showToast("Collision control point moved");
+      return;
+    }
+    const authoredPathDrag = pathPointDragRef.current;
+    const authoredNodeDrag = navigationNodeDragRef.current;
+    if (authoredPathDrag || authoredNodeDrag) {
+      pathPointDragRef.current = null;
+      navigationNodeDragRef.current = null;
+      if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+      const before = authoredPathDrag?.before ?? authoredNodeDrag?.before;
+      if (before) {
+        historyRef.current = [...historyRef.current.slice(-(HISTORY_LIMIT - 1)), before];
+        futureRef.current = [];
+        setProject((current) => {
+          const operation = authoredPathDrag ? "move_traversal_point" : "move_navigation_node";
+          const command = authoredPathDrag ? { op: operation, pathId: authoredPathDrag.pathId } : { op: operation, nodeId: authoredNodeDrag?.nodeId };
+          const invalidated = invalidateVerifiedAuthoring(syncActiveMap(before), syncActiveMap(current), { reason: authoredPathDrag ? "Traversal control point moved" : "Navigation node moved" }) as GameProject;
+          return recordAgentProjectChange(syncActiveMap(before), invalidated, command, { channel: "mouse" }) as GameProject;
+        });
+        syncHistoryState();
+        showToast(authoredPathDrag ? "Traversal point moved" : "Navigation node moved");
+      }
+      return;
+    }
+    const drag = dragRef.current;
+    if (!drag) return;
+    dragRef.current = null;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+    historyRef.current = [...historyRef.current.slice(-(HISTORY_LIMIT - 1)), drag.before];
+    futureRef.current = [];
+    setProject((current) => {
+      const moved = current.objects.find((object) => object.id === drag.id);
+      let next = current;
+      if (moved?.requiresSupport && moved.supportContact?.mode !== "free") {
+        try {
+          const map = mapFromProject(current, current.activeMapId ?? "map-main", activeMap?.name ?? "Map");
+          const snapped = snapObjectToSupport(map, moved.id, { mode: "auto", tolerance: moved.supportContact?.tolerance ?? 2, projection: current.projection }, current.assets ?? []);
+          next = { ...current, objects: current.objects.map((object) => object.id === moved.id ? snapped.object as GameObject : object) };
+        } catch {
+          next = current;
+        }
+      }
+      const invalidated = invalidateVerifiedAuthoring(syncActiveMap(drag.before), syncActiveMap(next), { reason: "Canvas placement changed authored game state" }) as GameProject;
+      return recordAgentProjectChange(syncActiveMap(drag.before), invalidated, { op: "move_object", id: drag.id }, { channel: "mouse" }) as GameProject;
+    });
+    syncHistoryState();
+    showToast("Position updated · support rechecked");
+  };
+
+  const parseAgentWorkList = (value: string) => [...new Set(value.split(/[\r\n,]+/).map((entry) => entry.trim()).filter(Boolean))];
+  const preventAgentWorkInputSubmit = (event: ReactKeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "Enter") event.preventDefault();
+  };
+
+  const runAgentWorkMutation = async (command: AgentCommand) => {
+    setAgentCommandRunning(true);
+    try {
+      const run = agentBridgeRunRef.current;
+      if (!run) throw new Error("The agent bridge is still starting. Try again in one moment.");
+      const response = await run({ ...command, expectedLedgerDigest: agentWorkLedgerView.ledgerDigest, compact: true });
+      setAgentCommandResult(JSON.stringify(response, null, 2));
+      if (response.ok !== true) throw new Error(String(response.error ?? "The shared work update failed."));
+      return response;
+    } catch (error) {
+      setAgentCommandResult(JSON.stringify({ ok: false, error: error instanceof Error ? error.message : String(error) }, null, 2));
+      return null;
+    } finally {
+      setAgentCommandRunning(false);
+    }
+  };
+
+  const addAgentWorkItem = async () => {
+    const title = agentWorkDraft.title.trim();
+    const summary = agentWorkDraft.summary.trim();
+    if (!title || !summary) {
+      setAgentCommandResult(JSON.stringify({ ok: false, error: "A work item needs both a title and a concrete summary." }, null, 2));
+      return;
+    }
+    const baseId = (agentWorkDraft.id || title).trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 72) || "shared-work";
+    const id = project.agentWorkLedger?.items.some((item) => item.id === baseId) ? `${baseId}-${agentWorkLedgerView.revision + 1}` : baseId;
+    const response = await runAgentWorkMutation({
+      op: "add_work_item",
+      actor: agentWorkActor,
+      item: { id, title, summary, kind: agentWorkDraft.kind, priority: agentWorkDraft.priority, scope: parseAgentWorkList(agentWorkDraft.scope) },
+    });
+    if (response) {
+      setAgentWorkSelectedId(id);
+      setAgentWorkDraft({ id: "", title: "", summary: "", kind: "feature", priority: "medium", scope: "" });
+    }
+  };
+
+  const claimAgentWorkItem = async (item: AgentWorkLedgerViewItem) => {
+    if (item.claimState === "active" && item.claim?.holder !== agentWorkActor) return;
+    await runAgentWorkMutation({ op: "claim_work_item", id: item.id, actor: agentWorkActor, leaseSeconds: 7200 });
+  };
+
+  const releaseAgentWorkItem = async (item: AgentWorkLedgerViewItem) => {
+    if (!item.claim || (item.claimState === "active" && item.claim.holder !== agentWorkActor)) return;
+    await runAgentWorkMutation({ op: "release_work_item", id: item.id, actor: agentWorkActor });
+  };
+
+  const setAgentWorkItemStatus = async (item: AgentWorkLedgerViewItem, status: AgentWorkItemStatus) => {
+    const changes: Record<string, unknown> = { status };
+    if (status === "blocked") changes.blockers = parseAgentWorkList(agentWorkBlockers);
+    if (status === "landed" || status === "rejected") changes.resultSummary = agentWorkResultSummary.trim();
+    if (status === "landed") changes.evidenceRefs = parseAgentWorkList(agentWorkEvidence);
+    const response = await runAgentWorkMutation({ op: "update_work_item", id: item.id, actor: agentWorkActor, changes });
+    if (response) {
+      setAgentWorkResultSummary("");
+      setAgentWorkBlockers("");
+      setAgentWorkEvidence("");
+    }
+  };
+
+  const runAgentConsoleCommand = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setAgentCommandRunning(true);
+    try {
+      const parsed: unknown = JSON.parse(agentCommandText);
+      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("Command must be one JSON object.");
+      const run = agentBridgeRunRef.current;
+      if (!run) throw new Error("The agent bridge is still starting. Try again in one moment.");
+      const requestedCompact = typeof (parsed as AgentCommand).compact === "boolean" ? (parsed as AgentCommand).compact as boolean : undefined;
+      const command = normalizeAgentFormCommand(parsed) as AgentCommand;
+      const result = await run(command);
+      const responseRecord = result && typeof result === "object" && !Array.isArray(result) ? result as Record<string, unknown> : {};
+      const responseProject = responseRecord.project && typeof responseRecord.project === "object" && !Array.isArray(responseRecord.project)
+        ? responseRecord.project as GameProject
+        : projectRef.current;
+      const doctor = analyzeProject(responseProject, { profile: "prototype" });
+      const serializedForDigest = JSON.stringify(result);
+      const encoded = new TextEncoder().encode(serializedForDigest);
+      const responseDigest = `sha256:${await sha256Hex(encoded.buffer as ArrayBuffer)}`;
+      const prepared = prepareBoundedAgentFormResponse(command, result, {
+        requestedCompact,
+        responseDigest,
+        sourceDigest: doctor.sourceDigest,
+        activeProjectId: activeProjectLibraryIdRef.current,
+        projectSummary: summarizeProject(responseProject),
+        doctorSummary: { profile: doctor.profile, score: doctor.score, errorCount: doctor.errorCount, warningCount: doctor.warningCount, digest: doctor.digest, sourceDigest: doctor.sourceDigest },
+      });
+      setAgentCommandResult(prepared.serialized);
+    } catch (error) {
+      setAgentCommandResult(JSON.stringify({ ok: false, error: error instanceof Error ? error.message : String(error) }, null, 2));
+    } finally {
+      setAgentCommandRunning(false);
+    }
+  };
+
+  const runAgentChangeResume = async (establish = false, cursorOverride?: string) => {
+    const cursor = establish ? "" : (cursorOverride ?? agentChangeCursorDraft).trim();
+    setAgentCommandRunning(true);
+    try {
+      const run = agentBridgeRunRef.current;
+      if (!run) throw new Error("The agent bridge is still starting. Try again in one moment.");
+      const response = await run({ op: "get_agent_changes", ...(cursor ? { cursor } : {}), limit: 32, compact: true });
+      setAgentCommandResult(JSON.stringify(response, null, 2));
+      const candidate = response.result;
+      if (response.ok !== true || !candidate || typeof candidate !== "object" || Array.isArray(candidate)) throw new Error(String(response.error ?? "The change feed returned no result."));
+      const view = candidate as unknown as AgentChangeFeedView;
+      if (typeof view.currentCursor !== "string" || !Array.isArray(view.events)) throw new Error("The change feed response omitted its cursor or event list.");
+      setAgentChangeView(view);
+      setAgentChangeCursorDraft(view.nextCursor);
+      showToast(view.resyncRequired ? "Bookmark expired · warm resync required" : establish ? "Current agent bookmark established" : `${view.returnedEventCount} change${view.returnedEventCount === 1 ? "" : "s"} recovered`);
+    } catch (error) {
+      setAgentChangeView(null);
+      setAgentCommandResult(JSON.stringify({ ok: false, error: error instanceof Error ? error.message : String(error) }, null, 2));
+    } finally {
+      setAgentCommandRunning(false);
+    }
+  };
+
+  const copyAgentChangeCursor = async () => {
+    const cursor = currentAgentChangeFeed.currentCursor;
+    setAgentChangeCursorDraft(cursor);
+    try {
+      await navigator.clipboard.writeText(cursor);
+      showToast("Current agent bookmark copied");
+    } catch {
+      setAgentCommandResult(JSON.stringify({ ok: true, cursor }, null, 2));
+      showToast("Bookmark loaded into Result JSON");
+    }
+  };
+
+  const runAgentIntentPlan = async () => {
+    const intent = agentPlanIntent.trim();
+    if (!intent) {
+      setAgentCommandResult(JSON.stringify({ ok: false, error: "Describe the authoring intent before drafting a plan." }, null, 2));
+      return;
+    }
+    setAgentCommandRunning(true);
+    try {
+      const run = agentBridgeRunRef.current;
+      if (!run) throw new Error("The agent bridge is still starting. Try again in one moment.");
+      const response = await run({ op: "draft_agent_plan", intent, mapIds: agentContextView === "map" ? [visibleAgentContextMapId] : [], compact: true });
+      setAgentCommandResult(JSON.stringify(response, null, 2));
+      const candidate = response.result;
+      if (response.ok !== true || !candidate || typeof candidate !== "object" || Array.isArray(candidate)) throw new Error(String(response.error ?? "The planner returned no plan."));
+      const plan = candidate as unknown as AgentIntentPlanRef;
+      if (typeof plan.planDigest !== "string" || typeof plan.sourceDigest !== "string" || !Array.isArray(plan.steps) || !Array.isArray(plan.coverage) || !Array.isArray(plan.phases)) throw new Error("The planner response omitted its source binding, coverage, phases, plan digest, or steps.");
+      setAgentIntentPlan(plan);
+      showToast(`${plan.strategy.title} · ${plan.coverage.length} requirements · ${plan.phases.length} phases`);
+    } catch (error) {
+      setAgentIntentPlan(null);
+      setAgentCommandResult(JSON.stringify({ ok: false, error: error instanceof Error ? error.message : String(error) }, null, 2));
+    } finally {
+      setAgentCommandRunning(false);
+    }
+  };
+
+  const copyAgentIntentPlan = async () => {
+    if (!agentIntentPlan) return;
+    try {
+      await navigator.clipboard.writeText(JSON.stringify(agentIntentPlan, null, 2));
+      showToast("Source-bound agent plan copied");
+    } catch {
+      setAgentCommandResult(JSON.stringify({ ok: true, result: agentIntentPlan }, null, 2));
+      showToast("Plan loaded into Result JSON");
+    }
+  };
+
+  const selectAgentMacro = (macroId: string) => {
+    setAgentMacroId(macroId);
+    setAgentMacroParametersText(JSON.stringify(defaultCommandMacroParameters(project, macroId), null, 2));
+    setAgentMacroPlan(null);
+  };
+
+  const runAgentMacroPreview = async () => {
+    setAgentCommandRunning(true);
+    try {
+      const parameters: unknown = JSON.parse(agentMacroParametersText);
+      if (!parameters || typeof parameters !== "object" || Array.isArray(parameters)) throw new Error("Macro parameters must be one JSON object.");
+      const run = agentBridgeRunRef.current;
+      if (!run) throw new Error("The agent bridge is still starting. Try again in one moment.");
+      const response = await run({ op: "preview_command_macro", macroId: agentMacroId, parameters, compact: true });
+      setAgentCommandResult(JSON.stringify(response, null, 2));
+      const plan = response.result;
+      if (response.ok !== true || !plan || typeof plan !== "object" || Array.isArray(plan)) throw new Error(String(response.error ?? "Macro preview did not return a plan."));
+      const candidate = plan as unknown as AgentMacroPlanRef;
+      if (typeof candidate.sourceDigest !== "string" || typeof candidate.expansionDigest !== "string") throw new Error("Macro preview omitted its source or expansion digest.");
+      setAgentMacroPlan(candidate);
+      showToast(candidate.applicable ? `Macro preview ready · ${candidate.commands.length} commands` : `Macro preview blocked · ${candidate.doctor.newBlockers.length} new Doctor issue${candidate.doctor.newBlockers.length === 1 ? "" : "s"}`);
+    } catch (error) {
+      setAgentMacroPlan(null);
+      setAgentCommandResult(JSON.stringify({ ok: false, error: error instanceof Error ? error.message : String(error) }, null, 2));
+    } finally {
+      setAgentCommandRunning(false);
+    }
+  };
+
+  const applyAgentMacroPlan = async () => {
+    if (!agentMacroPlan || !agentMacroPlanFresh || !agentMacroPlan.applicable) return;
+    setAgentCommandRunning(true);
+    try {
+      const parameters: unknown = JSON.parse(agentMacroParametersText);
+      if (!parameters || typeof parameters !== "object" || Array.isArray(parameters)) throw new Error("Macro parameters must be one JSON object.");
+      const run = agentBridgeRunRef.current;
+      if (!run) throw new Error("The agent bridge is still starting. Try again in one moment.");
+      const response = await run({
+        op: "apply_command_macro",
+        macroId: agentMacroId,
+        parameters,
+        expectedSourceDigest: agentMacroPlan.sourceDigest,
+        expectedExpansionDigest: agentMacroPlan.expansionDigest,
+        compact: true,
+      });
+      setAgentCommandResult(JSON.stringify(response, null, 2));
+      if (response.ok !== true) throw new Error(String(response.error ?? "Macro apply failed."));
+      setAgentMacroPlan(null);
+      showToast(`${agentMacroPlan.macro.title} applied atomically`);
+    } catch (error) {
+      setAgentCommandResult(JSON.stringify({ ok: false, error: error instanceof Error ? error.message : String(error) }, null, 2));
+    } finally {
+      setAgentCommandRunning(false);
+    }
+  };
+
+  const parseAgentBatchCommands = () => {
+    const parsed: unknown = JSON.parse(agentBatchCommandsText);
+    if (!Array.isArray(parsed) || parsed.length === 0) throw new Error("Batch commands must be a non-empty JSON array.");
+    if (parsed.some((entry) => !entry || typeof entry !== "object" || Array.isArray(entry))) throw new Error("Every batch entry must be one command object.");
+    return parsed as AgentCommand[];
+  };
+
+  const runAgentBatchPreview = async () => {
+    setAgentCommandRunning(true);
+    try {
+      const commands = parseAgentBatchCommands();
+      const summary = agentBatchSummary.trim();
+      if (!summary) throw new Error("Describe the coherent batch before previewing it.");
+      const run = agentBridgeRunRef.current;
+      if (!run) throw new Error("The agent bridge is still starting. Try again in one moment.");
+      const response = await run({
+        op: "preview_batch",
+        commands,
+        summary,
+        profile: project.doctorProfile ?? "prototype",
+        expectedSourceDigest: doctorReport.sourceDigest,
+        compact: true,
+      });
+      setAgentCommandResult(JSON.stringify(response, null, 2));
+      const plan = response.result;
+      if (response.ok !== true || !plan || typeof plan !== "object" || Array.isArray(plan)) throw new Error(String(response.error ?? "Batch preview returned no receipt."));
+      const candidate = plan as unknown as AgentBatchPreviewRef;
+      if (candidate.schemaVersion !== "looplab-agent-batch-preview/v1" || typeof candidate.previewDigest !== "string" || typeof candidate.sourceDigest !== "string") throw new Error("Batch preview omitted its source binding or preview digest.");
+      setAgentBatchPreview(candidate);
+      showToast(candidate.applicable ? `Batch preview ready · ${candidate.commandCount} command${candidate.commandCount === 1 ? "" : "s"}` : `Batch preview blocked · ${candidate.commandErrors.length + candidate.doctor.newBlockers.length} finding${candidate.commandErrors.length + candidate.doctor.newBlockers.length === 1 ? "" : "s"}`);
+    } catch (error) {
+      setAgentBatchPreview(null);
+      setAgentCommandResult(JSON.stringify({ ok: false, error: error instanceof Error ? error.message : String(error) }, null, 2));
+    } finally {
+      setAgentCommandRunning(false);
+    }
+  };
+
+  const applyAgentBatchPreview = async () => {
+    if (!agentBatchPreview || !agentBatchPreviewFresh || !agentBatchPreview.applicable) return;
+    setAgentCommandRunning(true);
+    try {
+      const commands = parseAgentBatchCommands();
+      const run = agentBridgeRunRef.current;
+      if (!run) throw new Error("The agent bridge is still starting. Try again in one moment.");
+      const response = await run({
+        op: "apply_previewed_batch",
+        commands,
+        summary: agentBatchSummary.trim(),
+        profile: agentBatchPreview.profile,
+        expectedSourceDigest: agentBatchPreview.sourceDigest,
+        expectedPreviewDigest: agentBatchPreview.previewDigest,
+        compact: true,
+      });
+      setAgentCommandResult(JSON.stringify(response, null, 2));
+      if (response.ok !== true) throw new Error(String(response.error ?? "Exact batch apply failed."));
+      setAgentBatchPreview(null);
+      showToast(`Applied exact reviewed batch · ${agentBatchPreview.commandCount} command${agentBatchPreview.commandCount === 1 ? "" : "s"}`);
+    } catch (error) {
+      setAgentCommandResult(JSON.stringify({ ok: false, error: error instanceof Error ? error.message : String(error) }, null, 2));
+    } finally {
+      setAgentCommandRunning(false);
+    }
+  };
+
+  const agentRepairFindingCodes = () => [...new Set(agentRepairCodes.split(/[\s,]+/).map((code) => code.trim()).filter(Boolean))].sort();
+
+  const runAgentMechanicalRepairPreview = async () => {
+    setAgentCommandRunning(true);
+    try {
+      const run = agentBridgeRunRef.current;
+      if (!run) throw new Error("The agent bridge is still starting. Try again in one moment.");
+      const findingCodes = agentRepairFindingCodes();
+      const response = await run({
+        op: "auto_repair",
+        expectedSourceDigest: doctorReport.sourceDigest,
+        profile: project.doctorProfile ?? "prototype",
+        maxRepairs: agentRepairLimit,
+        ...(findingCodes.length ? { findingCodes } : {}),
+        compact: true,
+      });
+      setAgentCommandResult(JSON.stringify(response, null, 2));
+      const plan = response.result;
+      if (response.ok !== true || !plan || typeof plan !== "object" || Array.isArray(plan)) throw new Error(String(response.error ?? "Mechanical repair returned no receipt."));
+      const candidate = plan as unknown as AgentMechanicalRepairRef;
+      if (candidate.schemaVersion !== "looplab-auto-repair/v1" || typeof candidate.repairDigest !== "string" || typeof candidate.sourceDigest !== "string") throw new Error("Mechanical repair omitted its source binding or exact repair digest.");
+      setAgentRepairPlan(candidate);
+      setAgentConvergencePlan(null);
+      showToast(candidate.applicable ? `${candidate.safeRepairCount} safe repair${candidate.safeRepairCount === 1 ? "" : "s"} ready for review` : candidate.safeRepairCount ? "Safe repairs failed a validation gate" : "No deterministic repair is available; review the residue");
+    } catch (error) {
+      setAgentRepairPlan(null);
+      setAgentCommandResult(JSON.stringify({ ok: false, error: error instanceof Error ? error.message : String(error) }, null, 2));
+    } finally {
+      setAgentCommandRunning(false);
+    }
+  };
+
+  const applyAgentMechanicalRepair = async () => {
+    if (!agentRepairPlan || !agentRepairPlanFresh || !agentRepairPlan.applicable) return;
+    setAgentCommandRunning(true);
+    try {
+      const run = agentBridgeRunRef.current;
+      if (!run) throw new Error("The agent bridge is still starting. Try again in one moment.");
+      const findingCodes = agentRepairFindingCodes();
+      const response = await run({
+        op: "auto_repair",
+        apply: true,
+        expectedSourceDigest: agentRepairPlan.sourceDigest,
+        expectedRepairDigest: agentRepairPlan.repairDigest,
+        profile: agentRepairPlan.profile,
+        maxRepairs: agentRepairPlan.maxRepairs,
+        ...(findingCodes.length ? { findingCodes } : {}),
+        compact: true,
+      });
+      setAgentCommandResult(JSON.stringify(response, null, 2));
+      if (response.ok !== true) throw new Error(String(response.error ?? "Exact mechanical repair apply failed."));
+      showToast(`Applied ${agentRepairPlan.safeRepairCount} exact mechanical repair${agentRepairPlan.safeRepairCount === 1 ? "" : "s"}`);
+      setAgentRepairPlan(null);
+      setAgentConvergencePlan(null);
+    } catch (error) {
+      setAgentCommandResult(JSON.stringify({ ok: false, error: error instanceof Error ? error.message : String(error) }, null, 2));
+    } finally {
+      setAgentCommandRunning(false);
+    }
+  };
+
+  const runAgentConvergencePreview = async () => {
+    setAgentCommandRunning(true);
+    try {
+      const run = agentBridgeRunRef.current;
+      if (!run) throw new Error("The agent bridge is still starting. Try again in one moment.");
+      const findingCodes = agentRepairFindingCodes();
+      const response = await run({
+        op: "converge",
+        expectedSourceDigest: doctorReport.sourceDigest,
+        profile: project.doctorProfile ?? "prototype",
+        maxRepairs: agentRepairLimit,
+        maxPasses: agentConvergencePasses,
+        ...(findingCodes.length ? { findingCodes } : {}),
+        compact: true,
+      });
+      setAgentCommandResult(JSON.stringify(response, null, 2));
+      const plan = response.result;
+      if (response.ok !== true || !plan || typeof plan !== "object" || Array.isArray(plan)) throw new Error(String(response.error ?? "Convergence returned no receipt."));
+      const candidate = plan as unknown as AgentConvergenceRef;
+      if (candidate.schemaVersion !== "looplab-convergence/v1" || typeof candidate.convergenceDigest !== "string" || typeof candidate.sourceDigest !== "string") throw new Error("Convergence omitted its source binding or exact convergence digest.");
+      setAgentConvergencePlan(candidate);
+      setAgentRepairPlan(null);
+      showToast(candidate.applicable ? `${candidate.passCount} bounded pass${candidate.passCount === 1 ? "" : "es"} ready · ${candidate.stopReason}` : `Convergence stopped · ${candidate.stopReason}`);
+    } catch (error) {
+      setAgentConvergencePlan(null);
+      setAgentCommandResult(JSON.stringify({ ok: false, error: error instanceof Error ? error.message : String(error) }, null, 2));
+    } finally {
+      setAgentCommandRunning(false);
+    }
+  };
+
+  const applyAgentConvergence = async () => {
+    if (!agentConvergencePlan || !agentConvergencePlanFresh || !agentConvergencePlan.applicable) return;
+    setAgentCommandRunning(true);
+    try {
+      const run = agentBridgeRunRef.current;
+      if (!run) throw new Error("The agent bridge is still starting. Try again in one moment.");
+      const findingCodes = agentRepairFindingCodes();
+      const response = await run({
+        op: "converge",
+        apply: true,
+        expectedSourceDigest: agentConvergencePlan.sourceDigest,
+        expectedConvergenceDigest: agentConvergencePlan.convergenceDigest,
+        profile: agentConvergencePlan.profile,
+        maxRepairs: agentConvergencePlan.maxRepairs,
+        maxPasses: agentConvergencePlan.maxPasses,
+        ...(findingCodes.length ? { findingCodes } : {}),
+        compact: true,
+      });
+      setAgentCommandResult(JSON.stringify(response, null, 2));
+      if (response.ok !== true) throw new Error(String(response.error ?? "Exact convergence apply failed."));
+      showToast(`Applied ${agentConvergencePlan.totalRepairCount} repairs across ${agentConvergencePlan.passCount} bounded pass${agentConvergencePlan.passCount === 1 ? "" : "es"}`);
+      setAgentConvergencePlan(null);
+      setAgentRepairPlan(null);
+    } catch (error) {
+      setAgentCommandResult(JSON.stringify({ ok: false, error: error instanceof Error ? error.message : String(error) }, null, 2));
+    } finally {
+      setAgentCommandRunning(false);
+    }
+  };
+
+  const loadAgentBenchmarkIntoDirector = async () => {
+    if (!selectedAgentBenchmark) return;
+    setAgentCommandRunning(true);
+    try {
+      const run = agentBridgeRunRef.current;
+      if (!run) throw new Error("The agent bridge is still starting. Try again in one moment.");
+      const command: AgentCommand = {
+        op: "configure_director",
+        userPrompt: selectedAgentBenchmark.prompt,
+        campaignScope: selectedAgentBenchmark.campaignScope,
+        loop: { enabled: false, conditions: selectedAgentBenchmark.ordinaryDirectorConstraints, evaluationProfile: selectedAgentBenchmark.category },
+      };
+      const response = await run(command);
+      setAgentCommandResult(JSON.stringify(response, null, 2));
+      if (response.ok !== true) throw new Error(String(response.error ?? "The benchmark brief could not be loaded into the Director."));
+      setAgentCommandText(JSON.stringify({ op: "evaluate_builder_benchmark", benchmarkId: selectedAgentBenchmark.id, compact: true }, null, 2));
+      setAgentBenchmarkReceipt(null);
+      setAgentBenchmarkComparison(null);
+      setExperienceMode("director");
+      setMapStudioFocused(false);
+      setDirectorWorkspaceTab("build");
+      appendConsole("benchmark.director.loaded", `${selectedAgentBenchmark.title} loaded into the Director`, `${selectedAgentBenchmark.startingTemplate} scaffold · ${selectedAgentBenchmark.campaignScope} · ${selectedAgentBenchmark.category} acceptance profile · ordinary provider path`, "good");
+      showToast("Golden brief loaded into the AI Director");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setAgentCommandResult(JSON.stringify({ ok: false, error: message }, null, 2));
+      showToast(message);
+    } finally {
+      setAgentCommandRunning(false);
+    }
+  };
+
+  const requestAgentBenchmarkReceipt = async () => {
+    if (!selectedAgentBenchmark) throw new Error("Choose a benchmark first.");
+    const run = agentBridgeRunRef.current;
+    if (!run) throw new Error("The agent bridge is still starting. Try again in one moment.");
+    const response = await run({ op: "evaluate_builder_benchmark", benchmarkId: selectedAgentBenchmark.id, compact: true });
+    setAgentCommandResult(JSON.stringify(response, null, 2));
+    const result = response.result;
+    if (response.ok !== true || !result || typeof result !== "object" || Array.isArray(result)) throw new Error(String(response.error ?? "Benchmark evaluation returned no receipt."));
+    const candidate = result as unknown as BuilderBenchmarkReceiptRef;
+    if (candidate.schemaVersion !== "looplab-builder-benchmark-run/v1" || candidate.benchmark?.id !== selectedAgentBenchmark.id || typeof candidate.sourceDigest !== "string" || typeof candidate.receiptDigest !== "string") throw new Error("Benchmark evaluation omitted its task, source, or exact receipt digest.");
+    return candidate;
+  };
+
+  const evaluateCurrentAgentBenchmark = async () => {
+    setAgentCommandRunning(true);
+    try {
+      const candidate = await requestAgentBenchmarkReceipt();
+      setAgentBenchmarkReceipt(candidate);
+      setAgentBenchmarkComparison(null);
+      appendConsole("benchmark.evaluated", `${candidate.benchmark.title}: ${candidate.technicalFitness.requiredScore}/100`, `${candidate.technicalFitness.passedRequiredCount}/${candidate.technicalFitness.requiredCheckCount} required checks · ${candidate.blockers.length} visible blockers · provider-free`, candidate.passed ? "good" : "neutral");
+      showToast(candidate.passed ? "Current project passes the technical benchmark" : `${candidate.blockers.length} benchmark blocker${candidate.blockers.length === 1 ? "" : "s"} remain`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setAgentBenchmarkReceipt(null);
+      setAgentCommandResult(JSON.stringify({ ok: false, error: message }, null, 2));
+      showToast(message);
+    } finally {
+      setAgentCommandRunning(false);
+    }
+  };
+
+  const compareCurrentAgentBenchmark = async () => {
+    if (!agentBenchmarkBaseline || !selectedAgentBenchmark) return;
+    setAgentCommandRunning(true);
+    try {
+      const candidate = await requestAgentBenchmarkReceipt();
+      const run = agentBridgeRunRef.current;
+      if (!run) throw new Error("The agent bridge is still starting. Try again in one moment.");
+      const response = await run({ op: "compare_builder_benchmark_runs", baselineRuns: [agentBenchmarkBaseline], candidateRuns: [candidate], compact: true });
+      setAgentCommandResult(JSON.stringify(response, null, 2));
+      const result = response.result;
+      if (response.ok !== true || !result || typeof result !== "object" || Array.isArray(result)) throw new Error(String(response.error ?? "Benchmark comparison returned no receipt."));
+      const comparison = result as unknown as BuilderBenchmarkComparisonRef;
+      if (comparison.schemaVersion !== "looplab-builder-benchmark-comparison/v1" || typeof comparison.comparisonDigest !== "string") throw new Error("Benchmark comparison omitted its exact comparison digest.");
+      setAgentBenchmarkReceipt(candidate);
+      setAgentBenchmarkComparison(comparison);
+      appendConsole("benchmark.compared", `${selectedAgentBenchmark.title}: ${comparison.conclusion}`, `${comparison.claimStrength} · ${comparison.reasons.join(", ") || "no measured delta"}`, "neutral");
+      showToast(`Benchmark comparison: ${comparison.conclusion}`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setAgentBenchmarkComparison(null);
+      setAgentCommandResult(JSON.stringify({ ok: false, error: message }, null, 2));
+      showToast(message);
+    } finally {
+      setAgentCommandRunning(false);
+    }
+  };
+
+  const prepareMotionBody = () => {
+    try {
+      if (!selected) throw new Error("Select the exact authored platform or object first.");
+      const command: Record<string, unknown> = {
+        op: "suggest_motion_body",
+        id: selected.id,
+        mapId: project.activeMapId ?? activeMap?.id,
+      };
+      if (selectedPath?.id) command.pathId = selectedPath.id;
+      const outcome = applyAgentCommand(syncActiveMap(project), command);
+      const suggestion = outcome.result as { available?: boolean; body?: Record<string, unknown>; reasons?: string[]; warnings?: string[]; evidenceRequired?: string[] };
+      if (!suggestion?.body) throw new Error(suggestion?.reasons?.join(" ") || "No safe motion-body draft is available for this selection.");
+      setMotionBodyDraft(JSON.stringify(suggestion.body, null, 2));
+      setAgentCommandResult(JSON.stringify({ ok: true, changed: false, result: suggestion }, null, 2));
+      appendConsole(
+        suggestion.available ? "motion.body.prepared" : "motion.body.review-required",
+        `Motion-body v2 draft prepared for ${selected.name}`,
+        `${suggestion.reasons?.join(" ") ?? "Authored path selected."} ${suggestion.warnings?.join(" ") ?? ""} No provider tokens were used.`,
+        suggestion.available ? "good" : "neutral",
+      );
+      showToast(suggestion.available ? "Motion body ready for review" : "Motion draft prepared · resolve its warning before saving");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setAgentCommandResult(JSON.stringify({ ok: false, error: message }, null, 2));
+      showToast(message);
+    }
+  };
+
+  const saveMotionBody = () => {
+    try {
+      if (!selected) throw new Error("Select the exact authored object first.");
+      const body: unknown = JSON.parse(motionBodyDraft);
+      if (!body || typeof body !== "object" || Array.isArray(body)) throw new Error("The motion body must be one JSON object.");
+      const outcome = applyAgentCommand(syncActiveMap(project), { op: "set_motion_body", id: selected.id, body });
+      const result = outcome.result as { motionBody?: Record<string, unknown>; objectId?: string };
+      if (!result?.motionBody) throw new Error("The motion body did not pass canonical validation.");
+      setMotionBodyDraft(JSON.stringify(result.motionBody, null, 2));
+      setAgentCommandResult(JSON.stringify({ ok: true, changed: true, result: outcome.result, validation: outcome.validation }, null, 2));
+      commit(outcome.project as GameProject, `Motion body saved for ${selected.name}`);
+      appendConsole("motion.body.saved", `Deterministic motion saved for ${selected.name}`, "Project Doctor checked path authority, ground anchor, collider, rider eligibility, crush policy, replay input, and executable evidence.", "good");
+      showToast("Motion body saved · Doctor rechecked it");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setAgentCommandResult(JSON.stringify({ ok: false, error: message }, null, 2));
+      showToast(message);
+    }
+  };
+
+  const removeMotionBody = () => {
+    try {
+      if (!selected) throw new Error("Select an object with a motion body first.");
+      const outcome = applyAgentCommand(syncActiveMap(project), { op: "remove_motion_body", id: selected.id });
+      setMotionBodyDraft("");
+      setAgentCommandResult(JSON.stringify({ ok: true, changed: outcome.changed, result: outcome.result, validation: outcome.validation }, null, 2));
+      if (outcome.changed) commit(outcome.project as GameProject, `Motion body removed from ${selected.name}`);
+      appendConsole("motion.body.removed", `Motion removed from ${selected.name}`, "The object, authored path, collider, map placement, and prior evidence remain available. Undo restores the body.", "neutral");
+      showToast(outcome.changed ? "Motion body removed" : "The selected object had no motion body");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setAgentCommandResult(JSON.stringify({ ok: false, error: message }, null, 2));
+      showToast(message);
+    }
+  };
+
+  const prepareCombatProgram = () => {
+    try {
+      const outcome = applyAgentCommand(syncActiveMap(project), { op: "suggest_combat_program", mapId: project.activeMapId ?? activeMap?.id });
+      const suggestion = outcome.result as { available?: boolean; program?: Record<string, unknown>; instructions?: string; reasons?: string[]; targetObjectIds?: string[] };
+      if (!suggestion?.available || !suggestion.program) throw new Error(suggestion?.reasons?.join(" ") || "No deterministic combat starter is available for this map.");
+      setCombatProgramDraft(JSON.stringify(suggestion.program, null, 2));
+      setAgentCommandResult(JSON.stringify({ ok: true, changed: false, result: suggestion }, null, 2));
+      appendConsole("combat.program.prepared", "Deterministic combat starter prepared", `${suggestion.targetObjectIds?.length ?? 0} authored targets · ${suggestion.instructions ?? "Review before saving."} No provider tokens were used.`, "good");
+      showToast("Combat starter ready for review");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setAgentCommandResult(JSON.stringify({ ok: false, error: message }, null, 2));
+      showToast(message);
+    }
+  };
+
+  const saveCombatProgram = () => {
+    try {
+      const program: unknown = JSON.parse(combatProgramDraft);
+      if (!program || typeof program !== "object" || Array.isArray(program)) throw new Error("The combat program must be one JSON object.");
+      const outcome = applyAgentCommand(syncActiveMap(project), { op: "set_combat_program", program });
+      const result = outcome.result as { program?: Record<string, unknown> };
+      if (!result?.program) throw new Error("The combat program did not pass validation.");
+      setCombatProgramDraft(JSON.stringify(result.program, null, 2));
+      setAgentCommandResult(JSON.stringify({ ok: true, changed: true, result: outcome.result, validation: outcome.validation }, null, 2));
+      commit(outcome.project as GameProject, "Deterministic combat program saved");
+      appendConsole("combat.program.saved", "Health, targeting, and bounded projectile rules saved", "Project Doctor checked authored references, team filters, pool ceilings, semantic inputs, replay state, and executable evidence.", "good");
+      showToast("Combat program saved · Doctor rechecked it");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setAgentCommandResult(JSON.stringify({ ok: false, error: message }, null, 2));
+      showToast(message);
+    }
+  };
+
+  const removeCombatProgram = () => {
+    try {
+      const outcome = applyAgentCommand(syncActiveMap(project), { op: "remove_combat_program" });
+      setCombatProgramDraft("");
+      setAgentCommandResult(JSON.stringify({ ok: true, changed: outcome.changed, result: outcome.result, validation: outcome.validation }, null, 2));
+      if (outcome.changed) commit(outcome.project as GameProject, "Deterministic combat program removed");
+      appendConsole("combat.program.removed", "Deterministic combat source removed", "Authored maps, objects, colliders, presentation, and prior iteration evidence remain unchanged. Undo restores the program.", "neutral");
+      showToast(outcome.changed ? "Combat program removed" : "No combat program was saved");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setAgentCommandResult(JSON.stringify({ ok: false, error: message }, null, 2));
+      showToast(message);
+    }
+  };
+
+  const prepareActorProgram = () => {
+    try {
+      const outcome = applyAgentCommand(syncActiveMap(project), { op: "suggest_actor_program", mapId: project.activeMapId ?? activeMap?.id });
+      const suggestion = outcome.result as { available?: boolean; program?: Record<string, unknown>; instructions?: string; reasons?: string[]; actorObjectIds?: string[] };
+      if (!suggestion?.available || !suggestion.program) throw new Error(suggestion?.reasons?.join(" ") || "No deterministic actor starter is available for this map.");
+      setActorProgramDraft(JSON.stringify(suggestion.program, null, 2));
+      setAgentCommandResult(JSON.stringify({ ok: true, changed: false, result: suggestion }, null, 2));
+      appendConsole("actor.program.prepared", "Deterministic actor starter prepared", `${suggestion.actorObjectIds?.length ?? 0} authored actor objects · ${suggestion.instructions ?? "Review before saving."} No provider tokens were used.`, "good");
+      showToast("Actor starter ready for review");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setAgentCommandResult(JSON.stringify({ ok: false, error: message }, null, 2));
+      showToast(message);
+    }
+  };
+
+  const saveActorProgram = () => {
+    try {
+      const program: unknown = JSON.parse(actorProgramDraft);
+      if (!program || typeof program !== "object" || Array.isArray(program)) throw new Error("The actor program must be one JSON object.");
+      const outcome = applyAgentCommand(syncActiveMap(project), { op: "set_actor_program", program });
+      const result = outcome.result as { program?: Record<string, unknown> };
+      if (!result?.program) throw new Error("The actor program did not pass validation.");
+      setActorProgramDraft(JSON.stringify(result.program, null, 2));
+      setAgentCommandResult(JSON.stringify({ ok: true, changed: true, result: outcome.result, validation: outcome.validation }, null, 2));
+      commit(outcome.project as GameProject, "Deterministic actor program saved");
+      appendConsole("actor.program.saved", "Actor routes, perception, and transitions saved", "Project Doctor checked authored navigation, collision authority, stable targets, bounded movement, replay state, and executable evidence.", "good");
+      showToast("Actor program saved · Doctor rechecked it");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setAgentCommandResult(JSON.stringify({ ok: false, error: message }, null, 2));
+      showToast(message);
+    }
+  };
+
+  const removeActorProgram = () => {
+    try {
+      const outcome = applyAgentCommand(syncActiveMap(project), { op: "remove_actor_program" });
+      setActorProgramDraft("");
+      setAgentCommandResult(JSON.stringify({ ok: true, changed: outcome.changed, result: outcome.result, validation: outcome.validation }, null, 2));
+      if (outcome.changed) commit(outcome.project as GameProject, "Deterministic actor program removed");
+      appendConsole("actor.program.removed", "Deterministic actor source removed", "Authored maps, navigation, objects, colliders, and prior iteration evidence remain unchanged. Undo restores the program.", "neutral");
+      showToast(outcome.changed ? "Actor program removed" : "No actor program was saved");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setAgentCommandResult(JSON.stringify({ ok: false, error: message }, null, 2));
+      showToast(message);
+    }
+  };
+
+  const preparePresentationProgram = () => {
+    try {
+      const outcome = applyAgentCommand(syncActiveMap(project), { op: "suggest_presentation_program" });
+      const suggestion = outcome.result as { program?: Record<string, unknown> };
+      if (!suggestion?.program) throw new Error("No presentation starter is available for this project.");
+      setPresentationProgramDraft(JSON.stringify(suggestion.program, null, 2));
+      setAgentCommandResult(JSON.stringify({ ok: true, changed: false, result: suggestion }, null, 2));
+      appendConsole("presentation.program.prepared", "Event-driven sound and game-feel starter prepared", "Review its cues and effects, then save it. No project state changed and no provider tokens were used.", "good");
+      showToast("Presentation starter ready for review");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setAgentCommandResult(JSON.stringify({ ok: false, error: message }, null, 2));
+      showToast(message);
+    }
+  };
+
+  const savePresentationProgram = () => {
+    try {
+      const program: unknown = JSON.parse(presentationProgramDraft);
+      if (!program || typeof program !== "object" || Array.isArray(program)) throw new Error("The presentation program must be one JSON object.");
+      const outcome = applyAgentCommand(syncActiveMap(project), { op: "set_presentation_program", program });
+      const result = outcome.result as { program?: Record<string, unknown> };
+      if (!result?.program) throw new Error("The presentation program did not pass validation.");
+      setPresentationProgramDraft(JSON.stringify(result.program, null, 2));
+      setAgentCommandResult(JSON.stringify({ ok: true, changed: true, result: outcome.result, validation: outcome.validation }, null, 2));
+      commit(outcome.project as GameProject, "Presentation program saved");
+      appendConsole("presentation.program.saved", "Authored sound and game-feel program saved", "Project Doctor checked event IDs, voice and particle budgets, reduced motion, and the simulation boundary.", "good");
+      showToast("Presentation program saved · Doctor rechecked it");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setAgentCommandResult(JSON.stringify({ ok: false, error: message }, null, 2));
+      showToast(message);
+    }
+  };
+
+  const removePresentationProgram = () => {
+    try {
+      const outcome = applyAgentCommand(syncActiveMap(project), { op: "remove_presentation_program" });
+      setPresentationProgramDraft("");
+      setAgentCommandResult(JSON.stringify({ ok: true, changed: true, result: outcome.result, validation: outcome.validation }, null, 2));
+      commit(outcome.project as GameProject, "Presentation program removed");
+      appendConsole("presentation.program.removed", "Authored sound and game-feel mappings removed", "Gameplay, collision, acceptance, and replay state were unchanged. The removal remains available through Undo.", "neutral");
+      showToast("Presentation program removed · gameplay unchanged");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setAgentCommandResult(JSON.stringify({ ok: false, error: message }, null, 2));
+      showToast(message);
+    }
+  };
+
+  const prepareGameShell = () => {
+    try {
+      const outcome = applyAgentCommand(syncActiveMap(project), { op: "suggest_game_shell", status: "draft" });
+      const suggestion = outcome.result as { shell?: Record<string, unknown> };
+      if (!suggestion?.shell) throw new Error("No standard game-shell starter is available for this project.");
+      setGameShellDraft(JSON.stringify(suggestion.shell, null, 2));
+      setAgentCommandResult(JSON.stringify({ ok: true, changed: false, result: suggestion }, null, 2));
+      appendConsole("game.shell.prepared", "Standard game shell prepared", "Review title, pause, terminal, restart, settings, and deterministic loss bindings, then save it. No provider tokens were used.", "good");
+      showToast("Game shell ready for review");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setAgentCommandResult(JSON.stringify({ ok: false, error: message }, null, 2));
+      showToast(message);
+    }
+  };
+
+  const saveGameShell = () => {
+    try {
+      const shell: unknown = JSON.parse(gameShellDraft);
+      if (!shell || typeof shell !== "object" || Array.isArray(shell)) throw new Error("The game shell must be one JSON object.");
+      const outcome = applyAgentCommand(syncActiveMap(project), { op: "set_game_shell", shell });
+      const result = outcome.result as { shell?: Record<string, unknown> };
+      if (!result?.shell) throw new Error("The game shell did not pass validation.");
+      setGameShellDraft(JSON.stringify(result.shell, null, 2));
+      setAgentCommandResult(JSON.stringify({ ok: true, changed: true, result: outcome.result, validation: outcome.validation }, null, 2));
+      commit(outcome.project as GameProject, "Standard game shell saved");
+      appendConsole("game.shell.saved", "Title, pause, settings, and terminal shell saved", "Project Doctor checked lifecycle, deterministic terminal truth, accessibility controls, and replay isolation.", "good");
+      showToast("Game shell saved · Doctor rechecked it");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setAgentCommandResult(JSON.stringify({ ok: false, error: message }, null, 2));
+      showToast(message);
+    }
+  };
+
+  const removeGameShell = () => {
+    try {
+      const outcome = applyAgentCommand(syncActiveMap(project), { op: "remove_game_shell" });
+      setGameShellDraft("");
+      setAgentCommandResult(JSON.stringify({ ok: true, changed: outcome.changed, result: outcome.result, validation: outcome.validation }, null, 2));
+      if (outcome.changed) commit(outcome.project as GameProject, "Standard game shell removed");
+      appendConsole("game.shell.removed", "Standard game shell source removed", "Gameplay and replay truth were unchanged. Production Doctor now requires a replacement or an explicit disabled-shell waiver.", "neutral");
+      showToast(outcome.changed ? "Game shell removed" : "No game shell was saved");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setAgentCommandResult(JSON.stringify({ ok: false, error: message }, null, 2));
+      showToast(message);
+    }
+  };
+
+  const prepareSpatialLayoutContract = async () => {
+    setSpatialLayoutSearchRunning(true);
+    try {
+      const run = agentBridgeRunRef.current;
+      if (!run) throw new Error("The agent bridge is still starting. Try again in one moment.");
+      const response = await run({
+        op: "suggest_spatial_layout_contract",
+        mapId: project.activeMapId ?? "map-main",
+        maxCandidates: 6,
+        allowReplacement: isProtectedSpatialVariation,
+        compact: true,
+      });
+      setAgentCommandResult(JSON.stringify(response, null, 2));
+      const suggestion = response.result as { available?: boolean; contract?: Record<string, unknown>; compatibleFamily?: string; existingMapProtected?: boolean; instruction?: string } | undefined;
+      if (response.ok !== true || !suggestion?.available || !suggestion.contract) throw new Error(String(response.error ?? "No projection-compatible spatial layout starter is available for this map."));
+      setSpatialLayoutContractDraft(JSON.stringify(suggestion.contract, null, 2));
+      setSpatialLayoutSearchResult(null);
+      setSelectedSpatialLayoutCandidateId(null);
+      setSpatialLayoutCandidatePreview(null);
+      appendConsole(
+        "spatial.layout.contract.prepared",
+        `${suggestion.compatibleFamily ?? "Spatial"} exploration contract prepared`,
+        suggestion.existingMapProtected
+          ? "Existing geometry remains protected. Create a project variation before preparing a replace-explicit contract."
+          : "Review the exact pins and hard constraints, then save. No geometry changed and no provider tokens were used.",
+        "good",
+      );
+      showToast(suggestion.existingMapProtected ? "Safe read-only layout contract prepared" : "Variation-ready layout contract prepared");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setAgentCommandResult(JSON.stringify({ ok: false, error: message }, null, 2));
+      showToast(message);
+    } finally {
+      setSpatialLayoutSearchRunning(false);
+    }
+  };
+
+  const saveSpatialLayoutContract = async () => {
+    setSpatialLayoutSearchRunning(true);
+    try {
+      const contract: unknown = JSON.parse(spatialLayoutContractDraft);
+      if (!contract || typeof contract !== "object" || Array.isArray(contract)) throw new Error("The spatial layout contract must be one JSON object.");
+      const run = agentBridgeRunRef.current;
+      if (!run) throw new Error("The agent bridge is still starting. Try again in one moment.");
+      const response = await run({ op: "set_spatial_layout_contract", contract, expectedSourceDigest: doctorReport.sourceDigest, compact: true });
+      setAgentCommandResult(JSON.stringify(response, null, 2));
+      const result = response.result as { contract?: Record<string, unknown> } | undefined;
+      if (response.ok !== true || !result?.contract) throw new Error(String(response.error ?? "The spatial layout contract did not pass validation."));
+      setSpatialLayoutContractDraft(JSON.stringify(result.contract, null, 2));
+      setSpatialLayoutSearchResult(null);
+      setSelectedSpatialLayoutCandidateId(null);
+      setSpatialLayoutCandidatePreview(null);
+      appendConsole("spatial.layout.contract.saved", "Spatial layout contract saved", "Project Doctor now owns its target map, exact pins, projection family, replacement policy, descriptor archive, and hard bounds.", "good");
+      showToast("Spatial layout contract saved · Doctor rechecked it");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setAgentCommandResult(JSON.stringify({ ok: false, error: message }, null, 2));
+      showToast(message);
+    } finally {
+      setSpatialLayoutSearchRunning(false);
+    }
+  };
+
+  const removeSpatialLayoutContract = async () => {
+    setSpatialLayoutSearchRunning(true);
+    try {
+      const run = agentBridgeRunRef.current;
+      if (!run) throw new Error("The agent bridge is still starting. Try again in one moment.");
+      const response = await run({ op: "remove_spatial_layout_contract", expectedSourceDigest: doctorReport.sourceDigest, compact: true });
+      setAgentCommandResult(JSON.stringify(response, null, 2));
+      if (response.ok !== true) throw new Error(String(response.error ?? "The spatial layout contract could not be removed."));
+      setSpatialLayoutContractDraft("");
+      setSpatialLayoutSearchResult(null);
+      setSelectedSpatialLayoutCandidateId(null);
+      setSpatialLayoutCandidatePreview(null);
+      appendConsole("spatial.layout.contract.removed", "Spatial layout contract removed", "Map geometry, collision, routes, pins, and evidence were unchanged. The removal remains available through Undo.", "neutral");
+      showToast("Spatial layout contract removed · map unchanged");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setAgentCommandResult(JSON.stringify({ ok: false, error: message }, null, 2));
+      showToast(message);
+    } finally {
+      setSpatialLayoutSearchRunning(false);
+    }
+  };
+
+  const runSpatialLayoutSearch = async () => {
+    setSpatialLayoutSearchRunning(true);
+    setSpatialLayoutCandidatePreview(null);
+    try {
+      const run = agentBridgeRunRef.current;
+      if (!run) throw new Error("The agent bridge is still starting. Try again in one moment.");
+      await new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
+      const response = await run({ op: "run_spatial_layout_search", expectedSourceDigest: doctorReport.sourceDigest, compact: true });
+      setAgentCommandResult(JSON.stringify(response, null, 2));
+      const result = response.result as SpatialLayoutSearchResultRef | undefined;
+      if (response.ok !== true || result?.schemaVersion !== "looplab-spatial-layout-search/v1") throw new Error(String(response.error ?? "The spatial layout search returned no receipt."));
+      setSpatialLayoutSearchResult(result);
+      const suggestedReview = result.candidates.find((candidate) => candidate.safe && candidate.materializable)
+        ?? result.candidates.find((candidate) => candidate.safe)
+        ?? result.candidates[0]
+        ?? null;
+      setSelectedSpatialLayoutCandidateId(suggestedReview?.id ?? null);
+      appendConsole(
+        "spatial.layout.search.completed",
+        `${result.evaluatedCandidateCount} projection-correct layouts evaluated`,
+        `${result.safeCandidateIds.length} safe · ${result.materializableCandidateIds.length} materializable · ${result.feasibleDescriptorCellCount} descriptor cells · 0 provider tokens · $0.00`,
+        result.safeCandidateIds.length ? "good" : "bad",
+      );
+      showToast(`${result.evaluatedCandidateCount} layouts · ${result.safeCandidateIds.length} safe · $0.00`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setSpatialLayoutSearchResult(null);
+      setSelectedSpatialLayoutCandidateId(null);
+      setAgentCommandResult(JSON.stringify({ ok: false, error: message }, null, 2));
+      appendConsole("spatial.layout.search.failed", "Spatial layout search stopped safely", message, "bad");
+      showToast(message);
+    } finally {
+      setSpatialLayoutSearchRunning(false);
+    }
+  };
+
+  const previewSpatialLayoutCandidate = async (candidate: SpatialLayoutCandidateRef) => {
+    if (!candidate.materializationRequest) return;
+    setSpatialLayoutSearchRunning(true);
+    try {
+      const run = agentBridgeRunRef.current;
+      if (!run) throw new Error("The agent bridge is still starting. Try again in one moment.");
+      const materializationResponse = await run({ ...candidate.materializationRequest, compact: true });
+      const materialization = materializationResponse.result as SpatialLayoutMaterializationRef | undefined;
+      if (materializationResponse.ok !== true || materialization?.schemaVersion !== "looplab-spatial-layout-materialization/v1") throw new Error(String(materializationResponse.error ?? "The selected layout could not be materialized safely."));
+      const previewResponse = await run({ ...materialization.previewCommand, compact: true });
+      setAgentCommandResult(JSON.stringify(previewResponse, null, 2));
+      const receipt = previewResponse.result as AgentBatchPreviewRef | undefined;
+      if (previewResponse.ok !== true || receipt?.schemaVersion !== "looplab-agent-batch-preview/v1") throw new Error(String(previewResponse.error ?? "The layout preview returned no source-bound receipt."));
+      setSelectedSpatialLayoutCandidateId(candidate.id);
+      setSpatialLayoutCandidatePreview({ candidateId: candidate.id, materialization, receipt });
+      appendConsole("spatial.layout.candidate.previewed", `${candidate.id} previewed without changing the project`, `Doctor ${receipt.doctor.before.score} → ${receipt.doctor.after.score} · production ${receipt.doctor.release.before.score} → ${receipt.doctor.release.after.score} · ${receipt.applicable ? "eligible for explicit apply" : "blocked"}`, receipt.applicable ? "good" : "bad");
+      showToast(receipt.applicable ? `${candidate.id} exact preview ready` : `${candidate.id} preview blocked by Doctor`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setSpatialLayoutCandidatePreview(null);
+      setAgentCommandResult(JSON.stringify({ ok: false, error: message }, null, 2));
+      showToast(message);
+    } finally {
+      setSpatialLayoutSearchRunning(false);
+    }
+  };
+
+  const applySpatialLayoutCandidate = async () => {
+    if (!selectedSpatialLayoutCandidate || !spatialLayoutCandidatePreview || spatialLayoutCandidatePreview.candidateId !== selectedSpatialLayoutCandidate.id) return;
+    if (!isProtectedSpatialVariation) {
+      showToast("Create a protected variation, then prepare and rerun spatial search before applying");
+      return;
+    }
+    if (!spatialLayoutPreviewFresh || !spatialLayoutCandidatePreview.receipt.applicable || !spatialLayoutCandidatePreview.receipt.applyCommand) {
+      showToast("Preview this spatial candidate again against the current variation");
+      return;
+    }
+    setSpatialLayoutSearchRunning(true);
+    try {
+      const run = agentBridgeRunRef.current;
+      if (!run) throw new Error("The agent bridge is still starting. Try again in one moment.");
+      const response = await run({ ...spatialLayoutCandidatePreview.receipt.applyCommand, compact: true });
+      setAgentCommandResult(JSON.stringify(response, null, 2));
+      if (response.ok !== true) throw new Error(String(response.error ?? "The exact previewed spatial candidate could not be applied."));
+      appendConsole("spatial.layout.candidate.applied", `${selectedSpatialLayoutCandidate.id} applied to ${activeProjectLibraryEntry?.name ?? "the protected variation"}`, "Exact source, candidate, and preview digests matched. The base project remains unchanged; collision came only from authored geometry and evidence was not rerecorded.", "good");
+      showToast(`${selectedSpatialLayoutCandidate.id} applied to protected variation`);
+      setSpatialLayoutSearchResult(null);
+      setSelectedSpatialLayoutCandidateId(null);
+      setSpatialLayoutCandidatePreview(null);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setAgentCommandResult(JSON.stringify({ ok: false, error: message }, null, 2));
+      showToast(message);
+    } finally {
+      setSpatialLayoutSearchRunning(false);
+    }
+  };
+
+  const reviewGameFoundations = async () => {
+    setFoundationSearchRunning(true);
+    try {
+      const run = agentBridgeRunRef.current;
+      if (!run) throw new Error("The agent bridge is still starting. Try again in one moment.");
+      const liveBrief = directorBriefRef.current ?? directedBrief;
+      if (projectRef.current.designBrief?.composedPrompt !== liveBrief.composedPrompt) {
+        const currentDigest = analyzeProject(syncActiveMap(projectRef.current)).sourceDigest;
+        const configured = await run({
+          op: "set_game_brief",
+          userPrompt: liveBrief.userPrompt,
+          genre: liveBrief.genre,
+          coreLoop: liveBrief.coreLoop,
+          movementTemplate: liveBrief.movementTemplate,
+          format: liveBrief.format,
+          progression: liveBrief.progression,
+          campaignScope: liveBrief.campaignScope,
+          promptVariant: liveBrief.promptVariant,
+          expectedSourceDigest: currentDigest,
+          compact: true,
+        });
+        if (configured.ok !== true) throw new Error(String(configured.error ?? "The current directed brief could not be saved before foundation review."));
+      }
+      const response = await run({ op: "suggest_game_foundations", maxCandidates: 5, allowReplacement: isProtectedFoundationVariation, compact: true });
+      setAgentCommandResult(JSON.stringify(response, null, 2));
+      const result = response.result as GameFoundationSearchResultRef | undefined;
+      if (response.ok !== true || result?.schemaVersion !== "looplab-game-foundation-search/v1") throw new Error(String(response.error ?? "No foundation review was returned."));
+      setFoundationSearchResult(result);
+      const first = result.candidates.find((candidate) => candidate.materializable)
+        ?? result.candidates.find((candidate) => candidate.safe && candidate.fit.compatible)
+        ?? result.candidates[0]
+        ?? null;
+      setSelectedFoundationId(first?.id ?? null);
+      setFoundationCandidatePreview(null);
+      appendConsole("foundation.review.completed", `${result.candidates.length} playable foundations inspected`, `${result.materializableCandidateIds.length} eligible on this ${isProtectedFoundationVariation ? "protected variation" : "base project"} · no automatic winner · 0 provider tokens · $0.00`, result.candidates.some((candidate) => candidate.safe) ? "good" : "bad");
+      showToast(`${result.candidates.length} foundations reviewed · $0.00`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setFoundationSearchResult(null);
+      setSelectedFoundationId(null);
+      setFoundationCandidatePreview(null);
+      setAgentCommandResult(JSON.stringify({ ok: false, error: message }, null, 2));
+      appendConsole("foundation.review.failed", "Foundation review stopped safely", message, "bad");
+      showToast(message);
+    } finally {
+      setFoundationSearchRunning(false);
+    }
+  };
+
+  const previewGameFoundation = async (candidate: GameFoundationCandidateRef) => {
+    if (!candidate.materializationRequest) return;
+    setFoundationSearchRunning(true);
+    try {
+      const run = agentBridgeRunRef.current;
+      if (!run) throw new Error("The agent bridge is still starting. Try again in one moment.");
+      const materializedResponse = await run({ ...candidate.materializationRequest, compact: true });
+      const materialized = materializedResponse.result as GameFoundationMaterializationRef | undefined;
+      if (materializedResponse.ok !== true || materialized?.schemaVersion !== "looplab-game-foundation-materialization/v1") throw new Error(String(materializedResponse.error ?? "The selected foundation could not be materialized safely."));
+      const previewResponse = await run({ ...materialized.previewCommand, compact: true });
+      setAgentCommandResult(JSON.stringify(previewResponse, null, 2));
+      const receipt = previewResponse.result as AgentBatchPreviewRef | undefined;
+      if (previewResponse.ok !== true || receipt?.schemaVersion !== "looplab-agent-batch-preview/v1") throw new Error(String(previewResponse.error ?? "The selected foundation returned no source-bound preview."));
+      setSelectedFoundationId(candidate.id);
+      setFoundationCandidatePreview({ candidateId: candidate.id, receipt });
+      appendConsole("foundation.candidate.previewed", `${candidate.title} previewed without changing the project`, `Doctor ${receipt.doctor.before.score} → ${receipt.doctor.after.score} · production ${receipt.doctor.release.before.score} → ${receipt.doctor.release.after.score} · ${receipt.applicable ? "eligible for explicit apply" : "blocked"}`, receipt.applicable ? "good" : "bad");
+      showToast(receipt.applicable ? `${candidate.title} preview ready` : `${candidate.title} preview blocked by Doctor`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setFoundationCandidatePreview(null);
+      setAgentCommandResult(JSON.stringify({ ok: false, error: message }, null, 2));
+      showToast(message);
+    } finally {
+      setFoundationSearchRunning(false);
+    }
+  };
+
+  const applyGameFoundation = async () => {
+    if (!selectedFoundationCandidate || !foundationCandidatePreview || foundationCandidatePreview.candidateId !== selectedFoundationCandidate.id) return;
+    if (!isProtectedFoundationVariation) {
+      showToast("Create a protected variation, then review foundations again before applying");
+      return;
+    }
+    if (!foundationPreviewFresh || !foundationCandidatePreview.receipt.applicable || !foundationCandidatePreview.receipt.applyCommand) {
+      showToast("Preview this foundation again against the current variation");
+      return;
+    }
+    setFoundationSearchRunning(true);
+    try {
+      const run = agentBridgeRunRef.current;
+      if (!run) throw new Error("The agent bridge is still starting. Try again in one moment.");
+      const response = await run({ ...foundationCandidatePreview.receipt.applyCommand, compact: true });
+      setAgentCommandResult(JSON.stringify(response, null, 2));
+      if (response.ok !== true) throw new Error(String(response.error ?? "The exact previewed foundation could not be applied."));
+      appendConsole("foundation.candidate.applied", `${selectedFoundationCandidate.title} applied to ${activeProjectLibraryEntry?.name ?? "the protected variation"}`, "Exact source, candidate, and preview digests matched. The base project remains unchanged; the chosen reference evidence and honest gap ledger remain inspectable.", "good");
+      showToast(`${selectedFoundationCandidate.title} applied to protected variation`);
+      setFoundationSearchResult(null);
+      setSelectedFoundationId(null);
+      setFoundationCandidatePreview(null);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setAgentCommandResult(JSON.stringify({ ok: false, error: message }, null, 2));
+      showToast(message);
+    } finally {
+      setFoundationSearchRunning(false);
+    }
+  };
+
+  const prepareTuningContract = async () => {
+    setTuningSearchRunning(true);
+    try {
+      const run = agentBridgeRunRef.current;
+      if (!run) throw new Error("The agent bridge is still starting. Try again in one moment.");
+      const response = await run({ op: "suggest_tuning_contract", maxCandidates: 12, compact: true });
+      setAgentCommandResult(JSON.stringify(response, null, 2));
+      const suggestion = response.result as { available?: boolean; contract?: Record<string, unknown>; reason?: string } | undefined;
+      if (response.ok !== true || !suggestion?.available || !suggestion.contract) throw new Error(String(response.error ?? suggestion?.reason ?? "No bounded tuning starter is available for this project."));
+      setTuningContractDraft(JSON.stringify(suggestion.contract, null, 2));
+      setTuningSearchResult(null);
+      setSelectedTuningCandidateId(null);
+      setTuningCandidatePreview(null);
+      appendConsole("tuning.contract.prepared", "Measured tuning starter prepared", "Review its finite values and measured objective bands, then save it. No project state changed and no provider tokens were used.", "good");
+      showToast("Measured tuning starter ready for review");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setAgentCommandResult(JSON.stringify({ ok: false, error: message }, null, 2));
+      showToast(message);
+    } finally {
+      setTuningSearchRunning(false);
+    }
+  };
+
+  const saveTuningContract = async () => {
+    setTuningSearchRunning(true);
+    try {
+      const contract: unknown = JSON.parse(tuningContractDraft);
+      if (!contract || typeof contract !== "object" || Array.isArray(contract)) throw new Error("The tuning contract must be one JSON object.");
+      const run = agentBridgeRunRef.current;
+      if (!run) throw new Error("The agent bridge is still starting. Try again in one moment.");
+      const response = await run({ op: "set_tuning_contract", contract, expectedSourceDigest: doctorReport.sourceDigest, compact: true });
+      setAgentCommandResult(JSON.stringify(response, null, 2));
+      const result = response.result as { contract?: Record<string, unknown> } | undefined;
+      if (response.ok !== true || !result?.contract) throw new Error(String(response.error ?? "The tuning contract did not pass validation."));
+      setTuningContractDraft(JSON.stringify(result.contract, null, 2));
+      appendConsole("tuning.contract.saved", "Bounded Tuning Contract saved", "Project Doctor now owns its allowlisted targets, finite budget, measured objectives, and hard constraints.", "good");
+      showToast("Tuning contract saved · Doctor rechecked it");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setAgentCommandResult(JSON.stringify({ ok: false, error: message }, null, 2));
+      showToast(message);
+    } finally {
+      setTuningSearchRunning(false);
+    }
+  };
+
+  const removeTuningContract = async () => {
+    setTuningSearchRunning(true);
+    try {
+      const run = agentBridgeRunRef.current;
+      if (!run) throw new Error("The agent bridge is still starting. Try again in one moment.");
+      const response = await run({ op: "remove_tuning_contract", expectedSourceDigest: doctorReport.sourceDigest, compact: true });
+      setAgentCommandResult(JSON.stringify(response, null, 2));
+      if (response.ok !== true) throw new Error(String(response.error ?? "The tuning contract could not be removed."));
+      setTuningContractDraft("");
+      setTuningSearchResult(null);
+      setSelectedTuningCandidateId(null);
+      setTuningCandidatePreview(null);
+      appendConsole("tuning.contract.removed", "Bounded Tuning Contract removed", "Movement values were not changed. The removal remains available through Undo.", "neutral");
+      showToast("Tuning contract removed · movement unchanged");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setAgentCommandResult(JSON.stringify({ ok: false, error: message }, null, 2));
+      showToast(message);
+    } finally {
+      setTuningSearchRunning(false);
+    }
+  };
+
+  const runBoundedTuningSearch = async () => {
+    setTuningSearchRunning(true);
+    setTuningCandidatePreview(null);
+    try {
+      const run = agentBridgeRunRef.current;
+      if (!run) throw new Error("The agent bridge is still starting. Try again in one moment.");
+      await new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
+      const response = await run({ op: "run_tuning_search", expectedSourceDigest: doctorReport.sourceDigest, compact: true });
+      setAgentCommandResult(JSON.stringify(response, null, 2));
+      const result = response.result as TuningSearchResultRef | undefined;
+      if (response.ok !== true || result?.schemaVersion !== "looplab-tuning-search/v1") throw new Error(String(response.error ?? "The bounded tuning search returned no receipt."));
+      setTuningSearchResult(result);
+      const suggestedReview = result.candidates.find((candidate) => candidate.pareto && candidate.safe && candidate.changed)
+        ?? result.candidates.find((candidate) => candidate.safe && candidate.changed)
+        ?? result.candidates[0]
+        ?? null;
+      setSelectedTuningCandidateId(suggestedReview?.id ?? null);
+      appendConsole("tuning.search.completed", `${result.evaluatedCandidateCount} bounded candidates measured`, `${result.safeCandidateIds.length} passed hard gates · ${result.paretoCandidateIds.length} measured Pareto tradeoff${result.paretoCandidateIds.length === 1 ? "" : "s"} · 0 provider tokens · $0.00`, result.safeCandidateIds.length ? "good" : "bad");
+      showToast(`${result.evaluatedCandidateCount} candidates measured · ${result.safeCandidateIds.length} safe · $0.00`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setTuningSearchResult(null);
+      setSelectedTuningCandidateId(null);
+      setAgentCommandResult(JSON.stringify({ ok: false, error: message }, null, 2));
+      appendConsole("tuning.search.failed", "Bounded tuning search stopped safely", message, "bad");
+      showToast(message);
+    } finally {
+      setTuningSearchRunning(false);
+    }
+  };
+
+  const previewTuningCandidate = async (candidate: TuningCandidateRef) => {
+    if (!candidate.previewCommand) return;
+    setTuningSearchRunning(true);
+    try {
+      const run = agentBridgeRunRef.current;
+      if (!run) throw new Error("The agent bridge is still starting. Try again in one moment.");
+      const response = await run({ ...candidate.previewCommand, compact: true });
+      setAgentCommandResult(JSON.stringify(response, null, 2));
+      const receipt = response.result as AgentBatchPreviewRef | undefined;
+      if (response.ok !== true || receipt?.schemaVersion !== "looplab-agent-batch-preview/v1") throw new Error(String(response.error ?? "The candidate preview returned no source-bound receipt."));
+      setSelectedTuningCandidateId(candidate.id);
+      setTuningCandidatePreview({ candidateId: candidate.id, receipt });
+      appendConsole("tuning.candidate.previewed", `${candidate.id} previewed without changing the project`, `Doctor ${receipt.doctor.before.score} → ${receipt.doctor.after.score} · production ${receipt.doctor.release.before.score} → ${receipt.doctor.release.after.score} · ${receipt.applicable ? "eligible for explicit apply" : "blocked"}`, receipt.applicable ? "good" : "bad");
+      showToast(receipt.applicable ? `${candidate.id} preview ready` : `${candidate.id} preview blocked by Doctor`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setTuningCandidatePreview(null);
+      setAgentCommandResult(JSON.stringify({ ok: false, error: message }, null, 2));
+      showToast(message);
+    } finally {
+      setTuningSearchRunning(false);
+    }
+  };
+
+  const applyTuningCandidate = async () => {
+    if (!selectedTuningCandidate || !tuningCandidatePreview || tuningCandidatePreview.candidateId !== selectedTuningCandidate.id) return;
+    if (!isProtectedTuningVariation) {
+      showToast("Create a protected variation, then rerun the search before applying a candidate");
+      return;
+    }
+    if (!tuningPreviewFresh || !tuningCandidatePreview.receipt.applicable || !tuningCandidatePreview.receipt.applyCommand) {
+      showToast("Preview this candidate again against the current variation");
+      return;
+    }
+    setTuningSearchRunning(true);
+    try {
+      const run = agentBridgeRunRef.current;
+      if (!run) throw new Error("The agent bridge is still starting. Try again in one moment.");
+      const response = await run({ ...tuningCandidatePreview.receipt.applyCommand, compact: true });
+      setAgentCommandResult(JSON.stringify(response, null, 2));
+      if (response.ok !== true) throw new Error(String(response.error ?? "The exact previewed candidate could not be applied."));
+      appendConsole("tuning.candidate.applied", `${selectedTuningCandidate.id} applied to ${activeProjectLibraryEntry?.name ?? "the protected variation"}`, "Exact source and preview digests matched. The base project remains unchanged; replay and acceptance fixtures were not rerecorded.", "good");
+      showToast(`${selectedTuningCandidate.id} applied to protected variation`);
+      setTuningSearchResult(null);
+      setSelectedTuningCandidateId(null);
+      setTuningCandidatePreview(null);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setAgentCommandResult(JSON.stringify({ ok: false, error: message }, null, 2));
+      showToast(message);
+    } finally {
+      setTuningSearchRunning(false);
+    }
+  };
+
+  const exportHtml = () => {
+    try {
+      const safeName = project.name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "my-game";
+      const artifact = buildStandaloneArtifact(syncActiveMap(project), { filename: `${safeName}.html` });
+      lastExportHtmlRef.current = artifact.html;
+      setExportPreviewHtml(artifact.html);
+      setLastExportReceipt(artifact.receipt as ExportReceipt);
+      downloadFile(artifact.html, artifact.receipt.filename, "text/html");
+      appendConsole("export.receipt.completed", artifact.receipt.status === "release-ready" ? `${artifact.receipt.filename} is release-ready` : `${artifact.receipt.filename} exported as an auditable draft`, `${formatBytes(artifact.receipt.artifact.byteLength)} · ${artifact.receipt.artifact.uploadFileCount} upload file · ${artifact.receipt.artifact.embeddedResourceCount} embedded resources`, artifact.receipt.status === "release-ready" ? "good" : "neutral");
+      showToast(`${artifact.receipt.status === "release-ready" ? "Release-ready" : "Draft"} 1-file export · ${formatBytes(artifact.receipt.artifact.byteLength)}`);
+    } catch (error) {
+      setShowDoctor(true);
+      appendConsole("export.receipt.blocked", "HTML export was blocked before download", error instanceof Error ? error.message : "Project Doctor blocked this export", "bad");
+      showToast(error instanceof Error ? error.message : "Project Doctor blocked this export");
+    }
+  };
+
+  const openExactExport = () => {
+    const html = lastExportHtmlRef.current;
+    if (!html || !lastExportReceipt) {
+      showToast("Export the game first, then open the exact audited build");
+      return;
+    }
+    setExportPreviewHtml(html);
+    setShowExportPreview(true);
+    appendConsole("export.preview.opened", exportReceiptFresh ? `Opened ${lastExportReceipt.filename}` : `Opened previous ${lastExportReceipt.filename}`, `Receipt source ${lastExportReceipt.source.sourceDigest}`, exportReceiptFresh && lastExportReceipt.status === "release-ready" ? "good" : "neutral");
+    showToast("Opened the exact audited HTML in Looplab's build sandbox");
+  };
+
+  const exportProject = () => {
+    const safeName = project.name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "my-game";
+    downloadFile(JSON.stringify(syncActiveMap(project), null, 2), `${safeName}.loop.json`, "application/json");
+    showToast("Project file saved");
+  };
+
+  const loadEditableProject = useCallback((filename: string, contents: string, folderName?: string) => {
+    const normalized = parseEditableProject(filename, contents);
+    const origin: ProjectLibraryEntry["origin"] = folderName ? "folder" : "file";
+    const sourceLabel = folderName ? `${folderName}/${filename}` : filename;
+    const existing = projectLibraryRef.current.find((entry) => entry.origin === origin && (folderName ? entry.folderName === folderName : entry.sourceLabel === sourceLabel));
+    const entry = registerProjectInLibrary(normalized, { id: existing?.id, origin, sourceLabel, folderName: folderName ?? null });
+    setExperienceMode("director");
+    setMapStudioFocused(false);
+    setDirectorWorkspaceTab("build");
+    const mapCount = normalized.maps?.length ?? 1;
+    const completed = normalized.iteration?.status === "verified" || normalized.iteration?.status === "promoted";
+    if (completed) appendConsole("project.completed.loaded", `${normalized.iteration?.id} loaded as a protected parent`, "Generate once or enable the improvement loop; Looplab will create a new child candidate.", "good");
+    appendConsole("project.library.added", `${entry.name} added to the project library`, `${sourceLabel} · ${mapCount} map tab${mapCount === 1 ? "" : "s"}`, "good");
+    showToast(`${entry.name} added and selected · ${mapCount} map tab${mapCount === 1 ? "" : "s"}`);
+    return normalized;
+  }, [appendConsole, registerProjectInLibrary, showToast]);
+
+  const openProjectFolder = useCallback(async () => {
+    const picker = (window as DirectoryPickerWindow).showDirectoryPicker;
+    if (!picker) {
+      showToast("Folder loading needs a Chromium browser on localhost; choose a project file instead");
+      fileInputRef.current?.click();
+      return;
+    }
+    try {
+      const directory = await picker({ mode: "read" });
+      const candidates: Array<{ path: string; handle: LocalFileHandle; score: number }> = [];
+      const collect = async (current: LocalDirectoryHandle, prefix = "", depth = 0): Promise<void> => {
+        if (depth > 2 || candidates.length > 200) return;
+        for await (const handle of current.values()) {
+          const path = prefix ? `${prefix}/${handle.name}` : handle.name;
+          if (handle.kind === "directory") {
+            if (!new Set(["node_modules", ".next", ".git", "dist", "build"]).has(handle.name.toLowerCase())) await collect(handle, path, depth + 1);
+            continue;
+          }
+          const lower = handle.name.toLowerCase();
+          let score = 99;
+          if (lower.endsWith(".loop.json")) score = 0;
+          else if (["looplab-project.json", "project.json", "game.json"].includes(lower)) score = 1;
+          else if (lower.endsWith(".html") && /^(index|game|play|build)/.test(lower)) score = 2;
+          else if (lower.endsWith(".json") && /(project|game|looplab)/.test(lower)) score = 3;
+          else if (lower.endsWith(".html")) score = 4;
+          if (score < 99) candidates.push({ path, handle, score });
+        }
+      };
+      await collect(directory);
+      candidates.sort((first, second) => first.score - second.score || first.path.localeCompare(second.path));
+      let lastError: unknown = null;
+      for (const candidate of candidates) {
+        try {
+          const file = await candidate.handle.getFile();
+          loadEditableProject(candidate.path, await file.text(), directory.name);
+          return;
+        } catch (error) {
+          lastError = error;
+        }
+      }
+      throw new Error(lastError instanceof Error ? `No editable Looplab project was found. Last check: ${lastError.message}` : "No .loop.json or Looplab HTML project was found in that folder.");
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") return;
+      showToast(error instanceof Error ? error.message : "The project folder could not be opened");
+    }
+  }, [loadEditableProject, showToast]);
+
+  const startProjectTemplate = useCallback((template: "dimetric" | "kinetic" | "platformer" | "systems" | "topdown" | "blank") => {
+    const next = template === "dimetric"
+      ? createTemplate("dimetric") as GameProject
+      : template === "kinetic"
+        ? kineticCityStarter()
+        : template === "systems"
+          ? createTemplate("systems") as GameProject
+        : template === "platformer"
+          ? platformerStarter()
+          : template === "topdown"
+            ? topDownStarter()
+            : blankStarter();
+    const entry = registerProjectInLibrary(next, { origin: "starter", sourceLabel: `Built-in ${next.name} project` });
+    appendConsole("project.library.added", `${entry.name} added to the project library`, "A fresh editable starter was created without replacing any other library project.", "good");
+    return entry;
+  }, [appendConsole, registerProjectInLibrary]);
+
+  const importProject = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    event.target.value = "";
+    try {
+      const contents = await file.text();
+      loadEditableProject(file.name, contents);
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "That file is not an editable Looplab project");
+    }
+  };
+
+  const importPathEditorMap = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    event.target.value = "";
+    try {
+      const data = JSON.parse(await file.text());
+      const isAuthoredEnvelope = data?.version === 1 && data?.data && data?.integrity && typeof data?.sourceFormat === "string";
+      const isAuthoredTimeline = Array.isArray(data?.actors) && (data?.animations || data?.loopMs || data?.meetings);
+      const outcome = applyAgentCommand(syncActiveMap(project), isAuthoredEnvelope || isAuthoredTimeline
+        ? { op: "set_authored_route_document", data, ...(isAuthoredTimeline ? { sourceFormat: "city-activity-v1", coordinateSpace: "source-pixels" } : {}) }
+        : { op: "import_path_editor_navigation", data });
+      commit(outcome.project as GameProject, `${file.name} ${isAuthoredEnvelope || isAuthoredTimeline ? "authored route" : "navigation"} imported`);
+      setShowPaths(true);
+      setMapTool("navigation");
+      const restoredNavigation = createNavigationModel(outcome.project.navigation) as NavigationModel;
+      const restoredLayer = restoredNavigation.layers.find((layer) => layer.id === restoredNavigation.activeLayerId) ?? restoredNavigation.layers[0];
+      setEditorElevation(restoredLayer?.zMin ?? 0);
+      const restoredRoute = normalizeAuthoredRouteDocument(restoredNavigation.authoredRoute) as AuthoredRouteDocument | null;
+      const routeSummary = summarizeAuthoredRouteDocument(restoredRoute);
+      const restoredRouteData = restoredRoute?.data as { actors?: Array<Record<string, unknown>>; characters?: Array<Record<string, unknown>> } | undefined;
+      setSelectedAuthoredRouteActorId(String((restoredRouteData?.actors?.[0] ?? restoredRouteData?.characters?.[0])?.id ?? "") || null);
+      showToast(routeSummary ? `Imported ${routeSummary.actorCount} timed route actors without flattening ${routeSummary.hashCount} hash receipts` : `Imported ${outcome.project.navigation?.nodes?.length ?? 0} path nodes from ${file.name}`);
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "That route JSON could not be imported");
+    }
+  };
+
+  const exportPathEditorMap = () => {
+    try {
+      const outcome = applyAgentCommand(syncActiveMap(project), { op: "export_path_editor_navigation" });
+      const data = outcome.result?.data;
+      if (!data) throw new Error("Path Editor export did not return map data.");
+      const safeName = (activeMap?.name ?? "map").trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "map";
+      downloadFile(JSON.stringify(data, null, 2), `${safeName}.path-editor.json`, "application/json");
+      appendConsole("map.path-editor.exported", `${activeMap?.name ?? "Map"} exported for Path Editor`, "Projection and x/y/z route-layer data were preserved in the Looplab extension.", "good");
+      showToast("Path Editor JSON exported with 2.5D height data");
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Path Editor JSON could not be exported");
+    }
+  };
+
+  const exportAuthoredRouteMap = (includeIntegrity = true) => {
+    try {
+      const outcome = applyAgentCommand(syncActiveMap(project), { op: "export_authored_route_document" });
+      const data = outcome.result?.data;
+      const integrity = outcome.result?.integrity;
+      const summary = outcome.result?.summary;
+      if (!data || !integrity || !summary) throw new Error("No lossless authored route document is attached to this map.");
+      const safeName = (String(data.id ?? activeMap?.name ?? "authored-route")).trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "authored-route";
+      const exported = includeIntegrity ? { version: 1, sourceFormat: summary.sourceFormat, coordinateSpace: summary.coordinateSpace, data, integrity } : data;
+      downloadFile(JSON.stringify(exported, null, 2), `${safeName}.${includeIntegrity ? "looplab-route" : "route-source"}.json`, "application/json");
+      appendConsole("map.authored-route.exported", `${summary.actorCount} timed route actors exported ${includeIntegrity ? "with integrity receipts" : "as source JSON"}`, `${summary.scheduleSteps} schedule steps · ${summary.meetingCount} meetings · ${summary.hashCount} hashes · ${summary.hashStatus}`, summary.hashStatus === "stale" ? "bad" : "good");
+      showToast(summary.hashStatus === "stale" ? "Route exported, but its preserved hashes are marked stale" : includeIntegrity ? "Versioned route package exported" : "Original route source exported");
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Authored route JSON could not be exported");
+    }
+  };
+
+  const isPlaying = mode === "play";
+  const previewProject = syncActiveMap(project);
+  const totalCoins = (previewProject.maps ?? []).reduce(
+    (total, map) => total + map.objects.filter((object) => object.kind === "coin").length,
+    0,
+  );
+  const gameplayProgram = project.gameplayProgram as { variables?: Array<{ id: string; label?: string; visible?: boolean }>; hudBindings?: unknown[] } | undefined;
+  const gameplayVariables = Array.isArray(gameplayProgram?.variables)
+    ? gameplayProgram.variables
+    : [];
+  const visibleRuntimeChoiceState = isPlaying ? runtimeChoiceState : null;
+  const visibleRuntimeHudState = isPlaying ? runtimeHudState : [];
+  const visibleGameplayState = (gameplayProgram?.hudBindings?.length ? [] : gameplayVariables)
+    .filter((variable) => variable.visible)
+    .map((variable) => `${variable.label ?? variable.id}: ${String(runtimeState.variables?.[variable.id] ?? "")}`)
+    .join(" · ");
+  const stageWidth = isPlaying ? runtimeState.width : project.width;
+  const stageHeight = isPlaying ? runtimeState.height : project.height;
+  const stageMapId = isPlaying ? runtimeState.activeMapId : project.activeMapId ?? activeMap?.id;
+  const stageMapName = isPlaying ? runtimeState.mapName : activeMap?.name ?? "Map";
+  const stageControlMode = isPlaying ? runtimeState.controlMode : project.controlMode;
+  const selectedPlaytestSession = selectedPlaytestSessionId ? playtestLedger.sessions.find((session) => session.id === selectedPlaytestSessionId) ?? null : null;
+  const selectedPlaytestCurrentSource = selectedPlaytestSession ? selectedPlaytestSession.source.sourceDigest === doctorReport.sourceDigest : false;
+  const selectedPlaytestHeatmap = selectedPlaytestSession?.summary.heatmaps.find((heatmap) => heatmap.mapId === stageMapId) ?? null;
+  const selectedPlaytestMapStats = selectedPlaytestSession?.summary.mapStats.find((stats) => stats.mapId === stageMapId) ?? null;
+  const selectedPlaytestHeatmapMaximum = Math.max(1, ...(selectedPlaytestHeatmap?.cells.map((cell) => cell.samples) ?? [1]));
+  const reviewSelectedPlaytestReplay = async () => {
+    if (!selectedPlaytestSession) return;
+    setPlaytestReplayBusy(true);
+    try {
+      const canonicalSession = getPlaytestSession(playtestLedgerRef.current, selectedPlaytestSession.id) as PlaytestSession;
+      const outcome = applyAgentCommand(projectRef.current, {
+        op: "preview_playtest_replay",
+        session: canonicalSession,
+        compact: true,
+      });
+      const preview = outcome.result as PlaytestReplayPreview;
+      setPlaytestReplayPreview(preview);
+      appendConsole(
+        preview.eligible ? "playtest.replay.ready" : "playtest.replay.blocked",
+        preview.eligible ? "Recorded run is ready to protect" : "Recorded run cannot become replay evidence",
+        preview.eligible ? `${preview.replaySpecification?.id ?? "Replay"} passed its dry run and event-count comparison.` : preview.blockers.map((entry) => `[${entry.code}] ${entry.message}`).join(" "),
+        preview.eligible ? "good" : "bad",
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "The replay review failed";
+      appendConsole("playtest.replay.failed", "Recorded run could not be reviewed", message, "bad");
+      showToast(message);
+    } finally {
+      setPlaytestReplayBusy(false);
+    }
+  };
+  const promoteSelectedPlaytestReplay = async () => {
+    if (!selectedPlaytestSession || !playtestReplayPreview?.eligible || !playtestReplayPreview.sessionDigest) return;
+    setPlaytestReplayBusy(true);
+    try {
+      const canonicalSession = getPlaytestSession(playtestLedgerRef.current, selectedPlaytestSession.id) as PlaytestSession;
+      const outcome = applyAgentCommand(projectRef.current, {
+        op: "promote_playtest_replay",
+        session: canonicalSession,
+        expectedSourceDigest: playtestReplayPreview.sourceDigest,
+        expectedSessionDigest: playtestReplayPreview.sessionDigest,
+        expectedPromotionDigest: playtestReplayPreview.promotionDigest,
+        compact: true,
+      });
+      if (outcome.changed) applyProjectFromAgent(outcome.project, `Playtest replay protected · ${playtestReplayPreview.replaySpecification?.id ?? selectedPlaytestSession.id}`);
+      appendConsole("playtest.replay.promoted", "Recorded run protected as deterministic replay", `${playtestReplayPreview.replaySpecification?.id ?? "Replay"} now reruns through Project Doctor and release gates.`, "good");
+      setPlaytestReplayPreview(null);
+      showToast("Recorded run protected as a replay fixture");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "The replay promotion failed";
+      appendConsole("playtest.replay.failed", "Recorded run could not be protected", message, "bad");
+      showToast(message);
+    } finally {
+      setPlaytestReplayBusy(false);
+    }
+  };
+  const serializedProjectState = JSON.stringify(previewProject).replace(/</g, "\\u003c");
+  const serializedProjectLibraryState = JSON.stringify({
+    schemaVersion: LOOPLAB_SHARED_PROJECT_STORE_SCHEMA,
+    activeProjectId: activeProjectLibraryId,
+    ready: projectLibraryReady,
+    sharedCatalogReady: sharedProjectCatalogReady,
+    authority: "companion-owned-file-store",
+    browserCacheAuthority: false,
+    policy: LOOPLAB_SHARED_PROJECT_STORE_POLICY,
+    projects: projectLibrary.map((entry) => ({ id: entry.id, name: entry.name, origin: entry.origin, sourceLabel: entry.sourceLabel, folderName: entry.folderName ?? null, parentLibraryId: entry.parentLibraryId ?? null, updatedAt: entry.updatedAt, iteration: compactProjectLibraryIteration(entry.project.iteration), mapCount: entry.project.maps?.length ?? 1, storage: entry.storage, sharedProjectId: entry.sharedProjectId ?? null, sourceDigest: entry.sharedSourceDigest ?? null, revisionDigest: entry.sharedRevisionDigest ?? null, projectPath: entry.sharedProjectPath ?? null, syncStatus: entry.sharedSyncStatus ?? "local-only", mounted: true })),
+    sharedProjects: sharedProjectCatalog.map((entry) => ({ ...entry, mounted: projectLibrary.some((candidate) => candidate.sharedProjectId === entry.id) })),
+  }).replace(/</g, "\\u003c");
+  const serializedDirectorState = JSON.stringify({
+    provider: aiProvider,
+    providerReady: resolveProviderRoute({ providers: providerStatuses ?? {} }, { requestedProvider: aiProvider }).selectedProvider !== null,
+    providerRoute: resolveProviderRoute({ providers: providerStatuses ?? {} }, { requestedProvider: aiProvider }),
+    preparedProviderInput: preparedDirectedBrief.composedPrompt,
+    activePrompt: directedPrompt,
+    designBrief: directedBrief,
+    promptGenerating,
+    track: aiTrack,
+    runtimePreference,
+    runtimeSelection: agentRoute.runtimeSelection,
+    productionPlan: agentRoute.productionPlan,
+    providerParity: { schemaVersion: providerParityContract.schemaVersion, sharedContractDigest: providerParityContract.sharedContractDigest, contractDigest: providerParityContract.contractDigest, providers: providerParityContract.providers, parityBoundary: providerParityContract.parityBoundary },
+    preferenceMemory: { enabled: preferenceMemory.enabled, useForRun: usePreferenceMemoryForRun, entryCount: preferenceMemory.entries.length, appliedEntryIds: appliedPreferenceContext.selectedEntryIds, appliedReceiptDigest: appliedPreferenceContext.receiptDigest },
+    loop: { enabled: loopEnabled, strategy: loopStrategy, iterations: loopIterations, stopScore: loopStopScore, stopPolicy: "required-passes-first", evaluationProfile: loopEvaluationProfile, contextBudgetTokens: providerContextBudgetTokens, conditions: loopConditions.split(/\r?\n/).map((value) => value.trim()).filter(Boolean), artDirectionMode, styleLocks: artDirectionMode === "locked" ? styleLocks.split(/\r?\n/).map((value) => value.trim()).filter(Boolean) : [], running: loopRunning, phase: loopPhase },
+    headlessSuperset: true,
+    companionEndpoints: { agentPresence: `${COMPANION_URL}/agent-presence`, promptDrafts: `${COMPANION_URL}/prompt-drafts`, generation: `${COMPANION_URL}/jobs`, research: `${COMPANION_URL}/research-jobs`, visualCritique: `${COMPANION_URL}/visual-critique-jobs`, releaseVerification: `${COMPANION_URL}/release-verification-jobs` },
+  }).replace(/</g, "\\u003c");
+  const serializedAgentPresenceState = JSON.stringify(agentPresenceView ?? { schemaVersion: "looplab-agent-presence/v1", generatedAt: null, count: 0, expiredPruned: 0, recommendedHeartbeatSeconds: 15, presences: [], policy: { storage: "companion-memory-only", authority: "Durable ownership lives in the shared work ledger." } }).replace(/</g, "\\u003c");
+  const serializedPreferenceMemoryState = JSON.stringify({ memory: preferenceMemoryView(preferenceMemory), appliedContext: appliedPreferenceContext }).replace(/</g, "\u003c");
+  const serializedPlaytestObservationState = JSON.stringify({ ...playtestLedgerView(playtestLedger, null, { currentSourceDigest: doctorReport.sourceDigest }), activeSession: activePlaytestView, replayPreview: playtestReplayPreview }).replace(/</g, "\\u003c");
+  const serializedResearchState = JSON.stringify({ selectedEngine: researchEngine, selectedProvider: aiProvider, depth: researchDepth, running: researchRunning, reports: researchReports }).replace(/</g, "\\u003c");
+  const serializedAssetCatalogState = JSON.stringify({ policy: CC0_ASSET_POLICY, categories: CC0_ASSET_CATEGORIES, packs: assetPackManifest?.packs ?? CC0_ASSET_PACKS, manifestUrl: "/asset-packs/manifest.json" }).replace(/</g, "\\u003c");
+  const serializedVisualReviewState = JSON.stringify(visualReviewForHeadless(visualReview)).replace(/</g, "\\u003c");
+  const serializedVisualCritiqueState = JSON.stringify({
+    provider: visualCritiqueProvider,
+    running: visualCritiqueRunning,
+    fresh: visualCritiqueFresh,
+    currentSourceDigest: doctorReport.sourceDigest,
+    job: visualCritiqueJob,
+    request: visualCritiqueRequest,
+    critique: visualCritique,
+    authority: { advisoryOnly: true, mutatesProject: false, verificationEvidence: false, automaticWinner: null, aestheticApproval: "not-proven" },
+  }).replace(/</g, "\\u003c");
+  const serializedAssetPackState = JSON.stringify({
+    manifestUrl: "/asset-packs/manifest.json",
+    indexUrlTemplate: "/asset-packs/index/{packId}.json",
+    manifest: assetPackManifest,
+    ui: {
+      open: showAssetLab && assetLabTab === "library",
+      category: assetLibraryCategory,
+      selectedPackId: selectedAssetPackId,
+      selectedAssetIds: selectedPackAssetIds,
+      focusedAssetId: focusedPackAssetId,
+      query: assetPackSearch,
+      kind: assetPackKindFilter,
+      page: assetPackPage,
+      pageCount: assetPackPageCount,
+      filteredCount: filteredPackAssets.length,
+      visibleAssetIds: visiblePackAssets.map((asset) => asset.id),
+    },
+  }).replace(/</g, "\\u003c");
+  const mapSizeControl = (
+    <details className="precision-card map-size-card" open={!selected}>
+      <summary><span>Active map size</span><small>{activeMap?.name ?? "Map"} · {project.width} × {project.height} px</small></summary>
+      <label className="field full"><span>Size preset</span><select value={selectedMapSizePreset} onChange={(event) => {
+        const preset = MAP_SIZE_PRESETS.find((candidate) => candidate.id === event.target.value);
+        if (!preset) return;
+        setMapSizeDraftMapId(project.activeMapId ?? "map-main");
+        setMapWidthDraft(String(preset.width));
+        setMapHeightDraft(String(preset.height));
+      }}><option value="custom">Custom size</option>{MAP_SIZE_PRESETS.map((preset) => <option key={preset.id} value={preset.id}>{preset.label} · {preset.width}×{preset.height}</option>)}</select></label>
+      <div className="field-grid map-size-grid">
+        <label className="field"><span>Map width</span><input type="number" min="64" max="8192" step="1" value={visibleMapWidthDraft} onChange={(event) => { setMapSizeDraftMapId(project.activeMapId ?? "map-main"); setMapWidthDraft(event.target.value); }} onKeyDown={(event) => event.key === "Enter" && applyMapSize()} /></label>
+        <label className="field"><span>Map height</span><input type="number" min="64" max="8192" step="1" value={visibleMapHeightDraft} onChange={(event) => { setMapSizeDraftMapId(project.activeMapId ?? "map-main"); setMapHeightDraft(event.target.value); }} onKeyDown={(event) => event.key === "Enter" && applyMapSize()} /></label>
+      </div>
+      <div className="map-size-actions"><button onClick={applyMapSize}>Apply map size</button><small>64–8192 px per side</small></div>
+      <p className={activeMapOutOfBounds ? "map-size-warning" : "map-size-note"}>{activeMapOutOfBounds ? `${activeMapOutOfBounds} object${activeMapOutOfBounds === 1 ? "" : "s"} currently cross the map boundary. Project Doctor will identify each one.` : "Objects keep their authored coordinates when the map changes; collision is never inferred or silently moved."}</p>
+    </details>
+  );
+  const mapRouteControl = (
+    <details className="precision-card map-route-card" open={!selected}>
+      <summary><span>Game route</span><small>{maps.length} map{maps.length === 1 ? "" : "s"} · player starts in {maps[0]?.name ?? "Map 1"}</small></summary>
+      <label className="field full"><span>First map the player experiences</span><select value={project.startMapId ?? maps[0]?.id ?? ""} onChange={(event) => setStartMap(event.target.value)}>{maps.map((map, index) => <option key={map.id} value={map.id}>{index + 1}. {map.name}</option>)}</select></label>
+      <div className="map-route-list">
+        {maps.map((map, index) => {
+          const nextMap = maps[index + 1];
+          const connection = nextMap ? map.objects.find((object) => object.kind === "portal" && object.targetMapId === nextMap.id) : null;
+          return <div className="map-route-step" key={map.id}>
+            <div className="map-route-row"><span className="map-route-number">{index + 1}</span><button className="map-route-open" onClick={() => switchMap(map.id)}><strong>{map.name}</strong><small>{map.width}×{map.height} · {map.objects.length} objects</small></button><div className="map-route-order"><button aria-label={`Move ${map.name} earlier`} onClick={() => reorderMap(map.id, "up")} disabled={index === 0}>↑</button><button aria-label={`Move ${map.name} later`} onClick={() => reorderMap(map.id, "down")} disabled={index === maps.length - 1}>↓</button></div>{index === 0 && <span className="map-start-badge">START</span>}</div>
+            {nextMap && <div className={`map-route-connection ${connection ? "connected" : "missing"}`}><span>↓ {connection ? `${connection.name} → ${nextMap.name}` : `No exit to ${nextMap.name}`}</span><button onClick={() => connectMaps(map.id, nextMap.id)}>{connection ? "Reconnect" : "Connect maps"}</button></div>}
+          </div>;
+        })}
+      </div>
+      <div className="map-route-actions"><button onClick={createMap}>＋ Add next map</button><button onClick={() => enterPreview()}>▶ Preview from Map 1</button></div>
+      <p className="map-route-note">A connection is an authored portal on the source map plus an exact spawn on the destination. Select a portal for advanced target and transition controls.</p>
+    </details>
+  );
+  const mapArchitectControl = (
+    <details className="precision-card map-architect-card" open>
+      <summary><span>Map Architect</span><small>{isDimetric ? "2.5D dimetric" : "Orthographic"} · {navigation.nodes.length} nodes · {navigation.areas.length} areas</small></summary>
+      <div className="projection-choice" role="group" aria-label="Map projection">
+        <button className={!isDimetric ? "active" : ""} onClick={() => setProjectionMode("orthographic")}><strong>Side / top view</strong><small>Direct x/y canvas</small></button>
+        <button className={isDimetric ? "active" : ""} onClick={() => setProjectionMode("dimetric-2:1")}><strong>2.5D dimetric</strong><small>Exact 128×64 diamonds</small></button>
+      </div>
+      {isDimetric && <>
+        <div className="dimetric-contract"><span>WORLD → SCREEN</span><strong>One reversible projection for edit, preview, export, hit-testing, and AI</strong><small>Objects keep authored x/y. Z raises them visually; support Z and collider z-ranges decide where gameplay happens.</small></div>
+        <div className="field-grid dimetric-grid">
+          <label className="field"><span>Elevation step</span><input type="number" min="1" step="1" value={activeProjection.elevationStep ?? 32} onChange={(event) => applyNavigationCommand({ op: "set_map_projection", projection: { ...activeProjection, elevationStep: Math.max(1, Number(event.target.value)) }, preserveControlMode: true }, "Elevation scale updated")} /></label>
+          <label className="field"><span>World units / tile</span><input type="number" min="1" step="1" value={activeProjection.worldUnitsPerTile ?? 128} onChange={(event) => applyNavigationCommand({ op: "set_map_projection", projection: { ...activeProjection, worldUnitsPerTile: Math.max(1, Number(event.target.value)) }, preserveControlMode: true }, "World tile scale updated")} /></label>
+          <label className="field"><span>Origin X</span><input type="number" step="1" value={activeProjection.originX ?? project.width / 2} onChange={(event) => applyNavigationCommand({ op: "set_map_projection", projection: { ...activeProjection, originX: Number(event.target.value) }, preserveControlMode: true }, "Dimetric camera origin updated")} /></label>
+          <label className="field"><span>Origin Y</span><input type="number" step="1" value={activeProjection.originY ?? 92} onChange={(event) => applyNavigationCommand({ op: "set_map_projection", projection: { ...activeProjection, originY: Number(event.target.value) }, preserveControlMode: true }, "Dimetric camera origin updated")} /></label>
+        </div>
+        <button className="wide-button secondary-wide" onClick={() => applyNavigationCommand({ op: "set_map_projection", projection: { ...activeProjection, originX: project.width / 2, originY: 92, elevationStep: 32, worldUnitsPerTile: 128 }, preserveControlMode: true }, "Dimetric camera reset")}>Reset exact 2.5D camera</button>
+      </>}
+
+      <div className="map-tool-help"><strong>{mapTool === "select" ? "Select and place" : mapTool === "traversal" ? "Rail / traversal path" : mapTool === "navigation" ? "Navigation graph" : mapTool === "test-route" ? "Route test" : mapTool === "blocked-area" ? "Blocked polygon" : "Walkable polygon"}</strong><small>{mapTool === "select" ? "Drag objects; placement is inverse-projected at their current z." : mapTool === "traversal" ? "Click to add points. Drag square handles. Each point keeps its own z." : mapTool === "navigation" ? "Click to chain nodes. Click existing nodes to join or drag them." : mapTool === "test-route" ? "Click a start and destination to run deterministic A* on the active layer." : "Click polygon corners, then use Finish area in the stage toolbar."}</small></div>
+
+      <div className="navigation-heading"><div><span className="eyebrow">Elevation & route layers</span><strong>{activeNavigationLayer?.name ?? "No layer yet"}</strong></div><button onClick={addNavigationLayer}>＋ Layer</button></div>
+      {navigation.layers.length > 0 && <label className="field full"><span>Active authoring layer</span><select value={activeNavigationLayer?.id ?? ""} onChange={(event) => { const layer = navigation.layers.find((candidate) => candidate.id === event.target.value); applyNavigationCommand({ op: "update_map", id: project.activeMapId, changes: { navigation: { ...navigation, activeLayerId: event.target.value } } }, "Active navigation layer changed"); if (layer) setEditorElevation(layer.zMin); }}>
+        {navigation.layers.map((layer) => <option key={layer.id} value={layer.id}>{layer.name} · z {layer.zMin}–{layer.zMax}</option>)}
+      </select></label>}
+      <div className="navigation-layer-list">
+        {navigation.layers.map((layer) => <div className={layer.id === activeNavigationLayer?.id ? "active" : ""} key={layer.id}><button className="layer-select" onClick={() => { applyNavigationCommand({ op: "update_map", id: project.activeMapId, changes: { navigation: { ...navigation, activeLayerId: layer.id } } }, "Active navigation layer changed"); setEditorElevation(layer.zMin); }}><i style={{ background: layer.color }} /><span><strong>{layer.name}</strong><small>z {layer.zMin}–{layer.zMax} · {navigation.nodes.filter((node) => node.layerId === layer.id).length} nodes</small></span></button><button aria-label={`${layer.visible ? "Hide" : "Show"} ${layer.name}`} onClick={() => applyNavigationCommand({ op: "update_navigation_layer", id: layer.id, changes: { visible: !layer.visible } }, `${layer.name} visibility updated`)}>{layer.visible ? "◉" : "○"}</button><button aria-label={`${layer.locked ? "Unlock" : "Lock"} ${layer.name}`} onClick={() => applyNavigationCommand({ op: "update_navigation_layer", id: layer.id, changes: { locked: !layer.locked } }, `${layer.name} lock updated`)}>{layer.locked ? "▣" : "□"}</button></div>)}
+      </div>
+
+      <div className="navigation-actions"><button onClick={() => { setMapTool("navigation"); setShowPaths(true); }}>Draw navigation</button><button onClick={() => { setMapTool("test-route"); clearNavigationTest(); setShowPaths(true); }}>Test A* route</button><button onClick={() => pathEditorInputRef.current?.click()}>Import route JSON</button><button onClick={exportPathEditorMap}>Export Path Editor JSON</button><button onClick={() => exportAuthoredRouteMap(true)} disabled={!authoredRoute}>Export route + receipts</button><button onClick={() => exportAuthoredRouteMap(false)} disabled={!authoredRoute}>Export source JSON</button><button onClick={() => window.open("/path-editor/", "looplab-path-editor", "noopener,noreferrer")}>Open full Path Editor ↗</button></div>
+      <input ref={pathEditorInputRef} type="file" accept=".json,application/json" hidden onChange={importPathEditorMap} />
+      <p className="precision-note">Portable percentage paths remain available, while Looplab’s lossless extension preserves the original route document: timings, waits, facing, animation cues, meetings, z/depth, events, and deterministic hash receipts.</p>
+      {authoredRouteSummary && authoredRoute && <details className="authored-route-editor" open>
+        <summary><span>Timed authored routes</span><small>{authoredRouteSummary.actorCount} actors · {authoredRouteSummary.scheduleSteps} steps · {authoredRouteSummary.meetingCount} meetings</small></summary>
+        <div className={`route-integrity status-${authoredRouteSummary.hashStatus}`}><strong>{authoredRouteSummary.hashStatus === "stale" ? "Hashes need replay" : `${authoredRouteSummary.hashStatus} hashes`}</strong><small>{authoredRouteSummary.hashCount} receipts · revision {authoredRouteSummary.revision} · {authoredRouteSummary.currentDigest}</small></div>
+        {authoredRouteActors.length > 0 && <label className="field full"><span>Route actor</span><select value={String(selectedAuthoredRouteActor?.id ?? "")} onChange={(event) => setSelectedAuthoredRouteActorId(event.target.value)}>{authoredRouteActors.map((actor, index) => <option key={String(actor.id ?? index)} value={String(actor.id ?? index)}>{String(actor.name ?? actor.id ?? `Actor ${index + 1}`)} · {Array.isArray(actor.schedule) ? actor.schedule.length : 0} steps</option>)}</select></label>}
+        {selectedAuthoredRouteActor && <div className="route-actor-fields">
+          <label><span>Facing</span><input key={`${String(selectedAuthoredRouteActor.id)}-facing-${authoredRouteSummary.revision}`} defaultValue={String(selectedAuthoredRouteActor.facing ?? "")} onBlur={(event) => { const facing = parseRouteScalar(event.currentTarget.value); applyNavigationCommand({ op: "update_authored_route_actor", id: String(selectedAuthoredRouteActor.id), ...(facing === "" ? { unset: ["facing"] } : { changes: { facing } }) }, `${String(selectedAuthoredRouteActor.id)} facing updated`); }} /></label>
+          <label><span>Depth bias</span><input key={`${String(selectedAuthoredRouteActor.id)}-depth-${authoredRouteSummary.revision}`} type="number" step="0.01" defaultValue={Number(selectedAuthoredRouteActor.depthBias ?? 0)} onBlur={(event) => applyNavigationCommand({ op: "update_authored_route_actor", id: String(selectedAuthoredRouteActor.id), changes: { depthBias: Number(event.currentTarget.value) } }, `${String(selectedAuthoredRouteActor.id)} depth updated`)} /></label>
+        </div>}
+        <div className="route-schedule-list">
+          {selectedAuthoredRouteSchedule.map((step, stepIndex) => {
+            const pointKeys = step.kind === "move" ? ["from", "to"] : ["at"];
+            return <div className="route-schedule-step" key={`${String(selectedAuthoredRouteActor?.id)}-${stepIndex}-${authoredRouteSummary.revision}`}><header><strong>{stepIndex + 1}. {String(step.kind ?? "step")}</strong><small>{String(step.animation ?? "no animation")}</small></header><div className="route-step-grid">
+              <label><span>From ms</span><input type="number" defaultValue={Number(step.fromMs ?? 0)} onBlur={(event) => applyNavigationCommand({ op: "update_authored_route_step", actorId: String(selectedAuthoredRouteActor?.id), stepIndex, changes: { fromMs: Number(event.currentTarget.value) } }, `Route step ${stepIndex + 1} start updated`)} /></label>
+              <label><span>To ms</span><input type="number" defaultValue={Number(step.toMs ?? 0)} onBlur={(event) => applyNavigationCommand({ op: "update_authored_route_step", actorId: String(selectedAuthoredRouteActor?.id), stepIndex, changes: { toMs: Number(event.currentTarget.value) } }, `Route step ${stepIndex + 1} end updated`)} /></label>
+              <label><span>Animation</span><input defaultValue={String(step.animation ?? "")} onBlur={(event) => { const animation = event.currentTarget.value.trim(); applyNavigationCommand({ op: "update_authored_route_step", actorId: String(selectedAuthoredRouteActor?.id), stepIndex, ...(animation ? { changes: { animation } } : { unset: ["animation"] }) }, `Route step ${stepIndex + 1} animation updated`); }} /></label>
+              <label><span>Facing</span><input defaultValue={String(step.facing ?? "")} onBlur={(event) => { const facing = parseRouteScalar(event.currentTarget.value); applyNavigationCommand({ op: "update_authored_route_step", actorId: String(selectedAuthoredRouteActor?.id), stepIndex, ...(facing === "" ? { unset: ["facing"] } : { changes: { facing } }) }, `Route step ${stepIndex + 1} facing updated`); }} /></label>
+              <label><span>Event</span><input defaultValue={String(step.event ?? "")} onBlur={(event) => { const routeEvent = event.currentTarget.value.trim(); applyNavigationCommand({ op: "update_authored_route_step", actorId: String(selectedAuthoredRouteActor?.id), stepIndex, ...(routeEvent ? { changes: { event: routeEvent } } : { unset: ["event"] }) }, `Route step ${stepIndex + 1} event updated`); }} /></label>
+              <label><span>{Object.prototype.hasOwnProperty.call(step, "depthZ") ? "Depth Z" : "World Z"}</span><input type="number" step="0.01" defaultValue={Number(step.depthZ ?? step.z ?? 0)} onBlur={(event) => { const depthKey = Object.prototype.hasOwnProperty.call(step, "depthZ") ? "depthZ" : "z"; applyNavigationCommand({ op: "update_authored_route_step", actorId: String(selectedAuthoredRouteActor?.id), stepIndex, changes: { [depthKey]: Number(event.currentTarget.value) } }, `Route step ${stepIndex + 1} depth updated`); }} /></label>
+              {pointKeys.map((pointKey) => <label key={pointKey}><span>{pointKey} x, y, z</span><input defaultValue={routePointText(step[pointKey])} onBlur={(event) => { try { const point = parseRoutePointText(event.currentTarget.value); applyNavigationCommand({ op: "update_authored_route_step", actorId: String(selectedAuthoredRouteActor?.id), stepIndex, changes: { [pointKey]: point } }, `Route step ${stepIndex + 1} ${pointKey} updated`); } catch (error) { showToast(error instanceof Error ? error.message : "Route point is invalid"); } }} /></label>)}
+            </div></div>;
+          })}
+        </div>
+        <small className="route-hash-warning">Changing a schedule never rewrites its stored hashes. Looplab marks them stale until headless replay/render evidence verifies the current route digest.</small>
+      </details>}
+
+      {selectedNavigationNode && <section className="navigation-selection-card">
+        <div><span className="eyebrow">Selected node</span><strong>{selectedNavigationNode.destinationId || selectedNavigationNode.id}</strong></div>
+        <div className="field-grid">
+          <label className="field"><span>World X</span><input type="number" value={Math.round(selectedNavigationNode.x)} onChange={(event) => applyNavigationCommand({ op: "update_navigation_node", id: selectedNavigationNode.id, changes: { x: Number(event.target.value) } }, "Navigation node updated")} /></label>
+          <label className="field"><span>World Y</span><input type="number" value={Math.round(selectedNavigationNode.y)} onChange={(event) => applyNavigationCommand({ op: "update_navigation_node", id: selectedNavigationNode.id, changes: { y: Number(event.target.value) } }, "Navigation node updated")} /></label>
+          <label className="field"><span>Elevation Z</span><input type="number" value={selectedNavigationNode.z} onChange={(event) => { const z = Number(event.target.value); applyNavigationCommand({ op: "update_navigation_node", id: selectedNavigationNode.id, changes: { z } }, "Navigation node elevation updated"); setEditorElevation(z); }} /></label>
+          <label className="field"><span>Layer</span><select value={selectedNavigationNode.layerId ?? ""} onChange={(event) => applyNavigationCommand({ op: "update_navigation_node", id: selectedNavigationNode.id, changes: { layerId: event.target.value } }, "Navigation node layer updated")}><option value="">Unlayered</option>{navigation.layers.map((layer) => <option key={layer.id} value={layer.id}>{layer.name}</option>)}</select></label>
+        </div>
+        <label className="field full"><span>Stable destination ID</span><input placeholder="north-gate" value={selectedNavigationNode.destinationId ?? ""} onChange={(event) => applyNavigationCommand({ op: "update_navigation_node", id: selectedNavigationNode.id, changes: { destinationId: event.target.value || undefined } }, "Navigation destination updated")} /></label>
+        <div className="mini-actions"><button onClick={() => setNavigationChainNodeId(selectedNavigationNode.id)}>Continue chain here</button><button className="danger" onClick={() => { applyNavigationCommand({ op: "remove_navigation_node", id: selectedNavigationNode.id }, "Navigation node removed"); setSelectedNavigationNodeId(null); setNavigationChainNodeId(null); }}>Delete node</button></div>
+      </section>}
+
+      {navigation.links.length > 0 && <div className="navigation-list"><span className="eyebrow">Links</span>{navigation.links.map((link) => <button key={link.id} className={selectedNavigationLinkId === link.id ? "active" : ""} onClick={() => { setSelectedNavigationLinkId(link.id); setSelectedNavigationNodeId(null); }}><span><strong>{link.a} → {link.b}</strong><small>{link.oneWay ? "one way" : "both ways"} · cost ×{link.cost}</small></span></button>)}</div>}
+      {selectedNavigationLink && <section className="navigation-selection-card"><div className="field-grid"><label className="field"><span>Cost multiplier</span><input type="number" min="0.01" step="0.25" value={selectedNavigationLink.cost} onChange={(event) => applyNavigationCommand({ op: "update_navigation_link", id: selectedNavigationLink.id, changes: { cost: Math.max(.01, Number(event.target.value)) } }, "Navigation link cost updated")} /></label><label className="toggle-row" htmlFor="nav-link-one-way"><span>One way<small>{selectedNavigationLink.a} → {selectedNavigationLink.b}</small></span><input id="nav-link-one-way" aria-label="One-way navigation link" type="checkbox" checked={selectedNavigationLink.oneWay} onChange={(event) => applyNavigationCommand({ op: "update_navigation_link", id: selectedNavigationLink.id, changes: { oneWay: event.target.checked } }, "Navigation direction updated")} /></label></div><button className="wide-button danger" onClick={() => { applyNavigationCommand({ op: "remove_navigation_link", id: selectedNavigationLink.id }, "Navigation link removed"); setSelectedNavigationLinkId(null); }}>Remove link</button></section>}
+
+      {navigation.areas.length > 0 && <div className="navigation-list"><span className="eyebrow">Walkable & blocked areas</span>{navigation.areas.map((area) => <button key={area.id} className={selectedNavigationAreaId === area.id ? "active" : ""} onClick={() => setSelectedNavigationAreaId(area.id)}><span><strong>{area.name}</strong><small>{area.kind} · {area.points.length} points · z {area.zMin}–{area.zMax}</small></span></button>)}</div>}
+      {selectedNavigationArea && <div className="mini-actions"><button onClick={() => { setMapTool(selectedNavigationArea.kind === "blocked" ? "blocked-area" : "walkable-area"); setEditorElevation(selectedNavigationArea.zMin); }}>Draw another {selectedNavigationArea.kind}</button><button className="danger" onClick={() => { applyNavigationCommand({ op: "remove_navigation_area", id: selectedNavigationArea.id }, "Navigation area removed"); setSelectedNavigationAreaId(null); }}>Delete area</button></div>}
+
+      {navigationTest.result && <div className={`navigation-test-result ${navigationTest.result.ok ? "passed" : "failed"}`}><strong>{navigationTest.result.ok ? "Route found" : "Route blocked"}</strong><small>{navigationTest.result.ok ? `${navigationTest.result.nodeIds.length} nodes · cost ${Math.round(navigationTest.result.cost)}` : navigationTest.result.reason ?? "No connected path"}</small></div>}
+    </details>
+  );
+
+  return (
+    <main className={`studio-shell ${isPlaying && previewFocus ? "preview-focus-shell" : ""}`} data-preview-focus={isPlaying && previewFocus ? "true" : "false"} data-workspace={mapStudioFocused ? "map-studio" : experienceMode}>
+      <script id="looplab-project-state" type="application/json" suppressHydrationWarning dangerouslySetInnerHTML={{ __html: serializedProjectState }} />
+      <script id="looplab-project-library-state" type="application/json" suppressHydrationWarning dangerouslySetInnerHTML={{ __html: serializedProjectLibraryState }} />
+      <script id="looplab-director-state" type="application/json" suppressHydrationWarning dangerouslySetInnerHTML={{ __html: serializedDirectorState }} />
+      <script id="looplab-agent-presence-state" type="application/json" suppressHydrationWarning dangerouslySetInnerHTML={{ __html: serializedAgentPresenceState }} />
+      <script id="looplab-preference-memory-state" type="application/json" suppressHydrationWarning dangerouslySetInnerHTML={{ __html: serializedPreferenceMemoryState }} />
+      <script id="looplab-playtest-observation-state" type="application/json" suppressHydrationWarning dangerouslySetInnerHTML={{ __html: serializedPlaytestObservationState }} />
+      <script id="looplab-research-state" type="application/json" suppressHydrationWarning dangerouslySetInnerHTML={{ __html: serializedResearchState }} />
+      <script id="looplab-asset-catalog-state" type="application/json" suppressHydrationWarning dangerouslySetInnerHTML={{ __html: serializedAssetCatalogState }} />
+      <script id="looplab-asset-pack-state" type="application/json" suppressHydrationWarning dangerouslySetInnerHTML={{ __html: serializedAssetPackState }} />
+      <script id="looplab-visual-review-state" type="application/json" suppressHydrationWarning dangerouslySetInnerHTML={{ __html: serializedVisualReviewState }} />
+      <script id="looplab-visual-critique-state" type="application/json" suppressHydrationWarning dangerouslySetInnerHTML={{ __html: serializedVisualCritiqueState }} />
+      <header className="topbar">
+        <div className="brand-lockup" aria-label="Looplab home">
+          <span className="brand-mark">L</span>
+          <div><strong>LOOPLAB</strong><span>2D game workshop</span></div>
+        </div>
+        <div className="project-identity">
+          <span className="eyebrow">Project</span>
+          <input
+            aria-label="Project name"
+            value={project.name}
+            onChange={(event) => commit({ ...project, name: event.target.value })}
+          />
+          <span className="save-state"><i /> {toast}</span>
+        </div>
+        <nav className="top-actions" aria-label="Project actions">
+          <div className="experience-switch" role="group" aria-label="Workspace experience">
+            <button className={experienceMode === "director" && !mapStudioFocused ? "active" : ""} onClick={() => { setExperienceMode("director"); setMapStudioFocused(false); setMobileTab("scene"); }}>AI Director</button>
+            <button className={experienceMode === "workbench" && !mapStudioFocused ? "active" : ""} onClick={() => { setExperienceMode("workbench"); setMapStudioFocused(false); setMobileTab("stage"); }}>Fine tune</button>
+            <button className={mapStudioFocused ? "active" : ""} onClick={() => { setExperienceMode("workbench"); setMapStudioFocused(true); setMode("edit"); setMobileTab("stage"); setSelectedId(null); setShowPaths(true); setShowColliders(true); }}>Map Studio</button>
+          </div>
+          <button className="icon-button" onClick={undo} disabled={!historyState.canUndo} title="Undo (Ctrl/⌘ Z)">↶</button>
+          <button className="icon-button" onClick={redo} disabled={!historyState.canRedo} title="Redo (Ctrl/⌘ Y)">↷</button>
+          <span className="toolbar-divider" />
+          <button className="button button-quiet" onClick={() => fileInputRef.current?.click()}>Open</button>
+          <button className="button button-quiet" onClick={() => void openProjectFolder()}>Open folder</button>
+          <button className="button button-quiet" onClick={() => setShowTemplates(true)}>New</button>
+          <button className="button button-export" onClick={exportHtml}>Export HTML <span>↗</span></button>
+          <input ref={fileInputRef} className="visually-hidden" type="file" accept=".json,.loop,.html,application/json,text/html" onChange={importProject} />
+        </nav>
+      </header>
+
+      <div className="mobile-tabs" role="tablist" aria-label="Workspace panels">
+        {(["scene", "stage", "inspect"] as MobileTab[]).map((tab) => (
+          <button key={tab} role="tab" aria-selected={mobileTab === tab} onClick={() => setMobileTab(tab)}>{mapStudioFocused ? ({ scene: "Objects", stage: "Map", inspect: "Layers" } as Record<MobileTab, string>)[tab] : experienceMode === "director" ? ({ scene: "Director", stage: "Game", inspect: "Doctor" } as Record<MobileTab, string>)[tab] : tab}</button>
+        ))}
+      </div>
+
+      <section className={`workspace ${experienceMode === "director" ? "director-layout" : ""} ${mapStudioFocused ? "map-studio-layout" : ""} ${isPlaying && previewFocus ? "preview-focus" : ""}`}>
+        <aside className={`side-panel scene-panel ${mobileTab === "scene" ? "mobile-active" : ""}`} aria-label="Scene and object library">
+          {experienceMode === "director" ? (
+            <div className="director-sidebar">
+              <div className="panel-heading director-heading">
+                <div><span className="eyebrow">AI owns the pass</span><h2>Game Director</h2></div>
+                <span className={`agent-light ${pendingAiRequests.length ? "waiting" : "ready"}`} title="Headless agent bridge status" />
+              </div>
+              <div className="director-scroll">
+                <div className="director-status">
+                  <span><i className={companionOnline ? "online" : "offline"} /> {companionOnline ? `${companionHealth?.readyCount ?? 0} AI CONNECTIONS READY` : "MANAGED COMPANION STARTING"}</span>
+                  <small>{companionOnline ? "Codex, Claude, and API credentials are checked independently. Only verified-ready choices can start a loop." : "The local Looplab launcher starts the companion and this page reconnects automatically."}</small>
+                </div>
+                <div className="director-workspace-tabs" role="tablist" aria-label="AI Director workspace">
+                  <button role="tab" aria-selected={directorWorkspaceTab === "build"} className={directorWorkspaceTab === "build" ? "active" : ""} onClick={() => setDirectorWorkspaceTab("build")}><span>✦</span> Build</button>
+                  <button role="tab" aria-selected={directorWorkspaceTab === "research"} className={directorWorkspaceTab === "research" ? "active" : ""} onClick={() => setDirectorWorkspaceTab("research")}><span>⌕</span> Research{researchReports.length > 0 && <b>{researchReports.length}</b>}</button>
+                </div>
+                {directorWorkspaceTab === "build" ? <>
+                {projectFolderName && <div className="project-folder-banner"><span>Project folder</span><strong>{projectFolderName}</strong><small>{project.iteration?.status === "verified" || project.iteration?.status === "promoted" ? "Completed parent is protected. Generating creates a new child candidate." : "Folder project loaded into the editable workspace."}</small></div>}
+                <section className="directed-game-brief" aria-labelledby="directed-game-brief-title">
+                  <div className="directed-game-brief-title"><div><span className="eyebrow">Shape the game</span><strong id="directed-game-brief-title">Directed game brief</strong></div><small>Selections strengthen your prompt</small></div>
+                  <div className="directed-choice-grid">
+                    <label><span>Genre</span><select value={gameGenre} onChange={(event) => setGameGenre(event.target.value)}>{GAME_GENRES.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
+                    <label><span>Core loop</span><select value={coreGameLoop} onChange={(event) => setCoreGameLoop(event.target.value)}>{CORE_LOOPS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
+                    <label className="directed-choice-wide"><span>Movement / rules template</span><select value={movementTemplate} onChange={(event) => setMovementTemplate(event.target.value)}>{MOVEMENT_TEMPLATES.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
+                    <label><span>Camera / maps</span><select value={gameFormat} onChange={(event) => setGameFormat(event.target.value)}>{GAME_FORMATS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
+                    <label><span>Progression</span><select value={progressionMode} onChange={(event) => setProgressionMode(event.target.value)}>{PROGRESSION_MODES.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
+                    <label className="directed-choice-wide"><span>World scope</span><select value={campaignScope} onChange={(event) => setCampaignScope(event.target.value)}>{CAMPAIGN_SCOPES.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
+                  </div>
+                  <div className="directed-brief-preview" aria-live="polite"><strong>AI receives</strong><p>{directedSummary.length ? directedSummary.join(" · ") : "Your text, with the best-fit game structure inferred automatically"}</p><small>Your description stays in charge; these choices add mechanics, pacing, camera, progression, and world-scope constraints.</small><small>Verb system: choose mechanics by recurring decisions, not a quota; prove independent use, repeated relationships, feedback, recovery, runtime behavior, and tests.</small></div>
+                </section>
+                <label className="director-brief">
+                  <span>Describe your game in your own words</span>
+                  <textarea value={aiBrief} onChange={(event) => setAiBrief(event.target.value)} rows={6} placeholder="Example: A rollerblading game in a dense city where every landing flows into another trick line…" />
+                </label>
+                <div className="prompt-chips" aria-label="Quick prompt goals">
+                  {[
+                    ["Fix the map", "Audit collision, anchors, route clearance, depth, seams, and portal transitions."],
+                    ["Upgrade art", "Create a cohesive tile set and sprite pass while locking identity, scale, palette, and ground anchors."],
+                    ["Improve flow", "Reduce dead travel and build readable setup, interaction, landing, recovery, and next-decision beats."],
+                    ["Ship ready", "Run production checks for replay determinism, device safe areas, offline packaging, accessibility, and performance evidence."],
+                  ].map(([label, prompt]) => <button key={label} onClick={() => setAiBrief(prompt)}>{label}</button>)}
+                </div>
+                <section className="prompt-draft-card" aria-labelledby="generated-prompt-title">
+                  <header><div><span className="eyebrow">{directedBrief.promptGeneration ? "AI-generated prompt" : "Prepared provider input"}</span><strong id="generated-prompt-title">{directedBrief.promptGeneration?.title ?? "Structured game build brief"}</strong></div><small>{directedPrompt.length} characters</small></header>
+                  <textarea aria-label={directedBrief.promptGeneration ? "AI-generated game build prompt" : "Prepared AI provider input"} value={directedPrompt} readOnly rows={7} spellCheck={false} />
+                  <div className="prompt-draft-actions"><button onClick={() => void copyPromptDraft()}>Copy prompt</button><button className="primary" onClick={retryPromptDraft} disabled={promptGenerating || loopRunning || researchRunning}>{promptGenerating ? "◌ Asking AI…" : "↻ Retry prompt"}</button></div>
+                  <small>{directedBrief.promptGeneration ? `${directedBrief.promptGeneration.provider}${directedBrief.promptGeneration.model ? ` · ${directedBrief.promptGeneration.model}` : ""} · ${directedBrief.promptGeneration.summary}` : "This deterministic brief only prepares the selected provider input. Retry Prompt asks the authenticated AI for a substantially different version; no local template is labeled as AI output."}</small>
+                </section>
+                <div className="director-options">
+                  <label><span>Agent connection</span><select value={aiProvider} onChange={(event) => setAiProvider(event.target.value as AgentProvider)}><option value="openai">OpenAI API</option><option value="anthropic">Anthropic API</option><option value="codex">Codex CLI</option><option value="claude">Claude Code CLI</option></select></label>
+                  <label><span>Workstream</span><select value={aiTrack} onChange={(event) => setAiTrack(event.target.value)}>{(project.workstreams ?? []).map((stream) => <option key={stream.id} value={stream.id}>{stream.name}</option>)}</select></label>
+                  <label><span>2D runtime</span><select aria-label="2D runtime routing" value={runtimePreference} onChange={(event) => setRuntimePreference(event.target.value as "auto" | "canvas" | "phaser" | "pixi" | "melon")}><option value="auto">Auto · choose for game quality</option><option value="canvas">Canvas · ready · lean / custom</option><option value="phaser">Phaser · ready · scenes / physics</option><option value="pixi">Pixi · knowledge ready · adapter pending</option><option value="melon">melonJS · knowledge ready · adapter pending</option></select></label>
+                </div>
+                <div className="provider-center" aria-label="AI connection center">
+                  <div className="provider-center-title"><div><span className="eyebrow">Connection center</span><strong>Codex + Claude checks</strong></div><button onClick={() => void scanProviderConnections(true)} disabled={providerScanRunning}>{providerScanRunning ? "Scanning…" : "Scan"}</button></div>
+                  <div className="provider-status-grid">
+                    {PROVIDER_IDS.map((id) => {
+                      const provider = providerStatuses?.[id];
+                      const state = companionOnline ? provider?.state ?? "unknown" : "unknown";
+                      return <button key={id} className={aiProvider === id ? "selected" : ""} aria-pressed={aiProvider === id} onClick={() => setAiProvider(id)}><i className={`state-${state}`} /><span>{provider?.label ?? ({ codex: "Codex CLI", claude: "Claude CLI", openai: "OpenAI API", anthropic: "Anthropic API" } as Record<AgentProvider, string>)[id]}<small>{companionOnline ? state.replaceAll("-", " ") : "not checked"}</small></span></button>;
+                    })}
+                  </div>
+                  {localCopilotStatus && <div className={`provider-detail state-${localCopilotStatus.ready ? "ready" : localCopilotStatus.state === "blocked" ? "blocked" : "unknown"}`} role="status" aria-label="Optional local AI copilot status">
+                    <div><strong>{localCopilotStatus.summary}</strong><small>{localCopilotStatus.detail}</small>{localCopilotStatus.model && <code>{localCopilotStatus.engine} · {localCopilotStatus.model}</code>}</div>
+                    <div className="provider-detail-actions">
+                      {localCopilotStatus.candidates.filter((candidate) => candidate.docsUrl).map((candidate) => <a key={candidate.id} href={candidate.docsUrl ?? undefined} target="_blank" rel="noreferrer">{candidate.label} setup</a>)}
+                    </div>
+                    <small>Optional advisory AI only · no paid provider credits · never mutates projects, runs tools, or produces Doctor/replay/release evidence.</small>
+                  </div>}
+                  <div className="provider-parity-contract" role="status"><div><span>Shared loop contract</span><strong>Codex ↔ Claude</strong></div><code>{providerParityContract.sharedContractDigest.slice(0, 18)}…</code><small>Same project target, bounded context, frozen evaluator, canonical edits, gates, ledger, and usage rules. Creative output may differ.</small></div>
+                  {selectedProviderStatus ? (
+                    <div className={`provider-detail state-${selectedProviderStatus.state}`} role="status">
+                      <div><strong>{selectedProviderStatus.summary}</strong><small>{selectedProviderStatus.detail}</small>{(selectedProviderStatus.version || selectedProviderStatus.model) && <code>{selectedProviderStatus.version ?? selectedProviderStatus.model}</code>}</div>
+                      {selectedProviderStatus.kind === "api" && !selectedProviderStatus.ready && (
+                        <form className="provider-key-form" onSubmit={saveProviderKey}>
+                          <label htmlFor="provider-api-key"><span>{selectedProviderStatus.credentialName}</span><input id="provider-api-key" type="password" autoComplete="new-password" spellCheck={false} value={providerKeyDraft} onChange={(event) => setProviderKeyDraft(event.target.value)} placeholder="Paste API key" disabled={providerKeySaving} /></label>
+                          <button type="submit" disabled={providerKeySaving || providerKeyDraft.trim().length < 20}>{providerKeySaving ? "Encrypting & verifying…" : "Save key securely"}</button>
+                          <small>The key travels once to Looplab on 127.0.0.1, is encrypted for your Windows user, and is immediately cleared from this field. It is never placed in game data or console output.</small>
+                        </form>
+                      )}
+                      <div className="provider-detail-actions">
+                        {selectedProviderStatus.action.kind !== "none" && <button onClick={() => void runProviderAction(selectedProviderStatus)} disabled={providerLoginsRunning.includes(selectedProviderStatus.id)}>{providerLoginsRunning.includes(selectedProviderStatus.id) ? selectedProviderStatus.action.kind === "native-key" ? "Windows dialog open…" : "Connecting…" : selectedActiveConnection ? "Resume sign-in" : selectedProviderStatus.action.kind === "native-key" ? "Use Windows dialog" : selectedProviderStatus.action.label}</button>}
+                        {selectedActiveConnection && <button onClick={() => void cancelProviderLogin(selectedActiveConnection)}>Cancel sign-in</button>}
+                        {selectedProviderStatus.keyUrl && <a href={selectedProviderStatus.keyUrl} target="_blank" rel="noreferrer">{selectedProviderStatus.state === "needs-key" ? "Create API key" : "Manage API key"}</a>}
+                        {selectedProviderStatus.docsUrl && <a href={selectedProviderStatus.docsUrl} target="_blank" rel="noreferrer">Official setup</a>}
+                      </div>
+                    </div>
+                  ) : <p className="provider-unchecked">The managed companion starts with Looplab and scans automatically. No installed app, login, or key is assumed.</p>}
+                </div>
+                <div className="ai-team-route">
+                  <span className="eyebrow">Native 2D production plan</span>
+                  <strong className="ai-team-route-title">Specialist build roster</strong>
+                  <section className="runtime-decision" aria-label="Runtime selection decision">
+                    <div><strong>{agentRoute.runtimeSelection.selectedFramework}</strong><small>{agentRoute.runtimeSelection.selectionSource.replaceAll("-", " ")} · {agentRoute.runtimeSelection.confidence} confidence</small></div>
+                    <p>{agentRoute.runtimeSelection.reasons[0]}</p>
+                    {agentRoute.runtimeSelection.bestFitFramework !== agentRoute.runtimeSelection.selectedFramework && <p className="runtime-recommendation">The full four-runtime knowledge model rates {agentRoute.runtimeSelection.bestFitFramework} as the conceptual best fit. LoopLab selected {agentRoute.runtimeSelection.selectedFramework} because only release-ready adapters may own a build.</p>}
+                    {agentRoute.runtimeSelection.migrationRequiresOptIn && <p className="runtime-recommendation">Phaser is the better fit, but this existing project stays on {agentRoute.runtimeSelection.currentProjectFramework} until you choose Phaser explicitly.</p>}
+                    <small>{agentRoute.runtimeSelection.singleFile.required ? `ONE HTML · ${agentRoute.runtimeSelection.singleFile.delivery}` : agentRoute.runtimeSelection.singleFile.delivery} · Canvas, Phaser, PixiJS, and melonJS decision knowledge is native. Engine code remains optional and one primary adapter owns each build.</small>
+                  </section>
+                  <div className="ai-agent-plan">{agentRoute.agentPlan.map((agent) => <span key={agent.agentId} title={`${agent.owns.join(", ")} · Produces: ${agent.produces}`}><b>{agent.order}</b><i>{agent.executor === "selected-provider" ? "AI role" : agent.executor === "project-doctor" ? "Doctor gate" : "Browser gate"}</i>{agent.label}</span>)}</div>
+                  <small className="narrative-route-note">{agentRoute.context.narrative.included ? `Narrative Designer + Narrator/Dialogue Writer included · ${agentRoute.context.narrative.selectionSource.replaceAll("-", " ")} · structure, voice, readable delivery, runtime IDs, and evidence share one contract.` : "Narrative roles are on Auto and stay out of mechanics-first work until the prompt, project, or Story & narrative workstream calls for them."}</small>
+                  <details><summary>{agentRoute.route.length} implementation capabilities</summary><div className="ai-capability-route">{agentRoute.route.map((step) => <span key={step.capabilityId} title={step.owns.join(", ")}>{step.label}</span>)}</div></details>
+                  <small>NOT INDEPENDENT PROCESSES · 1 SELECTED PROVIDER COORDINATES THE AI ROLES · SAME PLAN FOR OPENAI, ANTHROPIC, CODEX + CLAUDE · Project Doctor + Playwright run separately · {agentRoute.context.dimension.toUpperCase()} {agentRoute.context.framework}</small>
+                </div>
+                <div className="loop-builder">
+                  <section className="project-loop-target" aria-labelledby="loop-target-title">
+                    <header><div><span className="eyebrow">Project being looped</span><strong id="loop-target-title">{project.name}</strong></div><span>{projectLibraryOptions.length} available</span></header>
+                    <label><span>Select project</span><select aria-label="Project being looped" value={activeProjectLibraryId} onChange={(event) => { const id = event.target.value; if (id === "__load-folder__") void openProjectFolder(); else void activateProjectLibraryEntry(id).catch((error) => showToast(error instanceof Error ? error.message : "The project could not be selected")); }}>{projectLibraryOptions.map((entry) => <option key={entry.value} value={entry.value}>{entry.name}{entry.shared ? entry.mounted ? " · shared" : " · shared (mount)" : " · local"}{entry.value === activeProjectLibraryId ? " · current" : ""}</option>)}<option value="__load-folder__">＋ Load project folder…</option></select></label>
+                    <small>{activeProjectLibraryEntry?.sourceLabel ?? "Current Looplab project"}{activeProjectLibraryEntry?.parentLibraryId ? " · independent variation" : ""}{activeProjectLibraryEntry?.storage === "shared" ? ` · shared ${activeProjectLibraryEntry.sharedSyncStatus ?? "synced"}` : " · browser cache pending shared save"}</small>
+                    <div className="project-loop-actions"><button onClick={() => void openProjectFolder()}>Load project folder</button><button onClick={() => void refreshSharedProjectCatalog(true).catch((error) => showToast(error instanceof Error ? error.message : "Shared projects could not be refreshed"))}>Refresh shared</button><button className="primary" onClick={() => createProjectVariation()} disabled={loopRunning}>Create variation</button></div>
+                    <div className="foundation-picker" data-ready={Boolean(foundationSearchResult)}>
+                      <header><span><strong>Playable foundation</strong><small>Brief-matched technical starting points</small></span><button type="button" onClick={() => void reviewGameFoundations()} disabled={foundationSearchRunning || loopRunning}>{foundationSearchRunning ? "Inspecting…" : foundationSearchResult ? "Review again" : "Review foundations"}</button></header>
+                      {foundationSearchResult && <>
+                        {!foundationSearchFresh && <p>The project changed. Review again before previewing or applying.</p>}
+                        <div className="foundation-candidate-list" role="listbox" aria-label="Playable foundation candidates">
+                          {foundationSearchResult.candidates.map((candidate) => <button type="button" role="option" key={candidate.id} aria-selected={candidate.id === selectedFoundationId} className={`${candidate.id === selectedFoundationId ? "active" : ""} ${candidate.safe ? "safe" : "blocked"}`} onClick={() => { setSelectedFoundationId(candidate.id); setFoundationCandidatePreview(null); }}><span><strong>{candidate.title}</strong><small>{candidate.family.replaceAll("-", " ")} · fit {candidate.fit.score}</small></span><b>{!candidate.fit.compatible ? "CONFLICT" : (candidate.preparedProofComplete ?? candidate.proofComplete) ? "PROVEN" : candidate.safe ? "STARTER" : "BLOCKED"}</b></button>)}
+                        </div>
+                        {selectedFoundationCandidate && <div className="foundation-candidate-detail">
+                          <strong>{selectedFoundationCandidate.summary}</strong>
+                          <small>{selectedFoundationCandidate.fit.reasons[0] ?? selectedFoundationCandidate.fit.tradeoffs[0] ?? "General technical foundation; creative direction remains yours."}</small>
+                          <small>Reference {selectedFoundationCandidate.readiness.replaceAll("-", " ")} · prepared Doctor {selectedFoundationCandidate.preparedDoctor?.prototype.score ?? selectedFoundationCandidate.doctor.prototype.score}/100 · {selectedFoundationCandidate.preparedDoctor?.prototype.errorCount ?? selectedFoundationCandidate.doctor.prototype.errorCount} blocker{(selectedFoundationCandidate.preparedDoctor?.prototype.errorCount ?? selectedFoundationCandidate.doctor.prototype.errorCount) === 1 ? "" : "s"}</small>
+                          <small>{selectedFoundationCandidate.preparedGapLedger.length} honest gap{selectedFoundationCandidate.preparedGapLedger.length === 1 ? "" : "s"} · {selectedFoundationCandidate.preparedGapLedger.slice(0, 3).map((gap) => gap.area).join(" · ") || "technical proof complete"}</small>
+                          {foundationCandidatePreview?.candidateId === selectedFoundationCandidate.id && <div className={`foundation-preview-receipt ${foundationCandidatePreview.receipt.applicable && foundationPreviewFresh ? "ready" : "blocked"}`}><strong>{foundationCandidatePreview.receipt.applicable ? "Exact preview passed" : "Exact preview blocked"}</strong><small>Doctor {foundationCandidatePreview.receipt.doctor.before.score} → {foundationCandidatePreview.receipt.doctor.after.score} · Production {foundationCandidatePreview.receipt.doctor.release.before.score} → {foundationCandidatePreview.receipt.doctor.release.after.score}</small></div>}
+                          <div className="foundation-actions">
+                            {!isProtectedFoundationVariation ? <button type="button" className="variation" onClick={() => createProjectVariation()} disabled={foundationSearchRunning}>Create protected variation</button> : <button type="button" onClick={() => void previewGameFoundation(selectedFoundationCandidate)} disabled={foundationSearchRunning || !foundationSearchFresh || !selectedFoundationCandidate.materializationRequest}>{!selectedFoundationCandidate.fit.compatible ? "Brief conflict blocks use" : selectedFoundationCandidate.proofBlocked ? "Technical proof gaps block use" : !selectedFoundationCandidate.safe ? "Doctor blocks use" : "Preview this foundation"}</button>}
+                            {isProtectedFoundationVariation && <button type="button" className="primary" onClick={() => void applyGameFoundation()} disabled={foundationSearchRunning || !foundationPreviewFresh || foundationCandidatePreview?.candidateId !== selectedFoundationCandidate.id || foundationCandidatePreview?.receipt.applicable !== true}>Apply exact preview</button>}
+                          </div>
+                        </div>}
+                        <p>{foundationSearchResult.decisionBoundary}</p>
+                      </>}
+                    </div>
+                  </section>
+                  <label className="loop-toggle" htmlFor="loop-enabled"><span><strong>Keep improving in a loop</strong><small>Always preserve the best verified candidate</small></span><input id="loop-enabled" aria-label="Keep improving in a loop" type="checkbox" checked={loopEnabled} onChange={(event) => setLoopEnabled(event.target.checked)} /></label>
+                  {loopEnabled && <>
+                    <div className="loop-grid">
+                      <label><span>Strategy</span><select value={loopStrategy} onChange={(event) => setLoopStrategy(event.target.value as LoopStrategy)}><option value="improve">Improve same game</option><option value="explore">Explore variants</option><option value="cycle">Cycle conditions</option></select></label>
+                      <label><span>Max passes</span><input type="number" min="1" max="20" value={loopIterations} onChange={(event) => setLoopIterations(Math.max(1, Math.min(20, Number(event.target.value))))} /></label>
+                      <label><span>Stop score</span><input type="number" min="1" max="100" value={loopStopScore} onChange={(event) => setLoopStopScore(Math.max(1, Math.min(100, Number(event.target.value))))} /><small>Stops before a single provider pass. If conditions or maps form a required pass plan, every planned scope must be accepted; Max passes is the hard call cap.</small></label>
+                    </div>
+                  </>}
+                  <label className="loop-evaluation-profile"><span>Acceptance profile</span><select aria-label="Loop acceptance profile" value={loopEvaluationProfile} onChange={(event) => setLoopEvaluationProfile(event.target.value as LoopEvaluationProfile)}><option value="auto">Auto from starting project</option><option value="general">General 2D</option><option value="platformer">Platformer</option><option value="top-down">Top-down</option><option value="connected-world">Connected world</option><option value="systems">Systems &amp; choice</option></select><small>Auto selects once from authored project truth and freezes the profile, dimensions, and hard gates for every candidate.</small></label>
+                  <label className="loop-evaluation-profile"><span>AI context budget</span><select aria-label="AI context budget" value={providerContextBudgetTokens} onChange={(event) => setProviderContextBudgetTokens(Number(event.target.value))}><option value={32_000}>Efficient · 32k</option><option value={64_000}>Balanced · 64k</option><option value={96_000}>Complex · 96k</option><option value={120_000}>Deep · 120k</option><option value={160_000}>Very deep · 160k</option><option value={200_000}>Maximum · 200k</option></select><small>Caps provider input context; complex is the default. LoopLab still plans bounded passes and reports measured usage after completion.</small></label>
+                  <div className="art-direction-policy">
+                    <label><span>Art direction</span><select aria-label="Art direction policy" value={artDirectionMode} onChange={(event) => setArtDirectionMode(event.target.value as ArtDirectionMode)}><option value="explore">Let AI explore</option><option value="preserve">Preserve current identity</option><option value="locked">Use explicit style locks</option></select><small>{artDirectionMode === "explore" ? "The AI chooses a cohesive visual identity from your game brief." : artDirectionMode === "preserve" ? "Improve execution without replacing the current visual language." : "Only the visual rules you enter below become fixed constraints."}</small></label>
+                    {artDirectionMode === "locked" && <label className="loop-conditions style-locks"><span>Explicit style locks</span><textarea rows={3} value={styleLocks} onChange={(event) => setStyleLocks(event.target.value)} placeholder="One user-chosen palette, setting, or visual rule per line…" /><small>Nothing outside this list is visually locked.</small></label>}
+                  </div>
+                  <VisualIdentityPanel
+                    key={doctorReport.visualIdentityReport.identityDigest ?? `${activeProjectLibraryId}:no-visual-identity`}
+                    identity={project.visualIdentity ?? null}
+                    assets={project.assets ?? []}
+                    report={doctorReport.visualIdentityReport}
+                    onSave={(identity) => { try { const outcome = applyAgentCommand(syncActiveMap(project), { op: "set_visual_identity", identity }); commit(outcome.project as GameProject, `Visual identity ${identity.status}`); showToast("Project visual identity saved"); } catch (error) { showToast(error instanceof Error ? error.message : "Visual identity could not be saved"); } }}
+                    onRemove={() => { try { const outcome = applyAgentCommand(syncActiveMap(project), { op: "remove_visual_identity" }); commit(outcome.project as GameProject, "Visual identity removed"); showToast("Project visual identity removed"); } catch (error) { showToast(error instanceof Error ? error.message : "Visual identity could not be removed"); } }}
+                  />
+                  <details className="preference-memory" data-enabled={preferenceMemory.enabled && usePreferenceMemoryForRun}>
+                    <summary><span><i aria-hidden="true" /> Studio preference memory</span><small>{preferenceMemory.entries.length} explicit · {appliedPreferenceContext.entries.length} relevant now</small></summary>
+                    <div className="preference-memory-body">
+                      <header><div><span className="eyebrow">Local, explicit, inspectable</span><strong>Help the AI remember what you actually choose.</strong></div><label><input type="checkbox" checked={preferenceMemory.enabled} onChange={(event) => commitPreferenceMemory(setPreferenceMemoryEnabled(preferenceMemoryRef.current, event.target.checked) as PreferenceMemory, event.target.checked ? "Preference memory enabled" : "Preference memory disabled")} /> Memory enabled</label></header>
+                      <label className="preference-run-toggle"><input type="checkbox" checked={usePreferenceMemoryForRun} onChange={(event) => setUsePreferenceMemoryForRun(event.target.checked)} disabled={!preferenceMemory.enabled} /><span>Use relevant preferences in this prompt/build run</span><small>The exact applied IDs and receipt are exposed to the console and headless API.</small></label>
+                      <div className="preference-compose">
+                        <label><span>{editingPreferenceId ? "Edit explicit preference" : "What should the AI remember?"}</span><textarea rows={3} value={preferenceStatementDraft} onChange={(event) => setPreferenceStatementDraft(event.target.value)} placeholder="Example: Prefer readable silhouettes and grounded material detail over noisy micro-texture." maxLength={600} /></label>
+                        <div className="preference-dimensions" aria-label="Preference dimensions">{LOOPLAB_PREFERENCE_DIMENSIONS.map((dimension) => <button type="button" key={dimension.id} aria-pressed={preferenceDimensions.includes(dimension.id)} onClick={() => togglePreferenceDimension(dimension.id, "statement")}>{dimension.label}</button>)}</div>
+                        {!editingPreferenceId && <div className="preference-scope"><label><span>Applies to</span><select value={preferenceScope} onChange={(event) => setPreferenceScope(event.target.value as "current-context" | "all-games")}><option value="current-context">Current game context</option><option value="all-games">All 2D games</option></select></label><label><span>Optional context tags</span><input value={preferenceContextTags} onChange={(event) => setPreferenceContextTags(event.target.value)} placeholder="dimetric, rhythm, atmospheric" /></label></div>}
+                        <div className="preference-compose-actions"><button type="button" onClick={savePreferenceStatement} disabled={!preferenceStatementDraft.trim()}>{editingPreferenceId ? "Save edit" : "Remember preference"}</button>{editingPreferenceId && <button type="button" onClick={() => { setEditingPreferenceId(null); setPreferenceStatementDraft(""); setPreferenceDimensions(["overall-fit"]); }}>Cancel edit</button>}</div>
+                      </div>
+                      <div className="preference-entry-list">{preferenceMemory.entries.length ? [...preferenceMemory.entries].reverse().map((entry) => <article key={entry.id} data-applied={appliedPreferenceIds.has(entry.id)} data-disabled={!entry.enabled}><div><span>{entry.kind === "statement" ? "Statement" : "Candidate choice"}{appliedPreferenceIds.has(entry.id) ? " · applied now" : ""}</span><strong>{entry.kind === "statement" ? entry.statement : entry.rationale}</strong><small>{entry.dimensions.join(" · ")}{Object.values(entry.context).some((values) => values.length > 0) ? " · context scoped" : " · all games"}</small></div><footer><button type="button" onClick={() => commitPreferenceMemory(updatePreferenceEntry(preferenceMemoryRef.current, entry.id, { enabled: !entry.enabled }) as PreferenceMemory, entry.enabled ? "Preference disabled" : "Preference enabled")}>{entry.enabled ? "Disable" : "Enable"}</button><button type="button" onClick={() => editPreferenceMemoryEntry(entry)}>Edit</button><button type="button" onClick={() => removePreferenceMemoryEntry(entry.id)}>Remove</button></footer></article>) : <p>No preferences are inferred. Add one explicitly or compare two candidates below.</p>}</div>
+                      <footer className="preference-memory-actions"><button type="button" onClick={downloadPreferenceMemory}>Export JSON</button><button type="button" onClick={() => preferenceMemoryInputRef.current?.click()}>Import JSON</button><button type="button" onClick={clearAllPreferenceMemory} disabled={preferenceMemory.entries.length === 0}>Clear all</button><input ref={preferenceMemoryInputRef} type="file" accept="application/json,.json" onChange={(event) => void importPreferenceMemory(event)} hidden /></footer>
+                      <p className="preference-memory-policy">Builder-local only. It never stores screenshots, image bytes, prompts, provider responses, credentials, gameplay source, replay state, or exported HTML. Current instructions and explicit style locks always win.</p>
+                    </div>
+                  </details>
+                  <label className="loop-conditions quality-targets"><span>Objective quality targets</span><textarea rows={5} value={loopConditions} onChange={(event) => setLoopConditions(event.target.value)} placeholder="One measurable outcome per line…" /><small>{loopEnabled && loopStrategy === "cycle" ? "The loop focuses on one outcome at a time and stops when each has an accepted pass." : "These judge clarity and technical quality. They do not choose the palette, setting, or art style."}</small></label>
+                  <div className="generation-mode-summary"><strong>{loopEnabled ? `${loopIterations}-pass improvement loop` : "One-pass generation"}</strong><small>{loopEnabled ? "Generate, test, retain the best candidate, and rebuild until the stop rule is met." : "Generate and test the game once. No automatic second pass will run."}</small><small className="generation-verification-summary">Accepted candidates automatically enter browser QA and verification. A failed gate preserves the candidate for fixes; promotion stays manual.</small></div>
+                  <button className="director-primary" onClick={() => void queueAiBuild()} disabled={loopRunning || promptGenerating || researchRunning}><span>{loopRunning ? "◌" : "✦"}</span> {loopPhase === "verifying" ? "Testing candidate…" : loopRunning ? "Generating game…" : loopEnabled ? "Generate & keep improving" : "Generate game"}</button>
+                </div>
+                <p className="director-honesty">{companionOnline ? "The console below is fed by the real model process and Project Doctor gates." : "No activity is simulated. Jobs wait visibly while the managed companion reconnects."}</p>
+                <div className="loop-console" aria-live="polite" aria-label="AI loop console">
+                  <div className="console-title"><span><i className={loopRunning ? "running" : companionOnline ? "online" : "offline"} /> LIVE BUILD CONSOLE</span><button onClick={() => setLoopConsole([])}>Clear</button></div>
+                  <div className="console-output">
+                    {loopConsole.map((entry) => <div key={entry.sequence} className={`console-line tone-${entry.tone ?? "neutral"}`}><span>{String(entry.sequence).padStart(3, "0")}</span><b>{entry.type}</b><p>{entry.message}{entry.detail && <small>{entry.detail}</small>}{entry.url && <a href={entry.url} target="_blank" rel="noreferrer">{entry.url.includes("/billing") ? "Open OpenAI billing ↗" : "Continue secure sign-in ↗"}</a>}</p></div>)}
+                    {loopConsole.length === 0 && <div className="console-empty">Ready. Describe the game, configure the loop, then click Generate game.</div>}
+                  </div>
+                </div>
+
+                <div className="version-card">
+                  <div><span className="eyebrow">Current candidate</span><strong>{project.iteration?.id ?? "Unversioned"}</strong></div>
+                  <span className={`lifecycle-chip status-${project.iteration?.status ?? "candidate"}`}>{(project.iteration?.status === "verified" || project.iteration?.status === "promoted") && !verificationFresh ? "stale verification" : project.iteration?.status ?? "candidate"}</span>
+                  <p>{project.iteration?.objective ?? "No objective recorded"}</p>
+                  <div className="version-actions">
+                    <button onClick={verifyCandidate} disabled={verificationRunning || visualReviewRunning || project.iteration?.status === "promoted" || (project.iteration?.status === "verified" && verificationFresh)}>{verificationRunning ? "Verifying…" : "Verify"}</button>
+                    <button onClick={promoteCandidate} disabled={!doctorReportFresh || project.iteration?.status !== "verified" || !verificationFresh || !doctorReport.canPromote}>Promote</button>
+                    <button className="visual-review-action" onClick={() => visualReview && visualReviewFresh ? setShowVisualReview(true) : void runVisualReview()} disabled={visualReviewRunning || verificationRunning}>{visualReviewRunning ? "Rendering matrix…" : visualReview && visualReviewFresh ? "View visual QA" : "Run visual QA"}</button>
+                  </div>
+                </div>
+
+                {visualReview && (
+                  <details className={`visual-review ${visualReviewFresh ? "is-fresh" : "is-stale"}`} open={showVisualReview} onToggle={(event) => setShowVisualReview(event.currentTarget.open)}>
+                    <summary>
+                      <span><i aria-hidden="true" /> Visual QA matrix</span>
+                      <small>{visualReview.captures.length}/{visualReview.requiredCaptureCount} captures · {visualReview.captures.reduce((total, capture) => total + capture.perception.annotationCount, 0)} review targets</small>
+                    </summary>
+                    <div className="visual-review-body">
+                      <header><div><span className="eyebrow">Clean play · source bound</span><strong>{visualReview.mapIds.length} map{visualReview.mapIds.length === 1 ? "" : "s"} × {visualReview.profileIds.length} device profile{visualReview.profileIds.length === 1 ? "" : "s"}</strong></div><button onClick={(event) => { event.preventDefault(); void runVisualReview(); }} disabled={visualReviewRunning}>{visualReviewRunning ? "Rendering…" : "Refresh"}</button></header>
+                      {!visualReviewFresh && <p className="visual-review-warning">This review targets an older source digest. Refresh before verification.</p>}
+                      {!visualReview.verificationEligible && <p className="visual-review-warning">Visual inspection is available, but Project Doctor has {visualReview.doctorFindings.length} unresolved blocker or warning. These captures are not promotion evidence.</p>}
+                      {selectedVisualCapture && <section className="visual-review-viewer">
+                        <img src={showVisualAnnotations ? selectedVisualCapture.annotatedDataUrl : selectedVisualCapture.dataUrl} alt={`${showVisualAnnotations ? "Annotated" : "Clean"} ${selectedVisualCapture.mapName} render for ${selectedVisualCapture.profileName}`} />
+                        <div><strong>{selectedVisualCapture.mapName}</strong><span>{selectedVisualCapture.profileName}</span><div className="visual-review-toggle" aria-label="Capture presentation"><button aria-pressed={!showVisualAnnotations} onClick={() => setShowVisualAnnotations(false)}>Clean</button><button aria-pressed={showVisualAnnotations} onClick={() => setShowVisualAnnotations(true)} disabled={selectedVisualCapture.perception.annotationCount === 0}>Annotated ({selectedVisualCapture.perception.annotationCount})</button></div><small>Target {selectedVisualCapture.targetViewport.width}×{selectedVisualCapture.targetViewport.height} @ {selectedVisualCapture.targetViewport.devicePixelRatio}× · rendered {selectedVisualCapture.renderedBounds.width}×{selectedVisualCapture.renderedBounds.height}</small><small>Actual browser {selectedVisualCapture.actualViewport.width}×{selectedVisualCapture.actualViewport.height} @ {selectedVisualCapture.actualViewport.devicePixelRatio}×</small>{selectedVisualCapture.perception.comparison?.status === "compared" && <small>{(Number(selectedVisualCapture.perception.comparison.metrics?.changedPixelRatio ?? 0) * 100).toFixed(2)}% changed from the prior in-session capture</small>}<code>{selectedVisualCapture.sha256.slice(0, 31)}…</code></div>
+                      </section>}
+                      {selectedVisualCapture && selectedVisualCapture.perception.annotations.length > 0 && <section className="visual-annotation-review" aria-label="Pre-annotated visual review targets">
+                        <header><div><span className="eyebrow">Pre-annotated perception</span><strong>Exact regions first; judgment stays with the reviewer</strong></div><small>Number + label + line style; color is never the only signal.</small></header>
+                        <div className="visual-annotation-layout">
+                          <div className="visual-annotation-list">{selectedVisualCapture.perception.annotations.map((annotation) => <button key={annotation.id} className={`${annotation.severity} ${selectedVisualAnnotation?.id === annotation.id ? "selected" : ""}`} aria-pressed={selectedVisualAnnotation?.id === annotation.id} onClick={() => { setSelectedVisualAnnotationId(annotation.id); setShowVisualAnnotations(true); }}><b>{annotation.number}</b><span><strong>{annotation.label}</strong><small>{annotation.severity} · {annotation.kind.replaceAll("-", " ")} · {annotation.source === "pixel-diff" ? "pixel change" : "known geometry"}</small></span></button>)}</div>
+                          {selectedVisualAnnotation && <article className={`visual-annotation-detail ${selectedVisualAnnotation.severity}`}>{selectedVisualAnnotation.cropDataUrl && <img src={selectedVisualAnnotation.cropDataUrl} alt={`Cropped review target ${selectedVisualAnnotation.number}: ${selectedVisualAnnotation.label}`} />}<div><span>Target {selectedVisualAnnotation.number} · {selectedVisualAnnotation.severity}</span><strong>{selectedVisualAnnotation.label}</strong><p>{selectedVisualAnnotation.detail}</p>{selectedVisualAnnotation.affectedIds.length > 0 && <code>{selectedVisualAnnotation.affectedIds.join(", ")}</code>}</div></article>}
+                        </div>
+                      </section>}
+                      <div className="visual-review-grid" aria-label="Visual review captures">
+                        {visualReview.captures.map((capture) => <button key={capture.id} aria-pressed={selectedVisualCapture?.id === capture.id} className={selectedVisualCapture?.id === capture.id ? "selected" : ""} onClick={() => { setSelectedVisualCaptureId(capture.id); setSelectedVisualAnnotationId(capture.perception.annotations[0]?.id ?? null); }}><img src={capture.dataUrl} alt="" /><span><strong>{capture.mapName}</strong><small>{capture.profileName} · {capture.renderedBounds.width}×{capture.renderedBounds.height}</small><small>{capture.perception.annotationCount} review target{capture.perception.annotationCount === 1 ? "" : "s"}</small></span></button>)}
+                      </div>
+                      {visualReview.runtimeJoinEvidence.length > 0 && <section className="runtime-join-review" aria-label="Actual runtime map join results">
+                        <header><div><span className="eyebrow">Actual runtime joins</span><strong>{visualReview.runtimeJoinEvidence.filter((evidence) => evidence.status === "passed").length}/{visualReview.runtimeJoinEvidence.length} portal/profile joins pass</strong></div><small>Player pixels excluded · next unique content measured</small></header>
+                        <div>{visualReview.runtimeJoinEvidence.map((evidence) => <article key={evidence.id} className={evidence.status === "passed" ? "passed" : "failed"}><span>{evidence.status === "passed" ? "✓" : "!"}</span><div><strong>{String(evidence.portalId)} · {String(evidence.profileId)}</strong><small>{String(evidence.sourceMapId)} → {String(evidence.targetMapId)} · {(Number((evidence.metrics as { targetUniquePixelRatio?: number })?.targetUniquePixelRatio ?? 0) * 100).toFixed(1)}% unique pixels</small></div></article>)}</div>
+                      </section>}
+                      <section className={"visual-critique-panel " + (visualCritiqueFresh ? "is-fresh" : visualCritique ? "is-stale" : "")} aria-label="AI visual critique">
+                        <header>
+                          <div><span className="eyebrow">Optional grounded judgment</span><strong>AI visual critique</strong><small>Exact current captures in, source-bound observations out.</small></div>
+                          {visualCritiqueJob && <code>{visualCritiqueJob.jobId.slice(0, 18)}…</code>}
+                        </header>
+                        <div className="visual-critique-controls">
+                          <label htmlFor="visual-critique-provider"><span>Provider</span><select id="visual-critique-provider" aria-label="Visual critique provider" value={visualCritiqueProvider} onChange={(event) => setVisualCritiqueProvider(event.target.value as AgentProvider)} disabled={visualCritiqueRunning}><option value="openai">OpenAI API</option><option value="anthropic">Anthropic API</option><option value="codex">Codex CLI</option><option value="claude">Claude Code CLI</option></select></label>
+                          <label className="visual-critique-consent" htmlFor="visual-critique-consent"><input id="visual-critique-consent" aria-label="Consent to send the current visual review captures once" type="checkbox" checked={visualCritiqueConsent} onChange={(event) => setVisualCritiqueConsent(event.target.checked)} disabled={visualCritiqueRunning || !visualReviewFresh} /><span><strong>Send these exact captures once</strong><small>Up to eight clean frames are submitted only for this job. Temporary local files are deleted after it ends.</small></span></label>
+                          {visualCritiqueRunning
+                            ? <button type="button" className="visual-critique-cancel" onClick={() => void cancelVisualCritique().catch((error) => showToast(error instanceof Error ? error.message : "Visual critique could not be cancelled"))}>Cancel critique</button>
+                            : <button type="button" className="visual-critique-start" disabled={!visualReviewFresh || !visualCritiqueConsent || companionHealth?.providers?.[visualCritiqueProvider]?.ready !== true} onClick={() => void startVisualCritique({ captureFirst: false }).catch((error) => { const message = error instanceof Error ? error.message : "Visual critique could not start"; appendConsole("visual.critique.failed", message, "No project data changed and no submission is retried automatically.", "bad"); showToast(message); })}>{visualCritique ? "Critique current captures again" : "Critique current captures"}</button>}
+                        </div>
+                        {companionHealth?.providers?.[visualCritiqueProvider]?.ready !== true && <p className="visual-critique-provider-warning">{companionHealth?.providers?.[visualCritiqueProvider]?.detail ?? "Select a ready provider in the Connection Center."}</p>}
+                        {visualCritique && !visualCritiqueFresh && <p className="visual-review-warning">This critique is retained for comparison, but the project source or exact capture set changed. It is stale and cannot describe the current game.</p>}
+                        {visualCritique && <div className="visual-critique-result">
+                          <div className="visual-critique-summary"><span>{visualCritique.provider} · {visualCritique.model}</span><strong>{visualCritique.summary}</strong><small>{visualCritiqueFresh ? "Current exact capture set" : "Historical capture set"} · {visualCritique.issues.length} issue{visualCritique.issues.length === 1 ? "" : "s"} · {visualCritique.strengths.length} strength{visualCritique.strengths.length === 1 ? "" : "s"}</small></div>
+                          <div className="visual-critique-dimensions" aria-label="Visual critique dimensions">{visualCritique.dimensions.map((dimension) => <article key={dimension.id}><div><span>{dimension.id.replaceAll("-", " ")}</span><b>{dimension.score}<small>/100</small></b></div><p>{dimension.rationale}</p><strong>{dimension.nextAction}</strong><small>{dimension.confidence} confidence · captures {dimension.evidenceCaptureIds.join(", ")}</small></article>)}</div>
+                          {visualCritique.strengths.length > 0 && <section className="visual-critique-strengths"><header><strong>Protect these strengths</strong><small>Grounded in the submitted capture IDs.</small></header><div>{visualCritique.strengths.map((strength) => <article key={strength.id}><strong>{strength.title}</strong><p>{strength.summary}</p><small>{strength.evidenceCaptureIds.join(", ")}</small></article>)}</div></section>}
+                          {visualCritique.issues.length > 0 && <section className="visual-critique-issues"><header><strong>Review these issues</strong><small>Suggested changes require human or agent judgment before editing.</small></header><div>{visualCritique.issues.map((issue) => <article key={issue.id} className={issue.severity}><span>{issue.severity}</span><strong>{issue.title}</strong><p>{issue.problem}</p><small>{issue.impact}</small><b>{issue.suggestedChange}</b><code>{issue.evidenceCaptureIds.join(", ")}</code></article>)}</div></section>}
+                          <details className="visual-critique-limitations"><summary>Limits and measured usage</summary><ul>{visualCritique.limitations.map((limitation) => <li key={limitation}>{limitation}</li>)}</ul><small>{usageReceiptMessage(visualCritique.usage, "Visual critique")}</small></details>
+                        </div>}
+                        <p className="visual-critique-policy"><strong>Advisory only.</strong> This critique never changes the project, never becomes Doctor/replay/release evidence, never selects a winner, and never proves the art is good. Results contain capture IDs and hashes—not image bytes.</p>
+                      </section>
+                      <p className="visual-review-policy">Annotations are advisory and source-bound. Pixel diffs only claim that a region changed; semantic boxes use known LoopLab geometry. Clean frames, annotated frames, and crops stay in this review session—projects and one-file exports retain hashes and measurements only.</p>
+                    </div>
+                  </details>
+                )}
+
+                <details className="iteration-ledger">
+                  <summary>
+                    <span><i aria-hidden="true" /> Iteration ledger</span>
+                    <small>{iterationLedger.entryCount} receipt{iterationLedger.entryCount === 1 ? "" : "s"} · {iterationLedger.snapshotCount}/{iterationLedger.snapshotLimit} restorable</small>
+                  </summary>
+                  <div className="iteration-ledger-body">
+                    <header>
+                      <div><span className="eyebrow">Evidence, comparison & safe return</span><strong>Every saved pass is bound to its Project Doctor source digest.</strong></div>
+                      <small>Select two restorable versions to compare. Restore creates a new child; it never rewrites the original.</small>
+                    </header>
+                    {iterationComparison && (
+                      <section className="iteration-comparison" aria-label="Selected iteration candidate decision" data-relation={iterationComparison.technicalRelation}>
+                        <div className="iteration-comparison-title"><strong>{iterationComparison.first.id}</strong><span>→</span><strong>{iterationComparison.second.id}</strong><i>{iterationComparison.changed ? "Authored game changed" : "Same authored source"}</i></div>
+                        <div className="iteration-decision-summary">
+                          <span>Technical relation · {iterationComparison.relationBasis.replaceAll("-", " ")}</span>
+                          <strong>{ITERATION_RELATION_LABELS[iterationComparison.technicalRelation]}</strong>
+                          <small>{iterationComparison.profileComparison.reason}</small>
+                        </div>
+                        <div className="iteration-delta-grid">
+                          <span><small>Doctor</small><b>{iterationComparison.doctor.first.score} → {iterationComparison.doctor.second.score}</b><em className={iterationComparison.delta.doctorScore < 0 ? "negative" : iterationComparison.delta.doctorScore > 0 ? "positive" : ""}>{iterationComparison.delta.doctorScore > 0 ? "+" : ""}{iterationComparison.delta.doctorScore}</em></span>
+                          <span><small>Blockers</small><b>{iterationComparison.doctor.first.errorCount} → {iterationComparison.doctor.second.errorCount}</b><em className={iterationComparison.delta.errors > 0 ? "negative" : iterationComparison.delta.errors < 0 ? "positive" : ""}>{iterationComparison.delta.errors > 0 ? "+" : ""}{iterationComparison.delta.errors}</em></span>
+                          <span><small>Objects</small><b>{iterationComparison.counts.first.objects} → {iterationComparison.counts.second.objects}</b><em>{iterationComparison.delta.objects > 0 ? "+" : ""}{iterationComparison.delta.objects}</em></span>
+                          <span><small>Assets</small><b>{iterationComparison.counts.first.assets} → {iterationComparison.counts.second.assets}</b><em>{iterationComparison.delta.assets > 0 ? "+" : ""}{iterationComparison.delta.assets}</em></span>
+                        </div>
+                        <div className="iteration-gate-comparison" aria-label="Candidate hard-gate status">
+                          <span className={!iterationComparison.evidence.first.complete ? "unknown" : iterationComparison.hardGates.first.passed ? "passed" : "blocked"}><b>{iterationComparison.first.id}</b><small>{!iterationComparison.evidence.first.complete ? "Hard-gate evidence incomplete" : iterationComparison.hardGates.first.passed ? "Hard gates pass" : `${iterationComparison.hardGates.first.failures.length} failed hard gate(s)`}</small></span>
+                          <span className={!iterationComparison.evidence.second.complete ? "unknown" : iterationComparison.hardGates.second.passed ? "passed" : "blocked"}><b>{iterationComparison.second.id}</b><small>{!iterationComparison.evidence.second.complete ? "Hard-gate evidence incomplete" : iterationComparison.hardGates.second.passed ? "Hard gates pass" : `${iterationComparison.hardGates.second.failures.length} failed hard gate(s)`}</small></span>
+                        </div>
+                        {iterationComparison.dimensionComparisons.length > 0 && <div className="iteration-dimension-comparison" aria-label="Candidate evaluation dimensions">{iterationComparison.dimensionComparisons.map((dimension) => <span key={dimension.id} className={dimension.relation}><small>{dimension.label}</small><b>{dimension.first} → {dimension.second}</b><em>{dimension.relation === "equal" ? "equal" : dimension.relation === "first-better" ? "first stronger" : "second stronger"}</em></span>)}</div>}
+                        {!iterationComparison.evidence.complete && <div className="iteration-evidence-missing"><strong>Collect comparable evidence before relying on this relation.</strong><ul>{iterationComparison.evidence.missing.map((item) => <li key={item}>{item}</li>)}</ul></div>}
+                        {iterationComparison.changed && <details className="iteration-judgment-prompts"><summary>Review both in play before choosing</summary><ol>{iterationComparison.judgmentPrompts.map((prompt) => <li key={prompt.id}><strong>{prompt.label}</strong><span>{prompt.question}</span></li>)}</ol></details>}
+                        <p className="iteration-decision-boundary"><strong>No automatic winner.</strong> {iterationComparison.decisionBoundary}</p>
+                        {iterationComparison.changed && <section className="candidate-preference-recorder" aria-label="Record an explicit candidate preference"><header><strong>Remember your choice</strong><small>This is the only way candidate taste enters studio memory.</small></header><textarea rows={2} maxLength={600} value={candidatePreferenceRationale} onChange={(event) => setCandidatePreferenceRationale(event.target.value)} placeholder="Why is one version better for your game?" /><div className="preference-dimensions">{LOOPLAB_PREFERENCE_DIMENSIONS.map((dimension) => <button type="button" key={dimension.id} aria-pressed={candidatePreferenceDimensions.includes(dimension.id)} onClick={() => togglePreferenceDimension(dimension.id, "candidate")}>{dimension.label}</button>)}</div><div className="candidate-preference-actions"><button type="button" disabled={!candidatePreferenceRationale.trim()} onClick={() => recordIterationPreference("first")}>Prefer {iterationComparison.first.id}</button><button type="button" disabled={!candidatePreferenceRationale.trim()} onClick={() => recordIterationPreference("second")}>Prefer {iterationComparison.second.id}</button></div></section>}
+                        <div className="iteration-continuation-actions">{iterationComparison.nextActions.filter((action) => action.available).map((action) => action.action === "restore-as-child" && action.iterationId ? <button key={action.candidate} onClick={() => restoreIterationCandidate(action.iterationId!)}>{action.label}</button> : <span key={action.candidate}>{action.label}</span>)}</div>
+                      </section>
+                    )}
+                    <div className="iteration-list">
+                      {[...iterationLedger.entries].reverse().map((entry) => {
+                        const selectable = entry.current || entry.restorable;
+                        const selectedForComparison = iterationCompareIds.includes(entry.id);
+                        return (
+                          <article key={entry.id} className={`${entry.current ? "current" : ""} ${entry.accepted === false ? "rejected" : ""}`}>
+                            <div className="iteration-row-head">
+                              <button className={`iteration-compare-toggle ${selectedForComparison ? "selected" : ""}`} disabled={!selectable} aria-pressed={selectedForComparison} onClick={() => toggleIterationComparison(entry.id)} title={selectable ? "Select this version for comparison" : "Rejected attempts have a receipt but no restorable snapshot"}>{selectedForComparison ? "✓" : "○"}</button>
+                              <div><strong>{entry.id}</strong><small>{entry.parentId ? `Child of ${entry.parentId}` : "Lineage root"}</small></div>
+                              <span className={`iteration-status ${entry.accepted === false ? "rejected" : entry.status}`}>{entry.current ? "current" : entry.accepted === false ? "rejected" : entry.status}</span>
+                              <b>{entry.score ?? entry.doctorScore ?? 0}<small>/{entry.evaluation?.profile?.label ?? (entry.scoreKind === "quality" ? "profile" : "Doctor")}</small></b>
+                            </div>
+                            <p>{entry.reason ?? entry.summary ?? entry.objective ?? "No pass summary recorded"}</p>
+                            <div className="iteration-evidence"><span>Doctor {entry.doctorScore ?? "—"}</span><span>{entry.errorCount ?? 0} blockers</span><span>{entry.warningCount ?? 0} warnings</span>{entry.evaluation?.profile?.id && <span>{entry.evaluation.profile.id}</span>}{entry.providerParity?.semanticParity && <span>{entry.providerParity.provider} · shared loop</span>}{entry.qualityDelta !== undefined && <span>{entry.qualityDelta >= 0 ? "+" : ""}{entry.qualityDelta} profile score</span>}{entry.condition && <span>{entry.condition}</span>}</div>
+                            {entry.evaluation?.dimensions?.some((dimension) => dimension.applicable !== false) && <div className="iteration-dimensions" aria-label="Evaluation dimensions">{entry.evaluation.dimensions.filter((dimension) => dimension.applicable !== false).map((dimension) => <span key={dimension.id} className={entry.comparison?.dimensionRegressions?.some((regression) => regression.id === dimension.id) ? "regressed" : ""}><small>{dimension.label ?? dimension.id}</small><b>{dimension.score}</b></span>)}</div>}
+                            {(entry.comparison?.failedHardGates?.length ?? 0) > 0 && <div className="iteration-failed-gates">Failed gates: {entry.comparison?.failedHardGates?.map((gate) => gate.label ?? gate.id).join(" · ")}</div>}
+                            <footer><code>{entry.sourceDigest ?? "digest unavailable"}</code>{entry.restorable && !entry.current && <button onClick={() => restoreIterationCandidate(entry.id)}>Restore as child</button>}{entry.current && <span>Live workspace</span>}</footer>
+                          </article>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </details>
+
+                {pendingAiRequests.length > 0 && (
+                  <div className="pending-job"><span>{pendingAiRequests.length}</span><div><strong>AI job waiting</strong><small>{pendingAiRequests[0].prompt}</small></div></div>
+                )}
+                <div className="headless-actions">
+                  <button onClick={exportProject}>Download handoff</button>
+                  <button onClick={copyLoopCommand}>Copy CLI loop</button>
+                </div>
+                </> : (
+                  <section className="research-workspace" aria-label="Game research">
+                    <div className="research-heading"><div><span className="eyebrow">Evidence before implementation</span><strong>Research desk</strong><small>Current sources, confidence, and suggestions for your game brief.</small></div><span className={`research-state ${researchRunning ? "running" : "ready"}`}>{researchRunning ? "Researching…" : "Ready"}</span></div>
+                    <label className="research-query"><span>What should the AI investigate?</span><textarea rows={5} value={researchQuery} onChange={(event) => setResearchQuery(event.target.value)} placeholder="Ask a focused game-design or browser-technology question…" /></label>
+                    <label className="research-engine-selector"><span>Research skill / plugin</span><select value={researchEngine} onChange={(event) => setResearchEngine(event.target.value as ResearchEngineId)}>{RESEARCH_ENGINES.map((engine) => <option key={engine.id} value={engine.id}>{engine.label} · {engine.kind}</option>)}</select></label>
+                    <div className="research-engine-card"><span>{selectedResearchEngine.kind}</span><strong>{selectedResearchEngine.label}</strong><small>{selectedResearchEngine.description}</small></div>
+                    <div className="research-run-row"><label><span>AI connection</span><select value={aiProvider} onChange={(event) => setAiProvider(event.target.value as AgentProvider)}><option value="openai">OpenAI API</option><option value="anthropic">Anthropic API</option><option value="codex">Codex CLI</option><option value="claude">Claude Code CLI</option></select></label><label><span>Depth</span><select value={researchDepth} onChange={(event) => setResearchDepth(event.target.value as ResearchDepth)}><option value="quick">Quick</option><option value="standard">Standard</option><option value="deep">Deep</option><option value="exhaustive">Exhaustive</option></select></label><button className="research-run" onClick={() => void runResearch()} disabled={researchRunning}>{researchRunning ? "Researching…" : "Run research"}</button>{researchRunning && researchCancelUrl && <button className="research-cancel" onClick={() => void cancelResearch()}>Cancel</button>}</div>
+                    <div className="research-presets"><span className="eyebrow">Focused research</span><div>{RESEARCH_PRESETS.map((preset) => <button key={preset.id} onClick={() => void runResearch(preset.id)} disabled={researchRunning}><strong>{preset.label}</strong><small>{preset.description}</small></button>)}</div></div>
+                    {researchEvents.length > 0 && <div className="research-console" aria-live="polite">{researchEvents.map((event) => <div key={`${event.sequence}-${event.type}`}><span>{String(event.sequence ?? 0).padStart(3, "0")}</span><b>{event.type}</b><p>{event.error ?? event.message ?? event.detail ?? "Working…"}</p></div>)}</div>}
+                    {researchReports.length > 0 && <div className="research-history"><span className="eyebrow">Saved reports</span><div>{researchReports.map((report) => <button key={report.id} className={selectedResearchReport?.id === report.id ? "active" : ""} onClick={() => { setSelectedResearchId(report.id); setResearchView("report"); }}><strong>{report.title}</strong><small>{report.sources.length} sources · {report.depth}{report.usage?.measured && report.usage.totalTokens !== null ? ` · ${report.usage.totalTokens.toLocaleString()} tokens` : ""}</small></button>)}</div></div>}
+                    {selectedResearchReport ? <article className="research-report">
+                      <div className="research-report-title"><div><span className={`confidence confidence-${selectedResearchReport.confidence}`}>{selectedResearchReport.confidence} confidence</span><h3>{selectedResearchReport.title}</h3><small>{new Date(selectedResearchReport.createdAt).toLocaleString()} · {selectedResearchReport.engine ?? "research"} via {selectedResearchReport.provider} · {selectedResearchReport.reportFile ?? "in-app report"}</small>{selectedResearchReport.usage && <small>{usageReceiptMessage(selectedResearchReport.usage, "Research run")} · {usageReceiptDetail(selectedResearchReport.usage)}</small>}</div><div className="research-view-tabs"><button className={researchView === "report" ? "active" : ""} onClick={() => setResearchView("report")}>Report</button><button className={researchView === "markdown" ? "active" : ""} onClick={() => setResearchView("markdown")}>Markdown</button></div></div>
+                      {researchView === "markdown" ? <pre className="research-markdown">{selectedResearchReport.markdown ?? "Markdown is unavailable for this older report."}</pre> : <>
+                        <p className="research-summary">{selectedResearchReport.executiveSummary}</p>
+                        <section><h4>Findings</h4>{selectedResearchReport.findings.map((finding) => <div className="research-finding" key={finding.id}><div><strong>{finding.title}</strong><span className={`confidence confidence-${finding.confidence}`}>{finding.confidence}</span></div><p>{finding.summary}</p><small>{finding.sourceIds.map((sourceId) => selectedResearchSources.get(sourceId)).filter(Boolean).map((source, index) => <span key={source!.id}>{index > 0 && " · "}<a href={source!.url} target="_blank" rel="noreferrer">{source!.title}</a></span>)}</small></div>)}</section>
+                        <section><h4>Suggestions to consider</h4>{selectedResearchReport.suggestions.map((suggestion) => <div className="research-suggestion" key={suggestion.id}><div><strong>{suggestion.title}</strong><span>{suggestion.category}</span></div><p>{suggestion.rationale}</p><button onClick={() => applyResearchSuggestion(suggestion)}>Add to game brief</button></div>)}</section>
+                        {selectedResearchReport.uncertainties.length > 0 && <section className="research-uncertainties"><h4>Uncertainties</h4><ul>{selectedResearchReport.uncertainties.map((uncertainty) => <li key={uncertainty}>{uncertainty}</li>)}</ul></section>}
+                        <section className="research-sources"><h4>Sources</h4>{selectedResearchReport.sources.map((source) => <a key={source.id} href={source.url} target="_blank" rel="noreferrer"><strong>{source.title}</strong><small>{source.publisher}{source.publishedAt ? ` · ${source.publishedAt}` : ""}</small></a>)}</section>
+                      </>}
+                    </article> : <div className="research-empty"><span>⌕</span><strong>No research report yet</strong><p>Choose a focused button or write a custom question. Reports remain separate from the game until you apply a suggestion.</p></div>}
+                  </section>
+                )}
+              </div>
+            </div>
+          ) : (<>
+          <div className="panel-heading">
+            <div><span className="eyebrow">Build</span><h2>Scene</h2></div>
+            <span className="count-chip">{project.objects.length}</span>
+          </div>
+          <ul className="scene-list" aria-label="Scene objects">
+            {project.objects.map((object) => (
+              <li key={object.id}>
+                <button
+                  type="button"
+                  className={`scene-row ${selectedId === object.id ? "selected" : ""}`}
+                  onClick={() => { setSelectedId(object.id); setMobileTab("stage"); }}
+                >
+                  <span className={`object-glyph kind-${object.kind}`}>{objectMeta[object.kind].glyph}</span>
+                  <span><strong>{object.name}</strong><small>{objectMeta[object.kind].label}</small></span>
+                  <i aria-hidden="true" />
+                </button>
+              </li>
+            ))}
+          </ul>
+
+          <div className="library-block">
+            <div className="section-label"><span>Add object</span><small>Click to place</small></div>
+            <div className="object-library">
+              {(Object.keys(objectMeta) as ObjectKind[]).map((kind) => (
+                <button key={kind} onClick={() => addObject(kind)} title={objectMeta[kind].description}>
+                  <span className={`library-glyph kind-${kind}`}>{objectMeta[kind].glyph}</span>
+                  <span>{objectMeta[kind].label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="loop-card">
+            <span className="eyebrow">Your build loop</span>
+            <ol>
+              <li className="done"><span>1</span>Shape the scene</li>
+              <li className={isPlaying ? "active" : ""}><span>2</span>Preview the feel</li>
+              <li><span>3</span>Export & keep iterating</li>
+            </ol>
+          </div>
+          </>)}
+        </aside>
+
+        <section className={`stage-panel ${(isPlaying || playtestLedger.sessions.length > 0) ? "has-playtest-observations" : ""} ${mapStudioFocused && !isPlaying ? "map-studio-stage" : ""} ${mobileTab === "stage" ? "mobile-active" : ""}`} aria-label={mapStudioFocused ? "2.5D Map Studio" : "Game stage"}>
+          <div className="stage-toolbar">
+            <div className="mode-switch" role="group" aria-label="Workspace mode">
+              <button className={!isPlaying ? "active" : ""} onClick={exitPreview}><span>◆</span> Edit</button>
+              <button className={isPlaying ? "active" : ""} onClick={() => enterPreview()}><span>▶</span> Preview</button>
+            </div>
+            <div className="stage-tools">
+              {isPlaying && <select className="map-picker" aria-label="Preview map" value={stageMapId ?? maps[0]?.id} onChange={(event) => loadPreviewMap(event.target.value)}>{maps.map((map) => <option key={map.id} value={map.id}>{map.name}</option>)}</select>}
+              {isPlaying && <button className={`focus-playtest-button ${previewFocus ? "active" : ""}`} aria-label={previewFocus ? "Show editor panels" : "Focus playtest"} aria-pressed={previewFocus} onClick={() => setPreviewFocusMode(!previewFocus)} title={previewFocus ? "Show AI Director and Project Doctor panels (F)" : "Hide editor panels and enlarge the playable canvas (F)"}><span aria-hidden="true">{previewFocus ? "▦" : "□"}</span>{previewFocus ? "Panels" : "Focus"}</button>}
+              <button className={showColliders ? "active" : ""} onClick={() => setShowColliders((value) => !value)} title="Show authored collision, triggers, and ground anchors">Collision</button>
+              {!isPlaying && <select className="map-tool-picker" aria-label="Map authoring tool" value={mapTool} onChange={(event) => { const next = event.target.value as MapTool; setMapTool(next); setShowPaths(true); if (next === "collision-chain" || next === "tiles") setShowColliders(true); else setCollisionChainDraft(null); if (!next.endsWith("area")) setNavigationAreaDraft(null); if (next !== "navigation") setNavigationChainNodeId(null); }}><option value="select">Select objects</option><option value="tiles">Paint canonical tiles</option><option value="traversal">Draw rail / traversal</option><option value="collision-chain">Draw collision chain</option><option value="navigation">Draw navigation links</option><option value="walkable-area">Draw walkable area</option><option value="blocked-area">Draw blocked area</option><option value="test-route">Test a route</option></select>}
+              {!isPlaying && <label className="elevation-tool" title="World elevation used by new path points, areas, and objects"><span>Z</span><input aria-label="Authoring elevation" type="number" step="1" value={editorElevation} onChange={(event) => setEditorElevation(Number(event.target.value))} /></label>}
+              {!isPlaying && navigationAreaDraft && <button className="active" onClick={finishNavigationArea}>Finish area · {navigationAreaDraft.points.length}</button>}
+              {!isPlaying && collisionChainDraft && <button className="active" onClick={finishCollisionChain}>Finish collision · {collisionChainDraft.points.length}</button>}
+              {!isPlaying && mapTool === "test-route" && (navigationTest.from || navigationTest.to) && <button onClick={clearNavigationTest}>Clear test</button>}
+              {!isPlaying && <button className={showPaths ? "active" : ""} onClick={() => setShowPaths((value) => !value)} title="Show traversal, navigation, elevation layers, and areas">Map data {(project.traversalPaths?.length ?? 0) + navigation.nodes.length + (activeCollisionGeometry?.chains.length ?? 0)}</button>}
+              <button onClick={() => setShowAssetLab(true)} title="Generate tiles and sprites">Assets</button>
+              <button className={captureMode ? "active" : ""} onClick={() => { setCaptureMode((value) => !value); setMode("edit"); setCaptureRegion(null); }} title="Drag an area so AI can find it later">Capture area</button>
+              <select className="viewport-picker" aria-label="Viewport safety preset" value={activeDeviceProfile.id} onChange={(event) => setViewportPreset(event.target.value)}>{deviceProfiles.map((profile) => <option key={profile.id} value={profile.id}>{profile.name ?? profile.id} · {profile.width}×{profile.height}{Number(profile.dpr ?? 1) > 1 ? ` @${profile.dpr}×` : ""}</option>)}</select>
+              <button className="canvas-size" onClick={() => { setMode("edit"); setExperienceMode("workbench"); setSelectedId(null); setMobileTab("inspect"); }} title="Edit the active map dimensions">Map {stageWidth} × {stageHeight}</button>
+              <button className="icon-button" aria-label="Zoom out" onClick={() => setZoom((value) => Math.max(0.55, value - 0.1))}>−</button>
+              <span>{Math.round(zoom * 100)}%</span>
+              <button className="icon-button" aria-label="Zoom in" onClick={() => setZoom((value) => Math.min(1.3, value + 0.1))}>+</button>
+              <button className="help-button icon-button" onClick={() => setShowHelp(true)} aria-label="Keyboard shortcuts">?</button>
+            </div>
+          </div>
+
+          <div className="map-tabs-bar" role="tablist" aria-label="Project maps">
+            <div className="map-tabs-scroll">
+              {maps.map((map, index) => <button key={map.id} role="tab" aria-selected={stageMapId === map.id} title={`${map.name} · ${map.projection?.type === "dimetric-2:1" ? "2.5D dimetric" : "orthographic"} · ${map.objects.length} objects · ${map.traversalPaths?.length ?? 0} traversal paths · ${map.navigation?.nodes?.length ?? 0} navigation nodes · ${map.collisionGeometry?.chains.length ?? 0} collision chains`} onClick={() => isPlaying ? loadPreviewMap(map.id) : switchMap(map.id)}><span>{index + 1}</span>{map.name}<small>{map.projection?.type === "dimetric-2:1" ? "2.5D" : "2D"} · {map.objects.length}/{(map.traversalPaths?.length ?? 0) + (map.navigation?.nodes?.length ?? 0) + (map.collisionGeometry?.chains.length ?? 0)}</small></button>)}
+            </div>
+            <button className="add-map-tab" onClick={createMap} disabled={isPlaying} title={isPlaying ? "Return to Edit to create a map" : "Create and link another map"} aria-label="Add map tab">＋</button>
+          </div>
+
+          {mapStudioFocused && !isPlaying && <div className="map-studio-toolbar" aria-label="Map Studio authoring tools">
+            <div className="map-studio-identity"><span>MAP STUDIO</span><strong>{isDimetric ? "2.5D world" : "2D world"}</strong><small>{editorTileRuntime.counts.visualEntries} tiles · {editorTileRuntime.counts.collisionCells} tile colliders · {navigation.nodes.length} nodes · {activeCollisionGeometry?.chains.length ?? 0} chains</small></div>
+            <div className="map-studio-group projection-tools" role="group" aria-label="Projection">
+              <button className={!isDimetric ? "active" : ""} onClick={() => setProjectionMode("orthographic")}>2D</button>
+              <button className={isDimetric ? "active" : ""} onClick={() => setProjectionMode("dimetric-2:1")}>2.5D · 128×64</button>
+            </div>
+            <div className="map-studio-group authoring-tools" role="group" aria-label="Map drawing tool">
+              {([
+                ["select", "Select"],
+                ["tiles", "Tiles"],
+                ["traversal", "Rail / route"],
+                ["collision-chain", "Collision"],
+                ["navigation", "Nav graph"],
+                ["walkable-area", "Walkable"],
+                ["blocked-area", "Blocked"],
+                ["test-route", "A* test"],
+              ] as Array<[MapTool, string]>).map(([tool, label]) => <button key={tool} className={mapTool === tool ? "active" : ""} onClick={() => { setMapTool(tool); setShowPaths(true); if (tool === "collision-chain") setShowColliders(true); else setCollisionChainDraft(null); if (!tool.endsWith("area")) setNavigationAreaDraft(null); if (tool !== "navigation") setNavigationChainNodeId(null); if (tool === "test-route") clearNavigationTest(); }}>{label}</button>)}
+            </div>
+            <label className="map-studio-elevation" title="World height for new objects, route points, and areas"><span>Z</span><input aria-label="Map Studio authoring elevation" type="number" step="1" value={editorElevation} onChange={(event) => setEditorElevation(Number(event.target.value))} /></label>
+            {navigationAreaDraft && <button className="map-studio-finish" onClick={finishNavigationArea}>Finish {navigationAreaDraft.kind} · {navigationAreaDraft.points.length}</button>}
+            {mapTool === "collision-chain" && <><label className="map-studio-elevation" title="How the runtime classifies the authored chain"><span>Role</span><select aria-label="Collision chain role" value={collisionChainRole} onChange={(event) => { const role = event.target.value as CollisionGeometryChain["role"]; setCollisionChainRole(role); setCollisionChainDraft((current) => current ? { ...current, role } : current); }}><option value="auto">Auto</option><option value="floor">Floor / slope</option><option value="boundary">Boundary</option></select></label><label className="map-studio-elevation" title="Only collide from the authored right-hand normal"><input aria-label="One-way collision chain" type="checkbox" checked={collisionChainOneWay} onChange={(event) => { const oneWay = event.target.checked; setCollisionChainOneWay(oneWay); setCollisionChainDraft((current) => current ? { ...current, oneWay } : current); }} /><span>One-way</span></label></>}
+            {collisionChainDraft && <><button className="map-studio-finish" onClick={finishCollisionChain}>Finish collision · {collisionChainDraft.points.length}</button><button onClick={() => setCollisionChainDraft(null)}>Cancel</button></>}
+            {selectedCollisionChain && !collisionChainDraft && <button onClick={removeSelectedCollisionChain}>Remove {selectedCollisionChain.name}</button>}
+            <div className="map-studio-exchange"><button onClick={() => pathEditorInputRef.current?.click()}>Import Path Editor</button><button onClick={exportPathEditorMap}>Export Path Editor</button><button onClick={() => window.open("/path-editor/", "looplab-path-editor", "noopener,noreferrer")}>Full editor ↗</button><button className="map-studio-new" onClick={createDimetricMap}>＋ New 2.5D map</button></div>
+            <div className="map-studio-tile-tools" data-active={mapTool === "tiles" ? "true" : "false"}>
+              {!activeTileProgram ? <><span className="map-studio-tile-note">No canonical tile program on this map.</span><button className="map-studio-new" onClick={initializeTileProgram}>Create from tilesets</button></> : <>
+                <label><span>Visual layer</span><select aria-label="Tile visual layer" value={activeTileLayerId} onChange={(event) => setSelectedTileLayerId(event.target.value)}>{activeTileProgram.layers.map((layer) => <option key={layer.id} value={layer.id}>{layer.name} · {layer.role}{layer.locked ? " · locked" : ""}</option>)}</select></label>
+                <label><span>Brush</span><select aria-label="Tile brush mode" value={tileBrushMode} onChange={(event) => setTileBrushMode(event.target.value as TileBrushMode)}><option value="paint-tile">Paint tile</option><option value="erase-tile">Erase tile</option><option value="paint-terrain" disabled={activeTerrainIds.length === 0}>Paint terrain</option><option value="erase-terrain" disabled={activeTerrainIds.length === 0}>Erase terrain</option><option value="paint-collision">Paint collision</option><option value="erase-collision">Erase collision</option></select></label>
+                {(tileBrushMode === "paint-tile" || tileBrushMode === "erase-tile") && <label><span>Palette</span><select aria-label="Tile palette entry" value={activeTileId} disabled={tileBrushMode === "erase-tile"} onChange={(event) => setSelectedTileId(event.target.value)}>{activeTileProgram.palette.map((entry) => <option key={entry.id} value={entry.id}>{entry.name} · frame {entry.frame}</option>)}</select></label>}
+                {(tileBrushMode === "paint-terrain" || tileBrushMode === "erase-terrain") && <label><span>Terrain</span><select aria-label="Tile terrain" value={activeTerrainId} disabled={tileBrushMode === "erase-terrain" || activeTerrainIds.length === 0} onChange={(event) => setSelectedTerrainId(event.target.value)}>{activeTerrainIds.length ? activeTerrainIds.map((id) => <option key={id} value={id}>{id}</option>) : <option value="">No authored terrain metadata</option>}</select></label>}
+                {(tileBrushMode === "paint-collision" || tileBrushMode === "erase-collision") && <><label><span>Collision layer</span><select aria-label="Tile collision layer" value={activeTileCollisionLayerId} onChange={(event) => setSelectedTileCollisionLayerId(event.target.value)}>{activeTileProgram.collisionLayers.map((layer) => <option key={layer.id} value={layer.id}>{layer.name} · z{layer.zMin}–{layer.zMax}{layer.locked ? " · locked" : ""}</option>)}</select></label><label><span>Profile</span><select aria-label="Tile collision profile" value={activeTileCollisionProfileId} disabled={tileBrushMode === "erase-collision"} onChange={(event) => setSelectedTileCollisionProfileId(event.target.value)}>{activeTileProgram.collisionProfiles.map((profile) => <option key={profile.id} value={profile.id}>{profile.name} · {profile.shape}</option>)}</select></label></>}
+                <button onClick={() => addTileLayer("interleaved")}>＋ Visual layer</button><button onClick={addTileCollisionLayer}>＋ Collision layer</button>
+                <span className="map-studio-tile-note">Click a map cell. Visual art and authored collision remain independent; every edit is previewed by Project Doctor before apply.</span>
+              </>}
+            </div>
+          </div>}
+
+          <div ref={stageViewportRef} className={`stage-viewport ${isPlaying ? "playing" : ""} viewport-${activeDeviceProfile.id} ${isPlaying && activeProfileExpectsTouch ? "profile-touch" : "profile-desktop"}`}>
+            <div ref={canvasWrapRef} className="canvas-wrap" style={{ width: `${zoom * 100}%`, ...(isPlaying ? { maxWidth: `${Math.min(980, Math.max(280, activeDeviceProfile.width))}px` } : {}) }}>
+              <canvas
+                ref={canvasRef}
+                className="stage-canvas"
+                width={stageWidth}
+                height={stageHeight}
+                data-map-tool={isPlaying ? "preview" : mapTool}
+                aria-label={isPlaying ? `Playable preview of ${stageMapName}` : `Editable ${isDimetric ? "2.5D dimetric" : "2D"} game scene using the ${mapTool} tool`}
+                onPointerDown={onCanvasPointerDown}
+                onPointerMove={onCanvasPointerMove}
+                onPointerUp={onCanvasPointerUp}
+                onPointerCancel={onCanvasPointerUp}
+              />
+              {showPlaytestHeatmap && selectedPlaytestSession && selectedPlaytestCurrentSource && selectedPlaytestHeatmap && (
+                <div className="playtest-heatmap-overlay" aria-label={`Local playtest movement heatmap for ${stageMapName}`}>
+                  {selectedPlaytestHeatmap.cells.map((cell) => (
+                    <span
+                      key={`${cell.x}-${cell.y}`}
+                      className={`playtest-heatmap-cell ${cell.respawns > 0 ? "has-respawn" : ""}`}
+                      style={{
+                        left: `${(cell.x / selectedPlaytestHeatmap.columns) * 100}%`,
+                        top: `${(cell.y / selectedPlaytestHeatmap.rows) * 100}%`,
+                        width: `${100 / selectedPlaytestHeatmap.columns}%`,
+                        height: `${100 / selectedPlaytestHeatmap.rows}%`,
+                        opacity: Math.min(0.86, 0.16 + (cell.samples / selectedPlaytestHeatmapMaximum) * 0.7),
+                      }}
+                      title={`${cell.samples} position samples${cell.respawns ? ` · ${cell.respawns} respawns` : ""}`}
+                    >
+                      {cell.respawns > 0 && <b>{cell.respawns}</b>}
+                    </span>
+                  ))}
+                </div>
+              )}
+              {visibleRuntimeHudState.length > 0 && (
+                <div className="preview-systems-hud" aria-live="polite">
+                  {(["primary", "secondary", "ticker"] as const).map((region) => <div key={region} data-hud-region={region}>{visibleRuntimeHudState.filter((binding) => binding.region === region).map((binding) => <span key={binding.id} aria-label={binding.ariaLabel}>{binding.text}</span>)}</div>)}
+                </div>
+              )}
+              {visibleRuntimeChoiceState && (
+                <section className="preview-choice-layer" role="dialog" aria-modal={visibleRuntimeChoiceState.modal} aria-labelledby="preview-choice-title" aria-describedby="preview-choice-body">
+                  <div className="preview-choice-card">
+                    <h2 id="preview-choice-title">{visibleRuntimeChoiceState.title}</h2>
+                    <p id="preview-choice-body">{visibleRuntimeChoiceState.body}</p>
+                    <div>
+                      {visibleRuntimeChoiceState.choices.map((choice) => <button key={choice.id} type="button" disabled={!choice.enabled} data-choice-id={choice.id} data-action-id={choice.actionId} onClick={() => { const engine = runtimeEngineRef.current; if (engine?.chooseChoice(choice.id)) { syncRuntimeSnapshot(engine); setRuntimeTick((tick) => tick + 1); } }}>{choice.label}</button>)}
+                    </div>
+                  </div>
+                </section>
+              )}
+              {captureMode && captureRegion && <div className="capture-region" style={{ left: `${(captureRegion.x / project.width) * 100}%`, top: `${(captureRegion.y / project.height) * 100}%`, width: `${(captureRegion.width / project.width) * 100}%`, height: `${(captureRegion.height / project.height) * 100}%` }}><span>AI visual anchor</span></div>}
+              {!isPlaying && viewportPreset !== "desktop" && <><div className="device-safe-overlay safe-top"><span>HUD safe area</span></div><div className="device-safe-overlay safe-bottom"><span>Touch controls</span></div></>}
+              <div className="canvas-corner top-left">{stageMapName.toUpperCase()}</div>
+              <div className="canvas-corner bottom-right">{stageControlMode.toUpperCase()}</div>
+              <div className="build-badge" title="Current build identity">BUILD {project.build?.id ?? "UNVERSIONED"}</div>
+              {isPlaying && (
+                <div ref={playHudRef} className="play-hud">
+                  <span><i /> LIVE PREVIEW</span>
+                  {activePlaytestView ? (
+                    <>
+                      <span className={`playtest-recording-state ${activePlaytestView.suspended ? "suspended" : ""}`}>● {activePlaytestView.suspended ? "RECORDING PAUSED" : "RECORDING"} · {Math.round(activePlaytestView.activeDurationMs / 1000)}S</span>
+                      <button className="playtest-stop-button" onClick={() => { try { finishPlaytestRecording({ outcome: previewWon ? "completed" : "stopped" }); } catch (error) { showToast(error instanceof Error ? error.message : "Playtest recording could not be saved"); } }}>STOP + SAVE</button>
+                      <button className="playtest-discard-button" onClick={() => { try { discardPlaytestRecording(); } catch (error) { showToast(error instanceof Error ? error.message : "Playtest recording could not be discarded"); } }}>DISCARD</button>
+                    </>
+                  ) : (
+                    <button className="playtest-record-button" title="Explicitly opt in to local, bounded play observation. Nothing is sent over the network." onClick={() => { try { startPlaytestRecording({ consent: true, reset: true }); } catch (error) { showToast(error instanceof Error ? error.message : "Playtest recording could not start"); } }}>● RECORD PLAYTEST LOCALLY</button>
+                  )}
+                  {previewPaused && <span className="preview-paused-state">AGENT PAUSED</span>}
+                  {runtimeState.activeTraversalPathId && <span className="preview-paused-state">LOCKED · {runtimeState.activeTraversalPathId}</span>}
+                  <span>{collected}/{totalCoins} COLLECTED</span>
+                  {visibleGameplayState && <span title="Deterministic gameplay-program variables">{visibleGameplayState}</span>}
+                  <span title={`${previewPerformance.fixedStepCount} fixed simulation steps · ${previewPerformance.longFrames} long frames`}>P95 {previewPerformance.p95FrameMs.toFixed(1)} MS · DROPS {previewPerformance.droppedCatchUpEvents}</span>
+                  <button onClick={resetRuntime}>RESTART</button>
+                </div>
+              )}
+              {isPlaying && previewTransition && (
+                <div className={`map-transition transition-${previewTransition.kind}`} role="status" aria-live="polite">
+                  <span>ENTERING</span>
+                  <strong>{previewTransition.mapName}</strong>
+                </div>
+              )}
+              {isPlaying && previewWon && <div className="win-overlay"><span>VERSION CLEARED</span><strong>Route complete</strong><div><button onClick={resetRuntime}>Play again</button><button onClick={exitPreview}>Return to editor</button></div></div>}
+            </div>
+            {isPlaying && (
+              <div ref={touchControlsRef} className="preview-touch-controls" style={{ maxWidth: `${Math.max(280, activeDeviceProfile.width)}px` }} aria-label="Preview touch controls">
+                <div className="preview-dpad" aria-label="Movement controls">
+                  <PreviewInputButton action="up" label="Move up" onInput={(code, pressed) => setPreviewInput(code, pressed, "touch")} className="touch-up"><span aria-hidden="true">▲</span></PreviewInputButton>
+                  <PreviewInputButton action="left" label="Move left" onInput={(code, pressed) => setPreviewInput(code, pressed, "touch")} className="touch-left"><span aria-hidden="true">◀</span></PreviewInputButton>
+                  <PreviewInputButton action="down" label="Move down" onInput={(code, pressed) => setPreviewInput(code, pressed, "touch")} className="touch-down"><span aria-hidden="true">▼</span></PreviewInputButton>
+                  <PreviewInputButton action="right" label="Move right" onInput={(code, pressed) => setPreviewInput(code, pressed, "touch")} className="touch-right"><span aria-hidden="true">▶</span></PreviewInputButton>
+                </div>
+                <div className="preview-action-controls" aria-label="Action controls">
+                  <PreviewInputButton action="interact" label="Interact or enter portal" onInput={(code, pressed) => setPreviewInput(code, pressed, "touch")} className="touch-interact"><span>E</span><small>LOCK</small></PreviewInputButton>
+                  {stageControlMode === "platformer" && <PreviewInputButton action="jump" label="Jump" onInput={(code, pressed) => setPreviewInput(code, pressed, "touch")} className="touch-jump"><span>↑</span><small>JUMP</small></PreviewInputButton>}
+                </div>
+                <span className="preview-touch-note">Hold to move · tap E at a portal</span>
+              </div>
+            )}
+            {!isPlaying && captureMode && <div className="stage-hint active-hint">Drag around any landmark. AI will remember the exact map and coordinates.</div>}
+            {!isPlaying && !captureMode && !selected && <div className="stage-hint">{mapStudioFocused ? isDimetric ? `Author world x/y at z${editorElevation}. Projection, support, collision, paths, and depth remain separate.` : "Choose 2.5D to author a raised world, or keep direct x/y for a side or top view." : experienceMode === "director" ? "Review the AI candidate here, then preview or open Fine tune." : "Select an object to move and tune it"}</div>}
+          </div>
+
+          {(isPlaying || playtestLedger.sessions.length > 0) && (
+            <section className="playtest-observation-panel" aria-label="Local human playtest observations">
+              <header>
+                <div><span className="eyebrow">Consent-bound local observation</span><strong>Human Play Sessions</strong></div>
+                <span className="playtest-local-badge">LOCAL ONLY · {playtestLedger.sessions.length}/20</span>
+              </header>
+              <p className="playtest-policy-copy">{LOOPLAB_PLAYTEST_PURPOSE} Records exact simulation-tick actions, bounded world positions, and canonical runtime events only after you click Record. It never sends telemetry, changes project source, automatically becomes a replay fixture, or decides which version wins.</p>
+              <div className="playtest-observation-actions">
+                {isPlaying && !activePlaytestView && <button className="playtest-primary-action" onClick={() => { try { startPlaytestRecording({ consent: true, reset: true }); } catch (error) { showToast(error instanceof Error ? error.message : "Playtest recording could not start"); } }}>● Record a fresh run</button>}
+                {activePlaytestView && <span className="playtest-live-summary">{activePlaytestView.suspended ? "Paused while hidden or unfocused" : "Recording visible play"} · tick {activePlaytestView.simulationTick} · {activePlaytestView.inputTransitionCount} inputs · {activePlaytestView.sampleCount} samples · {activePlaytestView.eventCount} events</span>}
+                {playtestLedger.sessions.length > 0 && <button onClick={() => downloadFile(JSON.stringify(playtestLedger, null, 2), `${project.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "looplab"}-playtests.json`, "application/json")}>Export local ledger</button>}
+                {playtestLedger.sessions.length > 0 && <button className="danger-muted" onClick={() => { if (!window.confirm("Remove every local playtest observation for this browser? This cannot be undone.")) return; try { commitPlaytestLedger(clearPlaytestSessions(playtestLedgerRef.current) as PlaytestLedger, "Playtest observations cleared"); selectPlaytestSession(null); } catch (error) { showToast(error instanceof Error ? error.message : "Playtest observations could not be cleared"); } }}>Clear all</button>}
+              </div>
+              {playtestLedger.sessions.length === 0 ? (
+                <div className="playtest-empty-state"><strong>No observation is inferred.</strong><span>Enter Preview and deliberately start a run when you want LoopLab to help locate confusion, dead space, collision trouble, or route friction.</span></div>
+              ) : (
+                <div className="playtest-session-workspace">
+                  <label className="playtest-session-picker"><span>Saved session</span><select value={selectedPlaytestSessionId ?? ""} onChange={(event) => selectPlaytestSession(event.target.value || null)}><option value="">Choose a session</option>{[...playtestLedger.sessions].reverse().map((session) => <option key={session.id} value={session.id}>{session.source.projectName} · {session.startedAt.replace("T", " ").slice(0, 16)}Z · {Math.round(session.activeDurationMs / 1000)}s · {session.outcome}</option>)}</select></label>
+                  {selectedPlaytestSession && (
+                    <div className="playtest-session-detail">
+                      <div className="playtest-session-metrics">
+                        <span><b>{Math.round(selectedPlaytestSession.activeDurationMs / 1000)}s</b> active</span>
+                        <span><b>{selectedPlaytestSession.summary.counts.actions}</b> actions</span>
+                        <span><b>{selectedPlaytestSession.summary.counts.respawns}</b> respawns</span>
+                        <span><b>{selectedPlaytestSession.summary.counts.resets}</b> resets</span>
+                        <span><b>{selectedPlaytestSession.summary.counts.portals}</b> portals</span>
+                        <span><b>{selectedPlaytestSession.summary.counts.idleSpans}</b> idle spans</span>
+                      </div>
+                      <div className={`playtest-source-state ${selectedPlaytestCurrentSource ? "current" : "stale"}`}><b>{selectedPlaytestCurrentSource ? "CURRENT SOURCE" : "SOURCE CHANGED"}</b><span>{selectedPlaytestSession.source.sourceDigest.slice(0, 19)}…</span></div>
+                      <div className="playtest-replay-review">
+                        <div><span className="eyebrow">Regression protection</span><strong>Turn this good run into a deterministic replay</strong><p>Review is read-only. Protect requires the exact current source, saved session, and reviewed promotion digest.</p></div>
+                        <div className="playtest-replay-actions"><button disabled={playtestReplayBusy} onClick={() => void reviewSelectedPlaytestReplay()}>{playtestReplayBusy ? "Checking…" : "Review exact replay"}</button><button className="playtest-primary-action" disabled={playtestReplayBusy || !playtestReplayPreview?.eligible} onClick={() => void promoteSelectedPlaytestReplay()}>Protect this run</button></div>
+                        {playtestReplayPreview && <div className={`playtest-replay-result ${playtestReplayPreview.eligible ? "ready" : "blocked"}`}><b>{playtestReplayPreview.eligible ? "READY TO PROTECT" : "PROMOTION BLOCKED"}</b><span>{playtestReplayPreview.eligible ? `${playtestReplayPreview.replaySpecification?.id ?? "Replay"} · ${playtestReplayPreview.replayResult?.tickCount ?? 0} exact ticks · canonical events match` : playtestReplayPreview.blockers.map((entry) => `[${entry.code}] ${entry.message}`).join(" ")}</span></div>}
+                      </div>
+                      {selectedPlaytestMapStats && <p className="playtest-map-summary"><b>{stageMapName}:</b> {Math.round(selectedPlaytestMapStats.activeDurationMs / 1000)}s · {selectedPlaytestMapStats.visits} visits · {selectedPlaytestMapStats.collections} collections · {selectedPlaytestMapStats.respawns} respawns</p>}
+                      <div className="playtest-heatmap-control"><button disabled={!selectedPlaytestCurrentSource || !selectedPlaytestHeatmap} className={showPlaytestHeatmap ? "active" : ""} onClick={() => setShowPlaytestHeatmap((value) => !value)}>{showPlaytestHeatmap ? "Hide" : "Show"} map heatmap</button>{!selectedPlaytestCurrentSource && <span>Overlay withheld because the project source changed.</span>}{selectedPlaytestCurrentSource && !selectedPlaytestHeatmap && <span>This session has no samples on the selected map.</span>}</div>
+                      <div className="playtest-feedback-editor">
+                        <span className="eyebrow">Your explicit feedback</span>
+                        <div className="playtest-rating-buttons" role="group" aria-label="Playtest rating">{([['up', '↑ Good'], ['neutral', '— Mixed'], ['down', '↓ Poor'], ['unrated', 'Clear']] as Array<[PlaytestRating, string]>).map(([rating, label]) => <button key={rating} className={playtestRatingDraft === rating ? "active" : ""} aria-pressed={playtestRatingDraft === rating} onClick={() => setPlaytestRatingDraft(rating)}>{label}</button>)}</div>
+                        <div className="playtest-tag-buttons" role="group" aria-label="Playtest feedback tags">{PLAYTEST_FEEDBACK_TAGS.map((tag) => <button key={tag} className={playtestTagsDraft.includes(tag) ? "active" : ""} aria-pressed={playtestTagsDraft.includes(tag)} onClick={() => setPlaytestTagsDraft((current) => current.includes(tag) ? current.filter((value) => value !== tag) : [...current, tag])}>{tag.replaceAll("-", " ")}</button>)}</div>
+                        <textarea value={playtestNoteDraft} maxLength={600} aria-label="Playtest feedback note" placeholder="Optional: what felt good, confusing, unfair, empty, or visually unclear?" onChange={(event) => setPlaytestNoteDraft(event.target.value)} />
+                        <div><button className="playtest-primary-action" onClick={() => { try { savePlaytestFeedback(selectedPlaytestSession.id, { rating: playtestRatingDraft, tags: playtestTagsDraft, note: playtestNoteDraft }); } catch (error) { showToast(error instanceof Error ? error.message : "Playtest feedback could not be saved"); } }}>Save explicit feedback</button><button className="danger-muted" onClick={() => { if (!window.confirm("Remove this local playtest observation?")) return; try { commitPlaytestLedger(removePlaytestSession(playtestLedgerRef.current, selectedPlaytestSession.id) as PlaytestLedger, "Playtest observation removed"); selectPlaytestSession(null); } catch (error) { showToast(error instanceof Error ? error.message : "Playtest observation could not be removed"); } }}>Remove session</button></div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </section>
+          )}
+
+          <div className="logic-strip">
+            <div className="logic-title"><span className="eyebrow">Game loop</span><strong>Rules running now</strong></div>
+            <div className="rule-flow" aria-label="Current game rules">
+              <span className="rule-chip"><b>INPUT</b>{stageControlMode === "platformer" ? "Move + jump" : "Move 4 ways"}</span>
+              <i>→</i>
+              <span className="rule-chip"><b>TOUCH COIN</b>Collect +1</span>
+              <i>→</i>
+              <span className="rule-chip"><b>TOUCH HAZARD</b>Respawn</span>
+              <i>→</i>
+              <span className="rule-chip"><b>E / LOCK</b>Enter portal</span>
+            </div>
+          </div>
+        </section>
+
+        <aside className={`side-panel inspector-panel ${mobileTab === "inspect" ? "mobile-active" : ""}`} aria-label="Inspector">
+          {experienceMode === "director" ? (
+            <div className="doctor-sidebar" data-report-fresh={doctorReportFresh ? "true" : "false"} data-analysis-pending={doctorAnalysisPending ? "true" : "false"}>
+              <div className="panel-heading">
+                <div><span className="eyebrow">Technical regression gate</span><h2>Project Doctor</h2></div>
+                <button className="profile-toggle" onClick={() => commit({ ...project, doctorProfile: project.doctorProfile === "production" ? "prototype" : "production" }, "Doctor profile changed")}>{project.doctorProfile === "production" ? "SHIP" : "BUILD"}</button>
+              </div>
+              <div className="doctor-scroll">
+                <div className={`doctor-score grade-${doctorReport.grade}`}>
+                  <div><strong>{doctorReport.score}</strong><span>/100</span></div>
+                  <section><span className="eyebrow">{doctorReport.profile} gate</span><strong>{doctorTechnicalLabel}</strong><small>{doctorAnalysisPending ? "Refreshing source-bound checks…" : doctorReport.canPromote ? "No blocking technical regressions" : "Fix technical blockers before promotion"}</small></section>
+                </div>
+                <div className="doctor-counts"><span className={doctorReport.errorCount ? "has-errors" : ""}><b>{doctorReport.errorCount}</b> blockers</span><span><b>{doctorReport.warningCount}</b> warnings</span><span><b>{doctorReport.spatial.mapCount}</b> maps</span></div>
+                <section className={`visual-readiness-card status-${visualReadiness.status}`} aria-label="Measured visual readiness">
+                  <header><div><span className="eyebrow">Measured visual readiness</span><strong>{visualReadiness.status.replaceAll("-", " ")}</strong></div><b>{visualReadiness.score == null ? "—" : `${visualReadiness.score}/100`}</b></header>
+                  <p>{visualReadiness.requested ? `${visualReadiness.passedCount}/${visualReadiness.checkCount} measurable art checks pass.` : "Starts after Generate attaches this Director brief to a candidate."}</p>
+                  {visualReadiness.requested && <div className="visual-readiness-checks">{visualReadiness.checks.map((check) => <span key={check.id} className={check.passed ? "passed" : "failed"} title={check.detail}>{check.passed ? "✓" : "!"} {check.id.replaceAll("-", " ")}</span>)}</div>}
+                  <small>Coverage and pipeline proof only — not an aesthetic approval.</small>
+                </section>
+                <div className="doctor-section-title"><span>Highest-priority findings</span><button onClick={() => setShowDoctor(true)}>View all</button></div>
+                <div className="doctor-issues">
+                  {doctorReport.issues.slice(0, 6).map((issue, index) => (
+                    <button key={`${issue.code}-${issue.mapId ?? ""}-${issue.objectId ?? issue.assetId ?? issue.featureId ?? ""}-${index}`} onClick={() => focusDoctorIssue(issue)}>
+                      <i className={`severity-${issue.severity}`} />
+                      <span><strong>{issue.code.replaceAll("-", " ")}</strong><small>{issue.message}</small></span>
+                      {(issue.objectId || issue.mapId) && <b>↗</b>}
+                    </button>
+                  ))}
+                  {doctorReport.issues.length === 0 && <div className="doctor-empty"><span>✓</span><strong>Clean candidate</strong><small>No issues in the active profile.</small></div>}
+                </div>
+
+                <div className="contract-card">
+                  <span className="eyebrow">Single source of truth</span>
+                  <strong>Feature contracts</strong>
+                  <p>Art, anchor, collision, socket, input, animation, feedback, placement, responsive rules, and tests stay linked by stable IDs.</p>
+                  <div>{["Art", "Collision", "Input", "Animation", "Tests"].map((label) => <span key={label}>✓ {label}</span>)}</div>
+                </div>
+
+                <div className="reference-block">
+                  <div className="doctor-section-title"><span>AI visual anchors</span><button onClick={() => { setCaptureMode(true); setMode("edit"); }}>Capture</button></div>
+                  {(project.visualReferences ?? []).slice(-3).map((reference) => <button className="reference-row" key={reference.id} onClick={() => { if (reference.mapId !== project.activeMapId) switchMap(reference.mapId); setExperienceMode("workbench"); }}><img src={reference.dataUrl} alt="" /><span><strong>{reference.label}</strong><small>{reference.mapId} · {Math.round(reference.x)},{Math.round(reference.y)} · {Math.round(reference.width)}×{Math.round(reference.height)}</small></span></button>)}
+                  {!(project.visualReferences?.length) && <p className="empty-references">Capture an area once; agents can match its screenshot and recover the exact map coordinates later.</p>}
+                </div>
+
+                <button className="fine-tune-button" onClick={() => setExperienceMode("workbench")}>Open precision workbench <span>→</span></button>
+              </div>
+            </div>
+          ) : (<>
+          <div className="panel-heading">
+            <div><span className="eyebrow">Tune</span><h2>Inspector</h2></div>
+            {selected && <span className={`object-glyph kind-${selected.kind}`}>{objectMeta[selected.kind].glyph}</span>}
+          </div>
+
+          <div className="inspector-scroll-area">
+          {selected ? (
+            <div className="inspector-content">
+              {mapArchitectControl}
+              {mapSizeControl}
+              {mapRouteControl}
+              <label className="field full"><span>Name</span><input value={selected.name} onChange={(event) => updateObject(selected.id, { name: event.target.value })} /></label>
+              <div className="field-grid">
+                <label className="field"><span>X</span><input type="number" value={Math.round(selected.x)} onChange={(event) => updateObject(selected.id, { x: Number(event.target.value) })} /></label>
+                <label className="field"><span>Y</span><input type="number" value={Math.round(selected.y)} onChange={(event) => updateObject(selected.id, { y: Number(event.target.value) })} /></label>
+                <label className="field"><span>Width</span><input type="number" min="4" value={Math.round(selected.width)} onChange={(event) => updateObject(selected.id, { width: Math.max(4, Number(event.target.value)) })} /></label>
+                <label className="field"><span>Height</span><input type="number" min="4" value={Math.round(selected.height)} onChange={(event) => updateObject(selected.id, { height: Math.max(4, Number(event.target.value)) })} /></label>
+              </div>
+              <label className="field color-field"><span>Color</span><div><input type="color" value={selected.color} onChange={(event) => updateObject(selected.id, { color: event.target.value })} /><input value={selected.color.toUpperCase()} onChange={(event) => /^#[0-9a-f]{6}$/i.test(event.target.value) && updateObject(selected.id, { color: event.target.value })} /></div></label>
+              {selected.kind === "platform" && (
+                <label className="toggle-row" htmlFor="selected-solid"><span><strong>Solid collision</strong><small>Player lands on this object</small></span><input id="selected-solid" aria-label="Solid collision" type="checkbox" checked={selected.solid} onChange={(event) => updateObject(selected.id, { solid: event.target.checked })} /></label>
+              )}
+              <details className="precision-card" open>
+                <summary><span>Collision & ground anchor</span><small>Authored gameplay geometry</small></summary>
+                <label className="toggle-row" htmlFor="selected-collider-enabled"><span><strong>Collider enabled</strong><small>Independent from the artwork</small></span><input id="selected-collider-enabled" aria-label="Collider enabled" type="checkbox" checked={selected.collider?.enabled ?? false} onChange={(event) => updateObject(selected.id, { collider: { ...(selected.collider ?? { offsetX: 0, offsetY: 0, width: selected.width, height: selected.height, trigger: false, oneWay: false }), enabled: event.target.checked } })} /></label>
+                <div className="field-grid collision-grid">
+                  <label className="field"><span>Hitbox X</span><input type="number" value={Math.round(selected.collider?.offsetX ?? 0)} onChange={(event) => updateObject(selected.id, { collider: { ...(selected.collider ?? { enabled: true, offsetY: 0, width: selected.width, height: selected.height, trigger: false, oneWay: false }), offsetX: Number(event.target.value) } as Collider })} /></label>
+                  <label className="field"><span>Hitbox Y</span><input type="number" value={Math.round(selected.collider?.offsetY ?? 0)} onChange={(event) => updateObject(selected.id, { collider: { ...(selected.collider ?? { enabled: true, offsetX: 0, width: selected.width, height: selected.height, trigger: false, oneWay: false }), offsetY: Number(event.target.value) } as Collider })} /></label>
+                  <label className="field"><span>Hitbox W</span><input type="number" min="1" value={Math.round(selected.collider?.width ?? selected.width)} onChange={(event) => updateObject(selected.id, { collider: { ...(selected.collider ?? { enabled: true, offsetX: 0, offsetY: 0, height: selected.height, trigger: false, oneWay: false }), width: Math.max(1, Number(event.target.value)) } as Collider })} /></label>
+                  <label className="field"><span>Hitbox H</span><input type="number" min="1" value={Math.round(selected.collider?.height ?? selected.height)} onChange={(event) => updateObject(selected.id, { collider: { ...(selected.collider ?? { enabled: true, offsetX: 0, offsetY: 0, width: selected.width, trigger: false, oneWay: false }), height: Math.max(1, Number(event.target.value)) } as Collider })} /></label>
+                </div>
+                <div className="mini-actions"><button onClick={() => { const base = { ...selected, collider: selected.collider ?? { enabled: true, offsetX: 0, offsetY: 0, width: selected.width, height: selected.height, trigger: false, oneWay: false } }; updateObject(selected.id, { collider: fitColliderToObject(base).collider }, "Collider fitted to visual bounds"); }}>Fit to art</button><button className={showColliders ? "active" : ""} onClick={() => setShowColliders((value) => !value)}>Show overlay</button></div>
+                <section className={`support-contact-card status-${selectedSupport?.status ?? "free"}`} aria-label="Surface contact">
+                  <div><span className="eyebrow">Rests on surface</span><strong>{selectedSupport?.status === "attached" ? `Attached to ${selectedSupport.support?.name ?? "floor"}` : selectedSupport?.status === "free" ? "Free placement" : selectedSupport?.status?.replaceAll("-", " ") ?? "Not assigned"}</strong><small>Visual anchor, base footprint, and gameplay collider remain independent.</small></div>
+                  <div className="field-grid">
+                    <label className="field"><span>Contact mode</span><select value={selected.supportContact?.mode ?? (selected.requiresSupport ? "floor" : "free")} onChange={(event) => { const mode = event.target.value as "floor" | "surface" | "free"; attachObjectToSupport(selected.id, mode, mode === "surface" ? supportSurfaces[0]?.id : undefined); }}><option value="free">Free / floating</option><option value="floor">Map floor</option><option value="surface">Authored surface</option></select></label>
+                    {selected.supportContact?.mode === "surface" ? <label className="field"><span>Surface</span><select value={selected.supportContact.surfaceId ?? ""} onChange={(event) => attachObjectToSupport(selected.id, "surface", event.target.value)}><option value="">Choose support…</option>{supportSurfaces.map((surface) => <option key={surface.id} value={surface.id}>{surface.name}</option>)}</select></label> : <label className="field"><span>Tolerance</span><input type="number" min="0" step="1" value={selected.supportContact?.tolerance ?? 2} onChange={(event) => updateObject(selected.id, { supportContact: { ...(selected.supportContact ?? { mode: "floor" }), tolerance: Math.max(0, Number(event.target.value)) } })} /></label>}
+                  </div>
+                  <div className="field-grid">
+                    <label className="field"><span>Anchor X</span><input type="number" step="1" value={Math.round(selectedGroundAnchor?.x ?? selected.width / 2)} onChange={(event) => updateObject(selected.id, { groundAnchor: { offsetX: Number(event.target.value), offsetY: selectedGroundAnchor?.y ?? selected.height } })} /></label>
+                    <label className="field"><span>Anchor Y</span><input type="number" step="1" value={Math.round(selectedGroundAnchor?.y ?? selected.height)} onChange={(event) => updateObject(selected.id, { groundAnchor: { offsetX: selectedGroundAnchor?.x ?? selected.width / 2, offsetY: Number(event.target.value) } })} /></label>
+                    <label className="field"><span>Base width</span><input type="number" min="1" step="1" value={Math.round(selectedSupportFootprint?.width ?? selected.width)} onChange={(event) => updateObject(selected.id, { supportFootprint: { offsetX: (selectedSupportFootprint?.x ?? selected.x) - selected.x, offsetY: (selectedSupportFootprint?.y ?? selected.y) - selected.y, width: Math.max(1, Number(event.target.value)), height: selectedSupportFootprint?.height ?? Math.max(1, selected.height * .1) } })} /></label>
+                    <label className="field"><span>Base depth</span><input type="number" min="1" step="1" value={Math.round(selectedSupportFootprint?.height ?? Math.max(1, selected.height * .1))} onChange={(event) => updateObject(selected.id, { supportFootprint: { offsetX: (selectedSupportFootprint?.x ?? selected.x) - selected.x, offsetY: (selectedSupportFootprint?.y ?? selected.y) - selected.y, width: selectedSupportFootprint?.width ?? selected.width, height: Math.max(1, Number(event.target.value)) } })} /></label>
+                  </div>
+                  <button className="snap-support-button" onClick={() => attachObjectToSupport(selected.id, "auto")}>Find nearest floor & snap</button>
+                </section>
+                <div className="field-grid">
+                  <label className="field"><span>Visual Z</span><input type="number" step="1" value={selected.z ?? 0} onChange={(event) => { const z = Number(event.target.value); updateObject(selected.id, { z, collider: selected.collider ? { ...selected.collider, zMin: z, zMax: z + (selected.collisionHeight ?? 1) } : undefined }); }} /></label>
+                  <label className="field"><span>Support Z</span><input type="number" step="1" value={selected.supportZ ?? selected.z ?? 0} onChange={(event) => updateObject(selected.id, { supportZ: Number(event.target.value) })} /></label>
+                  <label className="field"><span>Depth layer</span><input type="number" step="1" value={selected.depthLayer ?? 0} onChange={(event) => updateObject(selected.id, { depthLayer: Number(event.target.value) })} /></label>
+                  <label className="field"><span>Depth bias</span><input type="number" step="1" value={selected.depthBias ?? 0} onChange={(event) => updateObject(selected.id, { depthBias: Number(event.target.value) })} /></label>
+                </div>
+                <label className="field full"><span>Anchor</span><select value={selected.anchorMode ?? "ground"} onChange={(event) => updateObject(selected.id, { anchorMode: event.target.value as GameObject["anchorMode"] })}><option value="ground">Ground contact</option><option value="center">Visual center</option><option value="top-left">Top left</option></select></label>
+              </details>
+              <details id="looplab-motion-body" className="precision-card tuning-workbench" open aria-label="Deterministic moving platform and rider authoring" data-source-digest={doctorReport.sourceDigest}>
+                <summary><span>Motion · platforms, carry & crush</span><small>Authored path · exact delta · replay v10</small></summary>
+                <div className="tuning-body">
+                  <p className="precision-note">Bind this authored object to an authored path. Platformer platforms can carry the player by the exact accepted simulation delta; a blocked rider follows an explicit stop-or-respawn policy. Fixed-z carry is supported here—2.5D elevators still require a separate support-volume contract.</p>
+                  <div className={`tuning-contract-status ${selectedMotionBodyIssues.some((issue) => issue.severity === "error") ? "blocked" : selected.motionBody ? "ready" : "draft"}`}>
+                    <span>{selected.motionBody ? `Motion body saved · ${selected.name}` : `Selected · ${selected.name}`}</span>
+                    <small>{`${selected.kind} · ${selected.motionBody?.schemaVersion ?? "no motion body"}${selectedPath ? ` · selected path ${selectedPath.id}` : " · nearest authored path will be suggested"}`}</small>
+                  </div>
+                  <label className="field full tuning-contract-editor"><span>Selected Object Motion Body · JSON</span><textarea aria-label="Selected Object Motion Body JSON" rows={14} spellCheck={false} placeholder="Prepare a looplab-motion-body/v2 draft." value={motionBodyDraft} onChange={(event) => setMotionBodyDraft(event.target.value)} /></label>
+                  {selectedMotionBodyIssues.length > 0 && <div className="tuning-findings" role="status">{selectedMotionBodyIssues.slice(0, 8).map((issue) => <small key={`${issue.code}-${issue.message}`}>{issue.severity.toUpperCase()} · {issue.message}</small>)}</div>}
+                  <div className="tuning-actions">
+                    <button onClick={prepareMotionBody}>{selected.motionBody ? "Prepare another draft" : "Prepare motion body"}</button>
+                    <button disabled={!motionBodyDraft.trim()} onClick={saveMotionBody}>Save to selected object</button>
+                    {selected.motionBody && <button className="danger" onClick={removeMotionBody}>Remove</button>}
+                  </div>
+                  <p className="precision-note">Claude, Codex, CLI, MCP, and the mouse UI share <code>suggest_motion_body</code>, <code>set_motion_body</code>, <code>remove_motion_body</code>, <code>get_motion_body_report</code>, and exported <code>get_motion_body_states</code>. The suggestion is provider-free; Project Doctor and replay prove authored geometry and deterministic behavior.</p>
+                </div>
+              </details>
+              {selected.kind === "portal" && (
+                <details className="precision-card" open>
+                  <summary><span>Linked-map transition</span><small>Target map and exact spawn</small></summary>
+                  <label className="field full"><span>Target map</span><select value={selected.targetMapId ?? ""} onChange={(event) => updateObject(selected.id, { targetMapId: event.target.value, targetSpawnId: maps.find((map) => map.id === event.target.value)?.objects.find((object) => object.kind === "spawn")?.id })}><option value="">Choose a map…</option>{maps.filter((map) => map.id !== project.activeMapId).map((map) => <option key={map.id} value={map.id}>{map.name}</option>)}</select></label>
+                  <label className="field full"><span>Target spawn</span><select value={selected.targetSpawnId ?? ""} onChange={(event) => updateObject(selected.id, { targetSpawnId: event.target.value })}><option value="">Choose a spawn…</option>{maps.find((map) => map.id === selected.targetMapId)?.objects.filter((object) => object.kind === "spawn").map((spawn) => <option key={spawn.id} value={spawn.id}>{spawn.name}</option>)}</select></label>
+                  <label className="field full"><span>Transition</span><select value={selected.transition ?? "fade"} onChange={(event) => updateObject(selected.id, { transition: event.target.value as GameObject["transition"] })}><option value="fade">Fade</option><option value="slide">Slide</option><option value="instant">Instant</option></select></label>
+                  <p className="precision-note">Portals require a fresh E / LOCK input. Proximity alone never snaps or transfers the player.</p>
+                </details>
+              )}
+              {selectedAsset && <div className="asset-contract"><img src={selectedAsset.dataUrl} alt="" /><span><strong>{selectedAsset.name}</strong><small>{selectedAsset.anchorMode === "center" ? "Center anchor" : "Ground anchor locked"} · authored collision only · {selectedAsset.frames} frame{selectedAsset.frames === 1 ? "" : "s"}</small></span></div>}
+              <div className="behavior-card">
+                <span className="eyebrow">Built-in behavior</span>
+                <strong>{objectMeta[selected.kind].label}</strong>
+                <p>{objectMeta[selected.kind].description}. This behavior is included automatically in preview and exported HTML.</p>
+              </div>
+              <div className="inspector-actions">
+                <button onClick={duplicateSelected}>Duplicate</button>
+                <button className="danger" onClick={deleteSelected}>Delete</button>
+              </div>
+            </div>
+          ) : (
+            <div className="inspector-content">
+              <div className="empty-selection"><span>◇</span><strong>Nothing selected</strong><p>Pick an object on the stage, or tune the whole project below.</p></div>
+              {mapArchitectControl}
+              {mapSizeControl}
+              {mapRouteControl}
+              <details className="precision-card" open>
+                <summary><span>Authored traversal paths</span><small>{project.traversalPaths?.length ?? 0} on this map</small></summary>
+                <p className="precision-note">Rails and routes are gameplay data. Artwork may follow them, but never owns collision or snapping.</p>
+                <div className="path-authoring-list">
+                  {(project.traversalPaths ?? []).map((path) => <button key={path.id} className={selectedPathId === path.id ? "active" : ""} onClick={() => { setSelectedId(null); setSelectedPathId(path.id); setShowPaths(true); }}><span><strong>{path.name}</strong><small>{path.kind} · {path.points.length} points · {path.direction}</small></span><b>↗</b></button>)}
+                  {(project.traversalPaths?.length ?? 0) === 0 && <small>No authored rail or route paths yet.</small>}
+                </div>
+                <button className="wide-button secondary-wide" onClick={addTraversalPath}>＋ Add rail path</button>
+                {selectedPath && <div className="path-authoring-fields">
+                  <label className="field full"><span>Path name</span><input value={selectedPath.name} onChange={(event) => updateTraversalPath(selectedPath.id, { name: event.target.value })} /></label>
+                  <div className="field-grid">
+                    <label className="field"><span>Entry radius</span><input type="number" min="1" value={selectedPath.entryRadius} onChange={(event) => updateTraversalPath(selectedPath.id, { entryRadius: Math.max(1, Number(event.target.value)) })} /></label>
+                    <label className="field"><span>Entry Z tolerance</span><input type="number" min="0" step="0.25" value={selectedPath.entryZTolerance ?? .5} onChange={(event) => updateTraversalPath(selectedPath.id, { entryZTolerance: Math.max(0, Number(event.target.value)) })} /></label>
+                    <label className="field"><span>Entry speed</span><input type="number" min="0" value={selectedPath.minimumEntrySpeed} onChange={(event) => updateTraversalPath(selectedPath.id, { minimumEntrySpeed: Math.max(0, Number(event.target.value)) })} /></label>
+                    <label className="field"><span>Max speed</span><input type="number" min="1" value={selectedPath.maximumSpeed ?? 520} onChange={(event) => updateTraversalPath(selectedPath.id, { maximumSpeed: Math.max(1, Number(event.target.value)) })} /></label>
+                    <label className="field"><span>Direction</span><select value={selectedPath.direction} onChange={(event) => updateTraversalPath(selectedPath.id, { direction: event.target.value as TraversalPath["direction"] })}><option value="both">Both ways</option><option value="forward">Forward only</option><option value="reverse">Reverse only</option></select></label>
+                    <label className="field"><span>Route layer</span><select value={selectedPath.routeLayer ?? ""} onChange={(event) => updateTraversalPath(selectedPath.id, { routeLayer: event.target.value || undefined })}><option value="">Unlayered</option>{navigation.layers.map((layer) => <option key={layer.id} value={layer.id}>{layer.name}</option>)}</select></label>
+                  </div>
+                  <div className="path-point-list"><span className="eyebrow">Control points · world x/y/z</span>{selectedPath.points.map((point, pointIndex) => <div key={`${selectedPath.id}-${pointIndex}`} className={selectedPathPointIndex === pointIndex ? "active" : ""}><button aria-label={`Select point ${pointIndex + 1}`} onClick={() => { setSelectedPathPointIndex(pointIndex); setMapTool("traversal"); }}><strong>{pointIndex + 1}</strong></button><input aria-label={`Point ${pointIndex + 1} X`} type="number" value={Math.round(point.x)} onChange={(event) => updateTraversalPath(selectedPath.id, { points: selectedPath.points.map((entry, index) => index === pointIndex ? { ...entry, x: Number(event.target.value) } : entry) })} /><input aria-label={`Point ${pointIndex + 1} Y`} type="number" value={Math.round(point.y)} onChange={(event) => updateTraversalPath(selectedPath.id, { points: selectedPath.points.map((entry, index) => index === pointIndex ? { ...entry, y: Number(event.target.value) } : entry) })} /><input aria-label={`Point ${pointIndex + 1} Z`} type="number" value={point.z ?? 0} onChange={(event) => updateTraversalPath(selectedPath.id, { points: selectedPath.points.map((entry, index) => index === pointIndex ? { ...entry, z: Number(event.target.value) } : entry) })} />{selectedPath.points.length > 2 && <button className="danger" aria-label={`Remove point ${pointIndex + 1}`} onClick={() => updateTraversalPath(selectedPath.id, { points: selectedPath.points.filter((_, index) => index !== pointIndex) }, "Traversal point removed")}>×</button>}</div>)}</div>
+                  <button className="wide-button secondary-wide" onClick={() => { setMapTool("traversal"); setShowPaths(true); setEditorElevation(selectedPath.points.at(-1)?.z ?? 0); }}>Draw more points on stage</button>
+                  <button className="wide-button danger" onClick={() => removeTraversalPath(selectedPath.id)}>Remove selected path</button>
+                </div>}
+              </details>
+              <div className="section-label"><span>Project setup</span><small>Applied instantly</small></div>
+              <label className="field full"><span>Game style</span><select value={project.controlMode} onChange={(event) => commit({ ...project, controlMode: event.target.value as ControlMode, gravity: event.target.value === "topdown" ? 0 : 1500 }, "Controls updated")}><option value="platformer">Side-view platformer</option><option value="topdown">Top-down adventure</option></select></label>
+              <label className="field full"><span>Projection</span><select value={project.projection?.type ?? "orthographic"} onChange={(event) => setProjectionMode(event.target.value as ProjectionContract["type"])}><option value="orthographic">Orthographic</option><option value="dimetric-2:1">Exact 128×64 dimetric / 2.5D</option></select></label>
+              <label className="field color-field"><span>World color</span><div><input type="color" value={project.background} onChange={(event) => commit({ ...project, background: event.target.value })} /><input value={project.background.toUpperCase()} readOnly /></div></label>
+              <div className="field-grid">
+                <label className="field"><span>Gravity</span><input type="number" step="100" value={project.gravity} onChange={(event) => commit({ ...project, gravity: Number(event.target.value) })} /></label>
+                <label className="field"><span>Grid size</span><input type="number" min="4" max="80" value={project.grid} onChange={(event) => commit({ ...project, grid: Math.max(4, Number(event.target.value)) })} /></label>
+              </div>
+              <details id="looplab-spatial-layout-search" className="precision-card tuning-workbench spatial-layout-workbench" open aria-label="Spatial route and map layout explorer" data-source-digest={doctorReport.sourceDigest} data-search-digest={spatialLayoutSearchResult?.searchDigest ?? ""} data-search-fresh={spatialLayoutSearchFresh ? "true" : "false"}>
+                <summary><span>Spatial route explorer</span><small>Side-view · top-down · dimetric 2.5D · no automatic winner</small></summary>
+                <div className="tuning-body">
+                  <p className="precision-note">Generate several projection-correct authored layouts, compare their actual routes and solids, and apply one only on a protected variation. Pins preserve players, spawns, goals, portals, joins, and locked landmarks exactly. Art never becomes collision.</p>
+                  <div className={`tuning-contract-status ${spatialLayoutInspection.errors.length ? "blocked" : spatialLayoutInspection.present ? "ready" : "draft"}`}>
+                    <span>{spatialLayoutInspection.present ? `Contract ${spatialLayoutInspection.status}` : "No spatial contract saved"}</span>
+                    <small>{spatialLayoutInspection.map ? `${spatialLayoutInspection.map.name} · ${spatialLayoutInspection.map.width}×${spatialLayoutInspection.map.height} · ${spatialLayoutInspection.map.projection} · ${spatialLayoutInspection.pinnedObjectCount ?? 0} exact pins` : "Prepare a map-scoped contract for the active 2D or 2.5D map."}</small>
+                  </div>
+                  {spatialLayoutInspection.existingMapProtected && <p className="spatial-protection-note">This project’s current map is protected. You can search and inspect candidates here; create a variation before preparing replacement geometry.</p>}
+                  <label className="field full tuning-contract-editor"><span>Spatial Layout Contract · JSON</span><textarea aria-label="Spatial Layout Contract JSON" rows={13} spellCheck={false} placeholder="Prepare a projection-aware starter or paste a strict map-scoped contract." value={spatialLayoutContractDraft} onChange={(event) => setSpatialLayoutContractDraft(event.target.value)} /></label>
+                  {spatialLayoutInspection.issues.length > 0 && <div className="tuning-findings" role="status">{spatialLayoutInspection.issues.slice(0, 6).map((issue) => <small key={`${issue.code}-${issue.message}`}>{issue.severity.toUpperCase()} · {issue.message}</small>)}</div>}
+                  <div className="tuning-actions">
+                    <button disabled={spatialLayoutSearchRunning} onClick={() => void prepareSpatialLayoutContract()}>{isProtectedSpatialVariation ? "Prepare variation contract" : spatialLayoutInspection.present ? "Prepare another starter" : "Prepare spatial starter"}</button>
+                    <button disabled={spatialLayoutSearchRunning || !spatialLayoutContractDraft.trim()} onClick={() => void saveSpatialLayoutContract()}>Save contract</button>
+                    {spatialLayoutInspection.present && <button className="danger" disabled={spatialLayoutSearchRunning} onClick={() => void removeSpatialLayoutContract()}>Remove</button>}
+                  </div>
+                  <button className="wide-button tuning-search-button" disabled={spatialLayoutSearchRunning || !spatialLayoutInspection.present || spatialLayoutInspection.errors.length > 0} onClick={() => void runSpatialLayoutSearch()}>{spatialLayoutSearchRunning ? "Validating spatial alternatives…" : "Search map layouts"}</button>
+                  {spatialLayoutSearchResult && <section className="tuning-search-results spatial-layout-results" aria-label="Spatial layout search results">
+                    <header><span><strong>{spatialLayoutSearchResult.evaluatedCandidateCount} layouts evaluated</strong><small>{spatialLayoutSearchResult.safeCandidateIds.length} safe · {spatialLayoutSearchResult.materializableCandidateIds.length} materializable · {spatialLayoutSearchResult.feasibleDescriptorCellCount} distinct cells</small></span><b>0 tokens · $0.00</b></header>
+                    {!spatialLayoutSearchFresh && <p className="tuning-stale">The project changed. These layouts remain visible for comparison but cannot be previewed or applied; rerun the search.</p>}
+                    <div className="spatial-candidate-grid" role="listbox" aria-label="Projection-correct layout candidates">
+                      {spatialLayoutSearchResult.candidates.map((candidate) => <button key={candidate.id} role="option" aria-selected={candidate.id === selectedSpatialLayoutCandidateId} className={`${candidate.id === selectedSpatialLayoutCandidateId ? "active" : ""} ${candidate.safe ? "safe" : "blocked"}`} onClick={() => { setSelectedSpatialLayoutCandidateId(candidate.id); setSpatialLayoutCandidatePreview(null); }}>
+                        <SpatialLayoutMiniMap preview={candidate.preview} label={`${candidate.id} map layout preview`} />
+                        <span><strong>{candidate.id}</strong><small>{candidate.metrics.topology} · {candidate.metrics.routeBeats} beats · {candidate.metrics.branchCount} branch{candidate.metrics.branchCount === 1 ? "" : "es"} · {candidate.metrics.elevationLayers} layer{candidate.metrics.elevationLayers === 1 ? "" : "s"}</small></span>
+                        <b>{candidate.materializable ? "READY" : candidate.safe ? "PROTECTED" : "BLOCKED"}</b>
+                      </button>)}
+                    </div>
+                    {selectedSpatialLayoutCandidate && <div className="tuning-candidate-detail spatial-candidate-detail">
+                      <SpatialLayoutMiniMap preview={selectedSpatialLayoutCandidate.preview} label={`Detailed ${selectedSpatialLayoutCandidate.id} map layout`} />
+                      <div className="tuning-objectives">
+                        <span><strong>Topology</strong><small>{selectedSpatialLayoutCandidate.metrics.topology}</small></span>
+                        <span><strong>Route</strong><small>{selectedSpatialLayoutCandidate.metrics.routeBeats} beats · {selectedSpatialLayoutCandidate.metrics.routeCount} authored route{selectedSpatialLayoutCandidate.metrics.routeCount === 1 ? "" : "s"}</small></span>
+                        <span><strong>Space</strong><small>{selectedSpatialLayoutCandidate.metrics.objectCount} objects · {Math.round(selectedSpatialLayoutCandidate.metrics.density * 100)}% solid density</small></span>
+                        <span><strong>Layers</strong><small>{selectedSpatialLayoutCandidate.metrics.elevationLayers} elevation layer{selectedSpatialLayoutCandidate.metrics.elevationLayers === 1 ? "" : "s"} · {selectedSpatialLayoutCandidate.metrics.clearance}px clearance</small></span>
+                      </div>
+                      {selectedSpatialLayoutCandidate.replacementBlocked && <p className="spatial-protection-note">Safe to inspect, but the authored map is protected. Create a variation and prepare its replace-explicit contract before materializing this candidate.</p>}
+                      {selectedSpatialLayoutCandidate.failedGateIds.length > 0 && <p className="tuning-stale">Rejected by {selectedSpatialLayoutCandidate.failedGateIds.join(", ")}. Existing acceptance, replay, input, join, and Doctor evidence was left untouched.</p>}
+                      {spatialLayoutCandidatePreview?.candidateId === selectedSpatialLayoutCandidate.id && <div className={`tuning-preview-receipt ${spatialLayoutCandidatePreview.receipt.applicable && spatialLayoutPreviewFresh ? "ready" : "blocked"}`}><strong>{spatialLayoutCandidatePreview.receipt.applicable ? "Exact map preview passed" : "Exact map preview blocked"}</strong><small>Doctor {spatialLayoutCandidatePreview.receipt.doctor.before.score} → {spatialLayoutCandidatePreview.receipt.doctor.after.score} · Production {spatialLayoutCandidatePreview.receipt.doctor.release.before.score} → {spatialLayoutCandidatePreview.receipt.doctor.release.after.score} · source and pins locked</small></div>}
+                      <div className="tuning-actions">
+                        <button disabled={spatialLayoutSearchRunning || !spatialLayoutSearchFresh || !selectedSpatialLayoutCandidate.materializationRequest} onClick={() => void previewSpatialLayoutCandidate(selectedSpatialLayoutCandidate)}>{selectedSpatialLayoutCandidate.materializationRequest ? "Preview exact layout" : selectedSpatialLayoutCandidate.safe ? "Protected geometry" : "Unsafe layout"}</button>
+                        {!isProtectedSpatialVariation ? <button className="variation" disabled={spatialLayoutSearchRunning} onClick={() => createProjectVariation()}>Create protected variation</button> : !selectedSpatialLayoutCandidate.materializationRequest ? <button className="variation" disabled={spatialLayoutSearchRunning} onClick={() => void prepareSpatialLayoutContract()}>Prepare replacement contract</button> : <button className="variation" disabled={spatialLayoutSearchRunning || !spatialLayoutPreviewFresh || spatialLayoutCandidatePreview?.candidateId !== selectedSpatialLayoutCandidate.id || !spatialLayoutCandidatePreview.receipt.applicable} onClick={() => void applySpatialLayoutCandidate()}>Apply to this variation</button>}
+                      </div>
+                    </div>}
+                    <p className="precision-note">{spatialLayoutSearchResult.decisionBoundary}</p>
+                  </section>}
+                </div>
+              </details>
+              <details id="looplab-combat-program" className="precision-card tuning-workbench" open aria-label="Deterministic health and projectile authoring" data-source-digest={doctorReport.sourceDigest}>
+                <summary><span>Combat · health & projectiles</span><small>Fixed tick · bounded pools · authored collision</small></summary>
+                <div className="tuning-body">
+                  <p className="precision-note">Author health, teams, targeting, hit rules, and projectile emitters once for Canvas, Phaser, Pixi, or melonJS presentation. Swept hits use authored colliders only; generated art never invents gameplay geometry.</p>
+                  <div className={`tuning-contract-status ${combatInspection.errors.length ? "blocked" : combatInspection.present ? "ready" : "draft"}`}>
+                    <span>{combatInspection.present ? combatInspection.valid ? "Combat program valid" : "Combat program blocked" : "No combat program saved"}</span>
+                    <small>{combatInspection.present ? `${combatInspection.teamCount} teams · ${combatInspection.actorCount} health actors · ${combatInspection.emitterCount} emitters · ${combatInspection.poolCapacity} fixed projectile slots` : "Prepare a map-aware starter or paste the same strict program used by the headless agent interface."}</small>
+                  </div>
+                  <label className="field full tuning-contract-editor"><span>Combat Program · JSON</span><textarea aria-label="Combat Program JSON" rows={15} spellCheck={false} placeholder="Prepare a provider-free starter or paste a looplab-combat-program/v1 document." value={combatProgramDraft} onChange={(event) => setCombatProgramDraft(event.target.value)} /></label>
+                  {combatInspection.issues.length > 0 && <div className="tuning-findings" role="status">{combatInspection.issues.slice(0, 8).map((issue) => <small key={`${issue.code}-${issue.message}`}>{issue.severity.toUpperCase()} · {issue.message}</small>)}</div>}
+                  <div className="tuning-actions">
+                    <button onClick={prepareCombatProgram}>{combatInspection.present ? "Prepare another starter" : "Prepare combat starter"}</button>
+                    <button disabled={!combatProgramDraft.trim()} onClick={saveCombatProgram}>Save program</button>
+                    {combatInspection.present && <button className="danger" onClick={removeCombatProgram}>Remove</button>}
+                  </div>
+                  <p className="precision-note">Claude and Codex use the same <code>suggest_combat_program</code>, <code>set_combat_program</code>, <code>get_combat_report</code>, and exported <code>get_combat_state</code> contracts without opening this panel. Project Doctor verifies deterministic structure and evidence, not balance or fun.</p>
+                </div>
+              </details>
+              <details id="looplab-actor-program" className="precision-card tuning-workbench" open aria-label="Deterministic actor navigation and perception authoring" data-source-digest={doctorReport.sourceDigest}>
+                <summary><span>Actors · routes & perception</span><small>Fixed tick · authored paths · stable transitions</small></summary>
+                <div className="tuning-body">
+                  <p className="precision-note">Author patrol, chase, flee, return, and cutscene behavior against the same map navigation, support height, and colliders used by gameplay. Every renderer reads canonical actor state; art never owns movement or collision.</p>
+                  <div className={`tuning-contract-status ${actorInspection.errors.length ? "blocked" : actorInspection.present ? "ready" : "draft"}`}>
+                    <span>{actorInspection.present ? actorInspection.valid ? "Actor program valid" : "Actor program blocked" : "No actor program saved"}</span>
+                    <small>{actorInspection.present ? `${actorInspection.actorCount} actors · ${actorInspection.patrolCount} patrols · ${actorInspection.perceptionCount} perception responders · ${actorInspection.cutsceneCount} cutscene routes` : "Prepare a map-aware starter or paste the same strict program used by the headless agent interface."}</small>
+                  </div>
+                  <label className="field full tuning-contract-editor"><span>Actor Program · JSON</span><textarea aria-label="Actor Program JSON" rows={17} spellCheck={false} placeholder="Prepare a provider-free starter or paste a looplab-actor-program/v1 document." value={actorProgramDraft} onChange={(event) => setActorProgramDraft(event.target.value)} /></label>
+                  {actorInspection.issues.length > 0 && <div className="tuning-findings" role="status">{actorInspection.issues.slice(0, 8).map((issue) => <small key={`${issue.code}-${issue.message}`}>{issue.severity.toUpperCase()} · {issue.message}</small>)}</div>}
+                  <div className="tuning-actions">
+                    <button onClick={prepareActorProgram}>{actorInspection.present ? "Prepare another starter" : "Prepare actor starter"}</button>
+                    <button disabled={!actorProgramDraft.trim()} onClick={saveActorProgram}>Save program</button>
+                    {actorInspection.present && <button className="danger" onClick={removeActorProgram}>Remove</button>}
+                  </div>
+                  <p className="precision-note">Claude and Codex use the same <code>suggest_actor_program</code>, <code>set_actor_program</code>, <code>get_actor_report</code>, and exported <code>get_actor_states</code> contracts without opening this panel. Project Doctor proves structure and determinism; observed believability and fun still require playtesting.</p>
+                </div>
+              </details>
+              <details id="looplab-presentation-program" className="precision-card tuning-workbench" open aria-label="Authored sound and game-feel presentation" data-source-digest={doctorReport.sourceDigest}>
+                <summary><span>Sound & game-feel events</span><small>Renderer-neutral · reduced-motion safe · replay isolated</small></summary>
+                <div className="tuning-body">
+                  <p className="precision-note">Map stable runtime events to procedural sound, particles, shake, flash, and squash. These effects follow gameplay truth; they never become collision, completion, or replay state.</p>
+                  <div className={`tuning-contract-status ${presentationInspection.errors.length ? "blocked" : presentationInspection.present ? "ready" : "draft"}`}>
+                    <span>{presentationInspection.present ? `Program ${presentationInspection.status}` : "No presentation program saved"}</span>
+                    <small>{presentationInspection.metrics ? `${presentationInspection.metrics.audioCueCount} audio cues · ${presentationInspection.metrics.motionCueCount} motion cues · ${presentationInspection.metrics.effectCount} effects · ${presentationInspection.metrics.mappedEventCount} mapped events` : "Prepare an event-aware starter, then edit the exact bounded JSON if desired."}</small>
+                  </div>
+                  <label className="field full tuning-contract-editor"><span>Presentation Program · JSON</span><textarea aria-label="Presentation Program JSON" rows={13} spellCheck={false} placeholder="Prepare a provider-free starter or paste a versioned presentation program." value={presentationProgramDraft} onChange={(event) => setPresentationProgramDraft(event.target.value)} /></label>
+                  {presentationInspection.issues.length > 0 && <div className="tuning-findings" role="status">{presentationInspection.issues.slice(0, 6).map((issue) => <small key={`${issue.code}-${issue.message}`}>{issue.severity.toUpperCase()} · {issue.message}</small>)}</div>}
+                  <div className="tuning-actions">
+                    <button onClick={preparePresentationProgram}>{presentationInspection.present ? "Prepare another starter" : "Prepare event-aware starter"}</button>
+                    <button disabled={!presentationProgramDraft.trim()} onClick={savePresentationProgram}>Save program</button>
+                    {presentationInspection.present && <button className="danger" onClick={removePresentationProgram}>Remove</button>}
+                  </div>
+                  <p className="precision-note">Preview with sound on and off, then test reduced motion. Project Doctor validates structure and lifecycle; it does not claim the result sounds or feels good.</p>
+                </div>
+              </details>
+              <details id="looplab-game-shell" className="precision-card tuning-workbench" open aria-label="Standard game shell authoring" data-source-digest={doctorReport.sourceDigest} data-shell-status={gameShellInspection.status}>
+                <summary><span>Game shell · title to finish</span><small>Playable lifecycle · accessible settings · headless control</small></summary>
+                <div className="tuning-body">
+                  <p className="precision-note">Author the player-facing title, play, pause, win, loss, restart, and settings surfaces once. The shell gates the preview and exported game without entering collision, save data, acceptance observations, or replay hashes.</p>
+                  <div className={`tuning-contract-status ${gameShellInspection.errors.length ? "blocked" : gameShellInspection.shipReady ? "ready" : "draft"}`}>
+                    <span>{gameShellInspection.present ? gameShellInspection.shipReady ? "Standard shell ship-ready" : `Shell ${gameShellInspection.status}` : "No standard shell saved"}</span>
+                    <small>{gameShellInspection.metrics ? `${gameShellInspection.metrics.stateCount} lifecycle states · ${gameShellInspection.metrics.settingsControlCount} settings controls · ${gameShellInspection.metrics.terminalCount} deterministic terminal surfaces` : "Prepare a complete starter; LoopLab binds win and loss only to authored runtime truth."}</small>
+                  </div>
+                  <label className="field full tuning-contract-editor"><span>Game Shell · JSON</span><textarea aria-label="Game Shell JSON" rows={16} spellCheck={false} placeholder="Prepare a provider-free starter or paste a looplab-game-shell/v1 document." value={gameShellDraft} onChange={(event) => setGameShellDraft(event.target.value)} /></label>
+                  {gameShellInspection.issues.length > 0 && <div className="tuning-findings" role="status">{gameShellInspection.issues.slice(0, 8).map((issue) => <small key={`${issue.code}-${issue.message}`}>{issue.severity.toUpperCase()} · {issue.message}</small>)}</div>}
+                  <div className="tuning-actions">
+                    <button onClick={prepareGameShell}>{gameShellInspection.present ? "Prepare another starter" : "Prepare standard shell"}</button>
+                    <button disabled={!gameShellDraft.trim()} onClick={saveGameShell}>Save shell</button>
+                    {gameShellInspection.present && <button className="danger" onClick={removeGameShell}>Remove</button>}
+                  </div>
+                  <p className="precision-note">Claude and Codex use <code>get_game_shell</code>, <code>suggest_game_shell</code>, <code>set_game_shell</code>, and <code>get_game_shell_report</code> directly. Exported games expose the same lifecycle through <code>get_game_shell_state</code>, <code>start_game</code>, <code>pause</code>, <code>resume</code>, <code>restart</code>, and settings commands.</p>
+                </div>
+              </details>
+              <details id="looplab-bounded-tuning" className="precision-card tuning-workbench" open aria-label="Bounded gameplay tuning" data-source-digest={doctorReport.sourceDigest} data-search-digest={tuningSearchResult?.searchDigest ?? ""} data-search-fresh={tuningSearchFresh ? "true" : "false"}>
+                <summary><span>Measured gameplay tuning</span><small>Bounded search · Doctor-gated · no automatic winner</small></summary>
+                <div className="tuning-body">
+                  <p className="precision-note">LoopLab measures deterministic movement, searches only allowlisted numeric values, and keeps every result read-only until you preview and explicitly apply it. It does not claim to measure fun.</p>
+                  <div className="tuning-metrics" aria-label="Current measured game feel">
+                    {TUNING_FEEL_METRICS.map((metric) => {
+                      const value = tuningFeel.metrics[metric.id];
+                      if (typeof value !== "number") return null;
+                      return <div key={metric.id}><span>{metric.label}</span><strong>{formatTuningValue(value, metric.unit)}</strong></div>;
+                    })}
+                  </div>
+                  <div className={`tuning-contract-status ${tuningInspection.errors.length ? "blocked" : tuningInspection.present ? "ready" : "draft"}`}>
+                    <span>{tuningInspection.present ? `Contract ${tuningInspection.status}` : "No contract saved"}</span>
+                    <small>{tuningInspection.metrics ? `${tuningInspection.metrics.parameterCount} parameters · ${tuningInspection.metrics.objectiveCount} objectives · ${tuningInspection.metrics.constraintCount} hard constraints · max ${tuningInspection.metrics.maxCandidates} candidates` : "Prepare a measured starter, then edit its values to express the intended feel."}</small>
+                  </div>
+                  <label className="field full tuning-contract-editor"><span>Bounded Tuning Contract · JSON</span><textarea aria-label="Bounded Tuning Contract JSON" rows={12} spellCheck={false} placeholder="Prepare a measured starter or paste a versioned tuning contract." value={tuningContractDraft} onChange={(event) => setTuningContractDraft(event.target.value)} /></label>
+                  {tuningInspection.issues.length > 0 && <div className="tuning-findings" role="status">{tuningInspection.issues.slice(0, 6).map((issue) => <small key={`${issue.code}-${issue.message}`}>{issue.severity.toUpperCase()} · {issue.message}</small>)}</div>}
+                  <div className="tuning-actions">
+                    <button disabled={tuningSearchRunning} onClick={() => void prepareTuningContract()}>{tuningInspection.present ? "Prepare another starter" : "Prepare measured starter"}</button>
+                    <button disabled={tuningSearchRunning || !tuningContractDraft.trim()} onClick={() => void saveTuningContract()}>Save contract</button>
+                    {tuningInspection.present && <button className="danger" disabled={tuningSearchRunning} onClick={() => void removeTuningContract()}>Remove</button>}
+                  </div>
+                  <button className="wide-button tuning-search-button" disabled={tuningSearchRunning || !tuningInspection.present || tuningInspection.errors.length > 0} onClick={() => void runBoundedTuningSearch()}>{tuningSearchRunning ? "Measuring bounded candidates…" : "Search safe candidates"}</button>
+                  {tuningSearchResult && <section className="tuning-search-results" aria-label="Tuning search results">
+                    <header><span><strong>{tuningSearchResult.evaluatedCandidateCount} measured</strong><small>{tuningSearchResult.safeCandidateIds.length} safe · {tuningSearchResult.paretoCandidateIds.length} Pareto · {tuningSearchResult.strategy}</small></span><b>0 tokens · $0.00</b></header>
+                    {!tuningSearchFresh && <p className="tuning-stale">The project changed. These candidates are preserved for review but cannot be previewed or applied; rerun the search.</p>}
+                    <div className="tuning-candidate-list" role="listbox" aria-label="Measured tuning candidates">
+                      {tuningSearchResult.candidates.map((candidate) => <button key={candidate.id} role="option" aria-selected={candidate.id === selectedTuningCandidateId} className={`${candidate.id === selectedTuningCandidateId ? "active" : ""} ${candidate.safe ? "safe" : "blocked"}`} onClick={() => { setSelectedTuningCandidateId(candidate.id); setTuningCandidatePreview(null); }}><span><strong>{candidate.baseline ? "Current baseline" : candidate.id}</strong><small>{Object.entries(candidate.assignments).map(([id, value]) => `${id} ${value}`).join(" · ")}</small></span><b>{candidate.pareto ? "PARETO" : candidate.safe ? "SAFE" : "BLOCKED"}</b></button>)}
+                    </div>
+                    {selectedTuningCandidate && <div className="tuning-candidate-detail">
+                      <div className="tuning-objectives">{selectedTuningCandidate.objectives.map((objective) => <span key={objective.id}><strong>{objective.id}</strong><small>{objective.value ?? "unmeasured"} · loss {objective.loss ?? "n/a"}</small></span>)}</div>
+                      {(selectedTuningCandidate.failedGateIds.length > 0 || selectedTuningCandidate.failedConstraintIds.length > 0) && <p className="tuning-stale">Rejected by {selectedTuningCandidate.failedGateIds.concat(selectedTuningCandidate.failedConstraintIds).join(", ")}.</p>}
+                      {tuningCandidatePreview?.candidateId === selectedTuningCandidate.id && <div className={`tuning-preview-receipt ${tuningCandidatePreview.receipt.applicable && tuningPreviewFresh ? "ready" : "blocked"}`}><strong>{tuningCandidatePreview.receipt.applicable ? "Exact preview passed" : "Exact preview blocked"}</strong><small>Doctor {tuningCandidatePreview.receipt.doctor.before.score} → {tuningCandidatePreview.receipt.doctor.after.score} · Production {tuningCandidatePreview.receipt.doctor.release.before.score} → {tuningCandidatePreview.receipt.doctor.release.after.score} · {tuningCandidatePreview.receipt.commandCount} command{tuningCandidatePreview.receipt.commandCount === 1 ? "" : "s"}</small></div>}
+                      <div className="tuning-actions">
+                        <button disabled={tuningSearchRunning || !tuningSearchFresh || !selectedTuningCandidate.previewCommand} onClick={() => void previewTuningCandidate(selectedTuningCandidate)}>{selectedTuningCandidate.previewCommand ? "Preview exact candidate" : selectedTuningCandidate.baseline ? "Current values" : "Unsafe candidate"}</button>
+                        {!isProtectedTuningVariation ? <button className="variation" disabled={tuningSearchRunning} onClick={() => createProjectVariation()}>Create protected variation</button> : <button className="variation" disabled={tuningSearchRunning || !tuningPreviewFresh || tuningCandidatePreview?.candidateId !== selectedTuningCandidate.id || !tuningCandidatePreview.receipt.applicable} onClick={() => void applyTuningCandidate()}>Apply to this variation</button>}
+                      </div>
+                    </div>}
+                    <p className="precision-note">{tuningSearchResult.decisionBoundary}</p>
+                  </section>}
+                </div>
+              </details>
+              <button className="wide-button secondary-wide" onClick={() => setShowAssetLab(true)}>✦ Generate tiles or sprites</button>
+              <button className="wide-button secondary-wide" onClick={() => setShowDoctor(true)}>Project Doctor · {doctorReport.score}/100</button>
+              <button className="wide-button" onClick={() => enterPreview()}>▶ Preview game</button>
+            </div>
+          )}
+
+          <div className="fine-tune-assets">
+            <div><span className="eyebrow">Visual maker</span><strong>Generate game-ready art</strong><small>Palette-locked generation plus individually verified CC0 commercial-use sources.</small></div>
+            <div className="asset-shortcut-grid">
+              <button onClick={() => openAssetGenerator("tiles")}><span>▦</span><strong>Tileset</strong><small>Seam-safe world tiles</small></button>
+              <button onClick={() => openAssetGenerator("hero")}><span>♟</span><strong>Character</strong><small>Animated hero strip</small></button>
+              <button onClick={() => openAssetGenerator("enemy")}><span>◆</span><strong>Enemy</strong><small>Animated hazard</small></button>
+              <button onClick={() => openAssetGenerator("prop")}><span>▣</span><strong>Prop</strong><small>Floor-standing object</small></button>
+              <button onClick={() => openAssetGenerator("effect")}><span>✦</span><strong>Effect</strong><small>Impact / particles</small></button>
+              <button onClick={() => openAssetGenerator("ui")}><span>⊞</span><strong>UI sprite</strong><small>Icons and controls</small></button>
+            </div>
+            <div className="cc0-shortcut-heading"><span>Verified CC0 library</span><button onClick={() => openAssetLibrary()}>Open all →</button></div>
+            <div className="cc0-shortcut-grid">
+              {CC0_ASSET_CATEGORIES.map((category) => <button key={category.id} onClick={() => openAssetLibrary(category.id as AssetLibraryCategoryId)}><span>{category.glyph}</span><strong>{category.label}</strong><small>{CC0_ASSET_PACKS.filter((pack) => pack.categories.includes(category.id)).length} verified</small></button>)}
+            </div>
+          </div>
+          </div>
+
+          <div className="export-drawer">
+            <div className="export-copy">
+              <span className="eyebrow">Export a playable build</span>
+              <strong>{lastExportReceipt ? exportReleaseReady ? "Release-ready one-file HTML." : "Auditable one-file draft." : "One file. Audited before download."}</strong>
+              <section className="export-profile-controls" aria-label="Export and save profile">
+                <label htmlFor="looplab-export-profile"><span>Save profile</span><select id="looplab-export-profile" value={currentExportProfile} onChange={(event) => configureExportProfile({ profile: event.target.value as "strict" | "hosted" })}><option value="strict">Strict offline</option><option value="hosted">Hosted autosave</option></select></label>
+                <label className="export-profile-check"><input type="checkbox" checked={currentExportProfile === "hosted" || currentSaveProgram?.portableCodes === true} disabled={currentExportProfile === "hosted"} onChange={(event) => configureExportProfile({ portableSaves: event.target.checked })} /><span>Portable save codes</span></label>
+                {currentExportProfile === "hosted" && <div className="export-profile-hosted-options">
+                  <label className="export-profile-check"><input type="checkbox" checked={currentSaveProgram?.hosted?.autoSave !== false} onChange={(event) => configureExportProfile({ autoSave: event.target.checked })} /><span>Autosave progress</span></label>
+                  <label className="export-profile-check"><input type="checkbox" checked={currentSaveProgram?.hosted?.restoreOnBoot !== false} onChange={(event) => configureExportProfile({ restoreOnBoot: event.target.checked })} /><span>Restore on boot</span></label>
+                </div>}
+                <small>{currentExportProfile === "hosted" ? "Still one network-free HTML file. One exact audited wrapper stores the same portable code; blocked storage degrades safely." : "No storage APIs. Players may copy a source-bound save code when portable saves are enabled."}</small>
+              </section>
+              {lastExportReceipt ? (
+                <div className={`export-receipt ${exportReceiptFresh ? "is-current" : "is-stale"} ${exportReleaseReady ? "is-release-ready" : "is-draft"}`} role="status" aria-live="polite">
+                  <div className="export-receipt-heading"><span>{exportReceiptFresh ? exportReleaseReady ? "Current release" : "Current draft" : "Previous export"}</span><b>{exportReleaseReady ? "Release ready" : "Draft"}</b></div>
+                  <strong title={lastExportReceipt.filename}>{lastExportReceipt.filename}</strong>
+                  <dl>
+                    <div><dt>Upload</dt><dd>{lastExportReceipt.artifact.uploadFileCount} HTML</dd></div>
+                    <div><dt>Package</dt><dd>{formatBytes(lastExportReceipt.artifact.byteLength)}</dd></div>
+                    <div><dt>Doctor</dt><dd>{lastExportReceipt.doctor.score}/100</dd></div>
+                    <div><dt>Offline</dt><dd>{lastExportReceipt.runtime.offlinePlayable ? "Playable" : "Blocked"}</dd></div>
+                    <div><dt>Profile</dt><dd>{lastExportReceipt.release.exportProfile === "hosted" ? "Hosted" : "Strict"}</dd></div>
+                    <div><dt>Saves</dt><dd>{lastExportReceipt.release.persistence.portableCodes ? lastExportReceipt.release.persistence.automaticStorage ? "Auto + code" : "Portable code" : "Off"}</dd></div>
+                    <div><dt>Exact SHA</dt><dd>{lastExportReceipt.release.exactArtifactVerification.valid ? "Verified" : "Pending"}</dd></div>
+                    <div><dt>Release</dt><dd>{lastExportReceipt.release.shippable ? "Ready" : "Not yet"}</dd></div>
+                  </dl>
+                  <small>{exportReceiptFresh ? `${lastExportReceipt.release.reason} ${lastExportReceipt.artifact.checks.filter((check) => check.passed).length}/${lastExportReceipt.artifact.checks.length} artifact checks passed · ${lastExportReceipt.artifact.embeddedResourceCount} embedded resources${lastExportReceipt.release.exactArtifactVerification.valid ? ` · SHA ${lastExportReceipt.artifact.sha256?.slice(0, 12)}` : ""}.` : "The project changed after this export. Export again before shipping."}</small>
+                </div>
+              ) : <small className="export-receipt-empty">No export receipt yet. Exact verification runs the generated bytes in a hostile local browser and records a source-bound SHA-256 attestation without calling an AI provider.</small>}
+            </div>
+            <div className="export-actions">
+              <button className="verify-release-button" disabled={!companionOnline || releaseVerificationRunning} onClick={() => void verifyExactRelease().catch(() => {})}>{releaseVerificationRunning ? "Verifying exact build…" : "Verify exact build"}</button>
+              {releaseVerificationRunning && <button className="text-button" onClick={() => void cancelExactReleaseVerification()}>Cancel verification</button>}
+              <button onClick={exportHtml}>Export HTML</button>
+              {lastExportReceipt && <button className="open-build-button" onClick={openExactExport}>{exportReceiptFresh ? "Open exact build" : "Open previous build"}</button>}
+              <button className="text-button" onClick={exportProject}>Save editable project</button>
+            </div>
+          </div>
+          </>)}
+        </aside>
+      </section>
+
+      <footer className="statusbar">
+        <span><i className="status-dot" /> {isPlaying ? previewFocus ? "Focused playtest" : "Preview panels visible" : "Scene ready"}</span>
+        <span>{project.objects.filter((object) => object.kind === "player").length ? "Player connected" : "Add a player to preview"}</span>
+        <span>Grid {project.grid}px</span>
+        <span className="status-spacer" />
+        <details id="looplab-agent-bridge" className="agent-bridge-console" data-ready={ready ? "true" : "false"} data-protocol-version={LOOPLAB_PROTOCOL_VERSION} data-command-event="looplab:agent-command" data-response-event="looplab:agent-response">
+          <summary>Agent API</summary>
+          <form id="looplab-agent-form" onSubmit={runAgentConsoleCommand} data-response-schema="looplab-bounded-agent-response/v1" data-response-limit={LOOPLAB_AGENT_FORM_RESPONSE_LIMIT_CHARACTERS}>
+            <div><strong>Headless command bridge</strong><small>JSON in · verified result out</small></div>
+            <section id="looplab-agent-context-pack" className="agent-context-pack" aria-labelledby="agent-context-heading" data-source-digest={agentProjectContext.sourceDigest} data-context-view={agentProjectContext.view} data-context-fresh={doctorReportFresh ? "true" : "false"}>
+              <header><div><strong id="agent-context-heading">Agent context pack</strong><small>{agentContextView === "map" ? "Exact selected-map truth without unrelated map documents" : "Campaign truth without the embedded payload"}</small></div><span>{agentProjectContext.measurements.roughTokenEstimate.toLocaleString()} est. tokens</span></header>
+              <div className="agent-context-controls">
+                <label htmlFor="looplab-agent-context-view">View</label>
+                <select id="looplab-agent-context-view" value={agentContextView} onChange={(event) => setAgentContextView(event.target.value as "campaign" | "map")}>
+                  <option value="campaign">Campaign index</option>
+                  <option value="map">Exact map document</option>
+                </select>
+                {agentContextView === "map" && <><label htmlFor="looplab-agent-context-map">Map</label><select id="looplab-agent-context-map" value={visibleAgentContextMapId} onChange={(event) => setAgentContextMapId(event.target.value)}>{maps.map((map) => <option key={map.id} value={map.id}>{map.name} · {map.id}</option>)}</select></>}
+              </div>
+              <div className="agent-context-metrics" aria-label="Agent context measurements">
+                <span><b>{agentProjectContext.campaign.mapCount}</b>maps</span>
+                <span><b>{agentProjectContext.campaign.objectCount}</b>objects</span>
+                <span><b>{agentProjectContext.measurements.smallerThanFullProject ? `${Math.round(agentProjectContext.measurements.reductionRatio * 100)}%` : `+${agentProjectContext.measurements.overheadCharacters.toLocaleString()}`}</b>{agentProjectContext.measurements.smallerThanFullProject ? "smaller" : "chars overhead"}</span>
+              </div>
+              <section className="agent-readiness-card" aria-label="Current and production readiness" data-release-blocking={agentReadiness.release.blocking ? "true" : "false"}>
+                <header><div><strong>Readiness by profile</strong><small>One source, two honest gates</small></div><span>{agentReadiness.release.blocking ? "Release blocked" : "Release clear"}</span></header>
+                <div className="agent-readiness-profiles">
+                  <article><header><div><small>Current authoring gate</small><b>{agentReadiness.current.profile}</b></div><strong>{agentReadiness.current.score == null ? "—" : `${agentReadiness.current.score}/100`}</strong></header><span>{agentReadiness.current.errorCount} errors · {agentReadiness.current.warningCount} warnings</span></article>
+                  <article className={agentReadiness.release.blocking ? "blocking" : "clear"}><header><div><small>One-file release target</small><b>{agentReadiness.release.profile}</b></div><strong>{agentReadiness.release.score == null ? "—" : `${agentReadiness.release.score}/100`}</strong></header><span>{agentReadiness.release.errorCount} errors · {agentReadiness.release.warningCount} warnings</span></article>
+                </div>
+                {agentReadiness.releaseDelta.findingCount > 0 && <div className="agent-readiness-findings"><strong>{agentReadiness.releaseDelta.findingCount} release-only finding{agentReadiness.releaseDelta.findingCount === 1 ? "" : "s"}</strong>{agentReadiness.releaseDelta.findings.map((finding) => <span key={`${finding.code}:${finding.message}`}><b>{finding.code}</b><i>{finding.message}</i></span>)}</div>}
+                <small>{agentReadiness.interpretation}</small>
+              </section>
+              <div className="agent-context-map-list" aria-label="Campaign map index">
+                {agentProjectContext.maps.entries.map((map) => <button type="button" key={map.id} onClick={() => { setAgentContextMapId(map.id); setAgentContextView("map"); }} data-map-id={map.id}><span><b>{map.name}</b><i>{map.active ? "active" : map.start ? "start" : `${map.objectCount} objects`}</i></span><code>{map.id}</code></button>)}
+              </div>
+              {agentContextView === "map" && selectedAgentContextMap && <article className="agent-context-map-detail" data-map-id={selectedAgentContextMap.id}><header><div><b>{selectedAgentContextMap.name}</b><code>{selectedAgentContextMap.id}</code></div><span>{selectedAgentContextMap.objectCount} objects</span></header><div>{Object.entries(selectedAgentContextMap.byKind).filter(([, count]) => count > 0).map(([kind, count]) => <span key={kind}><b>{count}</b>{kind}</span>)}</div><small>{Object.entries(selectedAgentContextMap.objectIdsByKind).filter(([, value]) => value.ids.length).map(([kind, value]) => `${kind}: ${value.ids.join(", ")}${value.truncated ? "…" : ""}`).join(" · ")}</small></article>}
+              <code className="agent-context-digest">{agentProjectContext.sourceDigest}</code>
+              <div className="agent-context-actions"><button type="button" onClick={() => void copyAgentProjectContext()}>Copy context JSON</button><button type="button" onClick={() => setAgentCommandText(JSON.stringify({ op: "get_project_context", view: agentContextView, ...(agentContextView === "map" ? { mapIds: [visibleAgentContextMapId] } : {}) }, null, 2))}>Load command</button></div>
+              <small>This source-bound pack omits embedded art, prompt bodies, secrets, snapshots, and unrelated map documents. It is orientation only—not mutation input or verification evidence. Omitted never means absent.</small>
+            </section>
+            <section id="looplab-agent-change-feed" className="agent-change-feed" aria-labelledby="agent-change-feed-heading" data-current-cursor={currentAgentChangeFeed.currentCursor} data-feed-revision={currentAgentChangeFeed.retention.revision} data-resync-required={agentChangeView?.resyncRequired ? "true" : "false"}>
+              <header><div><strong id="agent-change-feed-heading">Resume agent memory</strong><small>Opaque bookmark → only the changes you missed</small></div><span>r{currentAgentChangeFeed.retention.revision}</span></header>
+              <div className="agent-change-metrics" aria-label="Retained agent change metrics">
+                <span><b>{currentAgentChangeFeed.retention.retainedEventCount}</b>retained</span>
+                <span><b>{currentAgentChangeFeed.retention.droppedEventCount}</b>dropped</span>
+                <span><b>{recentAgentChanges.length}</b>recent shown</span>
+              </div>
+              <label htmlFor="looplab-agent-change-cursor">Last bookmark seen by Claude or Codex</label>
+              <input id="looplab-agent-change-cursor" value={agentChangeCursorDraft} onChange={(event) => setAgentChangeCursorDraft(event.target.value.trim())} onKeyDown={preventAgentWorkInputSubmit} placeholder="Paste an opaque cursor; never edit it" spellCheck={false} />
+              <div className="agent-change-actions"><button type="button" onClick={() => void runAgentChangeResume(false)} disabled={agentCommandRunning || !agentChangeCursorDraft.trim()}>Resume from bookmark</button><button type="button" onClick={() => void runAgentChangeResume(true)} disabled={agentCommandRunning}>Establish now</button><button type="button" onClick={() => void copyAgentChangeCursor()}>Copy current</button></div>
+              {agentChangeView && <article className={`agent-change-result ${agentChangeView.resyncRequired ? "is-resync" : "is-current"}`} role="status">
+                <header><b>{agentChangeView.resyncRequired ? "Warm resync required" : agentChangeView.hasMore ? "More changes available" : "Caught up"}</b><span>{agentChangeView.returnedEventCount}/{agentChangeView.availableEventCount}</span></header>
+                {agentChangeView.resyncReason && <p>{agentChangeView.resyncReason}</p>}
+                {agentChangeView.events.map((entry) => <div key={entry.cursor}><span><b>{entry.operation}</b><i>{entry.category} · {entry.channel}</i></span><small>{entry.sourceChanged ? "source changed" : entry.ledgerChanged ? "ledger changed" : "metadata only"}{entry.targets.length ? ` · ${entry.targets.map((target) => `${target.kind}:${target.id}`).join(" · ")}` : ""}</small></div>)}
+                {agentChangeView.hasMore && <button type="button" onClick={() => void runAgentChangeResume(false, agentChangeView.nextCursor)}>Read next page</button>}
+              </article>}
+              <div className="agent-change-recent" aria-label="Most recent safe semantic changes">
+                {recentAgentChanges.map((entry) => <div key={entry.cursor} data-change-category={entry.category}><span><b>{entry.operation}</b><i>{entry.category}</i></span><small>{entry.channel} · r{entry.revision}{entry.commandCount ? ` · ${entry.commandCount} commands` : ""}</small></div>)}
+                {!recentAgentChanges.length && <div className="agent-change-empty">No recorded mutation yet. Establish the current bookmark before handing the project to another agent.</div>}
+              </div>
+              <code className="agent-change-cursor">{currentAgentChangeFeed.currentCursor}</code>
+              <small>Notifications are wake-up hints. This retained feed is resumable orientation only; source-bound commands, Project Doctor, and exact evidence remain authoritative. No prompts, secrets, assets, snapshots, raw commands, or patches are stored.</small>
+            </section>
+            <section id="looplab-agent-builder-benchmark" className="agent-builder-benchmark" aria-labelledby="agent-builder-benchmark-heading" data-suite-digest={builderBenchmarkRegistry.suiteDigest} data-benchmark-id={selectedAgentBenchmark?.id ?? ""} data-source-digest={agentBenchmarkReceipt?.sourceDigest ?? ""} data-receipt-fresh={agentBenchmarkReceiptFresh ? "true" : "false"}>
+              <header><div><strong id="agent-builder-benchmark-heading">Golden brief benchmark</strong><small>Visible task · exact evidence · provider-free re-grading</small></div><span>suite v{builderBenchmarkRegistry.suiteVersion}</span></header>
+              <label htmlFor="looplab-agent-builder-benchmark-select">Task</label>
+              <select id="looplab-agent-builder-benchmark-select" value={selectedAgentBenchmark?.id ?? ""} onChange={(event) => { setAgentBenchmarkId(event.target.value); setAgentBenchmarkReceipt(null); setAgentBenchmarkBaseline(null); setAgentBenchmarkComparison(null); }}>
+                {builderBenchmarkRegistry.tasks.map((task) => <option key={task.id} value={task.id}>{task.title}</option>)}
+              </select>
+              {selectedAgentBenchmark && <article className="agent-benchmark-brief">
+                <header><div><b>{selectedAgentBenchmark.title}</b><small>{selectedAgentBenchmark.category} · start from {selectedAgentBenchmark.startingTemplate} · {selectedAgentBenchmark.campaignScope}</small></div><code>{selectedAgentBenchmark.taskDigest.slice(0, 22)}…</code></header>
+                <p>{selectedAgentBenchmark.prompt}</p>
+                <details><summary>{selectedAgentBenchmark.expectations.filter((entry) => entry.required).length} visible required checks</summary><ol>{selectedAgentBenchmark.expectations.map((entry) => <li key={entry.id} data-required={entry.required ? "true" : "false"}><b>{entry.id}</b><span>{entry.statement}</span><i>{entry.dimension}{entry.required ? " · required" : " · observation"}</i></li>)}</ol></details>
+              </article>}
+              <div className="agent-benchmark-actions"><button type="button" onClick={() => void loadAgentBenchmarkIntoDirector()} disabled={agentCommandRunning || !selectedAgentBenchmark}>Load into Director</button><button type="button" onClick={() => void evaluateCurrentAgentBenchmark()} disabled={agentCommandRunning || !selectedAgentBenchmark}>{agentCommandRunning ? "Checking…" : "Evaluate current"}</button></div>
+              {agentBenchmarkReceipt && <article className={`agent-benchmark-receipt ${!agentBenchmarkReceiptFresh ? "is-stale" : agentBenchmarkReceipt.passed ? "is-pass" : "is-blocked"}`} role="status">
+                <header><div><b>{!agentBenchmarkReceiptFresh ? "Receipt stale" : agentBenchmarkReceipt.passed ? "Technical gate passed" : "Technical blockers remain"}</b><small>{agentBenchmarkReceipt.technicalFitness.passedRequiredCount}/{agentBenchmarkReceipt.technicalFitness.requiredCheckCount} required checks</small></div><strong>{agentBenchmarkReceipt.technicalFitness.requiredScore}/100</strong></header>
+                <div className="agent-benchmark-metrics"><span><b>{agentBenchmarkReceipt.evidence.doctor.current.score}</b>current Doctor</span><span><b>{agentBenchmarkReceipt.evidence.doctor.release.score}</b>release Doctor</span><span><b>{agentBenchmarkReceipt.evidence.standaloneAudit.valid ? "pass" : "fail"}</b>{agentBenchmarkReceipt.evidence.standaloneAudit.byteLength == null ? "one-file audit" : formatBytes(agentBenchmarkReceipt.evidence.standaloneAudit.byteLength)}</span></div>
+                {agentBenchmarkReceipt.blockers.length > 0 && <div className="agent-benchmark-blockers"><strong>Raw blockers</strong>{agentBenchmarkReceipt.blockers.map((blocker) => <span key={blocker.id}><b>{blocker.id}</b>{blocker.statement}</span>)}</div>}
+                <code>{agentBenchmarkReceipt.receiptDigest}</code>
+                <div className="agent-benchmark-actions"><button type="button" onClick={() => { setAgentBenchmarkBaseline(agentBenchmarkReceipt); setAgentBenchmarkComparison(null); showToast("Pinned this exact receipt as the session baseline"); }} disabled={!agentBenchmarkReceiptFresh}>Pin session baseline</button><button type="button" onClick={() => void compareCurrentAgentBenchmark()} disabled={agentCommandRunning || !agentBenchmarkBaseline}>{agentBenchmarkBaseline ? "Compare current" : "Pin baseline first"}</button></div>
+              </article>}
+              {agentBenchmarkBaseline && <small className="agent-benchmark-baseline">Baseline pinned · {agentBenchmarkBaseline.technicalFitness.requiredScore}/100 · source {agentBenchmarkBaseline.sourceDigest.slice(0, 20)}…</small>}
+              {agentBenchmarkComparison && <article className="agent-benchmark-comparison" role="status">
+                <header><div><b>{agentBenchmarkComparison.conclusion}</b><small>{agentBenchmarkComparison.claimStrength}</small></div><span>{agentBenchmarkComparison.baseline.meanRequiredScore ?? "—"} → {agentBenchmarkComparison.candidate.meanRequiredScore ?? "—"}</span></header>
+                <p>{agentBenchmarkComparison.reasons.length ? agentBenchmarkComparison.reasons.join(" · ") : "No measured technical-fitness delta."}</p>
+                <small>Required-score Δ {agentBenchmarkComparison.deltas.requiredScore == null ? "—" : `${agentBenchmarkComparison.deltas.requiredScore > 0 ? "+" : ""}${agentBenchmarkComparison.deltas.requiredScore}`} · {agentBenchmarkComparison.efficiency.reason}</small>
+                <code>{agentBenchmarkComparison.comparisonDigest}</code>
+              </article>}
+              <small className="agent-benchmark-boundary">{builderBenchmarkRegistry.notTasteEvidence} Provider-backed trials use the ordinary Director and durable companion job lifecycle—never a benchmark-only generation path.</small>
+            </section>
+            <section id="looplab-agent-plan" className="agent-intent-plan" aria-labelledby="agent-intent-plan-heading" data-source-digest={agentIntentPlan?.sourceDigest ?? ""} data-plan-digest={agentIntentPlan?.planDigest ?? ""} data-plan-fresh={agentIntentPlanFresh ? "true" : "false"}>
+              <header><div><strong id="agent-intent-plan-heading">Local agent planner</strong><small>Short intent → source-bound review plan</small></div><span>0 provider tokens</span></header>
+              <label htmlFor="looplab-agent-plan-intent">What should the agent accomplish?</label>
+              <textarea id="looplab-agent-plan-intent" value={agentPlanIntent} onChange={(event) => { setAgentPlanIntent(event.target.value); setAgentIntentPlan(null); }} maxLength={600} placeholder="Connect the two selected maps with safe forward and return portals." />
+              <button type="button" onClick={() => void runAgentIntentPlan()} disabled={agentCommandRunning || !agentPlanIntent.trim()}>{agentCommandRunning ? "Drafting…" : "Draft source-bound plan"}</button>
+              {agentIntentPlan && (
+                <article className={`agent-intent-plan-result ${agentIntentPlanFresh ? "is-current" : "is-stale"}`} role="status">
+                  <header><div><b>{agentIntentPlan.strategy.title}</b><small>{agentIntentPlan.strategy.kind} · {agentIntentPlan.strategy.reason}</small></div><span>{agentIntentPlanFresh ? "Current source" : "Source changed"}</span></header>
+                  {(agentIntentPlan.missingInputs.length > 0 || agentIntentPlan.parameterIssues.length > 0) && <div className="agent-intent-plan-needs"><b>Needs input</b>{agentIntentPlan.missingInputs.map((entry) => <span key={entry.key}><code>{entry.key}</code>{entry.description}</span>)}{agentIntentPlan.parameterIssues.map((entry, index) => <span key={`${entry.code ?? entry.key ?? "issue"}-${index}`}>{entry.message}</span>)}</div>}
+                  <div className="agent-intent-plan-needs"><b>Intent coverage</b>{agentIntentPlan.coverage.map((entry) => <span key={entry.id}><code>{entry.status}</code>{entry.title}<small>{entry.phaseIds.join(" · ")}</small></span>)}</div>
+                  <ol>{agentIntentPlan.phases.map((phase) => <li key={phase.id} data-plan-status={phase.status}><div><b>{phase.title}</b><span>{phase.status}</span></div><p>{phase.sourcePolicy}</p>{phase.operations.length > 0 && <code>{phase.operations.join(" → ")}</code>}{phase.dependsOn.length ? <small>After: {phase.dependsOn.join(" · ")}</small> : null}</li>)}</ol>
+                  <code className="agent-intent-plan-digest">{agentIntentPlan.planDigest}</code>
+                  <div className="agent-intent-plan-actions"><button type="button" onClick={() => void copyAgentIntentPlan()}>Copy plan JSON</button><button type="button" onClick={() => { const exact = agentIntentPlan.steps.find((step) => step.command && ["ready", "review-required"].includes(step.status))?.command; if (exact) setAgentCommandText(JSON.stringify(exact, null, 2)); }} disabled={!agentIntentPlanFresh || !agentIntentPlan.steps.some((step) => step.command && ["ready", "review-required"].includes(step.status))}>Load next exact command</button></div>
+                  <small>Plan only: no execution, project write, provider request, or authority grant. Canonical mutation gates still apply.</small>
+                </article>
+              )}
+            </section>
+            <section id="looplab-agent-playbook" className="agent-playbook" aria-labelledby="agent-playbook-heading" data-registry-digest={agentPlaybookRegistry.registryDigest}>
+              <header><strong id="agent-playbook-heading">Agent playbook</strong><small>Read-only proven operating recipes</small></header>
+              <label htmlFor="looplab-agent-recipe-query">Find a recurring problem</label>
+              <input id="looplab-agent-recipe-query" type="search" value={agentRecipeQuery} onChange={(event) => setAgentRecipeQuery(event.target.value)} placeholder="replay, map transition, stale source…" />
+              {visibleAgentRecipes.length ? (
+                <>
+                  <label htmlFor="looplab-agent-recipe">Recipe</label>
+                  <select id="looplab-agent-recipe" value={visibleAgentRecipeId} onChange={(event) => setAgentRecipeId(event.target.value)}>
+                    {visibleAgentRecipes.map((recipe) => <option key={recipe.id} value={recipe.id}>{recipe.title}</option>)}
+                  </select>
+                  <article className="agent-recipe-card" data-recipe-id={selectedAgentRecipe.id} data-recipe-digest={selectedAgentRecipe.recipeDigest}>
+                    <div><b>{selectedAgentRecipe.title}</b><span>v{selectedAgentRecipe.revision} · {selectedAgentRecipe.status}</span></div>
+                    <p>{selectedAgentRecipe.summary}</p>
+                    <small>Use when: {selectedAgentRecipe.when[0]}</small>
+                    <details>
+                      <summary>View {selectedAgentRecipe.steps.length} steps and evidence</summary>
+                      <ol>
+                        {selectedAgentRecipe.steps.map((step) => <li key={step.id}><span>{step.instruction}</span>{step.commands.length > 0 && <code>{step.commands.join(" → ")}</code>}</li>)}
+                      </ol>
+                      <strong>Stop if</strong>
+                      <ul>{selectedAgentRecipe.stopConditions.map((condition) => <li key={condition}>{condition}</li>)}</ul>
+                      <strong>Required evidence</strong>
+                      <ul>{selectedAgentRecipe.evidence.map((entry) => <li key={entry}>{entry}</li>)}</ul>
+                    </details>
+                    <code>{selectedAgentRecipe.recipeDigest}</code>
+                  </article>
+                </>
+              ) : <div className="agent-recipe-empty" role="status">No recipe matches this exact search. Clear the filter or use the JSON command <code>list_agent_recipes</code>.</div>}
+              <small>Recipes never execute themselves. Every mutation still uses the canonical command bridge and its normal Doctor, digest, replay, provider, and export gates.</small>
+            </section>
+            <section id="looplab-agent-work-ledger" className="agent-work-ledger" aria-labelledby="agent-work-ledger-heading" data-ledger-digest={agentWorkLedgerView.ledgerDigest} data-ledger-revision={agentWorkLedgerView.revision}>
+              <header>
+                <div><strong id="agent-work-ledger-heading">Shared Codex + Claude work</strong><small>Claim once · renew · hand off with evidence</small></div>
+                <span>r{agentWorkLedgerView.revision}</span>
+              </header>
+              <div id="looplab-agent-presence" className="agent-presence-strip" data-active-count={agentPresenceView?.count ?? 0} role="status" aria-live="polite">
+                <span className="agent-presence-summary"><b>{agentPresenceView?.count ?? 0}</b> active now</span>
+                {agentPresenceView?.presences.map((presence) => (
+                  <span key={presence.presenceId} className={`agent-presence-chip is-${presence.clientKind}`} data-presence-id={presence.presenceId} data-project-id={presence.projectId ?? ""}>
+                    <b>{presence.displayName}</b>
+                    <small>{presence.status}{presence.operation ? ` · ${presence.operation}` : ""}</small>
+                  </span>
+                ))}
+                {!agentPresenceView?.count && <small className="agent-presence-empty">No live heartbeat. Durable claims below remain authoritative.</small>}
+              </div>
+              <div className="agent-work-metrics" aria-label="Shared work lifecycle counts">
+                {LOOPLAB_AGENT_WORK_ITEM_STATUSES.map((status) => <span key={status}><b>{agentWorkLedgerView.counts[status as AgentWorkItemStatus] ?? 0}</b>{status}</span>)}
+                <span><b>{agentWorkLedgerView.activeClaims}</b>active claims</span>
+              </div>
+              <div className="agent-work-controls">
+                <label htmlFor="looplab-agent-work-actor">Acting as</label>
+                <input id="looplab-agent-work-actor" list="looplab-agent-work-actors" value={agentWorkActor} onChange={(event) => setAgentWorkActor(event.target.value.trim().replace(/[^A-Za-z0-9._:-]/g, "-"))} onKeyDown={preventAgentWorkInputSubmit} placeholder="codex, claude, user" />
+                <datalist id="looplab-agent-work-actors"><option value="codex" /><option value="claude" /><option value="user" /></datalist>
+                <label htmlFor="looplab-agent-work-status">Show</label>
+                <select id="looplab-agent-work-status" value={agentWorkStatus} onChange={(event) => setAgentWorkStatus(event.target.value as AgentWorkItemStatus | "all")}>
+                  <option value="all">All work</option>
+                  {LOOPLAB_AGENT_WORK_ITEM_STATUSES.map((status) => <option key={status} value={status}>{status}</option>)}
+                </select>
+                <label htmlFor="looplab-agent-work-query">Find work</label>
+                <input id="looplab-agent-work-query" type="search" value={agentWorkQuery} onChange={(event) => setAgentWorkQuery(event.target.value)} onKeyDown={preventAgentWorkInputSubmit} placeholder="collision, export, docs…" />
+              </div>
+              <details className="agent-work-create">
+                <summary>Add structured work item</summary>
+                <div className="agent-work-create-grid">
+                  <label htmlFor="looplab-agent-work-title">Title</label>
+                  <input id="looplab-agent-work-title" value={agentWorkDraft.title} onChange={(event) => setAgentWorkDraft((draft) => ({ ...draft, title: event.target.value }))} onKeyDown={preventAgentWorkInputSubmit} placeholder="What needs to change?" />
+                  <label htmlFor="looplab-agent-work-id">Stable ID <small>optional</small></label>
+                  <input id="looplab-agent-work-id" value={agentWorkDraft.id} onChange={(event) => setAgentWorkDraft((draft) => ({ ...draft, id: event.target.value }))} onKeyDown={preventAgentWorkInputSubmit} placeholder="generated-from-title" />
+                  <label htmlFor="looplab-agent-work-summary">Concrete outcome</label>
+                  <textarea id="looplab-agent-work-summary" value={agentWorkDraft.summary} onChange={(event) => setAgentWorkDraft((draft) => ({ ...draft, summary: event.target.value }))} placeholder="Scope, expected behavior, and what proves it is done." />
+                  <div className="agent-work-pair">
+                    <label htmlFor="looplab-agent-work-kind">Kind<select id="looplab-agent-work-kind" value={agentWorkDraft.kind} onChange={(event) => setAgentWorkDraft((draft) => ({ ...draft, kind: event.target.value as AgentWorkItemKind }))}>{LOOPLAB_AGENT_WORK_ITEM_KINDS.map((kind) => <option key={kind} value={kind}>{kind}</option>)}</select></label>
+                    <label htmlFor="looplab-agent-work-priority">Priority<select id="looplab-agent-work-priority" value={agentWorkDraft.priority} onChange={(event) => setAgentWorkDraft((draft) => ({ ...draft, priority: event.target.value as AgentWorkItemPriority }))}>{LOOPLAB_AGENT_WORK_ITEM_PRIORITIES.map((priority) => <option key={priority} value={priority}>{priority}</option>)}</select></label>
+                  </div>
+                  <label htmlFor="looplab-agent-work-scope">Scope <small>comma or line separated</small></label>
+                  <input id="looplab-agent-work-scope" value={agentWorkDraft.scope} onChange={(event) => setAgentWorkDraft((draft) => ({ ...draft, scope: event.target.value }))} onKeyDown={preventAgentWorkInputSubmit} placeholder="app/page.tsx, tests" />
+                  <button type="button" onClick={() => void addAgentWorkItem()} disabled={agentCommandRunning || !agentWorkActor.trim()}>Add to shared work</button>
+                </div>
+              </details>
+              <div className="agent-work-list" aria-label="Shared Codex and Claude work items">
+                {agentWorkLedgerView.items.map((item) => (
+                  <button type="button" key={item.id} className={selectedAgentWorkItem?.id === item.id ? "active" : ""} onClick={() => setAgentWorkSelectedId(item.id)} data-work-id={item.id} data-work-status={item.status}>
+                    <span><b>{item.title}</b><i>{item.priority}</i></span>
+                    <small>{item.kind} · {item.status}{item.claim ? ` · ${item.claim.holder} ${item.claimState}` : " · unclaimed"}</small>
+                  </button>
+                ))}
+                {!agentWorkLedgerView.items.length && <div className="agent-work-empty">No shared work matches this view. Add one here or call <code>add_work_item</code> headlessly.</div>}
+              </div>
+              {selectedAgentWorkItem && (
+                <article className="agent-work-detail" data-work-id={selectedAgentWorkItem.id}>
+                  <header><div><b>{selectedAgentWorkItem.title}</b><code>{selectedAgentWorkItem.id}</code></div><span>{selectedAgentWorkItem.status}</span></header>
+                  <p>{selectedAgentWorkItem.summary}</p>
+                  {selectedAgentWorkItem.scope.length > 0 && <small>Scope: {selectedAgentWorkItem.scope.join(" · ")}</small>}
+                  <div className="agent-work-claim-actions">
+                    <button type="button" onClick={() => void claimAgentWorkItem(selectedAgentWorkItem)} disabled={agentCommandRunning || !agentWorkActor.trim() || (selectedAgentWorkItem.claimState === "active" && selectedAgentWorkItem.claim?.holder !== agentWorkActor)}>{selectedAgentWorkItem.claimState === "active" && selectedAgentWorkItem.claim?.holder === agentWorkActor ? "Renew 2h claim" : selectedAgentWorkItem.claimState === "active" ? `Claimed by ${selectedAgentWorkItem.claim?.holder}` : "Claim for 2h"}</button>
+                    <button type="button" onClick={() => void releaseAgentWorkItem(selectedAgentWorkItem)} disabled={agentCommandRunning || !selectedAgentWorkItem.claim || (selectedAgentWorkItem.claimState === "active" && selectedAgentWorkItem.claim.holder !== agentWorkActor)}>Release</button>
+                  </div>
+                  <label htmlFor="looplab-agent-work-blockers">Blockers</label>
+                  <input id="looplab-agent-work-blockers" value={agentWorkBlockers} onChange={(event) => setAgentWorkBlockers(event.target.value)} onKeyDown={preventAgentWorkInputSubmit} placeholder="Required before marking blocked" />
+                  <label htmlFor="looplab-agent-work-result">Result summary</label>
+                  <textarea id="looplab-agent-work-result" value={agentWorkResultSummary} onChange={(event) => setAgentWorkResultSummary(event.target.value)} placeholder="What changed or why it was rejected" />
+                  <label htmlFor="looplab-agent-work-evidence">Evidence references</label>
+                  <input id="looplab-agent-work-evidence" value={agentWorkEvidence} onChange={(event) => setAgentWorkEvidence(event.target.value)} onKeyDown={preventAgentWorkInputSubmit} placeholder="test name, commit, report path" />
+                  <div className="agent-work-status-actions">
+                    <button type="button" onClick={() => void setAgentWorkItemStatus(selectedAgentWorkItem, "open")} disabled={agentCommandRunning || (selectedAgentWorkItem.claimState === "active" && selectedAgentWorkItem.claim?.holder !== agentWorkActor)}>Open</button>
+                    <button type="button" onClick={() => void setAgentWorkItemStatus(selectedAgentWorkItem, "blocked")} disabled={agentCommandRunning || !agentWorkBlockers.trim() || (selectedAgentWorkItem.claimState === "active" && selectedAgentWorkItem.claim?.holder !== agentWorkActor)}>Blocked</button>
+                    <button type="button" onClick={() => void setAgentWorkItemStatus(selectedAgentWorkItem, "landed")} disabled={agentCommandRunning || !agentWorkResultSummary.trim() || !agentWorkEvidence.trim() || (selectedAgentWorkItem.claimState === "active" && selectedAgentWorkItem.claim?.holder !== agentWorkActor)}>Landed</button>
+                    <button type="button" onClick={() => void setAgentWorkItemStatus(selectedAgentWorkItem, "rejected")} disabled={agentCommandRunning || !agentWorkResultSummary.trim() || (selectedAgentWorkItem.claimState === "active" && selectedAgentWorkItem.claim?.holder !== agentWorkActor)}>Rejected</button>
+                  </div>
+                </article>
+              )}
+              <code className="agent-work-digest">{agentWorkLedgerView.ledgerDigest}</code>
+              <small>Coordination is stored with the editable project, but never sent to a provider, counted as game-source evidence, or included in exported HTML. It never runs work by itself.</small>
+            </section>
+            <section className="agent-macro-console" aria-labelledby="agent-macro-heading">
+              <header><strong id="agent-macro-heading">Proven command macro</strong><small>Preview exact plan → apply atomically</small></header>
+              <label htmlFor="looplab-agent-macro">Macro</label>
+              <select id="looplab-agent-macro" value={agentMacroId} onChange={(event) => selectAgentMacro(event.target.value)}>
+                {commandMacroRegistry.macros.map((macro) => <option key={macro.id} value={macro.id}>{macro.title}</option>)}
+              </select>
+              <small>{commandMacroRegistry.macros.find((macro) => macro.id === agentMacroId)?.description}</small>
+              <label htmlFor="looplab-agent-macro-parameters">Strict parameters</label>
+              <textarea id="looplab-agent-macro-parameters" aria-label="Command macro parameters JSON" value={agentMacroParametersText} onChange={(event) => { setAgentMacroParametersText(event.target.value); setAgentMacroPlan(null); }} spellCheck={false} />
+              {agentMacroPlan && (
+                <div className={`agent-macro-plan ${agentMacroPlan.applicable && agentMacroPlanFresh ? "is-ready" : "is-blocked"}`} role="status">
+                  <b>{!agentMacroPlanFresh ? "Preview stale" : agentMacroPlan.applicable ? "Ready to apply" : "Doctor blocked"}</b>
+                  <span>{agentMacroPlan.commands.length} commands · Current Doctor {agentMacroPlan.doctor.before.score} → {agentMacroPlan.doctor.after.score}{agentMacroPlan.doctor.release ? ` · Release ${agentMacroPlan.doctor.release.before.score} → ${agentMacroPlan.doctor.release.after.score}` : ""}</span>
+                  <code>{agentMacroPlan.expansionDigest.slice(0, 28)}…</code>
+                  {agentMacroPlan.doctor.newBlockers.slice(0, 2).map((issue) => <small key={issue.code}>{issue.code}: {issue.message}</small>)}
+                </div>
+              )}
+              <div className="agent-macro-actions">
+                <button type="button" onClick={() => void runAgentMacroPreview()} disabled={agentCommandRunning}>Preview macro</button>
+                <button type="button" onClick={() => void applyAgentMacroPlan()} disabled={agentCommandRunning || !agentMacroPlan || !agentMacroPlanFresh || !agentMacroPlan.applicable}>Apply exact plan</button>
+              </div>
+            </section>
+            <section id="looplab-agent-mechanical-repair" className="agent-macro-console agent-repair-console" aria-labelledby="agent-repair-heading" data-source-digest={agentRepairPlan?.sourceDigest ?? agentConvergencePlan?.sourceDigest ?? ""} data-repair-digest={agentRepairPlan?.repairDigest ?? ""} data-convergence-digest={agentConvergencePlan?.convergenceDigest ?? ""} data-preview-fresh={(agentRepairPlan ? agentRepairPlanFresh : agentConvergencePlan ? agentConvergencePlanFresh : false) ? "true" : "false"}>
+              <header><strong id="agent-repair-heading">Mechanical Doctor repair</strong><small>Dry run first · no provider · no design guesses</small></header>
+              <p>Repairs only deterministic placement and metadata invariants through the same canonical commands used by Codex and Claude. Route design, tuning, reachability, art, and ambiguous geometry stay in the residue.</p>
+              <label htmlFor="looplab-agent-repair-codes">Finding codes <small>optional, comma separated</small></label>
+              <input id="looplab-agent-repair-codes" value={agentRepairCodes} onChange={(event) => { setAgentRepairCodes(event.target.value); setAgentRepairPlan(null); setAgentConvergencePlan(null); }} placeholder="support-gap, collision-owner, object-clipped-by-map" />
+              <div className="agent-repair-limits">
+                <label htmlFor="looplab-agent-repair-limit">Repairs per pass<input id="looplab-agent-repair-limit" type="number" min={1} max={24} value={agentRepairLimit} onChange={(event) => { setAgentRepairLimit(Math.max(1, Math.min(24, Number(event.target.value) || 1))); setAgentRepairPlan(null); setAgentConvergencePlan(null); }} /></label>
+                <label htmlFor="looplab-agent-convergence-passes">Convergence passes<input id="looplab-agent-convergence-passes" type="number" min={1} max={6} value={agentConvergencePasses} onChange={(event) => { setAgentConvergencePasses(Math.max(1, Math.min(6, Number(event.target.value) || 1))); setAgentConvergencePlan(null); }} /></label>
+              </div>
+              {agentRepairPlan && (
+                <div className={`agent-macro-plan agent-repair-plan ${agentRepairPlan.applicable && agentRepairPlanFresh ? "is-ready" : "is-blocked"}`} role="status">
+                  <b>{!agentRepairPlanFresh ? "Repair preview stale" : agentRepairPlan.applicable ? "Exact safe repairs ready" : agentRepairPlan.safeRepairCount ? "Projected repair blocked" : "Judgment required"}</b>
+                  <span>{agentRepairPlan.safeRepairCount} target repairs · {agentRepairPlan.commandCount} canonical commands · Current Doctor {agentRepairPlan.doctor.current.before.score} → {agentRepairPlan.doctor.current.after.score} · Release {agentRepairPlan.doctor.release.before.score} → {agentRepairPlan.doctor.release.after.score}</span>
+                  <code>{agentRepairPlan.repairDigest.slice(0, 28)}…</code>
+                  {agentRepairPlan.repairs.slice(0, 4).map((repair) => <small key={`${repair.scope}-${repair.targetId}`}>{repair.targetId} · {repair.findingCodes.join(", ")}: {repair.summary}</small>)}
+                  {agentRepairPlan.residue.slice(0, 3).map((issue, index) => <small key={`${issue.code}-${issue.objectId ?? issue.assetId ?? issue.featureId ?? issue.mapId ?? index}`}><b>{issue.code}</b> remains: {issue.reason}</small>)}
+                  {agentRepairPlan.omittedResidueCount > 0 && <small>+{agentRepairPlan.omittedResidueCount} additional residue findings in the JSON receipt.</small>}
+                </div>
+              )}
+              {agentConvergencePlan && (
+                <div className={`agent-macro-plan agent-repair-plan ${agentConvergencePlan.applicable && agentConvergencePlanFresh ? "is-ready" : "is-blocked"}`} role="status">
+                  <b>{!agentConvergencePlanFresh ? "Convergence preview stale" : agentConvergencePlan.applicable ? "Exact bounded convergence ready" : `Stopped: ${agentConvergencePlan.stopReason}`}</b>
+                  <span>{agentConvergencePlan.passCount} passes · {agentConvergencePlan.totalRepairCount} repairs · {agentConvergencePlan.totalCommandCount} commands · Current Doctor {agentConvergencePlan.initialDoctor?.score ?? doctorReport.score} → {agentConvergencePlan.finalDoctor.score} · Release {agentConvergencePlan.initialReleaseDoctor?.score ?? agentConvergencePlan.finalReleaseDoctor.score} → {agentConvergencePlan.finalReleaseDoctor.score}</span>
+                  <code>{agentConvergencePlan.convergenceDigest.slice(0, 28)}…</code>
+                  {agentConvergencePlan.passes.map((pass) => <small key={pass.pass}>Pass {pass.pass}: {pass.safeRepairCount} repairs · {pass.findingCodes.join(", ")}</small>)}
+                  {agentConvergencePlan.residue.slice(0, 3).map((issue, index) => <small key={`${issue.code}-${issue.objectId ?? issue.assetId ?? issue.featureId ?? issue.mapId ?? index}`}><b>{issue.code}</b> remains: {issue.reason}</small>)}
+                  <small>Stop reason: {agentConvergencePlan.stopReason}{agentConvergencePlan.remainingSafeRepairCount ? ` · ${agentConvergencePlan.remainingSafeRepairCount} safe repairs remain beyond this bound` : ""}</small>
+                </div>
+              )}
+              <div className="agent-repair-actions">
+                <button type="button" onClick={() => void runAgentMechanicalRepairPreview()} disabled={agentCommandRunning}>{agentCommandRunning ? "Checking…" : "Preview safe repairs"}</button>
+                <button type="button" onClick={() => void applyAgentMechanicalRepair()} disabled={agentCommandRunning || !agentRepairPlan || !agentRepairPlanFresh || !agentRepairPlan.applicable}>Apply exact repairs</button>
+                <button type="button" onClick={() => void runAgentConvergencePreview()} disabled={agentCommandRunning}>{agentCommandRunning ? "Checking…" : "Preview bounded converge"}</button>
+                <button type="button" onClick={() => void applyAgentConvergence()} disabled={agentCommandRunning || !agentConvergencePlan || !agentConvergencePlanFresh || !agentConvergencePlan.applicable}>Apply exact convergence</button>
+              </div>
+              <small>Dry runs never persist. Apply re-plans current truth and requires the exact source plus repair/convergence digest; cycles, stale plans, invalid output, and new Doctor blockers fail closed.</small>
+            </section>
+            <section id="looplab-agent-batch-preview" className="agent-macro-console agent-batch-console" aria-labelledby="agent-batch-heading" data-source-digest={agentBatchPreview?.sourceDigest ?? ""} data-preview-digest={agentBatchPreview?.previewDigest ?? ""} data-preview-fresh={agentBatchPreviewFresh ? "true" : "false"}>
+              <header><strong id="agent-batch-heading">Review arbitrary command batch</strong><small>Clone dry-run → exact digest → atomic apply</small></header>
+              <label htmlFor="looplab-agent-batch-summary">Coherent pass summary</label>
+              <input id="looplab-agent-batch-summary" value={agentBatchSummary} onChange={(event) => { setAgentBatchSummary(event.target.value); setAgentBatchPreview(null); }} maxLength={1200} placeholder="What this exact batch changes" />
+              <label htmlFor="looplab-agent-batch-commands">Canonical core commands</label>
+              <textarea id="looplab-agent-batch-commands" aria-label="Canonical command batch JSON" value={agentBatchCommandsText} onChange={(event) => { setAgentBatchCommandsText(event.target.value); setAgentBatchPreview(null); }} spellCheck={false} />
+              {agentBatchPreview && (
+                <div className={`agent-macro-plan ${agentBatchPreview.applicable && agentBatchPreviewFresh ? "is-ready" : "is-blocked"}`} role="status">
+                  <b>{!agentBatchPreviewFresh ? "Preview stale" : agentBatchPreview.applicable ? "Exact batch ready" : agentBatchPreview.rolledBack ? "Dry-run rejected and rolled back" : "Doctor blocked"}</b>
+                  <span>{agentBatchPreview.commandCount} commands · Current Doctor {agentBatchPreview.doctor.before.score} → {agentBatchPreview.doctor.after.score} · Release {agentBatchPreview.doctor.release.before.score} → {agentBatchPreview.doctor.release.after.score}</span>
+                  <code>{agentBatchPreview.previewDigest.slice(0, 28)}…</code>
+                  {agentBatchPreview.commandErrors.slice(0, 3).map((issue) => <small key={`${issue.index}-${issue.stage}-${issue.message}`}>#{issue.index + 1} {issue.op ?? "unknown"} · {issue.stage}: {issue.message}</small>)}
+                  {agentBatchPreview.doctor.newBlockers.slice(0, 3).map((issue) => <small key={`${issue.code}-${issue.message}`}>{issue.code}: {issue.message}</small>)}
+                </div>
+              )}
+              <div className="agent-macro-actions">
+                <button type="button" onClick={() => void runAgentBatchPreview()} disabled={agentCommandRunning || !agentBatchSummary.trim()}>{agentCommandRunning ? "Checking…" : "Preview batch"}</button>
+                <button type="button" onClick={() => void applyAgentBatchPreview()} disabled={agentCommandRunning || !agentBatchPreview || !agentBatchPreviewFresh || !agentBatchPreview.applicable}>Apply exact reviewed batch</button>
+              </div>
+              <small>Only side-effect-free core project mutations are accepted. Provider, browser, coordination, lifecycle, nested macro, and nested batch operations keep their own workflows.</small>
+            </section>
+            <label htmlFor="looplab-agent-command">Command JSON</label>
+            <textarea id="looplab-agent-command" aria-label="Looplab agent command JSON" value={agentCommandText} onChange={(event) => setAgentCommandText(event.target.value)} spellCheck={false} />
+            <button id="looplab-agent-submit" type="submit" disabled={agentCommandRunning}>{agentCommandRunning ? "Running…" : "Run command"}</button>
+            <label htmlFor="looplab-agent-result">Result JSON</label>
+            <textarea id="looplab-agent-result" aria-label="Looplab agent result JSON" value={agentCommandResult} readOnly spellCheck={false} />
+          </form>
+        </details>
+        <button onClick={() => setShowHelp(true)}>Shortcuts</button>
+        <span>LOOPLAB / LOCAL-FIRST</span>
+      </footer>
+
+      {showExportPreview && lastExportReceipt && (
+        <ModalShell dismissLabel="Close exported game preview" onDismiss={() => setShowExportPreview(false)}>
+          <section className="modal export-preview-modal" role="dialog" aria-modal="true" aria-labelledby="export-preview-title" data-source-digest={lastExportReceipt.source.sourceDigest}>
+            <button className="modal-close" onClick={() => setShowExportPreview(false)} aria-label="Close">×</button>
+            <header className="export-preview-header">
+              <div><span className="eyebrow">Exact audited artifact</span><h2 id="export-preview-title">{lastExportReceipt.filename}</h2><p>{lastExportReceipt.release.exportProfile === "hosted" ? "Running inside a scripts-only sandbox with an opaque origin. Automatic storage is intentionally unavailable in this proof surface; portable save codes remain testable." : "Running inside a scripts-only sandbox with an opaque origin—no provider, companion, server, storage, or external files."}</p></div>
+              <div className="export-preview-proof"><strong>{formatBytes(lastExportReceipt.artifact.byteLength)}</strong><span>{lastExportReceipt.artifact.uploadFileCount} upload file</span><span>{lastExportReceipt.artifact.checks.filter((check) => check.passed).length}/{lastExportReceipt.artifact.checks.length} checks passed</span></div>
+            </header>
+            <div className={`export-preview-source-status ${exportReceiptFresh ? "is-current" : "is-stale"}`} role="status">{exportReceiptFresh ? "Receipt matches the current editable source." : "This preview is the previous export. The editable project has changed since its source receipt."}</div>
+            <iframe className="export-preview-frame" title={`Audited export preview: ${lastExportReceipt.filename}`} sandbox="allow-scripts" referrerPolicy="no-referrer" srcDoc={exportPreviewHtml} />
+            <footer className="export-preview-footer"><span>Source {lastExportReceipt.source.sourceDigest} · runtime {lastExportReceipt.runtime.version}</span><button onClick={exportHtml}>Download HTML again</button><button className="primary" onClick={() => setShowExportPreview(false)}>Return to builder</button></footer>
+          </section>
+        </ModalShell>
+      )}
+
+      {showTemplates && (
+        <ModalShell dismissLabel="Close template chooser" onDismiss={() => setShowTemplates(false)}>
+          <section className="modal template-modal" role="dialog" aria-modal="true" aria-labelledby="template-title">
+            <button className="modal-close" onClick={() => setShowTemplates(false)} aria-label="Close">×</button>
+            <span className="eyebrow">Start a fresh loop</span>
+            <h2 id="template-title">Choose a game shape</h2>
+            <p>Pick a working foundation. Every object, color, and rule stays editable.</p>
+            <div className="template-grid">
+              <button onClick={() => { startProjectTemplate("dimetric"); setShowTemplates(false); setExperienceMode("workbench"); setMapStudioFocused(true); setMobileTab("stage"); setMapTool("navigation"); setShowPaths(true); setShowColliders(true); setSelectedId(null); showToast("Dimetric City added to the project library"); }}>
+                <span className="template-art dimetric-art"><i /><i /><i /><b /></span>
+                <strong>Dimetric City</strong><small>Exact 128×64 · ground + raised routes · underpass proof</small>
+              </button>
+              <button onClick={() => { startProjectTemplate("kinetic"); setShowTemplates(false); setMapStudioFocused(false); showToast("Kinetic City added to the project library"); }}>
+                <span className="template-art platformer-art kinetic-art"><i /><i /><b /></span>
+                <strong>Kinetic City</strong><small>Polished art · 2 maps · authored rails</small>
+              </button>
+              <button onClick={() => { startProjectTemplate("platformer"); setShowTemplates(false); setMapStudioFocused(false); showToast("Pocket Platformer added to the project library"); }}>
+                <span className="template-art platformer-art"><i /><i /><b /></span>
+                <strong>Pocket Platformer</strong><small>Run, jump, collect</small>
+              </button>
+              <button onClick={() => { startProjectTemplate("topdown"); setShowTemplates(false); setMapStudioFocused(false); showToast("Tiny Quest added to the project library"); }}>
+                <span className="template-art topdown-art"><i /><i /><b /></span>
+                <strong>Tiny Quest</strong><small>Explore in four directions</small>
+              </button>
+              <button onClick={() => { startProjectTemplate("systems"); setShowTemplates(false); setMapStudioFocused(false); showToast("Lantern Market Ledger added to the project library"); }}>
+                <span className="template-art systems-art"><i /><i /><b /></span>
+                <strong>Lantern Market Ledger</strong><small>Choices · economy · days · formulas · no movement required</small>
+              </button>
+              <button onClick={() => { startProjectTemplate("blank"); setShowTemplates(false); setMapStudioFocused(false); showToast("Blank Stage added to the project library"); }}>
+                <span className="template-art blank-art"><i /></span>
+                <strong>Blank Stage</strong><small>Start with the essentials</small>
+              </button>
+            </div>
+          </section>
+        </ModalShell>
+      )}
+
+      {showAssetLab && (
+        <ModalShell dismissLabel="Close Tile and Sprite Lab" onDismiss={() => setShowAssetLab(false)}>
+          <section className="modal asset-lab-modal" role="dialog" aria-modal="true" aria-labelledby="asset-lab-title">
+            <button className="modal-close" onClick={() => setShowAssetLab(false)} aria-label="Close">×</button>
+            <div className="asset-lab-header"><div><span className="eyebrow">Anchor-aware & collision-safe</span><h2 id="asset-lab-title">Tile & Sprite Lab</h2><p>Generate cohesive assets or choose verified CC0 sources. Art never becomes collision automatically.</p></div><div className="asset-tabs"><button className={assetLabTab === "tiles" ? "active" : ""} onClick={() => { setAssetLabTab("tiles"); setAiArtActions("ground\nedge\ncorner\nwall\naccent\ntransition"); }}>Tile set</button><button className={assetLabTab === "sprites" ? "active" : ""} onClick={() => { setAssetLabTab("sprites"); setAiArtActions("idle\nmove-contact\nmove-pass\nmove-recoil"); }}>Sprites & characters</button><button className={assetLabTab === "library" ? "active" : ""} onClick={() => setAssetLabTab("library")}>CC0 library</button></div></div>
+            {assetLabTab === "library" ? (
+              <div className="cc0-library">
+                <nav className="cc0-category-list" aria-label="Commercial-use asset categories">
+                  <div><span className="eyebrow">Asset types</span><strong>Choose a category</strong></div>
+                  {CC0_ASSET_CATEGORIES.map((category) => <button key={category.id} className={assetLibraryCategory === category.id ? "active" : ""} onClick={() => { closeInstalledAssetPack(); setAssetLibraryCategory(category.id as AssetLibraryCategoryId); }}><span>{category.glyph}</span><strong>{category.label}</strong><small>{CC0_ASSET_PACKS.filter((pack) => pack.categories.includes(category.id)).length}</small></button>)}
+                </nav>
+                <section className="cc0-library-results" aria-label={`${selectedAssetLibraryCategory.label} asset packs`}>
+                  {selectedAssetPackId ? <>
+                    <header className="pack-browser-header"><div><button onClick={closeInstalledAssetPack}>← All {selectedAssetLibraryCategory.label.toLowerCase()} packs</button><span className="eyebrow">Installed local pack</span><h3>{selectedAssetPackIndex?.pack.title ?? "Loading pack…"}</h3><p>{selectedAssetPackIndex ? `${selectedAssetPackIndex.installedAssetCount.toLocaleString()} browseable files · ${selectedAssetPackIndex.archiveOnlyAssetCount.toLocaleString()} source/duplicate files catalogued in the verified archive index` : "Reading the local index…"}</p></div>{selectedAssetPackIndex && <div className="pack-source-links"><a href={selectedAssetPackIndex.pack.sourceUrl} target="_blank" rel="noreferrer">Creator page ↗</a><a href={selectedAssetPackIndex.pack.licenseUrl} target="_blank" rel="noreferrer">CC0 evidence ↗</a></div>}</header>
+                    <div className="cc0-policy-card"><span>CC0</span><div><strong>Every imported file keeps this pack, archive, path, hash, source, and license reference</strong><small>Visual art never generates collision. Imported images receive an authored-only collision policy and can be placed from the project shelf.</small></div></div>
+                    {assetPackLoading || !selectedAssetPackIndex ? <div className="pack-browser-loading"><span>◌</span><strong>Opening local pack index…</strong></div> : <>
+                      <div className="pack-browser-toolbar">
+                        <label><span>Search this pack</span><input value={assetPackSearch} onChange={(event) => { setAssetPackSearch(event.target.value); setAssetPackPage(0); }} placeholder="Name, folder, archive…" /></label>
+                        <label><span>File type</span><select value={assetPackKindFilter} onChange={(event) => { setAssetPackKindFilter(event.target.value as "all" | InstalledPackAsset["kind"]); setAssetPackPage(0); }}><option value="all">All browseable files</option><option value="image">Images</option><option value="audio">Audio</option><option value="font">Fonts</option><option value="map-data">Map data</option><option value="document">Documents</option></select></label>
+                        <div><strong>{filteredPackAssets.length.toLocaleString()}</strong><span>matching files</span></div>
+                        <div><strong>{formatBytes(selectedAssetPackIndex.pack.archiveBytes)}</strong><span>catalogued source archives</span></div>
+                      </div>
+                      <div className="pack-browser-workspace">
+                        <div className="pack-assets-panel">
+                          <div className="pack-assets-grid" aria-label={`${selectedAssetPackIndex.pack.title} files`}>
+                            {visiblePackAssets.map((asset) => <button key={asset.id} className={`${selectedPackAssetIds.includes(asset.id) ? "selected" : ""} ${focusedPackAssetId === asset.id ? "focused" : ""}`.trim()} aria-pressed={selectedPackAssetIds.includes(asset.id)} onClick={() => togglePackAssetSelection(asset.id)} title={asset.path}>
+                              <span className={`pack-asset-thumb kind-${asset.kind}`}>{asset.kind === "image" ? <img src={asset.url} alt="" loading="lazy" decoding="async" /> : asset.kind === "audio" ? "♪" : asset.kind === "font" ? "Aa" : asset.kind === "map-data" ? "{}" : "TXT"}</span>
+                              <span className="pack-asset-label"><strong>{asset.name}</strong><small>{asset.width && asset.height ? `${asset.width}×${asset.height} · ` : ""}{formatBytes(asset.bytes)}</small><small>{asset.archiveId} / {asset.directory || "root"}</small></span>
+                              <i>{selectedPackAssetIds.includes(asset.id) ? "✓" : "+"}</i>
+                            </button>)}
+                            {visiblePackAssets.length === 0 && <div className="pack-assets-empty"><span>⌕</span><strong>No matching files</strong><small>Change the search text or file type.</small></div>}
+                          </div>
+                          <div className="pack-pagination"><button onClick={() => setAssetPackPage((page) => Math.max(0, page - 1))} disabled={assetPackPage === 0}>← Previous</button><span>Page {assetPackPage + 1} of {assetPackPageCount}</span><button onClick={() => setAssetPackPage((page) => Math.min(assetPackPageCount - 1, page + 1))} disabled={assetPackPage + 1 >= assetPackPageCount}>Next →</button></div>
+                        </div>
+                        <aside className="pack-asset-preview" aria-live="polite">
+                          {focusedPackAsset ? <>
+                            <div className={`pack-preview-media kind-${focusedPackAsset.kind}`}>
+                              {focusedPackAsset.kind === "image" && <img src={focusedPackAsset.url} alt={`${focusedPackAsset.name} full preview`} />}
+                              {focusedPackAsset.kind === "audio" && <audio controls preload="metadata" src={focusedPackAsset.url}>Audio preview is unavailable in this browser.</audio>}
+                              {focusedPackAsset.kind === "font" && <><style>{`@font-face{font-family:"LooplabPackPreview";src:url("${focusedPackAsset.url}")}`}</style><span style={{ fontFamily: '"LooplabPackPreview", sans-serif' }}>Aa Bb 0123<br />Jump & grind</span></>}
+                              {!["image", "audio", "font"].includes(focusedPackAsset.kind) && <span className="pack-file-glyph">{focusedPackAsset.kind === "map-data" ? "{}" : "TXT"}</span>}
+                            </div>
+                            <div className="pack-preview-meta"><span className="eyebrow">Selected file preview</span><h4>{focusedPackAsset.name}</h4><p>{focusedPackAsset.path}</p><dl><div><dt>Type</dt><dd>{focusedPackAsset.kind} · {focusedPackAsset.mimeType}</dd></div><div><dt>Size</dt><dd>{formatBytes(focusedPackAsset.bytes)}{focusedPackAsset.width && focusedPackAsset.height ? ` · ${focusedPackAsset.width}×${focusedPackAsset.height}` : ""}</dd></div><div><dt>Archive</dt><dd>{focusedPackAsset.archiveId}</dd></div><div><dt>SHA-256</dt><dd title={focusedPackAsset.sha256}>{focusedPackAsset.sha256.slice(0, 16)}…</dd></div></dl><a href={focusedPackAsset.url} target="_blank" rel="noreferrer">View original file ↗</a></div>
+                          </> : <div className="pack-preview-empty"><span>◫</span><strong>Select a file to view it</strong><small>Click once to select and open its real local preview.</small></div>}
+                        </aside>
+                      </div>
+                      <div className="pack-selection-bar"><div><strong>{selectedPackAssetIds.length} selected</strong><small>Images become project assets. Audio, fonts, and data become embedded project resources.</small></div><button onClick={() => setSelectedPackAssetIds([])} disabled={!selectedPackAssetIds.length}>Clear</button><button className="primary" onClick={() => void importSelectedPackAssets()} disabled={!selectedPackAssetIds.length || assetPackImporting}>{assetPackImporting ? "Importing…" : "Add selected to project"}</button></div>
+                    </>}
+                  </> : <>
+                    <header><div><span className="eyebrow">Verified & installed for commercial projects</span><h3>{selectedAssetLibraryCategory.label}</h3><p>{visibleCc0Packs.length} local pack{visibleCc0Packs.length === 1 ? "" : "s"} · {(assetPackManifest?.installedAssetCount ?? 0).toLocaleString()} total browseable files. “Free” price alone never qualifies a pack.</p></div><a href={selectedAssetLibraryCategory.browseUrl} target="_blank" rel="noreferrer">Research more candidates ↗</a></header>
+                    <div className="cc0-policy-card"><span>CC0</span><div><strong>Commercial use, modification, and redistribution allowed</strong><small>No attribution required. Source and license evidence remain attached to every entry. Third-party trademark and personality rights are still separate.</small></div></div>
+                    {assetPackManifestError && <div className="pack-library-error"><strong>Installed library unavailable</strong><span>{assetPackManifestError}</span><button onClick={() => void refreshAssetPackManifest()}>Retry</button></div>}
+                    <div className="cc0-pack-grid">
+                      {visibleCc0Packs.map((pack) => {
+                        const installed = installedPackById.get(pack.id);
+                        return <article key={pack.id}>
+                          <div className="cc0-pack-top"><span className="cc0-pack-glyph">{selectedAssetLibraryCategory.glyph}</span><span className="cc0-license-badge">{installed ? "INSTALLED · CC0" : "CHECKING LOCAL PACK"}</span></div>
+                          <h4>{pack.title}</h4>
+                          <p>{pack.description}</p>
+                          <dl><div><dt>By</dt><dd>{pack.author}</dd></div><div><dt>Local</dt><dd>{installed ? `${installed.installedAssetCount.toLocaleString()} browseable files` : "Reading manifest…"}</dd></div><div><dt>Includes</dt><dd>{pack.contents}</dd></div><div><dt>Formats</dt><dd>{pack.formats.join(" · ")}</dd></div><div><dt>Verified</dt><dd>{pack.verifiedAt}</dd></div></dl>
+                          <div className="cc0-rights"><span>✓ Commercial</span><span>✓ Modify</span><span>✓ Redistribute</span><span>✓ No credit required</span></div>
+                          <details><summary>Why it qualifies</summary><p>{pack.licenseEvidence}</p></details>
+                          <div className="cc0-pack-actions"><button className="primary" onClick={() => void openInstalledAssetPack(pack.id)} disabled={!installed}>Browse & select pack</button><a href={pack.licenseUrl} target="_blank" rel="noreferrer">Read CC0</a></div>
+                        </article>;
+                      })}
+                    </div>
+                  </>}
+                </section>
+              </div>
+            ) : (<>
+            <div className="asset-lab-grid">
+              <div className="asset-controls">
+                <div className="asset-source-toggle" role="group" aria-label="Asset generation source">
+                  <button className={assetGenerationMode === "ai" ? "active" : ""} onClick={() => {
+                    setAssetGenerationMode("ai");
+                    if (!aiArtPresentationState(generatedAsset).verified) setGeneratedAsset(null);
+                  }}>AI art · polished</button>
+                  <button className={assetGenerationMode === "local" ? "active" : ""} onClick={() => setAssetGenerationMode("local")}>Instant local fallback</button>
+                </div>
+                <label className="field full"><span>Seed / identity reference</span><input value={generatorSeed} onChange={(event) => setGeneratorSeed(event.target.value)} /></label>
+                {assetGenerationMode === "ai" && <>
+                  <label className="field full"><span>Visual direction</span><textarea rows={5} value={aiArtPrompt} onChange={(event) => setAiArtPrompt(event.target.value)} placeholder="Describe the exact character, prop, environment, or tiles you want…" /></label>
+                  <label className="field full"><span>{assetLabTab === "tiles" ? "Tile cells" : "Animation frames"} · one per line</span><textarea rows={5} value={aiArtActions} onChange={(event) => setAiArtActions(event.target.value)} /></label>
+                  <div className="asset-ai-options">
+                    <label className="field"><span>Draft quality</span><select value={aiArtQuality} onChange={(event) => setAiArtQuality(event.target.value as "low" | "medium" | "high")}><option value="low">Low · fast draft</option><option value="medium">Medium</option><option value="high">High · final</option></select></label>
+                    <label className="field"><span>Source background</span><select value={aiArtBackground} onChange={(event) => setAiArtBackground(event.target.value as "transparent" | "light-neutral-gray")}><option value="transparent">Transparent PNG</option><option value="light-neutral-gray">Light-grey review matte</option></select></label>
+                  </div>
+                  <div className="asset-identity-options">
+                    <label><input type="checkbox" checked={aiArtUseVisualIdentity} onChange={(event) => { setAiArtUseVisualIdentity(event.target.checked); if (!event.target.checked) setAiArtReferenceConsent(false); }} disabled={!project.visualIdentity} /><span>Inherit project visual identity</span></label>
+                    <small>{project.visualIdentity ? `${applicableVisualIdentityReferences.length} applicable reference${applicableVisualIdentityReferences.length === 1 ? "" : "s"} · ${aiArtImageReferenceCount} image upload${aiArtImageReferenceCount === 1 ? "" : "s"}` : "No project identity is authored; this job uses its own visual direction."}</small>
+                    {aiArtUseVisualIdentity && aiArtImageReferenceCount > 0 && <label className="reference-consent"><input type="checkbox" checked={aiArtReferenceConsent} onChange={(event) => setAiArtReferenceConsent(event.target.checked)} /><span>Allow this one job to upload {aiArtImageReferenceCount} referenced PNG{aiArtImageReferenceCount === 1 ? "" : "s"}</span></label>}
+                  </div>
+                  <div className="asset-provider-note"><strong>OpenAI Image API</strong><span>One durable job · one complete sheet · no UI timeout · collision stays authored</span></div>
+                  <div className="asset-ai-actions"><button className="primary" onClick={() => void runAiArtGeneration()} disabled={aiArtRunning || !aiArtPrompt.trim() || (aiArtUseVisualIdentity && aiArtImageReferenceCount > 0 && !aiArtReferenceConsent)}>{aiArtRunning ? "Generating…" : "Generate game-ready art"}</button>{aiArtRunning && <button onClick={() => void cancelAiArtGeneration()}>Cancel</button>}</div>
+                </>}
+                {assetLabTab === "tiles" ? <>
+                  {assetGenerationMode === "local" && <label className="field full"><span>World theme</span><select value={tileTheme} onChange={(event) => setTileTheme(event.target.value)}>{TILE_THEME_NAMES.map((theme) => <option key={theme} value={theme}>{theme[0].toUpperCase() + theme.slice(1)}</option>)}</select></label>}
+                  <label className="field full"><span>Tile resolution</span><select value={tileSize} onChange={(event) => setTileSize(Number(event.target.value))}><option value="16">16×16</option><option value="32">32×32</option><option value="48">48×48</option><option value="64">64×64</option></select></label>
+                  <div className="asset-guardrails">{assetGenerationMode === "ai"
+                    ? aiArtPresentationState(generatedAsset).labels.map((label) => <span key={label}>{aiArtPresentationState(generatedAsset).verified ? "✓ " : ""}{label}</span>)
+                    : <><span>✓ Edge sealed</span><span>✓ Seam checked</span><span>✓ Sparse signature use</span></>}</div>
+                </> : <>
+                  <label className="field full"><span>Sprite role</span><select value={spriteKind} onChange={(event) => setSpriteKind(event.target.value as SpriteKind)}>{SPRITE_KIND_NAMES.map((kind) => <option key={kind} value={kind}>{({ hero: "Character / hero", enemy: "Enemy", pickup: "Pickup", prop: "Floor-standing prop", effect: "Effect / particles", ui: "UI icon" } as Record<string, string>)[kind] ?? kind}</option>)}</select></label>
+                  {assetGenerationMode === "local" && <label className="field full"><span>Locked palette</span><select value={spritePalette} onChange={(event) => setSpritePalette(event.target.value)}>{SPRITE_PALETTE_NAMES.map((palette) => <option key={palette} value={palette}>{palette[0].toUpperCase() + palette.slice(1)}</option>)}</select></label>}
+                  <label className="field full"><span>Frame resolution</span><select value={spriteSize} onChange={(event) => setSpriteSize(Number(event.target.value))}><option value="16">16×16</option><option value="32">32×32</option><option value="48">48×48</option><option value="64">64×64</option></select></label>
+                  <div className="asset-guardrails">{assetGenerationMode === "ai"
+                    ? aiArtPresentationState(generatedAsset).labels.map((label) => <span key={label}>{aiArtPresentationState(generatedAsset).verified ? "✓ " : ""}{label}</span>)
+                    : <><span>✓ Shared scale</span><span>✓ {spriteKind === "effect" || spriteKind === "ui" ? "Center anchor" : "Ground anchor"}</span><span>✓ Palette lock</span><span>✓ One subject/frame</span><span>✓ Transparent edges</span></>}</div>
+                  <button className="import-frames-button" onClick={() => spriteFrameInputRef.current?.click()}>Import frames → normalize & pack</button>
+                  <input ref={spriteFrameInputRef} className="visually-hidden" type="file" accept="image/png" multiple onChange={importSpriteFrames} />
+                </>}
+              </div>
+              <div className="asset-preview-panel">
+                <div className="asset-preview-surfaces" role="group" aria-label="Asset review background">
+                  <span>Review on</span>
+                  {(["checker", "light", "dark"] as const).map((surface) => <button key={surface} className={assetPreviewSurface === surface ? "active" : ""} aria-pressed={assetPreviewSurface === surface} onClick={() => setAssetPreviewSurface(surface)}>{surface === "checker" ? "Checker" : surface === "light" ? "Light grey" : "Dark grey"}</button>)}
+                </div>
+                <div className={`pixel-preview surface-${assetPreviewSurface}`}>{generatedAsset ? <img src={generatedAsset.dataUrl} alt={`${generatedAsset.name} preview`} /> : <span>{aiArtRunning ? "AI art job is running…" : assetGenerationMode === "ai" ? "Describe the asset, then generate a complete sheet." : "Generating preview…"}</span>}</div>
+                {generatedAsset && <div className="asset-facts"><span><b>{generatedAsset.frames}</b> packed frames</span><span><b>{generatedAsset.frameWidth}×{generatedAsset.frameHeight}</b> each</span><span><b>{formatBytes(Math.floor((generatedAsset.dataUrl.split(",")[1]?.length ?? 0) * .75))}</b> encoded</span><span><b>{formatBytes(generatedAsset.width * generatedAsset.height * 4)}</b> decoded</span></div>}
+                {assetGenerationMode === "ai" && aiArtUsage && <div className="asset-usage-receipt"><strong>{usageReceiptMessage(aiArtUsage, "Measured image job")}</strong><small>{aiArtUsage.note}</small></div>}
+                {assetMeasurement && <div className={`asset-analysis-receipt ${assetMeasurement.failedInvariants.length ? "rejected" : "passed"}`}>
+                  <strong>{assetMeasurement.failedInvariants.length ? `Measured QA found ${assetMeasurement.failedInvariants.length} issue${assetMeasurement.failedInvariants.length === 1 ? "" : "s"}` : "Measured QA passed"}</strong>
+                  <small>Scale drift {(assetMeasurement.silhouetteDrift * 100).toFixed(1)}% · packed anchor variance {assetMeasurement.anchorVariance.toFixed(2)} px · source correction {assetMeasurement.sourceAnchorVariance.toFixed(2)} px · max subject clusters {assetMeasurement.characterCountMax} · edge leakage {(assetMeasurement.edgeLeakageRatio * 100).toFixed(2)}% · halo signal {(assetMeasurement.haloPixelRatio * 100).toFixed(2)}%{assetMeasurement.tileEdgeMismatchRatio === null ? "" : ` · opposing-edge delta ${(assetMeasurement.tileEdgeMismatchRatio * 100).toFixed(1)}%`}</small>
+                  {assetMeasurement.failedInvariants.length > 0 && <div>{assetMeasurement.failedInvariants.map((failure) => <span key={failure}>{failure}</span>)}</div>}
+                </div>}
+                {generatedAsset && Array.isArray(generatedAsset.invariants?.palette) && <div className="palette-lock-row"><span>Locked palette</span><div>{(generatedAsset.invariants.palette as string[]).map((color) => <i key={color} style={{ background: color }} title={color} />)}</div><small>No cross-frame color flicker</small></div>}
+                {assetLabTab === "tiles" && generatedAsset && <div className="frame-picker" aria-label="Tile frame">{Array.from({ length: generatedAsset.frames }, (_, frame) => <button key={frame} className={selectedTileFrame === frame ? "active" : ""} onClick={() => setSelectedTileFrame(frame)}><span style={{ backgroundImage: `url(${generatedAsset.dataUrl})`, backgroundSize: `${generatedAsset.columns * 100}% auto`, backgroundPosition: `${generatedAsset.columns > 1 ? (frame % generatedAsset.columns) / (generatedAsset.columns - 1) * 100 : 0}% ${Math.floor(frame / generatedAsset.columns) > 0 ? 100 : 0}%` }} /></button>)}</div>}
+                <div className="asset-preview-actions"><button onClick={() => generatedAsset && downloadDataUrl(generatedAsset.dataUrl, `${generatedAsset.name.toLowerCase().replace(/\s+/g, "-")}.png`)} disabled={!generatedAsset}>Download PNG</button><button onClick={() => saveGeneratedAsset(false)} disabled={!generatedAsset || Boolean(assetMeasurement?.failedInvariants.length) || (assetGenerationMode === "ai" && !aiArtPresentationState(generatedAsset).verified)}>Save to library</button><button className="primary" onClick={() => saveGeneratedAsset(true)} disabled={!generatedAsset || Boolean(assetMeasurement?.failedInvariants.length) || (assetGenerationMode === "ai" && !aiArtPresentationState(generatedAsset).verified)}>Save & place</button></div>
+              </div>
+            </div>
+            {(project.assets?.length ?? 0) > 0 && <div className="asset-shelf"><div className="asset-shelf-heading"><span className="eyebrow">Project asset library</span><small>{formatBytes(memoryLedger.encodedBytes)} package · {formatBytes(memoryLedger.decodedBytes)} decoded RGBA</small></div><div>{project.assets?.map((asset) => <button key={asset.id} onClick={() => placeExistingAsset(asset)}><img src={asset.dataUrl} alt="" /><span><strong>{asset.name}</strong><small>{asset.type} · {asset.frames} frame{asset.frames === 1 ? "" : "s"}</small></span></button>)}</div></div>}
+            </>)}
+          </section>
+        </ModalShell>
+      )}
+
+      {showDoctor && (
+        <ModalShell dismissLabel="Close Project Doctor" onDismiss={() => setShowDoctor(false)}>
+          <section className="modal doctor-modal" role="dialog" aria-modal="true" aria-labelledby="doctor-title">
+            <button className="modal-close" onClick={() => setShowDoctor(false)} aria-label="Close">×</button>
+            <div className="doctor-modal-header"><div><span className="eyebrow">Whole-project technical report</span><h2 id="doctor-title">Project Doctor</h2><p>Source-bound checks for maps, assets, controls, replays, tests, devices, lifecycle, and packaging. Visual readiness is reported separately and never pretends to judge taste.</p></div><div className={`modal-score grade-${doctorReport.grade}`}><strong>{doctorReport.score}</strong><span>{doctorTechnicalLabel}</span></div></div>
+            <div className="doctor-modal-summary"><span><b>{doctorReport.errorCount}</b> blockers</span><span><b>{doctorReport.warningCount}</b> warnings</span><span><b>{doctorReport.spatial.package.assetBytes.toLocaleString()}</b> asset bytes</span><span><b>{doctorReport.spatial.mapCount}</b> linked maps</span><span title="Prose-only specifications are excluded"><b>{doctorReport.acceptanceResults.passedCount}/{doctorReport.acceptanceResults.executableCount}</b> acceptance tests pass</span><span title={replayResults.firstDivergence ? `First divergence: ${replayResults.firstDivergence.caseId} at tick ${replayResults.firstDivergence.tick}` : "Every recorded checkpoint is executed by Project Doctor"}><b>{replayResults.passedCount}/{replayResults.caseCount}</b> replay fixtures pass</span></div>
+            <div className={`doctor-narrative-proof narrative-${doctorReport.narrativeReport.status}`}>
+              <div><span><b>Narrative Report</b><small>Narrative Designer structure + Narrator/Dialogue Writer delivery, checked against runtime IDs and current evidence.</small></span><strong>{doctorReport.narrativeReport.status.replaceAll("-", " ")}</strong></div>
+              {doctorReport.narrativeReport.present ? <>
+                <div className="doctor-narrative-metrics"><span><b>{doctorReport.narrativeReport.metrics.requiredBeatCount}</b> required beats</span><span><b>{doctorReport.narrativeReport.metrics.reachablePageCount}/{doctorReport.narrativeReport.metrics.pageCount}</b> reachable pages</span><span><b>{doctorReport.narrativeReport.metrics.reachableEndingCount}/{doctorReport.narrativeReport.metrics.endingCount}</b> reachable endings</span><span><b>{doctorReport.narrativeReport.metrics.trapCycleCount}</b> trap cycles</span></div>
+                {doctorReport.narrativeReport.shortestEndingPaths.length > 0 && <div className="doctor-narrative-paths"><b>Shortest verified structure</b>{doctorReport.narrativeReport.shortestEndingPaths.map((entry: { endingId: string; path: Array<{ id: string }> }) => <small key={entry.endingId}><strong>{entry.endingId}</strong> · {entry.path.map((step: { id: string }) => step.id).join(" → ")}</small>)}</div>}
+                <p>{doctorReport.narrativeReport.proofBoundary}</p>
+              </> : <p>{doctorReport.narrativeReport.required ? "Story content is required for this candidate, but no Narrative Contract has been authored yet." : "No material story contract is active. Mechanics-only projects are not penalized."}</p>}
+            </div>
+            <div className="doctor-acceptance-proof">
+              <div><span><b>Acceptance proof</b><small>Specs describe the bar. Only current execution proves it.</small></span><button onClick={runAcceptanceProof}>Run suite</button></div>
+              <div className="doctor-acceptance-items">
+                {(doctorReport.acceptancePlan.items as AcceptancePlanItem[]).filter((item) => item.referenced).map((item) => <span key={item.id} className={`acceptance-${item.status}`} title={item.firstFailure?.id ? `Failed ${item.firstFailure.id} at tick ${item.firstFailure.tick ?? "unknown"}` : item.errors.join(" ")}><i /> <b>{item.id}</b><small>{item.status}{item.proof ? ` · ${item.proof}` : ""}</small></span>)}
+                {(doctorReport.acceptancePlan.items as AcceptancePlanItem[]).every((item) => !item.referenced) && <p>No verb, feature, or traversal evidence IDs are referenced yet.</p>}
+              </div>
+            </div>
+            <div className="doctor-modal-list">
+              {doctorReport.issues.map((issue, index) => <button key={`${issue.code}-${issue.mapId ?? ""}-${issue.objectId ?? issue.assetId ?? issue.featureId ?? ""}-${index}`} onClick={() => { setShowDoctor(false); focusDoctorIssue(issue); }}><i className={`severity-${issue.severity}`} /><span className="issue-category">{issue.category}</span><span><strong>{issue.code.replaceAll("-", " ")}</strong><small>{issue.message}</small></span>{(issue.objectId || issue.mapId) && <b>Open ↗</b>}</button>)}
+              {doctorReport.issues.length === 0 && <div className="doctor-modal-clean"><span>✓</span><strong>Candidate passes this profile</strong><p>Switch to the SHIP profile for full production verification.</p></div>}
+            </div>
+            <div className="doctor-modal-footer"><button onClick={runAcceptanceProof}>Run acceptance proof</button><button onClick={() => commit({ ...project, doctorProfile: project.doctorProfile === "production" ? "prototype" : "production" }, "Doctor profile changed")}>Switch to {project.doctorProfile === "production" ? "BUILD" : "SHIP"} profile</button><button className="primary" onClick={verifyCandidate}>Verify candidate</button></div>
+          </section>
+        </ModalShell>
+      )}
+
+      {showHelp && (
+        <ModalShell dismissLabel="Close keyboard shortcuts" onDismiss={() => setShowHelp(false)}>
+          <section className="modal help-modal" role="dialog" aria-modal="true" aria-labelledby="help-title">
+            <button className="modal-close" onClick={() => setShowHelp(false)} aria-label="Close">×</button>
+            <span className="eyebrow">Work faster</span>
+            <h2 id="help-title">Shortcuts</h2>
+            <dl>
+              <div><dt><kbd>P</kbd></dt><dd>Start preview</dd></div>
+              <div><dt><kbd>F</kbd></dt><dd>Toggle focused playtest</dd></div>
+              <div><dt><kbd>Esc</kbd></dt><dd>Show panels, then stop preview</dd></div>
+              <div><dt><kbd>↑ ↓ ← →</kbd></dt><dd>Nudge selected object</dd></div>
+              <div><dt><kbd>Shift</kbd> + <kbd>Arrow</kbd></dt><dd>Nudge by one grid step</dd></div>
+              <div><dt><kbd>Ctrl/⌘ Z</kbd></dt><dd>Undo change</dd></div>
+              <div><dt><kbd>Ctrl/⌘ D</kbd></dt><dd>Duplicate object</dd></div>
+              <div><dt><kbd>Delete</kbd></dt><dd>Remove object</dd></div>
+            </dl>
+            <p className="help-note">In preview, use WASD or arrow keys. Platformers jump with W, ↑, or Space.</p>
+          </section>
+        </ModalShell>
+      )}
+    </main>
+  );
+}

@@ -1,0 +1,708 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Agent Quest</title>
+  <style>
+    *{box-sizing:border-box}html,body{margin:0;min-height:100%;background:#171714;color:#fff;font-family:ui-monospace,SFMono-Regular,Consolas,monospace}body{display:grid;place-items:center;padding:20px;overscroll-behavior:none}.game-shell{width:min(100%,1100px)}.game-bar{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px;text-transform:uppercase;letter-spacing:.08em;font-size:12px}.game-bar strong{font-size:15px}.game-stats{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:10px}.game-bar button,.touch-controls button{min-width:44px;min-height:44px;border:1px solid #fff;background:transparent;color:#fff;padding:8px 12px;cursor:pointer;font:inherit}.game-bar button:focus-visible,.touch-controls button:focus-visible,canvas:focus-visible{outline:3px solid #c8ff4d;outline-offset:2px}.map-name{color:#c8ff4d}.runtime-status{min-width:9ch;color:#b9b9b0}.frame{position:relative;overflow:hidden;border:2px solid #fff;background:#000;box-shadow:8px 8px 0 #5b5cf0}canvas{display:block;width:100%;height:auto;image-rendering:pixelated;touch-action:none}.transition{pointer-events:none;position:absolute;inset:0;background:#080808;opacity:0}.hint{opacity:.72;margin:14px 0 0;text-align:center;font-size:12px;line-height:1.6}.touch-controls{display:none;grid-template-columns:repeat(3,52px) 1fr repeat(2,68px);gap:7px;align-items:end;justify-content:center;margin-top:16px;touch-action:none}.touch-controls[hidden]{display:none!important}.touch-controls button{padding:0;background:#272722;font-weight:800}.touch-controls [data-input=up]{grid-column:2}.touch-controls [data-input=left]{grid-column:1;grid-row:2}.touch-controls [data-input=down]{grid-column:2;grid-row:2}.touch-controls [data-input=right]{grid-column:3;grid-row:2}.touch-controls [data-input=jump]{grid-column:5;grid-row:1/3}.touch-controls [data-input=interact]{grid-column:6;grid-row:1/3}.runtime-bridge{margin-top:14px;border-top:1px solid #45453f;color:#b9b9b0;font-size:11px}.runtime-bridge summary{width:max-content;cursor:pointer;padding:10px 0;text-transform:uppercase;letter-spacing:.08em}.runtime-bridge form{display:grid;grid-template-columns:1fr auto;gap:7px;padding:0 0 14px}.runtime-bridge label{display:grid;gap:4px}.runtime-bridge label:last-of-type{grid-column:1/-1}.runtime-bridge textarea{width:100%;min-height:64px;resize:vertical;border:1px solid #65655d;background:#0e0e0c;color:#fff;padding:8px;font:11px/1.4 inherit}.runtime-bridge button{align-self:end;min-height:44px;border:1px solid #c8ff4d;background:#c8ff4d;color:#151515;padding:8px 14px;font:700 11px/1 inherit;text-transform:uppercase}.runtime-bridge span{font-size:9px;text-transform:uppercase}@media(max-width:700px){body{padding:10px 10px 18px}.game-bar{align-items:flex-end}.game-stats{justify-content:flex-start}.touch-controls{display:grid}.hint{font-size:11px}}@media(prefers-reduced-motion:reduce){.transition{display:none}}
+  </style>
+</head>
+<body>
+  <script id="looplab-project-data" type="application/json">{"name":"Agent Quest","width":960,"height":540,"background":"#dff0c7","gravity":0,"grid":24,"controlMode":"topdown","assets":[],"objects":[{"id":"player","x":450,"y":236,"z":0,"supportZ":0,"name":"Explorer","width":46,"height":46,"color":"#5b5cf0","solid":false,"anchorMode":"ground","collisionOwner":"authored-map","collider":{"enabled":true,"offsetX":6,"offsetY":3,"width":33,"height":43,"trigger":false,"oneWay":false,"zMin":0,"zMax":1},"kind":"player"},{"id":"north-wall","x":92,"y":76,"z":0,"supportZ":0,"name":"North wall","width":776,"height":24,"color":"#202018","solid":true,"anchorMode":"ground","collisionOwner":"authored-map","collider":{"enabled":true,"offsetX":0,"offsetY":0,"width":776,"height":24,"trigger":false,"oneWay":true,"zMin":0,"zMax":1},"kind":"platform"},{"id":"south-wall","x":92,"y":440,"z":0,"supportZ":0,"name":"South wall","width":776,"height":24,"color":"#202018","solid":true,"anchorMode":"ground","collisionOwner":"authored-map","collider":{"enabled":true,"offsetX":0,"offsetY":0,"width":776,"height":24,"trigger":false,"oneWay":true,"zMin":0,"zMax":1},"kind":"platform"},{"id":"west-wall","x":92,"y":100,"z":0,"supportZ":0,"name":"West wall","width":24,"height":340,"color":"#202018","solid":true,"anchorMode":"ground","collisionOwner":"authored-map","collider":{"enabled":true,"offsetX":0,"offsetY":0,"width":24,"height":340,"trigger":false,"oneWay":true,"zMin":0,"zMax":1},"kind":"platform"},{"id":"east-wall","x":844,"y":100,"z":0,"supportZ":0,"name":"East wall","width":24,"height":340,"color":"#202018","solid":true,"anchorMode":"ground","collisionOwner":"authored-map","collider":{"enabled":true,"offsetX":0,"offsetY":0,"width":24,"height":340,"trigger":false,"oneWay":true,"zMin":0,"zMax":1},"kind":"platform"},{"id":"relic","x":182,"y":150,"z":0,"supportZ":0,"name":"Relic","width":30,"height":30,"color":"#ffc928","solid":false,"anchorMode":"ground","collisionOwner":"authored-map","collider":{"enabled":true,"offsetX":2,"offsetY":2,"width":26,"height":26,"trigger":true,"oneWay":false,"zMin":0,"zMax":1},"kind":"coin"},{"id":"spawn","x":450,"y":236,"z":0,"supportZ":0,"name":"Spawn","width":42,"height":64,"color":"#c8ff4d","solid":false,"anchorMode":"ground","collisionOwner":"authored-map","collider":{"enabled":false,"offsetX":0,"offsetY":0,"width":42,"height":64,"trigger":false,"oneWay":false,"zMin":0,"zMax":1},"kind":"spawn"},{"id":"goal","x":760,"y":144,"z":0,"supportZ":0,"name":"Quest marker","width":48,"height":72,"color":"#c8ff4d","solid":false,"anchorMode":"ground","collisionOwner":"authored-map","collider":{"enabled":true,"offsetX":4,"offsetY":4,"width":40,"height":68,"trigger":true,"oneWay":false,"zMin":0,"zMax":1},"kind":"goal"},{"id":"route-token-a","x":360,"y":280,"z":0,"supportZ":0,"name":"Route token A","width":30,"height":30,"color":"#ffc928","solid":false,"anchorMode":"ground","collisionOwner":"authored-map","collider":{"enabled":true,"offsetX":2,"offsetY":2,"width":26,"height":26,"trigger":true,"oneWay":false,"zMin":0,"zMax":1},"kind":"coin"},{"id":"route-token-b","x":560,"y":250,"z":0,"supportZ":0,"name":"Route token B","width":30,"height":30,"color":"#ffc928","solid":false,"anchorMode":"ground","collisionOwner":"authored-map","collider":{"enabled":true,"offsetX":2,"offsetY":2,"width":26,"height":26,"trigger":true,"oneWay":false,"zMin":0,"zMax":1},"kind":"coin"}],"schemaVersion":"1.0.0","projection":{"type":"dimetric-2:1","tileWidth":128,"tileHeight":64,"elevationStep":32,"originX":480,"originY":96,"worldUnitsPerTile":128},"packageBudgetBytes":2000000,"doctorProfile":"prototype","iteration":{"id":"topdown-v001","parentId":null,"status":"candidate","track":"creation","objective":"Build a clear, playable first version","createdAt":"2026-08-08T15:54:53.043Z","readOnly":false},"build":{"id":"topdown-v001","sourceRevision":"topdown-v001","generatedFromRevision":"topdown-v001","sourceTimestamp":"2026-08-08T15:54:53.043Z","servedBuildId":"topdown-v001"},"workstreams":[{"id":"creation","name":"Full game creation","status":"active"},{"id":"gameplay","name":"Gameplay & feel","status":"pending"},{"id":"maps","name":"Maps & collision","status":"pending"},{"id":"character","name":"Characters & sprites","status":"pending"},{"id":"assets","name":"Tiles & assets","status":"pending"},{"id":"input","name":"Input & mobile","status":"pending"},{"id":"ui","name":"UI & devices","status":"pending"},{"id":"audio","name":"Audio","status":"pending"},{"id":"release","name":"Performance & release","status":"pending"}],"inputActions":[{"id":"move-left","label":"Move left","bindings":["ArrowLeft","KeyA"],"animationState":"run","onboarding":true,"replayEvent":true},{"id":"move-right","label":"Move right","bindings":["ArrowRight","KeyD"],"animationState":"run","onboarding":true,"replayEvent":true},{"id":"jump","label":"Jump","bindings":["Space","ArrowUp","KeyW"],"animationState":"jump","onboarding":true,"replayEvent":true},{"id":"interact","label":"Interact / lock","bindings":["KeyE"],"animationState":"interact","onboarding":true,"replayEvent":true}],"replay":{"version":"1","tickRate":60,"seed":1,"cases":[]},"release":{"externalRequests":[],"debugMarkers":[],"singleFile":true,"networkFree":true,"storageFree":true,"runtimeBundleEmbedded":true,"engineDelivery":"built-in-inline","moduleImports":[],"assetLookupValidated":true},"performance":{"targetP95FrameMs":12},"qualityContracts":{"architecture":{"simulationStateSerializable":true,"rendererDisposableAdapter":true,"semanticInputActions":true,"fixedStepHz":60,"maximumCatchUpSteps":5,"cameraPresentationOnly":true,"generatedArtOwnsCollision":false},"canvas2d":{"fixedBackbuffer":true,"cappedDpr":true,"opaqueContext":true,"oneAnimationFrameOwner":true,"atlasIntegerRects":true,"culling":true,"targetP95FrameMs":12},"collision2d":{"authority":"authored-map","axisSeparated":true,"halfOpenTileRanges":true,"fastBodySubsteps":true,"highSpeedPolicy":"swept-aabb","deterministicOrdering":true},"inputViewport":{"tickSnapshots":true,"readsKeyAndCode":true,"clearsOnBlur":true,"pointerCapture":true,"safeAreas":true,"touchTargetMin":44},"presentation":{"eventQueue":true,"simulationIndependent":true,"reducedMotion":true},"palette":{"onePaletteAcrossFrames":true,"averagingAfterQuantization":false,"alphaWeightedResample":true,"gameplayCriticalRecoloring":false}},"deviceProfiles":[{"id":"desktop","name":"Desktop","width":1440,"height":900,"touchTargetMin":44},{"id":"small-laptop","name":"Small laptop","width":1024,"height":768,"touchTargetMin":44},{"id":"portrait-390x844","name":"Portrait mobile","width":390,"height":844,"touchTargetMin":44},{"id":"dpr2-mobile","name":"DPR2 mobile","width":390,"height":844,"dpr":2,"touchTargetMin":44}],"lifecycle":{"pauseOnBlur":true},"accessibility":{"reducedMotion":true,"canvasSemantics":true},"runtimeProfile":{"dimension":"2d","framework":"canvas"},"movementTuning":{"maxRunSpeed":260,"groundAcceleration":2200,"airAcceleration":1200,"groundFriction":2600,"jumpVelocity":570,"coyoteTicks":6,"jumpBufferTicks":8,"jumpCutVelocity":235,"apexGravityScale":0.6,"fallGravityScale":1.45,"apexThreshold":86},"activeMapId":"map-main","startMapId":"map-main","maps":[{"id":"map-main","name":"Main map","width":960,"height":540,"background":"#dff0c7","gravity":0,"grid":24,"controlMode":"topdown","projection":{"type":"dimetric-2:1","tileWidth":128,"tileHeight":64,"elevationStep":32,"originX":480,"originY":96,"worldUnitsPerTile":128},"navigation":{"version":1,"activeLayerId":"deck","layers":[{"id":"ground","name":"Ground and underpass","color":"#555555","visible":true,"locked":false,"zMin":0,"zMax":1},{"id":"deck","name":"Viaduct deck","color":"#777777","visible":true,"locked":false,"zMin":4,"zMax":5}],"nodes":[{"id":"ground-west","x":180,"y":250,"z":0,"layerId":"ground","destinationId":"underpass-west"},{"id":"ground-east","x":700,"y":250,"z":0,"layerId":"ground","destinationId":"underpass-east"},{"id":"deck-west","x":180,"y":250,"z":4,"layerId":"deck","destinationId":"deck-west"},{"id":"deck-east","x":700,"y":250,"z":4,"layerId":"deck","destinationId":"deck-east"}],"links":[{"id":"ground-line","a":"ground-west","b":"ground-east","layerId":"ground","cost":1,"oneWay":false},{"id":"deck-line","a":"deck-west","b":"deck-east","layerId":"deck","cost":1,"oneWay":true}],"areas":[{"id":"ground-plaza","name":"Underpass plaza","kind":"walkable","points":[{"x":100,"y":180,"z":0},{"x":780,"y":180,"z":0},{"x":780,"y":330,"z":0},{"x":100,"y":330,"z":0}],"layerId":"ground","zMin":0,"zMax":1},{"id":"building-footprint","name":"Building footprint","kind":"blocked","points":[{"x":360,"y":360,"z":0},{"x":520,"y":360,"z":0},{"x":520,"y":470,"z":0},{"x":360,"y":470,"z":0}],"layerId":"ground","zMin":0,"zMax":1}],"testRoute":{"from":{"x":180,"y":250,"z":0},"to":{"x":700,"y":250,"z":0},"layerIds":["ground"]}},"objects":[{"id":"player","x":450,"y":236,"z":0,"supportZ":0,"name":"Explorer","width":46,"height":46,"color":"#5b5cf0","solid":false,"anchorMode":"ground","collisionOwner":"authored-map","collider":{"enabled":true,"offsetX":6,"offsetY":3,"width":33,"height":43,"trigger":false,"oneWay":false,"zMin":0,"zMax":1},"kind":"player"},{"id":"north-wall","x":92,"y":76,"z":0,"supportZ":0,"name":"North wall","width":776,"height":24,"color":"#202018","solid":true,"anchorMode":"ground","collisionOwner":"authored-map","collider":{"enabled":true,"offsetX":0,"offsetY":0,"width":776,"height":24,"trigger":false,"oneWay":true,"zMin":0,"zMax":1},"kind":"platform"},{"id":"south-wall","x":92,"y":440,"z":0,"supportZ":0,"name":"South wall","width":776,"height":24,"color":"#202018","solid":true,"anchorMode":"ground","collisionOwner":"authored-map","collider":{"enabled":true,"offsetX":0,"offsetY":0,"width":776,"height":24,"trigger":false,"oneWay":true,"zMin":0,"zMax":1},"kind":"platform"},{"id":"west-wall","x":92,"y":100,"z":0,"supportZ":0,"name":"West wall","width":24,"height":340,"color":"#202018","solid":true,"anchorMode":"ground","collisionOwner":"authored-map","collider":{"enabled":true,"offsetX":0,"offsetY":0,"width":24,"height":340,"trigger":false,"oneWay":true,"zMin":0,"zMax":1},"kind":"platform"},{"id":"east-wall","x":844,"y":100,"z":0,"supportZ":0,"name":"East wall","width":24,"height":340,"color":"#202018","solid":true,"anchorMode":"ground","collisionOwner":"authored-map","collider":{"enabled":true,"offsetX":0,"offsetY":0,"width":24,"height":340,"trigger":false,"oneWay":true,"zMin":0,"zMax":1},"kind":"platform"},{"id":"relic","x":182,"y":150,"z":0,"supportZ":0,"name":"Relic","width":30,"height":30,"color":"#ffc928","solid":false,"anchorMode":"ground","collisionOwner":"authored-map","collider":{"enabled":true,"offsetX":2,"offsetY":2,"width":26,"height":26,"trigger":true,"oneWay":false,"zMin":0,"zMax":1},"kind":"coin"},{"id":"spawn","x":450,"y":236,"z":0,"supportZ":0,"name":"Spawn","width":42,"height":64,"color":"#c8ff4d","solid":false,"anchorMode":"ground","collisionOwner":"authored-map","collider":{"enabled":false,"offsetX":0,"offsetY":0,"width":42,"height":64,"trigger":false,"oneWay":false,"zMin":0,"zMax":1},"kind":"spawn"},{"id":"goal","x":760,"y":144,"z":0,"supportZ":0,"name":"Quest marker","width":48,"height":72,"color":"#c8ff4d","solid":false,"anchorMode":"ground","collisionOwner":"authored-map","collider":{"enabled":true,"offsetX":4,"offsetY":4,"width":40,"height":68,"trigger":true,"oneWay":false,"zMin":0,"zMax":1},"kind":"goal"},{"id":"route-token-a","x":360,"y":280,"z":0,"supportZ":0,"name":"Route token A","width":30,"height":30,"color":"#ffc928","solid":false,"anchorMode":"ground","collisionOwner":"authored-map","collider":{"enabled":true,"offsetX":2,"offsetY":2,"width":26,"height":26,"trigger":true,"oneWay":false,"zMin":0,"zMax":1},"kind":"coin"},{"id":"route-token-b","x":560,"y":250,"z":0,"supportZ":0,"name":"Route token B","width":30,"height":30,"color":"#ffc928","solid":false,"anchorMode":"ground","collisionOwner":"authored-map","collider":{"enabled":true,"offsetX":2,"offsetY":2,"width":26,"height":26,"trigger":true,"oneWay":false,"zMin":0,"zMax":1},"kind":"coin"}],"traversalPaths":[{"id":"deck-grind","name":"Raised deck grind","kind":"grind","routeLayer":"deck","points":[{"x":240,"y":250,"z":4},{"x":640,"y":250,"z":4}],"entryRadius":24,"entryZTolerance":0.4,"minimumEntrySpeed":80,"direction":"forward","acceleration":35,"maximumSpeed":520,"exitImpulse":{"x":80,"y":0,"z":0},"transferPathIds":[],"bailBehavior":"drop","collisionOwner":"authored-map"}],"clearanceZones":[],"hudSafeAreas":[]}],"navigation":{"version":1,"activeLayerId":"deck","layers":[{"id":"ground","name":"Ground and underpass","color":"#555555","visible":true,"locked":false,"zMin":0,"zMax":1},{"id":"deck","name":"Viaduct deck","color":"#777777","visible":true,"locked":false,"zMin":4,"zMax":5}],"nodes":[{"id":"ground-west","x":180,"y":250,"z":0,"layerId":"ground","destinationId":"underpass-west"},{"id":"ground-east","x":700,"y":250,"z":0,"layerId":"ground","destinationId":"underpass-east"},{"id":"deck-west","x":180,"y":250,"z":4,"layerId":"deck","destinationId":"deck-west"},{"id":"deck-east","x":700,"y":250,"z":4,"layerId":"deck","destinationId":"deck-east"}],"links":[{"id":"ground-line","a":"ground-west","b":"ground-east","layerId":"ground","cost":1,"oneWay":false},{"id":"deck-line","a":"deck-west","b":"deck-east","layerId":"deck","cost":1,"oneWay":true}],"areas":[{"id":"ground-plaza","name":"Underpass plaza","kind":"walkable","points":[{"x":100,"y":180,"z":0},{"x":780,"y":180,"z":0},{"x":780,"y":330,"z":0},{"x":100,"y":330,"z":0}],"layerId":"ground","zMin":0,"zMax":1},{"id":"building-footprint","name":"Building footprint","kind":"blocked","points":[{"x":360,"y":360,"z":0},{"x":520,"y":360,"z":0},{"x":520,"y":470,"z":0},{"x":360,"y":470,"z":0}],"layerId":"ground","zMin":0,"zMax":1}],"testRoute":{"from":{"x":180,"y":250,"z":0},"to":{"x":700,"y":250,"z":0},"layerIds":["ground"]}},"traversalPaths":[{"id":"deck-grind","name":"Raised deck grind","kind":"grind","routeLayer":"deck","points":[{"x":240,"y":250,"z":4},{"x":640,"y":250,"z":4}],"entryRadius":24,"entryZTolerance":0.4,"minimumEntrySpeed":80,"direction":"forward","acceleration":35,"maximumSpeed":520,"exitImpulse":{"x":80,"y":0,"z":0},"transferPathIds":[],"bailBehavior":"drop","collisionOwner":"authored-map"}]}</script>
+  <main class="game-shell">
+    <div class="game-bar"><strong>Agent Quest</strong><div class="game-stats"><span class="map-name" id="map-name">Map</span><span><span id="score">0</span> collected</span><span class="runtime-status" id="runtime-status" role="status" aria-live="polite">Ready</span><button id="reset" type="button">Reset</button></div></div>
+    <div class="frame"><canvas id="game" width="960" height="540" tabindex="0" aria-label="Agent Quest game canvas" aria-describedby="controls-hint"></canvas><div class="transition" id="transition"></div></div>
+    <div class="touch-controls" id="touch-controls" hidden aria-hidden="true" aria-label="Touch game controls"><button type="button" data-input="left" aria-label="Move left">←</button><button type="button" data-input="up" aria-label="Move up">↑</button><button type="button" data-input="down" aria-label="Move down">↓</button><button type="button" data-input="right" aria-label="Move right">→</button><button type="button" data-input="jump" aria-label="Jump">Jump</button><button type="button" data-input="interact" aria-label="Interact or enter portal">E / Lock</button></div>
+    <p class="hint" id="controls-hint">Move with arrow keys or WASD. Jump with W, ↑, or Space. Press E / Lock once to enter a portal.</p>
+    <details class="runtime-bridge" id="looplab-runtime-bridge" data-ready="false" data-command-event="looplab:runtime-command" data-response-event="looplab:runtime-response">
+      <summary>Headless runtime API</summary>
+      <form id="looplab-runtime-form"><label><span>Command JSON</span><textarea id="looplab-runtime-command" aria-label="Looplab runtime command JSON" spellcheck="false">{"op":"get_state"}</textarea></label><button id="looplab-runtime-submit" type="submit">Run command</button><label><span>Result JSON</span><textarea id="looplab-runtime-result" aria-label="Looplab runtime result JSON" readonly spellcheck="false"></textarea></label></form>
+    </details>
+  </main>
+  <script>
+    const project=JSON.parse(document.getElementById('looplab-project-data').textContent);
+    const DEFAULT_DIMETRIC_PROJECTION={type:'dimetric-2:1',tileWidth:128,tileHeight:64,elevationStep:32,originX:480,originY:96,worldUnitsPerTile:128};
+    const normalizeProjection=function normalizeProjection(projection = {}, viewport = {}) {
+  if (projection.type !== "dimetric-2:1") {
+    const tile = Number.isFinite(Number(projection.tileWidth)) ? Number(projection.tileWidth) : Number(viewport.grid ?? 20);
+    return { type: "orthographic", tileWidth: tile, tileHeight: Number(projection.tileHeight ?? tile) };
+  }
+  return {
+    type: "dimetric-2:1",
+    tileWidth: 128,
+    tileHeight: 64,
+    elevationStep: Number.isFinite(Number(projection.elevationStep)) ? Number(projection.elevationStep) : 32,
+    originX: Number.isFinite(Number(projection.originX)) ? Number(projection.originX) : Number(viewport.width ?? 960) / 2,
+    originY: Number.isFinite(Number(projection.originY)) ? Number(projection.originY) : 96,
+    worldUnitsPerTile: Number.isFinite(Number(projection.worldUnitsPerTile)) && Number(projection.worldUnitsPerTile) > 0 ? Number(projection.worldUnitsPerTile) : 128,
+  };
+};
+    const worldToScreen=function worldToScreen(point, projection = DEFAULT_DIMETRIC_PROJECTION) {
+  if (projection.type !== "dimetric-2:1") return { x: point.x, y: point.y - (point.z ?? 0) };
+  const normalized = normalizeProjection(projection);
+  const halfWidth = normalized.tileWidth / 2 / normalized.worldUnitsPerTile;
+  const halfHeight = normalized.tileHeight / 2 / normalized.worldUnitsPerTile;
+  return {
+    x: normalized.originX + (point.x - point.y) * halfWidth,
+    y: normalized.originY + (point.x + point.y) * halfHeight - (point.z ?? 0) * normalized.elevationStep,
+  };
+};
+    const createRuntimeModel=function createRuntimeModel(project) {
+  const clone = (value) => JSON.parse(JSON.stringify(value));
+  const fallbackMap = {
+    id: "main",
+    name: "Main map",
+    width: project.width,
+    height: project.height,
+    background: project.background,
+    gravity: project.gravity,
+    grid: project.grid,
+    controlMode: project.controlMode,
+    projection: project.projection,
+    navigation: project.navigation,
+    objects: project.objects || [],
+  };
+  const maps = Array.isArray(project.maps) && project.maps.length ? clone(project.maps) : [fallbackMap];
+  const initialMapId = maps.some((map) => map.id === project.startMapId)
+    ? project.startMapId
+    : maps.some((map) => map.id === project.activeMapId)
+      ? project.activeMapId
+      : maps[0].id;
+  const inputs = new Set();
+  const pressedInputs = new Set();
+  const collectedIds = new Set();
+  const events = [];
+  let activeMap = maps[0];
+  let objects = [];
+  let won = false;
+  let interactionHeld = false;
+  let portalCooldown = 0;
+  let activeTraversal = null;
+
+  function emit(type, detail) {
+    events.push({ type, ...(detail || {}) });
+  }
+
+  function mapById(id) {
+    return maps.find((map) => map.id === id) || null;
+  }
+
+  function colliderBox(object) {
+    if (!object || object.collider?.enabled === false) return null;
+    const collider = object.collider || { offsetX: 0, offsetY: 0, width: object.width, height: object.height };
+    const zMin = Number.isFinite(collider.zMin) ? collider.zMin : Number(object.z || 0);
+    const zMax = Number.isFinite(collider.zMax) ? collider.zMax : zMin + Number(object.collisionHeight || 1);
+    return {
+      x: Number(object.x || 0) + Number(collider.offsetX || 0),
+      y: Number(object.y || 0) + Number(collider.offsetY || 0),
+      width: Math.max(0, Number(collider.width ?? object.width ?? 0)),
+      height: Math.max(0, Number(collider.height ?? object.height ?? 0)),
+      zMin,
+      zMax,
+    };
+  }
+
+  function overlaps(firstObject, secondObject) {
+    const first = colliderBox(firstObject);
+    const second = colliderBox(secondObject);
+    if (!first || !second) return false;
+    return first.x < second.x + second.width &&
+      first.x + first.width > second.x &&
+      first.y < second.y + second.height &&
+      first.y + first.height > second.y &&
+      first.zMin < second.zMax &&
+      first.zMax > second.zMin;
+  }
+
+  function setObjectZ(object, z) {
+    const nextZ = Number(z || 0);
+    const collider = object.collider;
+    const collisionHeight = collider && Number.isFinite(collider.zMax) && Number.isFinite(collider.zMin)
+      ? Math.max(0.001, collider.zMax - collider.zMin)
+      : Number(object.collisionHeight || 1);
+    object.z = nextZ;
+    object.supportZ = nextZ;
+    if (collider) {
+      collider.zMin = nextZ;
+      collider.zMax = nextZ + collisionHeight;
+    }
+  }
+
+  function positionAtSpawn(player, spawnId) {
+    const spawn = objects.find((object) => object.kind === "spawn" && (!spawnId || object.id === spawnId)) || objects.find((object) => object.kind === "spawn");
+    if (!spawn) return false;
+    player.x = spawn.x + (spawn.width - player.width) / 2;
+    player.y = spawn.y + spawn.height - player.height;
+    setObjectZ(player, spawn.supportZ ?? spawn.z ?? 0);
+    player.vx = 0;
+    player.vy = 0;
+    player.grounded = false;
+    player.jumpHeld = false;
+    player.coyoteTicksRemaining = 0;
+    player.jumpBufferTicksRemaining = 0;
+    return true;
+  }
+
+  function loadMap(id, spawnId) {
+    const target = mapById(id);
+    if (!target) return false;
+    activeMap = target;
+    objects = (target.objects || []).map((object) => ({
+      ...clone(object),
+      vx: 0,
+      vy: 0,
+      grounded: false,
+      jumpHeld: false,
+      coyoteTicksRemaining: 0,
+      jumpBufferTicksRemaining: 0,
+      collected: collectedIds.has(target.id + ":" + object.id),
+    }));
+    const player = objects.find((object) => object.kind === "player");
+    activeTraversal = null;
+    if (player && spawnId) positionAtSpawn(player, spawnId);
+    won = false;
+    emit("map.changed", { mapId: target.id, mapName: target.name, transition: "instant" });
+    return true;
+  }
+
+  function reset() {
+    inputs.clear();
+    pressedInputs.clear();
+    collectedIds.clear();
+    interactionHeld = false;
+    portalCooldown = 0;
+    activeTraversal = null;
+    won = false;
+    events.length = 0;
+    loadMap(initialMapId, null);
+  }
+
+  function respawn(player, spawnId) {
+    activeTraversal = null;
+    const source = activeMap.objects.find((object) => object.id === player.id);
+    if (!positionAtSpawn(player, spawnId)) {
+      player.x = source?.x ?? 0;
+      player.y = source?.y ?? 0;
+      setObjectZ(player, source?.supportZ ?? source?.z ?? 0);
+      player.vx = 0;
+      player.vy = 0;
+    }
+    emit("player.respawned", { mapId: activeMap.id });
+  }
+
+  function inputActive(...codes) {
+    return codes.some((code) => inputs.has(code));
+  }
+
+  function solidObjects(player) {
+    return objects.filter((object) => object !== player && object.solid && object.collider?.enabled !== false && !object.collider?.trigger);
+  }
+
+  function rangesOverlap(firstMin, firstMax, secondMin, secondMax) {
+    return firstMin < secondMax && firstMax > secondMin;
+  }
+
+  function resolveHorizontal(player, solids, previousBox) {
+    const playerCollider = player.collider || { offsetX: 0, offsetY: 0, width: player.width, height: player.height };
+    const currentBox = colliderBox(player);
+    if (!currentBox || !previousBox) return;
+    let resolvedX = null;
+    let nearestDistance = Infinity;
+    for (const solid of solids) {
+      if (solid.collider?.oneWay) continue;
+      const box = colliderBox(solid);
+      if (!box) continue;
+      const zOverlap = currentBox.zMin < box.zMax && currentBox.zMax > box.zMin;
+      const verticalOverlap = rangesOverlap(currentBox.y, currentBox.y + currentBox.height, box.y, box.y + box.height);
+      if (!zOverlap || !verticalOverlap) continue;
+      let candidate = null;
+      let distance = Infinity;
+      if (player.vx > 0) {
+        const crossed = previousBox.x + previousBox.width <= box.x && currentBox.x + currentBox.width >= box.x;
+        const penetrated = currentBox.x < box.x + box.width && currentBox.x + currentBox.width > box.x;
+        if (crossed || penetrated) {
+          candidate = box.x - Number(playerCollider.offsetX || 0) - Number(playerCollider.width ?? player.width);
+          distance = Math.max(0, box.x - (previousBox.x + previousBox.width));
+        }
+      } else if (player.vx < 0) {
+        const crossed = previousBox.x >= box.x + box.width && currentBox.x <= box.x + box.width;
+        const penetrated = currentBox.x < box.x + box.width && currentBox.x + currentBox.width > box.x;
+        if (crossed || penetrated) {
+          candidate = box.x + box.width - Number(playerCollider.offsetX || 0);
+          distance = Math.max(0, previousBox.x - (box.x + box.width));
+        }
+      }
+      if (candidate != null && distance < nearestDistance) {
+        nearestDistance = distance;
+        resolvedX = candidate;
+      }
+    }
+    if (resolvedX != null) player.x = resolvedX;
+  }
+
+  function resolveVerticalTopdown(player, solids, previousBox) {
+    const playerCollider = player.collider || { offsetX: 0, offsetY: 0, width: player.width, height: player.height };
+    const currentBox = colliderBox(player);
+    if (!currentBox || !previousBox) return;
+    let resolvedY = null;
+    let nearestDistance = Infinity;
+    for (const solid of solids) {
+      const box = colliderBox(solid);
+      if (!box) continue;
+      const zOverlap = currentBox.zMin < box.zMax && currentBox.zMax > box.zMin;
+      const horizontalOverlap = rangesOverlap(currentBox.x, currentBox.x + currentBox.width, box.x, box.x + box.width);
+      if (!zOverlap || !horizontalOverlap) continue;
+      let candidate = null;
+      let distance = Infinity;
+      if (player.vy > 0) {
+        const crossed = previousBox.y + previousBox.height <= box.y && currentBox.y + currentBox.height >= box.y;
+        const penetrated = currentBox.y < box.y + box.height && currentBox.y + currentBox.height > box.y;
+        if (crossed || penetrated) {
+          candidate = box.y - Number(playerCollider.offsetY || 0) - Number(playerCollider.height ?? player.height);
+          distance = Math.max(0, box.y - (previousBox.y + previousBox.height));
+        }
+      } else if (player.vy < 0) {
+        const crossed = previousBox.y >= box.y + box.height && currentBox.y <= box.y + box.height;
+        const penetrated = currentBox.y < box.y + box.height && currentBox.y + currentBox.height > box.y;
+        if (crossed || penetrated) {
+          candidate = box.y + box.height - Number(playerCollider.offsetY || 0);
+          distance = Math.max(0, previousBox.y - (box.y + box.height));
+        }
+      }
+      if (candidate != null && distance < nearestDistance) {
+        nearestDistance = distance;
+        resolvedY = candidate;
+      }
+    }
+    if (resolvedY != null) player.y = resolvedY;
+  }
+
+  function updateTopdown(player, dt, direction) {
+    const solids = solidObjects(player);
+    player.vx = direction.x * 250;
+    player.vy = direction.y * 250;
+    const previousHorizontalBox = colliderBox(player);
+    player.x += player.vx * dt;
+    resolveHorizontal(player, solids, previousHorizontalBox);
+    const previousVerticalBox = colliderBox(player);
+    player.y += player.vy * dt;
+    resolveVerticalTopdown(player, solids, previousVerticalBox);
+  }
+
+  function moveToward(value, target, maximumDelta) {
+    if (value < target) return Math.min(target, value + maximumDelta);
+    if (value > target) return Math.max(target, value - maximumDelta);
+    return target;
+  }
+
+  function platformerTuning() {
+    return {
+      maxRunSpeed: 260,
+      groundAcceleration: 2200,
+      airAcceleration: 1200,
+      groundFriction: 2600,
+      jumpVelocity: 570,
+      coyoteTicks: 6,
+      jumpBufferTicks: 8,
+      jumpCutVelocity: 235,
+      apexGravityScale: 0.6,
+      fallGravityScale: 1.45,
+      apexThreshold: 86,
+      ...(project.movementTuning || {}),
+      ...(activeMap.movementTuning || {}),
+    };
+  }
+
+  function updatePlatformer(player, dt, direction, jumping, jumpPressed) {
+    const solids = solidObjects(player);
+    const playerCollider = player.collider || { offsetX: 0, offsetY: 0, width: player.width, height: player.height };
+    const tuning = platformerTuning();
+    const wasGrounded = Boolean(player.grounded);
+    const tickDelta = dt > 0 ? Math.max(1, Math.round(dt * 60)) : 0;
+    if (wasGrounded) player.coyoteTicksRemaining = Math.max(1, Number(tuning.coyoteTicks));
+    else player.coyoteTicksRemaining = Math.max(0, Number(player.coyoteTicksRemaining || 0) - tickDelta);
+    if (jumpPressed) player.jumpBufferTicksRemaining = Math.max(1, Number(tuning.jumpBufferTicks));
+    else player.jumpBufferTicksRemaining = Math.max(0, Number(player.jumpBufferTicksRemaining || 0) - tickDelta);
+
+    const targetSpeed = direction.x * Number(tuning.maxRunSpeed);
+    const acceleration = wasGrounded ? Number(tuning.groundAcceleration) : Number(tuning.airAcceleration);
+    const rate = direction.x === 0 && wasGrounded ? Number(tuning.groundFriction) : acceleration;
+    player.vx = moveToward(Number(player.vx || 0), targetSpeed, Math.max(0, rate) * dt);
+
+    const canJump = player.jumpBufferTicksRemaining > 0 && player.coyoteTicksRemaining > 0;
+    if (canJump) {
+      player.vy = -Math.abs(Number(tuning.jumpVelocity));
+      player.grounded = false;
+      player.coyoteTicksRemaining = 0;
+      player.jumpBufferTicksRemaining = 0;
+      emit("player.jumped", { mapId: activeMap.id, objectId: player.id });
+    } else if (player.jumpHeld && !jumping && player.vy < -Math.abs(Number(tuning.jumpCutVelocity))) {
+      player.vy = -Math.abs(Number(tuning.jumpCutVelocity));
+    }
+    player.jumpHeld = jumping;
+    const previousHorizontalBox = colliderBox(player);
+    player.x += player.vx * dt;
+    resolveHorizontal(player, solids, previousHorizontalBox);
+    const previousBox = colliderBox(player);
+    const previousBottom = previousBox ? previousBox.y + previousBox.height : player.y + player.height;
+    const previousTop = previousBox ? previousBox.y : player.y;
+    const gravityScale = player.vy > 0
+      ? Number(tuning.fallGravityScale)
+      : Math.abs(Number(player.vy || 0)) <= Number(tuning.apexThreshold)
+        ? Number(tuning.apexGravityScale)
+        : 1;
+    player.vy += Number(activeMap.gravity ?? project.gravity ?? 1500) * Math.max(0, gravityScale) * dt;
+    player.y += player.vy * dt;
+    player.grounded = false;
+
+    for (const solid of solids) {
+      const playerBox = colliderBox(player);
+      const solidBox = colliderBox(solid);
+      if (!playerBox || !solidBox) continue;
+      const horizontal = playerBox.x + playerBox.width > solidBox.x && playerBox.x < solidBox.x + solidBox.width;
+      const zOverlap = playerBox.zMin < solidBox.zMax && playerBox.zMax > solidBox.zMin;
+      if (!horizontal || !zOverlap) continue;
+      const crossedTop = previousBottom <= solidBox.y + 7 && playerBox.y + playerBox.height >= solidBox.y;
+      if (player.vy >= 0 && crossedTop) {
+        player.y = solidBox.y - Number(playerCollider.offsetY || 0) - Number(playerCollider.height ?? player.height);
+        player.vy = 0;
+        player.grounded = true;
+        setObjectZ(player, solid.supportZ ?? solid.z ?? player.z ?? 0);
+      } else if (!solid.collider?.oneWay) {
+        const crossedBottom = previousTop >= solidBox.y + solidBox.height - 7 && playerBox.y <= solidBox.y + solidBox.height;
+        if (player.vy < 0 && crossedBottom) {
+          player.y = solidBox.y + solidBox.height - Number(playerCollider.offsetY || 0);
+          player.vy = 0;
+        }
+      }
+    }
+    if (!wasGrounded && player.grounded) emit("player.landed", { mapId: activeMap.id, objectId: player.id });
+  }
+
+  function traversalGeometry(path) {
+    const points = Array.isArray(path?.points) ? path.points : [];
+    const segments = [];
+    let total = 0;
+    for (let index = 0; index < points.length - 1; index += 1) {
+      const from = points[index];
+      const to = points[index + 1];
+      const dx = Number(to.x) - Number(from.x);
+      const dy = Number(to.y) - Number(from.y);
+      const length = Math.hypot(dx, dy);
+      if (length <= 0.000001) continue;
+      segments.push({ from, to, dx, dy, length, start: total });
+      total += length;
+    }
+    return { segments, total };
+  }
+
+  function traversalSample(geometry, distance) {
+    if (!geometry.segments.length) return null;
+    const clamped = Math.max(0, Math.min(geometry.total, distance));
+    const segment = geometry.segments.find((candidate) => clamped <= candidate.start + candidate.length) || geometry.segments.at(-1);
+    const amount = Math.max(0, Math.min(1, (clamped - segment.start) / segment.length));
+    return {
+      x: Number(segment.from.x) + segment.dx * amount,
+      y: Number(segment.from.y) + segment.dy * amount,
+      z: Number(segment.from.z || 0) + (Number(segment.to.z || 0) - Number(segment.from.z || 0)) * amount,
+      tangentX: segment.dx / segment.length,
+      tangentY: segment.dy / segment.length,
+    };
+  }
+
+  function closestTraversalPoint(path, x, y, z) {
+    const geometry = traversalGeometry(path);
+    let best = null;
+    for (const segment of geometry.segments) {
+      const px = x - Number(segment.from.x);
+      const py = y - Number(segment.from.y);
+      const amount = Math.max(0, Math.min(1, (px * segment.dx + py * segment.dy) / (segment.length * segment.length)));
+      const sampleX = Number(segment.from.x) + segment.dx * amount;
+      const sampleY = Number(segment.from.y) + segment.dy * amount;
+      const sampleZ = Number(segment.from.z || 0) + (Number(segment.to.z || 0) - Number(segment.from.z || 0)) * amount;
+      const distance = Math.hypot(x - sampleX, y - sampleY);
+      const zDistance = Math.abs(Number(z || 0) - sampleZ);
+      if (!best || distance < best.distance) best = { distance, zDistance, sampleZ, pathDistance: segment.start + segment.length * amount, tangentX: segment.dx / segment.length, tangentY: segment.dy / segment.length, geometry };
+    }
+    return best;
+  }
+
+  function positionPlayerOnTraversal(player, sample) {
+    const collider = player.collider || { offsetX: 0, offsetY: 0, width: player.width, height: player.height };
+    player.x = sample.x - Number(collider.offsetX || 0) - Number(collider.width ?? player.width) / 2;
+    player.y = sample.y - Number(collider.offsetY || 0) - Number(collider.height ?? player.height);
+    setObjectZ(player, sample.z);
+  }
+
+  function tryBeginTraversal(player, direction) {
+    const collider = colliderBox(player);
+    if (!collider) return false;
+    const anchorX = collider.x + collider.width / 2;
+    const anchorY = collider.y + collider.height;
+    const intendedVx = Number(player.vx || 0) || Number(direction.x || 0) * 260;
+    const intendedVy = Number(player.vy || 0) || Number(direction.y || 0) * 260;
+    const speed = Math.hypot(intendedVx, intendedVy);
+    let selected = null;
+    for (const path of activeMap.traversalPaths || []) {
+      const closest = closestTraversalPoint(path, anchorX, anchorY, player.z);
+      if (!closest || closest.distance > Number(path.entryRadius || 0) || closest.zDistance > Number(path.entryZTolerance ?? 0.5) || speed < Number(path.minimumEntrySpeed || 0)) continue;
+      if (!selected || closest.distance < selected.closest.distance) selected = { path, closest };
+    }
+    if (!selected) return false;
+    const dot = intendedVx * selected.closest.tangentX + intendedVy * selected.closest.tangentY;
+    const traversalDirection = selected.path.direction === "forward" ? 1 : selected.path.direction === "reverse" ? -1 : dot < 0 ? -1 : 1;
+    activeTraversal = {
+      pathId: selected.path.id,
+      distance: selected.closest.pathDistance,
+      direction: traversalDirection,
+      speed: Math.max(Number(selected.path.minimumEntrySpeed || 0), speed),
+      geometry: selected.closest.geometry,
+    };
+    const sample = traversalSample(activeTraversal.geometry, activeTraversal.distance);
+    if (sample) positionPlayerOnTraversal(player, sample);
+    emit("traversal.started", { mapId: activeMap.id, pathId: selected.path.id, direction: traversalDirection });
+    return true;
+  }
+
+  function bailTraversal(player) {
+    if (!activeTraversal) return false;
+    const path = (activeMap.traversalPaths || []).find((candidate) => candidate.id === activeTraversal.pathId);
+    const pathId = activeTraversal.pathId;
+    activeTraversal = null;
+    if (path?.bailBehavior === "reset") respawn(player);
+    else if (path?.bailBehavior === "launch") player.vy = Number(path.exitImpulse?.y ?? -120);
+    emit("traversal.bailed", { mapId: activeMap.id, pathId, behavior: path?.bailBehavior || "drop" });
+    return true;
+  }
+
+  function updateTraversal(player, dt) {
+    if (!activeTraversal) return false;
+    const path = (activeMap.traversalPaths || []).find((candidate) => candidate.id === activeTraversal.pathId);
+    if (!path) {
+      activeTraversal = null;
+      return false;
+    }
+    activeTraversal.speed = Math.min(Number(path.maximumSpeed || activeTraversal.speed), Math.max(0, activeTraversal.speed + Number(path.acceleration || 0) * dt));
+    activeTraversal.distance += activeTraversal.speed * dt * activeTraversal.direction;
+    const completed = activeTraversal.distance < 0 || activeTraversal.distance > activeTraversal.geometry.total;
+    const sample = traversalSample(activeTraversal.geometry, activeTraversal.distance);
+    if (sample) {
+      positionPlayerOnTraversal(player, sample);
+      player.vx = sample.tangentX * activeTraversal.speed * activeTraversal.direction;
+      player.vy = sample.tangentY * activeTraversal.speed * activeTraversal.direction;
+      player.grounded = false;
+    }
+    if (completed) {
+      const pathId = activeTraversal.pathId;
+      const direction = activeTraversal.direction;
+      activeTraversal = null;
+      player.vx += Number(path.exitImpulse?.x || 0) * direction;
+      player.vy += Number(path.exitImpulse?.y || 0);
+      emit("traversal.completed", { mapId: activeMap.id, pathId, direction });
+    }
+    return true;
+  }
+
+  function update(rawDt) {
+    const dt = Math.max(0, Math.min(Number(rawDt || 0), 0.05));
+    portalCooldown = Math.max(0, portalCooldown - dt);
+    const player = objects.find((object) => object.kind === "player");
+    if (!player) return drainEvents();
+    const left = inputActive("ArrowLeft", "KeyA", "left");
+    const right = inputActive("ArrowRight", "KeyD", "right");
+    const up = inputActive("ArrowUp", "KeyW", "up");
+    const down = inputActive("ArrowDown", "KeyS", "down");
+    const jumpPressed = ["ArrowUp", "KeyW", "up", "Space", "jump"].some((code) => pressedInputs.has(code));
+    const jumping = up || inputActive("Space", "jump") || jumpPressed;
+    const interacting = inputActive("KeyE", "interact");
+    const interactionPressed = ["KeyE", "interact"].some((code) => pressedInputs.has(code));
+    const freshInteraction = interactionPressed || (interacting && !interactionHeld);
+    interactionHeld = interacting;
+    pressedInputs.clear();
+    const direction = { x: Number(right) - Number(left), y: Number(down) - Number(up) };
+    let interactionConsumed = false;
+
+    if (activeTraversal && freshInteraction) interactionConsumed = bailTraversal(player);
+    if (!activeTraversal && freshInteraction && !interactionConsumed) interactionConsumed = tryBeginTraversal(player, direction);
+
+    if (activeTraversal) updateTraversal(player, dt);
+    else if ((activeMap.controlMode ?? project.controlMode) === "topdown") updateTopdown(player, dt, direction);
+    else updatePlatformer(player, dt, direction, jumping, jumpPressed);
+
+    const width = Number(activeMap.width ?? project.width);
+    const height = Number(activeMap.height ?? project.height);
+    player.x = Math.max(0, Math.min(width - player.width, player.x));
+    if (player.y > height + 80) respawn(player);
+    player.y = Math.max(-80, Math.min(height - player.height, player.y));
+
+    for (const object of objects) {
+      if (object.kind === "coin" && !object.collected && overlaps(player, object)) {
+        object.collected = true;
+        collectedIds.add(activeMap.id + ":" + object.id);
+        emit("coin.collected", { mapId: activeMap.id, objectId: object.id, count: collectedIds.size });
+      }
+      if (object.kind === "hazard" && overlaps(player, object)) respawn(player);
+      if (object.kind === "goal" && overlaps(player, object) && !won) {
+        won = true;
+        emit("goal.reached", { mapId: activeMap.id, objectId: object.id });
+      }
+    }
+
+    if (freshInteraction && !interactionConsumed && portalCooldown <= 0) {
+      const portal = objects.find((object) => object.kind === "portal" && overlaps(player, object));
+      if (portal?.targetMapId && mapById(portal.targetMapId)) {
+        const transition = portal.transition || "fade";
+        const sourceMapId = activeMap.id;
+        portalCooldown = 0.35;
+        loadMap(portal.targetMapId, portal.targetSpawnId || null);
+        const mapEvent = events.at(-1);
+        if (mapEvent?.type === "map.changed") mapEvent.transition = transition;
+        emit("portal.entered", { sourceMapId, targetMapId: activeMap.id, objectId: portal.id, transition });
+      }
+    }
+    return drainEvents();
+  }
+
+  function setInput(code, pressed) {
+    if (pressed) {
+      if (!inputs.has(code)) pressedInputs.add(code);
+      inputs.add(code);
+    }
+    else inputs.delete(code);
+  }
+
+  function drainEvents() {
+    return events.splice(0, events.length);
+  }
+
+  function depthKey(object, slice) {
+    const projection = activeMap.projection ?? project.projection;
+    if (projection?.type === "dimetric-2:1") {
+      const anchorX = Number(object.x || 0) + Number(object.groundAnchor?.offsetX ?? Number(object.width || 0) / 2);
+      const anchorY = Number(object.y || 0) + Number(object.groundAnchor?.offsetY ?? object.height ?? 0);
+      return Number(object.depthLayer || 0) * 1_000_000_000 +
+        (anchorX + anchorY) * 1024 +
+        Number(object.z || 0) * 32 +
+        Number(object.depthBias || 0) +
+        Number(slice?.depthBias || 0);
+    }
+    return Number(object.depthLayer || 0) * 1_000_000_000 +
+      Number(object.z || 0) * 1_000_000 +
+      (Number(object.y || 0) + Number(object.height || 0)) * 100 +
+      Number(object.depthBias || 0) +
+      Number(slice?.depthBias || 0);
+  }
+
+  function renderEntries() {
+    const entries = [];
+    for (const object of objects) {
+      if (object.collected) continue;
+      const slices = Array.isArray(object.depthSlices) && object.depthSlices.length ? object.depthSlices : [null];
+      for (const slice of slices) entries.push({ object, slice, depth: depthKey(object, slice) });
+    }
+    return entries.sort((a, b) => a.depth - b.depth || String(a.object.id).localeCompare(String(b.object.id)) || String(a.slice?.id || "").localeCompare(String(b.slice?.id || "")));
+  }
+
+  function getState() {
+    const player = objects.find((object) => object.kind === "player");
+    return {
+      activeMapId: activeMap.id,
+      mapName: activeMap.name,
+      width: Number(activeMap.width ?? project.width),
+      height: Number(activeMap.height ?? project.height),
+      background: activeMap.background ?? project.background,
+      gravity: Number(activeMap.gravity ?? project.gravity),
+      controlMode: activeMap.controlMode ?? project.controlMode,
+      projection: activeMap.projection ?? project.projection ?? { type: "orthographic", tileWidth: activeMap.grid ?? project.grid, tileHeight: activeMap.grid ?? project.grid },
+      collectedCount: collectedIds.size,
+      activeTraversalPathId: activeTraversal?.pathId ?? null,
+      player: player ? { id: player.id, x: Number(player.x), y: Number(player.y), z: Number(player.z || 0), vx: Number(player.vx || 0), vy: Number(player.vy || 0), grounded: Boolean(player.grounded) } : null,
+      won,
+    };
+  }
+
+  function getObjects() {
+    return objects;
+  }
+
+  function getTraversalPaths() {
+    return activeMap.traversalPaths || [];
+  }
+
+  function getNavigation() {
+    return activeMap.navigation || { version: 1, activeLayerId: "", layers: [], nodes: [], links: [], areas: [] };
+  }
+
+  reset();
+  return { update, reset, loadMap, setInput, drainEvents, getState, getObjects, getTraversalPaths, getNavigation, colliderBox, overlaps, renderEntries, respawn };
+};
+    const engine=createRuntimeModel(project);
+    const canvas=document.getElementById('game');
+    const ctx=canvas.getContext('2d');
+    const score=document.getElementById('score');
+    const mapName=document.getElementById('map-name');
+    const runtimeStatus=document.getElementById('runtime-status');
+    const transition=document.getElementById('transition');
+    const assets=new Map((project.assets||[]).map(function(asset){return [asset.id,asset]}));
+    const assetImages=new Map();
+    const heldInputs=new Set();
+    let last=performance.now();
+    let manuallyPaused=false;
+    let transitionAlpha=0;
+    const FIXED_STEP=1/60;
+    const MAX_CATCH_UP_STEPS=5;
+    let accumulator=0;
+    let fixedStepCount=0;
+    let droppedCatchUpEvents=0;
+    let longFrames=0;
+    let currentFrameMs=0;
+    let visualTick=0;
+    const frameSamples=[];
+    (project.assets||[]).forEach(function(asset){const image=new Image();image.src=asset.dataUrl;assetImages.set(asset.id,image)});
+
+    function syncUi(){const state=engine.getState();if(canvas.width!==state.width)canvas.width=state.width;if(canvas.height!==state.height)canvas.height=state.height;score.textContent=String(state.collectedCount);mapName.textContent=state.mapName||state.activeMapId;canvas.setAttribute('aria-label','Agent Quest — '+(state.mapName||state.activeMapId))}
+    function announce(message){runtimeStatus.textContent=message}
+    function handleEvents(events){events.forEach(function(event){if(event.type==='coin.collected')announce('Collected '+event.count);if(event.type==='player.respawned')announce('Respawned');if(event.type==='goal.reached')announce('Goal reached');if(event.type==='traversal.started')announce('Locked onto '+event.pathId);if(event.type==='traversal.completed')announce('Traversal complete');if(event.type==='traversal.bailed')announce('Traversal released');if(event.type==='map.changed'){syncUi();announce('Entered '+event.mapName);if(event.transition!=='instant')transitionAlpha=1}})}
+    function rounded(x,y,width,height,radius){ctx.beginPath();if(typeof ctx.roundRect==='function')ctx.roundRect(x,y,width,height,radius);else ctx.rect(x,y,width,height);ctx.fill()}
+    function activeProjection(){const state=engine.getState();return normalizeProjection(state.projection||{type:'orthographic',tileWidth:20,tileHeight:20},state)}
+    function projectedPoint(point){const projection=activeProjection();return projection.type==='dimetric-2:1'?worldToScreen({x:Number(point.x||0),y:Number(point.y||0),z:Number(point.z||0)},projection):{x:Number(point.x||0),y:Number(point.y||0)}}
+    function objectPlacement(object){const projection=activeProjection();if(projection.type!=='dimetric-2:1')return{x:Number(object.x||0),y:Number(object.y||0)};const anchorX=Number(object.groundAnchor?.offsetX??Number(object.width||0)/2);const anchorY=Number(object.groundAnchor?.offsetY??object.height??0);const screen=worldToScreen({x:Number(object.x||0)+anchorX,y:Number(object.y||0)+anchorY,z:Number(object.z||0)},projection);return{x:screen.x-anchorX,y:screen.y-anchorY}}
+    function drawTraversalPaths(){const active=engine.getState().activeTraversalPathId;ctx.save();(engine.getTraversalPaths()||[]).forEach(function(path){if(!active||path.id!==active||!path.points||path.points.length<2)return;const points=path.points.map(projectedPoint);ctx.strokeStyle='#c8ff4d';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(points[0].x,points[0].y);points.slice(1).forEach(function(point){ctx.lineTo(point.x,point.y)});ctx.stroke()});ctx.restore()}
+    function drawPrimitive(object){ctx.fillStyle=object.color||'#888';if(object.kind==='coin'){ctx.beginPath();ctx.arc(object.x+object.width/2,object.y+object.height/2,Math.min(object.width,object.height)/2,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#25251e';ctx.lineWidth=3;ctx.stroke();ctx.fillStyle='rgba(255,255,255,.55)';ctx.fillRect(object.x+object.width*.32,object.y+object.height*.2,4,7)}else if(object.kind==='hazard'){const count=Math.max(1,Math.round(object.width/24));ctx.beginPath();ctx.moveTo(object.x,object.y+object.height);for(let index=0;index<count;index+=1){const x=object.x+index*(object.width/count);ctx.lineTo(x+object.width/count/2,object.y);ctx.lineTo(x+object.width/count,object.y+object.height)}ctx.closePath();ctx.fill()}else if(object.kind==='spawn'){ctx.globalAlpha=.62;ctx.strokeStyle=object.color;ctx.lineWidth=3;ctx.strokeRect(object.x+5,object.y+5,object.width-10,object.height-5);ctx.globalAlpha=1}else if(object.kind==='portal'){rounded(object.x,object.y,object.width,object.height,Math.min(12,object.width/3));ctx.strokeStyle='rgba(255,255,255,.75)';ctx.lineWidth=3;ctx.strokeRect(object.x+8,object.y+8,object.width-16,object.height-12)}else if(object.kind==='goal'){ctx.fillRect(object.x+5,object.y,4,object.height);ctx.beginPath();ctx.moveTo(object.x+9,object.y+4);ctx.lineTo(object.x+object.width,object.y+14);ctx.lineTo(object.x+9,object.y+26);ctx.closePath();ctx.fill()}else{rounded(object.x,object.y,object.width,object.height,object.kind==='player'?9:4);if(object.kind==='player'){ctx.fillStyle='#fff';ctx.fillRect(object.x+object.width*.22,object.y+object.height*.25,7,8);ctx.fillRect(object.x+object.width*.62,object.y+object.height*.25,7,8);ctx.fillStyle='#24241f';ctx.fillRect(object.x+object.width*.25,object.y+object.height*.28,3,4);ctx.fillRect(object.x+object.width*.65,object.y+object.height*.28,3,4)}if(object.kind==='platform'){ctx.fillStyle='rgba(255,255,255,.35)';ctx.fillRect(object.x,object.y,object.width,5)}}}
+    function sliceBounds(object,slice,asset){if(!slice)return null;const sourceTotal=Math.max(1,Number(asset?.frameHeight||object.height));const sourceY=Math.max(0,Math.min(sourceTotal,Number(slice.sourceY||0)));const sourceHeight=Math.max(0,Math.min(sourceTotal-sourceY,Number(slice.height||sourceTotal)));return {sourceY:sourceY,sourceHeight:sourceHeight,destinationY:object.y+(sourceY/sourceTotal)*object.height,destinationHeight:(sourceHeight/sourceTotal)*object.height}}
+    function drawDimetricPlatform(object){const projection=activeProjection();const z=Number(object.z||0);const points=[projectedPoint({x:object.x,y:object.y,z:z}),projectedPoint({x:Number(object.x)+Number(object.width),y:object.y,z:z}),projectedPoint({x:Number(object.x)+Number(object.width),y:Number(object.y)+Number(object.height),z:z}),projectedPoint({x:object.x,y:Number(object.y)+Number(object.height),z:z})];ctx.fillStyle=object.color||'#555';ctx.beginPath();ctx.moveTo(points[0].x,points[0].y);points.slice(1).forEach(function(point){ctx.lineTo(point.x,point.y)});ctx.closePath();ctx.fill();ctx.strokeStyle='rgba(255,255,255,.28)';ctx.lineWidth=2;ctx.stroke();if(Number(object.collisionHeight||0)>0){const drop=Math.max(5,Number(projection.elevationStep||32)*Math.min(1,Number(object.collisionHeight||1)));ctx.fillStyle='rgba(20,20,24,.34)';ctx.beginPath();ctx.moveTo(points[2].x,points[2].y);ctx.lineTo(points[3].x,points[3].y);ctx.lineTo(points[3].x,points[3].y+drop);ctx.lineTo(points[2].x,points[2].y+drop);ctx.closePath();ctx.fill()}}
+    function drawObject(object,slice){ctx.save();const asset=object.assetId&&assets.get(object.assetId);const image=asset&&assetImages.get(asset.id);if(!asset&&activeProjection().type==='dimetric-2:1'&&object.kind==='platform'){drawDimetricPlatform(object);ctx.restore();return}const placement=objectPlacement(object);ctx.translate(placement.x-Number(object.x||0),placement.y-Number(object.y||0));const bounds=sliceBounds(object,slice,asset);if(bounds){ctx.beginPath();ctx.rect(object.x,bounds.destinationY,object.width,bounds.destinationHeight);ctx.clip()}if(asset&&image&&image.complete&&image.naturalWidth){let requested=object.assetFrame||0;if(asset.frames>1&&object.kind==='coin')requested=Math.floor(visualTick/8)%asset.frames;if(asset.frames>1&&object.kind==='player'){const state=engine.getState();requested=state.activeTraversalPathId?Math.min(3,asset.frames-1):Math.abs(Number(object.vy||0))>48?Math.min(2,asset.frames-1):Math.abs(Number(object.vx||0))>18?Math.min(Math.floor(visualTick/8)%2,asset.frames-1):0}const frame=Math.max(0,Math.min(asset.frames-1,requested));const columns=Math.max(1,asset.columns||1);const sx=(frame%columns)*asset.frameWidth;const sy=Math.floor(frame/columns)*asset.frameHeight;if(bounds)ctx.drawImage(image,sx,sy+bounds.sourceY,asset.frameWidth,bounds.sourceHeight,object.x,bounds.destinationY,object.width,bounds.destinationHeight);else ctx.drawImage(image,sx,sy,asset.frameWidth,asset.frameHeight,object.x,object.y,object.width,object.height)}else drawPrimitive(object);ctx.restore()}
+    function draw(){visualTick+=1;const state=engine.getState();ctx.fillStyle=state.background||'#111';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.imageSmoothingEnabled=false;drawTraversalPaths();engine.renderEntries().forEach(function(entry){drawObject(entry.object,entry.slice)});transitionAlpha=Math.max(0,transitionAlpha-.08);transition.style.opacity=String(transitionAlpha)}
+    function releaseInputs(){heldInputs.forEach(function(code){engine.setInput(code,false)});heldInputs.clear()}
+    function setInput(code,pressed){engine.setInput(code,pressed);if(pressed)heldInputs.add(code);else heldInputs.delete(code)}
+    function recordFrame(ms){currentFrameMs=ms;frameSamples.push(ms);if(frameSamples.length>240)frameSamples.shift();if(ms>50)longFrames+=1}
+    function advanceFixed(seconds){const events=[];accumulator+=Math.max(0,Math.min(Number(seconds||0),.25));let steps=0;while(accumulator>=FIXED_STEP&&steps<MAX_CATCH_UP_STEPS){events.push.apply(events,engine.update(FIXED_STEP));accumulator-=FIXED_STEP;fixedStepCount+=1;steps+=1}if(accumulator>=FIXED_STEP){droppedCatchUpEvents+=1;accumulator%=FIXED_STEP}return events}
+    function stepExact(milliseconds){let remaining=Math.max(0,Math.min(1000,Number(milliseconds||0)))/1000;const events=[];while(remaining>.000001){const step=Math.min(remaining,FIXED_STEP);events.push.apply(events,engine.update(step));remaining-=step;fixedStepCount+=1}return events}
+    function getPerformance(){const sorted=frameSamples.slice().sort(function(a,b){return a-b});const index=Math.max(0,Math.ceil(sorted.length*.95)-1);return {currentFrameMs:currentFrameMs,p95FrameMs:sorted[index]||0,fixedStepCount:fixedStepCount,droppedCatchUpEvents:droppedCatchUpEvents,longFrames:longFrames,fixedStepHz:60,maximumCatchUpSteps:MAX_CATCH_UP_STEPS}}
+    function frame(now){const elapsedMs=Math.max(0,now-last);last=now;recordFrame(elapsedMs);if(!manuallyPaused&&!document.hidden)handleEvents(advanceFixed(elapsedMs/1000));draw();requestAnimationFrame(frame)}
+    function reset(){engine.reset();handleEvents(engine.drainEvents());syncUi();announce('Reset');draw()}
+
+    addEventListener('keydown',function(event){setInput(event.code,true);if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space','KeyE'].includes(event.code))event.preventDefault()},{passive:false});
+    addEventListener('keyup',function(event){setInput(event.code,false)});
+    addEventListener('blur',releaseInputs);
+    document.addEventListener('visibilitychange',function(){releaseInputs();last=performance.now();accumulator=0;announce(document.hidden?'Paused':'Ready')});
+    const touchControls=document.getElementById('touch-controls');
+    const mobileTouchQuery=matchMedia('(max-width:700px)');
+    function syncTouchControls(){const mobile=mobileTouchQuery.matches;touchControls.hidden=!mobile;touchControls.inert=!mobile;touchControls.setAttribute('aria-hidden',String(!mobile));if(!mobile)releaseInputs()}
+    if(typeof mobileTouchQuery.addEventListener==='function')mobileTouchQuery.addEventListener('change',syncTouchControls);else mobileTouchQuery.addListener(syncTouchControls);
+    syncTouchControls();
+    document.querySelectorAll('[data-input]').forEach(function(button){const codes={left:'left',right:'right',up:'up',down:'down',jump:'jump',interact:'interact'};const code=codes[button.dataset.input];const release=function(){setInput(code,false);button.removeAttribute('data-pressed')};button.addEventListener('pointerdown',function(event){event.preventDefault();button.setPointerCapture(event.pointerId);setInput(code,true);button.setAttribute('data-pressed','true')});button.addEventListener('pointerup',release);button.addEventListener('pointercancel',release);button.addEventListener('lostpointercapture',release)});
+    document.getElementById('reset').addEventListener('click',reset);
+    const runtimeApi={version:'2.3.0',getState:engine.getState,getObjects:function(){return engine.getObjects().map(function(object){return JSON.parse(JSON.stringify(object))})},getTraversalPaths:function(){return engine.getTraversalPaths().map(function(path){return JSON.parse(JSON.stringify(path))})},getNavigation:function(){return JSON.parse(JSON.stringify(engine.getNavigation()))},getCollisionBox:function(id){const object=typeof id==='string'?engine.getObjects().find(function(candidate){return candidate.id===id}):id;return object?engine.colliderBox(object):null},getPerformance:getPerformance,setInput:setInput,step:function(milliseconds){const emitted=stepExact(milliseconds);handleEvents(emitted);draw();return {events:emitted,state:engine.getState(),performance:getPerformance()}},reset:reset,loadMap:function(mapId,spawnId){const loaded=engine.loadMap(mapId,spawnId||null);handleEvents(engine.drainEvents());syncUi();draw();return loaded},pause:function(){manuallyPaused=true;releaseInputs();announce('Paused')},resume:function(){manuallyPaused=false;last=performance.now();accumulator=0;announce('Ready')}};
+    function runRuntimeCommand(command){if(!command||typeof command!=='object'||Array.isArray(command)||typeof command.op!=='string')throw new Error('Runtime command requires a string op.');if(command.op==='get_state')return {ok:true,state:runtimeApi.getState(),performance:runtimeApi.getPerformance()};if(command.op==='get_objects')return {ok:true,objects:runtimeApi.getObjects()};if(command.op==='get_traversal_paths')return {ok:true,paths:runtimeApi.getTraversalPaths()};if(command.op==='get_navigation')return {ok:true,navigation:runtimeApi.getNavigation()};if(command.op==='get_collision_box')return {ok:true,id:command.id,box:runtimeApi.getCollisionBox(String(command.id||''))};if(command.op==='set_input'){runtimeApi.setInput(String(command.code||command.action||''),command.pressed!==false);return {ok:true,state:runtimeApi.getState()}}if(command.op==='step')return {ok:true,...runtimeApi.step(Number(command.deltaMs||command.milliseconds||16.6667))};if(command.op==='reset'){runtimeApi.reset();return {ok:true,state:runtimeApi.getState()}}if(command.op==='load_map'){const loaded=runtimeApi.loadMap(String(command.mapId||''),typeof command.spawnId==='string'?command.spawnId:null);return {ok:loaded,state:runtimeApi.getState()}}if(command.op==='pause'){runtimeApi.pause();return {ok:true,state:{...runtimeApi.getState(),paused:true}}}if(command.op==='resume'){runtimeApi.resume();return {ok:true,state:{...runtimeApi.getState(),paused:false}}}throw new Error('Unknown runtime command: '+command.op)}
+    const runtimeBridge=document.getElementById('looplab-runtime-bridge');const runtimeForm=document.getElementById('looplab-runtime-form');const runtimeCommandInput=document.getElementById('looplab-runtime-command');const runtimeResultOutput=document.getElementById('looplab-runtime-result');const runtimeSubmit=document.getElementById('looplab-runtime-submit');
+    function executeRuntimeCommand(command){try{return runRuntimeCommand(command)}catch(error){return {ok:false,error:error instanceof Error?error.message:String(error)}}}
+    runtimeForm.addEventListener('submit',function(event){event.preventDefault();runtimeSubmit.disabled=true;let result;try{result=executeRuntimeCommand(JSON.parse(runtimeCommandInput.value))}catch(error){result={ok:false,error:error instanceof Error?error.message:String(error)}}runtimeResultOutput.value=JSON.stringify(result,null,2);runtimeSubmit.disabled=false});
+    document.addEventListener('looplab:runtime-command',function(event){const detail=event.detail||{};const result=executeRuntimeCommand(detail.command||detail);document.dispatchEvent(new CustomEvent('looplab:runtime-response',{detail:{id:detail.id||null,result:result}}))});
+    try{if(Object.isExtensible(window))window.looplabRuntime=runtimeApi}catch(error){}
+    handleEvents(engine.drainEvents());syncUi();draw();runtimeBridge.dataset.ready='true';document.dispatchEvent(new CustomEvent('looplab-runtime-ready',{bubbles:true,detail:{version:'2.3.0',mapId:engine.getState().activeMapId}}));requestAnimationFrame(frame);
+  </script>
+</body>
+</html>

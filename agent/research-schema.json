@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["title", "executiveSummary", "confidence", "findings", "suggestions", "sources", "uncertainties"],
+  "properties": {
+    "title": { "type": "string", "minLength": 1, "maxLength": 180 },
+    "executiveSummary": { "type": "string", "minLength": 1, "maxLength": 5000 },
+    "confidence": { "type": "string", "enum": ["high", "medium", "low"] },
+    "findings": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 16,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "title", "summary", "confidence", "sourceIds"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1, "maxLength": 80 },
+          "title": { "type": "string", "minLength": 1, "maxLength": 180 },
+          "summary": { "type": "string", "minLength": 1, "maxLength": 3000 },
+          "confidence": { "type": "string", "enum": ["high", "medium", "low"] },
+          "sourceIds": { "type": "array", "minItems": 1, "maxItems": 10, "items": { "type": "string", "minLength": 1, "maxLength": 120 } }
+        }
+      }
+    },
+    "suggestions": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 12,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "title", "rationale", "promptAddition", "category", "confidence", "sourceIds"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1, "maxLength": 80 },
+          "title": { "type": "string", "minLength": 1, "maxLength": 180 },
+          "rationale": { "type": "string", "minLength": 1, "maxLength": 2000 },
+          "promptAddition": { "type": "string", "minLength": 1, "maxLength": 2000 },
+          "category": { "type": "string", "enum": ["gameplay", "maps", "controls", "art", "audience", "accessibility", "performance", "release"] },
+          "confidence": { "type": "string", "enum": ["high", "medium", "low"] },
+          "sourceIds": { "type": "array", "minItems": 1, "maxItems": 10, "items": { "type": "string", "minLength": 1, "maxLength": 120 } }
+        }
+      }
+    },
+    "sources": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 30,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "title", "url", "publisher", "publishedAt"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1, "maxLength": 80 },
+          "title": { "type": "string", "minLength": 1, "maxLength": 300 },
+          "url": { "type": "string", "minLength": 8, "maxLength": 2000 },
+          "publisher": { "type": "string", "maxLength": 180 },
+          "publishedAt": { "type": ["string", "null"], "maxLength": 80 }
+        }
+      }
+    },
+    "uncertainties": { "type": "array", "maxItems": 12, "items": { "type": "string", "minLength": 1, "maxLength": 1000 } }
+  }
+}
