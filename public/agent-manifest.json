@@ -1,6 +1,6 @@
 {
   "name": "Looplab Headless Agent API",
-  "protocolVersion": "1.99.0",
+  "protocolVersion": "1.100.0",
   "agentOperatingModel": {
     "purpose": "LoopLab is an AI capability amplifier and structured game-authoring workstation, not a form the agent is confined to.",
     "headlessFirst": true,
@@ -1063,6 +1063,7 @@
     "apply_previewed_batch",
     "save_shared_project",
     "get_doctor",
+    "get_privacy_report",
     "get_acceptance_plan",
     "run_acceptance_suite",
     "get_completion_report",
@@ -1093,6 +1094,7 @@
     "agentProjectContextWorkflow": "Start with get_agent_brief, then use get_project_context view=campaign or view=map with stable mapIds. The bounded context is source-bound and omission-explicit, but it is never mutation input or verification evidence. Use get_project only when the complete editable source is actually required.",
     "agentChangeFeedWorkflow": "Store the opaque currentCursor from get_agent_changes. On resume, request later events with that cursor and follow nextCursor while hasMore. If resyncRequired is true, discard cached assumptions and reread get_agent_brief plus bounded project context before continuing.",
     "agentReadinessWorkflow": "Read get_agent_brief.readiness.current for the active authoring gate and readiness.release for the production target on the same source. A passing prototype/current profile may protect an iteration but is never release readiness; production blocking and exact evidence govern release-ready one-file export. Prototype exports remain drafts.",
+    "privacyWorkflow": "Require get_privacy_report status=clear on the current production source before provider handoff, shared-project publication, release verification, or export. Prompt drafting, game iteration, research, consented visual critique, AI art, and the loopback copilot independently rescan their exact outbound text before inference. Findings are value-free and must be repaired locally, never forwarded to another provider.",
     "assetPatchCommand": "Use update_asset with a stable id and changes object for precise visual metadata or embedded-image updates without replacing authored collision.",
     "collisionPolicy": "update_asset preserves collisionPolicy=authored-only and never changes object collision geometry."
   },
@@ -2379,6 +2381,15 @@
     "statusCommand": "npm run claude:status",
     "setupCommand": "npm run claude:setup -- \"<games-root>\"",
     "smokeCommand": "npm run claude:smoke -- \"<games-root>\"",
+    "modelPolicy": {
+      "smokeDefault": "haiku",
+      "smokePurpose": "operability-only",
+      "smokeUsedForGameCreation": false,
+      "creativeCliSelection": "Use LOOPLAB_CLAUDE_MODEL when explicitly configured; otherwise inherit Claude Code's current default and record the resolved model from measured telemetry.",
+      "researchCliSelection": "Use LOOPLAB_CLAUDE_RESEARCH_MODEL, then LOOPLAB_CLAUDE_MODEL, then Claude Code's current default.",
+      "visionCliSelection": "Use LOOPLAB_CLAUDE_VISION_MODEL, then LOOPLAB_CLAUDE_MODEL, then Claude Code's current default.",
+      "directApiSelection": "Use LOOPLAB_ANTHROPIC_MODEL for prompt and game-loop work, with LOOPLAB_ANTHROPIC_VISION_MODEL as the visual-critique override."
+    },
     "defaultScope": "user",
     "mcpProfiles": {
       "looplab-core": "Workspace-contained deterministic .loop.json authoring.",
@@ -2391,7 +2402,7 @@
     "handoff": "claudedocs/codex-to-claude (private and gitignored when present)",
     "crossProjectSkill": "Setup atomically synchronizes the repository-owned LoopLab skill into the private user Claude skill directory and status verifies exact bytes.",
     "registrationBoundary": "User-scoped registration is private, cross-project, idempotent, and contains no provider credential. A connected MCP stdio process is not live-editor proof; status independently fetches the loopback app manifest and requires the exact current protocol.",
-    "smokeBoundary": "The executable smoke preflights the live app before provider launch, uses a temporary synthetic blank project, and supplies Claude a strict temporary MCP config containing exactly one read-only core schema and one read-only live schema. User and project MCP catalogs are ignored.",
+    "smokeBoundary": "The executable smoke preflights the live app before provider launch, uses Haiku only for this bounded operability proof, creates a temporary synthetic blank project, and supplies Claude a strict temporary MCP config containing exactly one read-only core schema and one read-only live schema. User and project MCP catalogs are ignored; Haiku is not selected for game creation by this contract.",
     "providerBoundary": "External Claude MCP equips the lead agent. LoopLab's schema-bound Claude provider subprocess remains nonpersistent, task-scoped, tool-limited, and MCP-free."
   },
   "localCopilot": {
@@ -4485,7 +4496,7 @@
     "uiPolicy": "Focused preview hides the AI Director, Project Doctor, map tabs, and rule strip while preserving the Preview toolbar and one-click return to editing."
   },
   "exportReceipt": {
-    "schemaVersion": "looplab-export-receipt/v4",
+    "schemaVersion": "looplab-export-receipt/v5",
     "prepareCommand": "prepare_export",
     "exportCommand": "export_html",
     "cliOperation": "prepare-export",
@@ -5064,6 +5075,7 @@
     "validate",
     "get_doctor",
     "doctor",
+    "get_privacy_report",
     "get_acceptance_plan",
     "run_acceptance_suite",
     "get_completion_report",
@@ -5319,6 +5331,7 @@
       "validate",
       "get_doctor",
       "doctor",
+      "get_privacy_report",
       "get_acceptance_plan",
       "run_acceptance_suite",
       "get_completion_report",
@@ -5516,6 +5529,7 @@
       "validate",
       "get_doctor",
       "doctor",
+      "get_privacy_report",
       "get_acceptance_plan",
       "run_acceptance_suite",
       "get_completion_report",
@@ -8795,6 +8809,55 @@
                 "production"
               ],
               "description": "Project Doctor profile."
+            }
+          },
+          "additionalProperties": false
+        },
+        "annotations": {
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      },
+      {
+        "op": "get_privacy_report",
+        "title": "Get Privacy Report",
+        "description": "Return the source-bound local project privacy preflight used before provider handoff, publication, verification, and export. Every creative provider path repeats it against exact outbound text before inference. Reports contain only finding codes, sanitized structural paths, coverage counts, and repair actions; matched values are never returned.",
+        "surfaces": [
+          "core",
+          "browser-session"
+        ],
+        "mutatesProject": false,
+        "mutatesBuilderState": false,
+        "requiresSourceDigestInMcp": false,
+        "coordinationOnly": false,
+        "schemaPrecision": "declared",
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "expectedSourceDigest": {
+              "type": "string",
+              "description": "Project Doctor sourceDigest inspected immediately before this command.",
+              "minLength": 1
+            },
+            "expectedLedgerDigest": {
+              "type": "string",
+              "description": "Shared work-ledger digest inspected immediately before this coordination mutation.",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            },
+            "compact": {
+              "type": "boolean",
+              "description": "Return a compact result without repeating the complete embedded project when the transport supports it."
+            },
+            "profile": {
+              "type": "string",
+              "enum": [
+                "prototype",
+                "production"
+              ],
+              "description": "Project Doctor profile used to describe whether review findings block this workflow."
             }
           },
           "additionalProperties": false
@@ -30925,8 +30988,8 @@
   },
   "companion": {
     "baseUrl": "http://127.0.0.1:4317",
-    "expectedCompanionVersion": "1.33.0",
-    "expectedProtocolVersion": "1.99.0",
+    "expectedCompanionVersion": "1.34.0",
+    "expectedProtocolVersion": "1.100.0",
     "providers": "/providers",
     "promptDrafts": "/prompt-drafts",
     "agentPresence": "/agent-presence",

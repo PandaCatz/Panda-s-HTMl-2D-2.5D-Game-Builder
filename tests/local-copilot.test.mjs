@@ -145,6 +145,17 @@ test("local copilot inference is stateless, tool-free, schema-constrained, and i
   assert.deepEqual(result.policy, LOOPLAB_LOCAL_COPILOT_POLICY);
 });
 
+test("local copilot privacy preflight stops inference before the loopback fetch", async () => {
+  let calls = 0;
+  const privateAddress = ["private.builder", "private-studio.dev"].join("@");
+  const status = { ready: true, origin: "http://127.0.0.1:11434", engine: "ollama", model: "qwen-local", availableModels: ["qwen-local"] };
+  await assert.rejects(
+    runLocalCopilot({ task: `Summarize ${privateAddress}`, context: {} }, { status, fetcher: async () => { calls += 1; throw new Error("must not fetch"); } }),
+    (error) => error?.code === "privacy-preflight-blocked" && !error.message.includes(privateAddress),
+  );
+  assert.equal(calls, 0);
+});
+
 test("malformed or expanded local-model output fails closed", async () => {
   assert.throws(() => validateLocalCopilotAdvice({ ...VALID_ADVICE, commands: [{ op: "set_project" }] }), /strict local-copilot output schema/);
   const status = { ready: true, origin: "http://127.0.0.1:1234", engine: "lm-studio", model: "model", availableModels: ["model"] };

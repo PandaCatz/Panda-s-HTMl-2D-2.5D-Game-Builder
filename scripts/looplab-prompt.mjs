@@ -7,6 +7,7 @@ import { buildAnthropicMessagesRequest, requireAnthropicStructuredResult } from 
 import { buildClaudeCliArgs, inspectClaudeCliOutput, requireClaudeCliStructuredResult } from "../lib/looplab-claude-cli.mjs";
 import { buildOpenAiResponsesRequest, requireOpenAiStructuredResult } from "../lib/looplab-openai-request.mjs";
 import { requestProviderJson } from "../lib/looplab-provider-http.mjs";
+import { assertProviderPayloadPrivacy } from "../lib/looplab-project-privacy.mjs";
 import { parseProviderJson, runProviderProcess } from "../lib/looplab-provider-process.mjs";
 import { attachUsageReceipt, createUsageReceipt, readCodexConfiguredModel, usageFromCliOutput, usageReceiptSummary } from "../lib/looplab-provider-usage.mjs";
 
@@ -73,6 +74,10 @@ async function invokeProvider(provider, input, schemaPath, responsePath, respons
     if (!responseFixturePath) throw new Error("The file provider requires --response.");
     return { value: parseAgentJson(await readFile(responseFixturePath, "utf8")), model: "fixture", receipt: createUsageReceipt({ provider: "file", model: "fixture", usage: { input_tokens: 0, output_tokens: 0, total_tokens: 0 }, source: "fixture" }) };
   }
+  assertProviderPayloadPrivacy({ instructions: DIRECTOR_PROMPT, request: input }, {
+    label: "prompt-drafting provider payload",
+    sourceDigest: input?.context?.sourceDigest ?? input?.sourceDigest ?? null,
+  });
   const serializedInput = JSON.stringify(input);
   if (provider === "openai") {
     const apiKey = process.env.OPENAI_API_KEY;
@@ -186,6 +191,11 @@ async function main() {
   const schemaPath = join(dirname(outputPath), "looplab-prompt-schema.json");
   const providerResponsePath = join(dirname(outputPath), "looplab-provider-prompt.json");
   await writeFile(schemaPath, `${JSON.stringify(PROMPT_SCHEMA, null, 2)}\n`, "utf8");
+  const privacyPreflight = provider === "file" ? null : assertProviderPayloadPrivacy({ instructions: DIRECTOR_PROMPT, request: input }, {
+    label: "prompt-drafting provider payload",
+    sourceDigest: input?.context?.sourceDigest ?? input?.sourceDigest ?? null,
+  });
+  if (privacyPreflight) emit("prompt.privacy.checked", { reportDigest: privacyPreflight.digest, status: privacyPreflight.status, findingCount: privacyPreflight.findingCount });
   emit("prompt.provider.requested", { provider, attempt: Number(input.attempt ?? 1) });
   const response = await invokeProvider(provider, input, schemaPath, providerResponsePath, responseFixturePath);
   const errors = validateProviderPromptDraft(response.value, {

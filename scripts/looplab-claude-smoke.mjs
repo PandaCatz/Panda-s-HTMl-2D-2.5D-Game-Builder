@@ -117,7 +117,7 @@ async function main() {
     model,
     effort: option("effort", process.env.LOOPLAB_CLAUDE_EFFORT ?? "low"),
   });
-  process.stderr.write(`${JSON.stringify({ event: "claude.smoke.submitted", gamesRoot, fixture: "synthetic-blank", privacyMode: "synthetic-fixture-and-public-recipe", isolatedMcp: true, advertisedToolCount: 2, model, maxBudgetUsd, timeoutMs, tools: LOOPLAB_CLAUDE_OPERABILITY_TOOLS })}\n`);
+  process.stderr.write(`${JSON.stringify({ event: "claude.smoke.submitted", purpose: "operability-only", gameCreation: false, gamesRoot, fixture: "synthetic-blank", privacyMode: "synthetic-fixture-and-public-recipe", isolatedMcp: true, advertisedToolCount: 2, model, maxBudgetUsd, timeoutMs, tools: LOOPLAB_CLAUDE_OPERABILITY_TOOLS })}\n`);
 
   try {
     const result = await runProviderProcess({

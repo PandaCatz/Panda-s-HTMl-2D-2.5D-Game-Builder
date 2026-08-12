@@ -8,6 +8,7 @@ import { buildAnthropicMessagesRequest, requireAnthropicStructuredResult } from 
 import { buildClaudeCliArgs, inspectClaudeCliOutput, requireClaudeCliStructuredResult } from "../lib/looplab-claude-cli.mjs";
 import { buildOpenAiResponsesRequest, requireOpenAiStructuredResult } from "../lib/looplab-openai-request.mjs";
 import { requestProviderJson } from "../lib/looplab-provider-http.mjs";
+import { assertProviderPayloadPrivacy } from "../lib/looplab-project-privacy.mjs";
 import { parseProviderJson, runProviderProcess } from "../lib/looplab-provider-process.mjs";
 import { attachUsageReceipt, createUsageReceipt, readCodexConfiguredModel, usageFromCliOutput, usageReceiptSummary } from "../lib/looplab-provider-usage.mjs";
 import {
@@ -72,6 +73,11 @@ async function invokeProvider({ provider, request, schema, schemaPath, responseF
     if (!responsePath) throw new Error("The file visual-critique provider requires --response.");
     return { output: JSON.parse(await readFile(resolve(responsePath), "utf8")), model: "fixture", receipt: createUsageReceipt({ provider: "file", model: "fixture", usage: { input_tokens: 0, output_tokens: 0, total_tokens: 0 }, source: "fixture" }) };
   }
+  const providerContext = visualCritiqueProviderContext(request);
+  assertProviderPayloadPrivacy({ instructions: SYSTEM_PROMPT, context: providerContext }, {
+    label: "visual-critique provider payload",
+    sourceDigest: request.sourceDigest,
+  });
   if (provider === "openai") {
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) throw new Error("OPENAI_API_KEY is not configured for visual critique.");
@@ -117,7 +123,8 @@ async function invokeProvider({ provider, request, schema, schemaPath, responseF
 
   const captureFiles = await materializeCaptureFiles(request, cwd);
   const fileIndex = captureFiles.map((entry) => `${entry.captureId}: ${entry.filename}`).join("\n");
-  const prompt = `${SYSTEM_PROMPT}\n\nRead these exact local image files before returning the critique:\n${fileIndex}\n\nCAPTURE METADATA:\n${visualCritiqueProviderContext(request)}`;
+  const prompt = `${SYSTEM_PROMPT}\n\nRead these exact local image files before returning the critique:\n${fileIndex}\n\nCAPTURE METADATA:\n${providerContext}`;
+  assertProviderPayloadPrivacy({ prompt }, { label: "visual-critique CLI payload", sourceDigest: request.sourceDigest });
   if (provider === "codex") {
     const imageArgs = captureFiles.flatMap((entry) => ["-i", entry.file]);
     const result = await runProviderProcess({
@@ -136,7 +143,7 @@ async function invokeProvider({ provider, request, schema, schemaPath, responseF
       const result = await runProviderProcess({
         command: "claude",
         args: buildClaudeCliArgs({ prompt, schema, maxTurns: 4, tools: ["Read"], model: process.env.LOOPLAB_CLAUDE_VISION_MODEL ?? process.env.LOOPLAB_CLAUDE_MODEL, effort: process.env.LOOPLAB_CLAUDE_EFFORT, maxBudgetUsd: process.env.LOOPLAB_CLAUDE_MAX_BUDGET_USD }),
-        input: visualCritiqueProviderContext(request),
+        input: providerContext,
         cwd,
         timeoutLabel: "visual critique",
       });
@@ -164,6 +171,11 @@ async function main() {
   const schemaPath = resolve(dirname(fileURLToPath(import.meta.url)), "..", "agent", "visual-critique-schema.json");
   const schema = JSON.parse(await readFile(schemaPath, "utf8"));
   const request = normalizeVisualCritiqueRequest(JSON.parse(await readFile(inputPath, "utf8")));
+  const privacyPreflight = provider === "file" ? null : assertProviderPayloadPrivacy({ instructions: SYSTEM_PROMPT, context: visualCritiqueProviderContext(request) }, {
+    label: "visual-critique provider payload",
+    sourceDigest: request.sourceDigest,
+  });
+  if (privacyPreflight) emit("visual-critique.privacy.checked", { sourceDigest: request.sourceDigest, reportDigest: privacyPreflight.digest, status: privacyPreflight.status, findingCount: privacyPreflight.findingCount });
   emit("visual-critique.started", { provider, sourceDigest: request.sourceDigest, captureSetDigest: request.captureSetDigest, captureCount: request.captures.length, message: `Submitting ${request.captures.length} consented capture(s) for grounded visual critique` });
   const responseFile = join(dirname(outputPath), "provider-visual-critique-response.json");
   const invoked = await invokeProvider({ provider, request, schema, schemaPath, responseFile, responsePath, cwd: dirname(inputPath) });

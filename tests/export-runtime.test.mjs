@@ -403,7 +403,7 @@ test("returns a source-bound draft receipt from an audited prototype artifact", 
 
   assert.match(artifact.html, /^<!doctype html>/i);
   assert.equal(artifact.audit.valid, true);
-  assert.equal(artifact.receipt.schemaVersion, "looplab-export-receipt/v4");
+  assert.equal(artifact.receipt.schemaVersion, "looplab-export-receipt/v5");
   assert.equal(artifact.receipt.status, "draft");
   assert.equal(artifact.receipt.release.shippable, false);
   assert.equal(artifact.receipt.release.doctorProfile, "prototype");
@@ -416,6 +416,11 @@ test("returns a source-bound draft receipt from an audited prototype artifact", 
   assert.equal(artifact.receipt.artifact.valid, true);
   assert.ok(artifact.receipt.artifact.checks.every((check) => check.passed));
   assert.equal(artifact.receipt.doctor.errorCount, 0);
+  assert.equal(artifact.receipt.privacy.status, "clear");
+  assert.equal(artifact.receipt.privacy.findingCount, 0);
+  assert.equal(artifact.receipt.privacy.matchedValuesReturned, false);
+  assert.equal(artifact.receipt.privacy.sourceDigest, artifact.receipt.source.sourceDigest);
+  assert.match(artifact.receipt.privacy.digest, /^sha256:[a-f0-9]{64}$/);
   assert.match(artifact.receipt.source.sourceDigest, /^source-/);
   assert.equal(artifact.receipt.game.mapCount, 2);
   assert.equal(artifact.receipt.game.startMapId, "map-a");
@@ -477,7 +482,7 @@ test("manifest declares the generated game as one offline-playable HTML file", a
   assert.equal(manifest.exportReceipt.prepareCommand, "prepare_export");
   assert.equal(manifest.exportReceipt.exportCommand, "export_html");
   assert.equal(manifest.exportReceipt.cliOperation, "prepare-export");
-  assert.equal(manifest.exportReceipt.schemaVersion, "looplab-export-receipt/v4");
+  assert.equal(manifest.exportReceipt.schemaVersion, "looplab-export-receipt/v5");
   assert.deepEqual(manifest.exportReceipt.statuses, ["draft", "release-ready"]);
   assert.match(manifest.exportReceipt.statusPolicy, /production Doctor is warning-clean/);
   assert.ok(manifest.commands.includes("prepare_export"));

@@ -199,6 +199,11 @@ test("manifest and Claude memories expose one canonical parity contract", () => 
   assert.equal(manifest.providerParity.providerTransports.claude.minimumVersion, "2.1.205");
   assert.equal(manifest.providerParity.operations["game-loop"].tools, "none");
   assert.equal(manifest.providerParity.operations.research.tools, "read-only web research");
+  assert.equal(manifest.claudeIntegration.modelPolicy.smokeDefault, "haiku");
+  assert.equal(manifest.claudeIntegration.modelPolicy.smokePurpose, "operability-only");
+  assert.equal(manifest.claudeIntegration.modelPolicy.smokeUsedForGameCreation, false);
+  assert.match(manifest.claudeIntegration.modelPolicy.creativeCliSelection, /Claude Code's current default/);
+  assert.match(manifest.claudeIntegration.smokeBoundary, /not selected for game creation/i);
   assert.equal(manifest.iterationLedger.candidateDecisionSchema, "looplab-candidate-decision/v1");
   assert.match(manifest.iterationLedger.selectionPolicy, /Codex, and Claude/);
   assert.match(manifest.iterationLedger.selectionPolicy, /without naming an automatic creative winner/);
