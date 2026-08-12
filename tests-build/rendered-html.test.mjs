@@ -235,7 +235,22 @@ test("keeps the create-preview-export loop in the product source", async () => {
 
   await assert.rejects(access(new URL("../app/_sites-preview", import.meta.url)));
   await access(new URL("../dist/server/index.js", import.meta.url));
-  await access(new URL("../dist/.openai/hosting.json", import.meta.url));
+  const localHostingBinding = await access(new URL("../.openai/hosting.json", import.meta.url)).then(
+    () => true,
+    (error) => {
+      if (error?.code === "ENOENT") return false;
+      throw error;
+    },
+  );
+  if (localHostingBinding) {
+    await access(new URL("../dist/.openai/hosting.json", import.meta.url));
+  } else {
+    await assert.rejects(
+      access(new URL("../dist/.openai/hosting.json", import.meta.url)),
+      (error) => error?.code === "ENOENT",
+      "a clean public build must not invent or package a deployment binding",
+    );
+  }
   await access(new URL("../public/path-editor/index.html", import.meta.url));
   await access(new URL("../public/path-editor/navpath.js", import.meta.url));
 });
