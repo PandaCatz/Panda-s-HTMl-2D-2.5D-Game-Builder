@@ -197,8 +197,8 @@ test("Codex, Claude, CLI, MCP, and the browser share canonical headless identity
     assert.ok(manifest.commandSurfaces.core.includes(command));
     assert.ok(manifest.commandSurfaces.browserSession.includes(command));
   }
-  assert.equal(manifest.commandSurfaces.core.length, 185);
-  assert.equal(manifest.commandSurfaces.browserSession.length, 266);
+  assert.equal(manifest.commandSurfaces.core.length, 190);
+  assert.equal(manifest.commandSurfaces.browserSession.length, 271);
   assert.equal(manifest.visualIdentityRules.defaultInheritance, true);
   assert.match(manifest.visualIdentityRules.imageReferenceConsent, /every individual provider-art job/i);
 });

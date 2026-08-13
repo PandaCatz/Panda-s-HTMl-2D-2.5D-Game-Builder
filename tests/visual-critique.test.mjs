@@ -130,9 +130,9 @@ test("manifest, command contracts, and companion source preserve visual critique
   const cancel = contracts.find((contract) => contract.op === "cancel_visual_critique_job");
   const getCurrent = contracts.find((contract) => contract.op === "get_visual_critique");
 
-  assert.equal(manifest.protocolVersion, "1.104.0");
-  assert.equal(LOOPLAB_CORE_COMMANDS.length, 185);
-  assert.equal(LOOPLAB_BROWSER_SESSION_COMMANDS.length, 266);
+  assert.equal(manifest.protocolVersion, "1.105.0");
+  assert.equal(LOOPLAB_CORE_COMMANDS.length, 190);
+  assert.equal(LOOPLAB_BROWSER_SESSION_COMMANDS.length, 271);
   assert.equal(validation.valid, true, validation.errors.join("\n"));
   assert.deepEqual(start.surfaces, ["browser-session"]);
   assert.equal(start.mutatesProject, false);

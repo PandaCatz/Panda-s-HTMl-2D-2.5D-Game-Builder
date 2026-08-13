@@ -96,10 +96,19 @@ Map Studio handles side-scrolling, top-down, connected-map, and exact dimetric 2
 - floor and raised-surface support contacts;
 - collision volumes and traversal paths;
 - navigation layers, nodes, links, and blocked/walkable areas;
+- authored ramps and stairs that interpolate support height while keeping route connectivity, collision, and art independent;
 - deterministic depth bands and occlusion slices;
 - portals, destination spawns, and player-facing map order.
 
 The bundled Path Editor exchange preserves rich routes instead of flattening them into simple lines. Timings, waits, facing, animation cues, meetings, events, elevation, depth bias, and evidence digests survive supported round trips.
+
+### Authored walkable ramps and stairs
+
+Height-changing routes are first-class map data rather than a visual guess. A strict `looplab-elevation-transitions/v1` program owns the walkable corridor and support-Z interpolation. It may bind an exact navigation link for route connectivity and an exact collision chain for platformer floor contact, but neither binding is replaced by the ramp artwork. Entry requires a compatible endpoint and elevation, side exits are contained, one-way direction is enforced, and the same screen position can still describe an independent ground underpass and raised route.
+
+Map Studio can turn a reviewed cross-layer navigation link into a ramp or stair, show its z progression, and tune width, entry radius, tolerance, direction, and runtime availability. Codex, Claude, CLI, MCP, and the browser bridge use the same `get_elevation_transitions`, `get_elevation_transition_report`, `suggest_elevation_transitions`, `set_elevation_transitions`, and `remove_elevation_transitions` contracts. Project Doctor rejects missing endpoints, wrong layers or direction, mismatched collision geometry, flat/non-monotonic height, and production bindings that do not match the active game style. Runtime API 2.31 exposes `getElevationTransitions()` / `get_elevation_transitions`; save-state v5 and replay v11 preserve active transition, segment, progress, and support height without changing earlier version projections.
+
+Path Editor v2 export now retains exact world node and area points in its LoopLab extension in addition to portable percentages. This prevents percentage rounding from moving a reviewed ramp endpoint or breaking its navigation/collision agreement during a supported round trip.
 
 ### Canonical tile layers and deterministic autotiling
 
@@ -190,7 +199,7 @@ A numeric score cannot excuse a blocker. Visual readiness is reported separately
 
 ## Headless by design
 
-LoopLab currently exposes **185 core project commands** and **266 browser-session commands** through one versioned manifest. Every command carries a JSON Schema 2020-12 input contract, surface ownership, mutation metadata, and MCP safety annotations instead of relying on an agent to infer arguments from prose.
+LoopLab currently exposes **190 core project commands** and **271 browser-session commands** through one versioned manifest. Every command carries a JSON Schema 2020-12 input contract, surface ownership, mutation metadata, and MCP safety annotations instead of relying on an agent to infer arguments from prose.
 
 Codex and Claude can connect through the official MCP stdio protocol in two explicit profiles: a workspace-contained core file profile for deterministic `.loop.json` work, and a persistent Playwright-backed browser profile for project selection, provider jobs, visual review, preview input, and the complete live surface. `get_agent_brief` returns a bounded, campaign-accurate warm start with separate current-authoring and production-release Doctor assessments on the same source digest, so a prototype pass cannot masquerade as release readiness. `get_project_context` then supplies either the campaign index or exact selected map documents without embedded asset bytes, provider prompt bodies, secrets, snapshots, or exported HTML. Every context pack carries the exact Project Doctor source digest and an explicit omission policy. It is orientation—not mutation input or verification evidence—and `get_project` remains the deliberate complete-source fallback.
 

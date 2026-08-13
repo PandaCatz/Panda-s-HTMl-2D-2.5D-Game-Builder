@@ -67,6 +67,10 @@ import { extractProjectFromHtml } from "../lib/looplab-html-project.mjs";
 import { groundAnchorOffset, listSupportSurfaces, resolveSupportContact, snapObjectToSupport, supportFootprintRect } from "../lib/looplab-support.mjs";
 import { authoredColliderForPlacement, visualBoundsForAsset } from "../lib/looplab-authored-collision.mjs";
 import { LOOPLAB_COLLISION_GEOMETRY_DEFAULT_TUNING, LOOPLAB_COLLISION_GEOMETRY_SCHEMA } from "../lib/looplab-collision-geometry.mjs";
+import {
+  LOOPLAB_ELEVATION_TRANSITIONS_SCHEMA,
+  normalizeElevationTransitions,
+} from "../lib/looplab-elevation-transitions.mjs";
 import { CC0_ASSET_CATEGORIES, CC0_ASSET_PACKS, CC0_ASSET_POLICY } from "../lib/looplab-cc0-assets.mjs";
 import { introducedDoctorErrors } from "../lib/looplab-quality.mjs";
 import { LOOPLAB_PROJECT_SCHEMA_VERSION } from "../lib/looplab-reuse-guide.mjs";
@@ -557,6 +561,28 @@ type CollisionGeometry = {
   chains: CollisionGeometryChain[];
 };
 
+type ElevationTransitionPoint = { id: string; x: number; y: number; z: number };
+type ElevationTransition = {
+  id: string;
+  name: string;
+  enabled: boolean;
+  kind: "ramp" | "stairs";
+  width: number;
+  entryRadius: number;
+  entryZTolerance: number;
+  oneWay: boolean;
+  fromLayerId?: string;
+  toLayerId?: string;
+  navigationLinkId?: string;
+  collisionChainId?: string;
+  points: ElevationTransitionPoint[];
+};
+type ElevationTransitions = {
+  schemaVersion: string;
+  supportOwner: "authored-map";
+  transitions: ElevationTransition[];
+};
+
 type TilePaletteEntry = {
   id: string;
   name: string;
@@ -620,6 +646,7 @@ type GameMap = {
   objects: GameObject[];
   traversalPaths?: TraversalPath[];
   collisionGeometry?: CollisionGeometry;
+  elevationTransitions?: ElevationTransitions;
   tileProgram?: TileProgram;
   clearanceZones?: Array<{ id: string; routeId?: string; routeName?: string; phase?: string; x: number; y: number; width: number; height: number; zMin?: number; zMax?: number }>;
   hudSafeAreas?: Array<{ id: string; name: string; x: number; y: number; width: number; height: number }>;
@@ -813,6 +840,7 @@ type GameProject = {
   objects: GameObject[];
   traversalPaths?: TraversalPath[];
   collisionGeometry?: CollisionGeometry;
+  elevationTransitions?: ElevationTransitions;
   tileProgram?: TileProgram;
   clearanceZones?: GameMap["clearanceZones"];
   hudSafeAreas?: GameMap["hudSafeAreas"];
@@ -2888,6 +2916,7 @@ const mapFromProject = (project: GameProject, id: string, name: string): GameMap
     objects: project.objects,
     traversalPaths: project.traversalPaths ?? existing?.traversalPaths ?? [],
     collisionGeometry: project.collisionGeometry ?? existing?.collisionGeometry,
+    elevationTransitions: project.elevationTransitions ?? existing?.elevationTransitions,
     tileProgram: project.tileProgram ?? existing?.tileProgram,
     clearanceZones: project.clearanceZones ?? existing?.clearanceZones,
     hudSafeAreas: project.hudSafeAreas ?? existing?.hudSafeAreas,
@@ -2939,6 +2968,7 @@ const activateMap = (project: GameProject, mapId: string): GameProject => {
     objects: target.objects,
     traversalPaths: target.traversalPaths ?? [],
     collisionGeometry: target.collisionGeometry,
+    elevationTransitions: target.elevationTransitions,
     tileProgram: target.tileProgram,
     clearanceZones: target.clearanceZones,
     hudSafeAreas: target.hudSafeAreas,
@@ -3537,6 +3567,7 @@ export default function Home() {
   const [selectedPathId, setSelectedPathId] = useState<string | null>(null);
   const [selectedPathPointIndex, setSelectedPathPointIndex] = useState<number | null>(null);
   const [selectedCollisionChainId, setSelectedCollisionChainId] = useState<string | null>(null);
+  const [selectedElevationTransitionId, setSelectedElevationTransitionId] = useState<string | null>(null);
   const [collisionChainDraft, setCollisionChainDraft] = useState<CollisionChainDraft | null>(null);
   const [collisionChainRole, setCollisionChainRole] = useState<CollisionGeometryChain["role"]>("auto");
   const [collisionChainOneWay, setCollisionChainOneWay] = useState(false);
@@ -3889,6 +3920,13 @@ export default function Home() {
     : activeTileProgram?.collisionProfiles[0]?.id ?? "";
   const activeCollisionGeometry = activeMapSnapshot.collisionGeometry ?? null;
   const selectedCollisionChain = activeCollisionGeometry?.chains.find((chain) => chain.id === selectedCollisionChainId) ?? null;
+  const activeElevationTransitions = activeMapSnapshot.elevationTransitions
+    ? normalizeElevationTransitions(activeMapSnapshot.elevationTransitions) as ElevationTransitions
+    : { schemaVersion: LOOPLAB_ELEVATION_TRANSITIONS_SCHEMA, supportOwner: "authored-map" as const, transitions: [] };
+  const selectedElevationTransition = activeElevationTransitions.transitions.find((transition) => transition.id === selectedElevationTransitionId) ?? null;
+  const selectedNavigationLinkTransition = selectedNavigationLink
+    ? activeElevationTransitions.transitions.find((transition) => transition.navigationLinkId === selectedNavigationLink.id) ?? null
+    : null;
   const supportSurfaces = useMemo(() => listSupportSurfaces(activeMapSnapshot, selectedId) as SupportSurface[], [activeMapSnapshot, selectedId]);
   const selectedSupport = useMemo(
     () => selected ? resolveSupportContact(activeMapSnapshot, selected, project.assets ?? [], { projection: project.projection }) : null,
@@ -5434,16 +5472,140 @@ export default function Home() {
   const removeSelectedCollisionChain = useCallback(() => {
     if (!selectedCollisionChain || !activeCollisionGeometry) return;
     try {
+      let working = syncActiveMap(project);
+      const transitionProgram = working.elevationTransitions ?? working.maps?.find((map) => map.id === working.activeMapId)?.elevationTransitions;
+      if (transitionProgram?.transitions.some((transition) => transition.collisionChainId === selectedCollisionChain.id)) {
+        const transitions = transitionProgram.transitions.map((transition) => {
+          if (transition.collisionChainId !== selectedCollisionChain.id) return transition;
+          const unbound = { ...transition };
+          delete unbound.collisionChainId;
+          return unbound;
+        });
+        working = applyAgentCommand(working, { op: "set_elevation_transitions", mapId: project.activeMapId, program: normalizeElevationTransitions({ transitions }) }).project as GameProject;
+      }
       const remaining = activeCollisionGeometry.chains.filter((chain) => chain.id !== selectedCollisionChain.id);
       const outcome = remaining.length
-        ? applyAgentCommand(syncActiveMap(project), { op: "set_collision_geometry", mapId: project.activeMapId, geometry: { ...activeCollisionGeometry, chains: remaining } })
-        : applyAgentCommand(syncActiveMap(project), { op: "remove_collision_geometry", mapId: project.activeMapId });
-      commit(outcome.project as GameProject, "Authored collision chain removed");
+        ? applyAgentCommand(working, { op: "set_collision_geometry", mapId: project.activeMapId, geometry: { ...activeCollisionGeometry, chains: remaining } })
+        : applyAgentCommand(working, { op: "remove_collision_geometry", mapId: project.activeMapId });
+      commit(outcome.project as GameProject, "Authored collision chain removed; physical transition binding cleared");
       setSelectedCollisionChainId(null);
     } catch (error) {
       showToast(error instanceof Error ? error.message : "The collision chain could not be removed");
     }
   }, [activeCollisionGeometry, commit, project, selectedCollisionChain, showToast]);
+
+  const saveElevationTransitions = useCallback((transitions: ElevationTransition[], message: string, selectedId: string | null = selectedElevationTransitionId) => {
+    try {
+      const base = syncActiveMap(project);
+      const outcome = transitions.length
+        ? applyAgentCommand(base, {
+            op: "set_elevation_transitions",
+            mapId: project.activeMapId,
+            program: normalizeElevationTransitions({ transitions }),
+          })
+        : applyAgentCommand(base, { op: "remove_elevation_transitions", mapId: project.activeMapId });
+      if (outcome.changed) commit(outcome.project as GameProject, message);
+      setSelectedElevationTransitionId(selectedId && transitions.some((transition) => transition.id === selectedId) ? selectedId : null);
+      setShowPaths(true);
+      return outcome;
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "The elevation transition could not be saved");
+      return null;
+    }
+  }, [commit, project, selectedElevationTransitionId, showToast]);
+
+  const createElevationTransition = useCallback((kind: ElevationTransition["kind"]) => {
+    if (!selectedNavigationLink) {
+      showToast("Select a navigation link between two different heights first");
+      return;
+    }
+    const existing = activeElevationTransitions.transitions.find((transition) => transition.navigationLinkId === selectedNavigationLink.id);
+    if (existing) {
+      setSelectedElevationTransitionId(existing.id);
+      showToast(`${existing.name} already owns this height change`);
+      return;
+    }
+    const start = navigation.nodes.find((node) => node.id === selectedNavigationLink.a);
+    const end = navigation.nodes.find((node) => node.id === selectedNavigationLink.b);
+    if (!start || !end || Math.abs(start.z - end.z) <= 0.000001) {
+      showToast("A ramp or stair needs a navigation link whose endpoints have different Z values");
+      return;
+    }
+    const compatibleChain = activeCollisionGeometry?.chains.find((chain) => {
+      if (chain.enabled === false || !new Set(["floor", "auto"]).has(chain.role) || chain.points.length !== 2) return false;
+      const minimumZ = Math.min(start.z, end.z);
+      const maximumZ = Math.max(start.z, end.z);
+      return Math.abs(chain.points[0].x - start.x) <= 0.001
+        && Math.abs(chain.points[0].y - start.y) <= 0.001
+        && Math.abs(chain.points[1].x - end.x) <= 0.001
+        && Math.abs(chain.points[1].y - end.y) <= 0.001
+        && chain.zMin <= minimumZ + 0.001
+        && chain.zMax > maximumZ;
+    });
+    try {
+      const suggestion = applyAgentCommand(syncActiveMap(project), {
+        op: "suggest_elevation_transitions",
+        mapId: project.activeMapId,
+        navigationLinkId: selectedNavigationLink.id,
+        kind,
+        ...(compatibleChain ? { collisionChainId: compatibleChain.id } : {}),
+      }).result as { available: boolean; program?: ElevationTransitions; reasons?: string[] };
+      const transition = suggestion.program?.transitions?.[0];
+      if (!suggestion.available || !transition) throw new Error(suggestion.reasons?.join(" ") || "No valid height-changing route was found.");
+      saveElevationTransitions([...activeElevationTransitions.transitions, transition], `${kind === "stairs" ? "Stairs" : "Ramp"} created from authored route`, transition.id);
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "The elevation transition could not be created");
+    }
+  }, [activeCollisionGeometry?.chains, activeElevationTransitions.transitions, navigation.nodes, project, saveElevationTransitions, selectedNavigationLink, showToast]);
+
+  const updateElevationTransition = useCallback((id: string, changes: Partial<ElevationTransition>, message: string) => {
+    saveElevationTransitions(activeElevationTransitions.transitions.map((transition) => transition.id === id ? { ...transition, ...changes } : transition), message, id);
+  }, [activeElevationTransitions.transitions, saveElevationTransitions]);
+
+  const removeSelectedElevationTransition = useCallback(() => {
+    if (!selectedElevationTransition) return;
+    saveElevationTransitions(
+      activeElevationTransitions.transitions.filter((transition) => transition.id !== selectedElevationTransition.id),
+      `${selectedElevationTransition.name} removed`,
+      null,
+    );
+  }, [activeElevationTransitions.transitions, saveElevationTransitions, selectedElevationTransition]);
+
+  const setSelectedNavigationLinkDirection = useCallback((oneWay: boolean) => {
+    if (!selectedNavigationLink) return;
+    try {
+      let outcome = applyAgentCommand(syncActiveMap(project), { op: "update_navigation_link", id: selectedNavigationLink.id, changes: { oneWay } });
+      const linked = activeElevationTransitions.transitions.filter((transition) => transition.navigationLinkId === selectedNavigationLink.id);
+      if (linked.length) {
+        const program = normalizeElevationTransitions({
+          transitions: activeElevationTransitions.transitions.map((transition) => transition.navigationLinkId === selectedNavigationLink.id ? { ...transition, oneWay } : transition),
+        });
+        outcome = applyAgentCommand(outcome.project, { op: "set_elevation_transitions", mapId: project.activeMapId, program });
+      }
+      commit(outcome.project as GameProject, "Navigation and physical transition direction updated");
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "The navigation direction could not be updated");
+    }
+  }, [activeElevationTransitions.transitions, commit, project, selectedNavigationLink, showToast]);
+
+  const removeSelectedNavigationLink = useCallback(() => {
+    if (!selectedNavigationLink) return;
+    try {
+      let working = syncActiveMap(project);
+      const remaining = activeElevationTransitions.transitions.filter((transition) => transition.navigationLinkId !== selectedNavigationLink.id);
+      if (remaining.length !== activeElevationTransitions.transitions.length) {
+        working = (remaining.length
+          ? applyAgentCommand(working, { op: "set_elevation_transitions", mapId: project.activeMapId, program: normalizeElevationTransitions({ transitions: remaining }) })
+          : applyAgentCommand(working, { op: "remove_elevation_transitions", mapId: project.activeMapId })).project as GameProject;
+      }
+      const outcome = applyAgentCommand(working, { op: "remove_navigation_link", id: selectedNavigationLink.id });
+      commit(outcome.project as GameProject, "Navigation link and its physical transition removed");
+      setSelectedNavigationLinkId(null);
+      setSelectedElevationTransitionId(null);
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "The navigation link could not be removed");
+    }
+  }, [activeElevationTransitions.transitions, commit, project, selectedNavigationLink, showToast]);
 
   const clearNavigationTest = useCallback(() => setNavigationTest({ from: null, to: null, result: null }), []);
 
@@ -5891,6 +6053,7 @@ export default function Home() {
     setSelectedNavigationLinkId(null);
     setSelectedNavigationAreaId(null);
     setSelectedCollisionChainId(null);
+    setSelectedElevationTransitionId(null);
     setNavigationChainNodeId(null);
     setNavigationAreaDraft(null);
     setNavigationTest({ from: null, to: null, result: null });
@@ -9313,6 +9476,47 @@ export default function Home() {
         context.setLineDash([]);
         points.forEach((point) => context.fillRect(point.x - 4, point.y - 4, 8, 8));
       }
+      for (const transition of activeElevationTransitions.transitions) {
+        if (transition.enabled === false || transition.points.length < 2) continue;
+        const points = transition.points.map(projectPoint);
+        const selectedTransition = transition.id === selectedElevationTransitionId;
+        const widthScale = isDimetric
+          ? (activeProjection.tileWidth / 2) / Math.max(1, activeProjection.worldUnitsPerTile ?? 128)
+          : 1;
+        context.save();
+        context.lineCap = "round";
+        context.lineJoin = "round";
+        context.globalAlpha = selectedTransition ? 0.3 : 0.18;
+        context.strokeStyle = selectedTransition ? "#6d4de3" : "#3f3f46";
+        context.lineWidth = Math.max(8, transition.width * widthScale);
+        context.beginPath();
+        context.moveTo(points[0].x, points[0].y);
+        points.slice(1).forEach((screenPoint) => context.lineTo(screenPoint.x, screenPoint.y));
+        context.stroke();
+        context.globalAlpha = 1;
+        context.strokeStyle = selectedTransition ? "#6d4de3" : "#3f3f46";
+        context.lineWidth = selectedTransition ? 4 : 3;
+        context.setLineDash(transition.kind === "stairs" ? [7, 5] : []);
+        context.beginPath();
+        context.moveTo(points[0].x, points[0].y);
+        points.slice(1).forEach((screenPoint) => context.lineTo(screenPoint.x, screenPoint.y));
+        context.stroke();
+        context.setLineDash([]);
+        points.forEach((screenPoint, index) => {
+          context.fillStyle = index === 0 ? "#3f3f46" : "#d5842f";
+          context.beginPath();
+          context.arc(screenPoint.x, screenPoint.y, selectedTransition ? 6 : 4, 0, Math.PI * 2);
+          context.fill();
+        });
+        context.fillStyle = "#24242a";
+        context.font = "800 9px ui-monospace, monospace";
+        context.fillText(
+          `${transition.name} · ${transition.kind.toUpperCase()} · z${transition.points[0].z}→${transition.points.at(-1)?.z ?? transition.points[0].z}`,
+          points[0].x + 9,
+          Math.max(12, points[0].y - 10),
+        );
+        context.restore();
+      }
       for (const link of navigation.links) {
         if (link.layerId && !visibleLayers.has(link.layerId)) continue;
         const from = nodeById.get(link.a);
@@ -9535,7 +9739,7 @@ export default function Home() {
       context.restore();
     }
     if (activePresentation) activePresentation.drawOverlay(context, viewWidth, viewHeight);
-  }, [activeCollisionGeometry, activeMapSnapshot, activeProjection, assetRenderTick, authoredRoutePaths, collisionChainDraft, drawObject, drawTileEntry, editorTileRuntime, isDimetric, mode, navigation, navigationAreaDraft, navigationTest, project, runtimeState, runtimeTick, selected, selectedAuthoredRouteActorId, selectedCollisionChainId, selectedNavigationAreaId, selectedNavigationLinkId, selectedNavigationNodeId, selectedPathId, selectedPathPointIndex, showColliders, showPaths]);
+  }, [activeCollisionGeometry, activeElevationTransitions.transitions, activeMapSnapshot, activeProjection, assetRenderTick, authoredRoutePaths, collisionChainDraft, drawObject, drawTileEntry, editorTileRuntime, isDimetric, mode, navigation, navigationAreaDraft, navigationTest, project, runtimeState, runtimeTick, selected, selectedAuthoredRouteActorId, selectedCollisionChainId, selectedElevationTransitionId, selectedNavigationAreaId, selectedNavigationLinkId, selectedNavigationNodeId, selectedPathId, selectedPathPointIndex, showColliders, showPaths]);
 
   const pointerPosition = (event: ReactPointerEvent<HTMLCanvasElement>) => {
     const bounds = event.currentTarget.getBoundingClientRect();
@@ -11518,7 +11722,7 @@ export default function Home() {
   );
   const mapArchitectControl = (
     <details className="precision-card map-architect-card" open>
-      <summary><span>Map Architect</span><small>{isDimetric ? "2.5D dimetric" : "Orthographic"} · {navigation.nodes.length} nodes · {navigation.areas.length} areas</small></summary>
+      <summary><span>Map Architect</span><small>{isDimetric ? "2.5D dimetric" : "Orthographic"} · {navigation.nodes.length} nodes · {activeElevationTransitions.transitions.length} ramps/stairs · {navigation.areas.length} areas</small></summary>
       <div className="projection-choice" role="group" aria-label="Map projection">
         <button className={!isDimetric ? "active" : ""} onClick={() => setProjectionMode("orthographic")}><strong>Side / top view</strong><small>Direct x/y canvas</small></button>
         <button className={isDimetric ? "active" : ""} onClick={() => setProjectionMode("dimetric-2:1")}><strong>2.5D dimetric</strong><small>Exact 128×64 diamonds</small></button>
@@ -11534,7 +11738,7 @@ export default function Home() {
         <button className="wide-button secondary-wide" onClick={() => applyNavigationCommand({ op: "set_map_projection", projection: { ...activeProjection, originX: project.width / 2, originY: 92, elevationStep: 32, worldUnitsPerTile: 128 }, preserveControlMode: true }, "Dimetric camera reset")}>Reset exact 2.5D camera</button>
       </>}
 
-      <div className="map-tool-help"><strong>{mapTool === "select" ? "Select and place" : mapTool === "traversal" ? "Rail / traversal path" : mapTool === "navigation" ? "Navigation graph" : mapTool === "test-route" ? "Route test" : mapTool === "blocked-area" ? "Blocked polygon" : "Walkable polygon"}</strong><small>{mapTool === "select" ? "Drag objects; placement is inverse-projected at their current z." : mapTool === "traversal" ? "Click to add points. Drag square handles. Each point keeps its own z." : mapTool === "navigation" ? "Click to chain nodes. Click existing nodes to join or drag them." : mapTool === "test-route" ? "Click a start and destination to run deterministic A* on the active layer." : "Click polygon corners, then use Finish area in the stage toolbar."}</small></div>
+      <div className="map-tool-help"><strong>{mapTool === "select" ? "Select and place" : mapTool === "tiles" ? "Canonical tiles" : mapTool === "traversal" ? "Rail / traversal path" : mapTool === "collision-chain" ? "Authored collision chain" : mapTool === "navigation" ? "Navigation graph" : mapTool === "test-route" ? "Route test" : mapTool === "blocked-area" ? "Blocked polygon" : "Walkable polygon"}</strong><small>{mapTool === "select" ? "Drag objects; placement is inverse-projected at their current z." : mapTool === "tiles" ? "Paint explicit visual or collision cells; neither is inferred from the other." : mapTool === "traversal" ? "Click to add points. Drag square handles. Each point keeps its own z." : mapTool === "collision-chain" ? "Click floor or boundary points, then finish the chain. Use a cross-height navigation link to add its ramp/stair support contract." : mapTool === "navigation" ? "Click to chain nodes. Give endpoints different Z values, then select their link to create a physical ramp or stair." : mapTool === "test-route" ? "Click a start and destination to run deterministic A* on the active layer." : "Click polygon corners, then use Finish area in the stage toolbar."}</small></div>
 
       <div className="navigation-heading"><div><span className="eyebrow">Elevation & route layers</span><strong>{activeNavigationLayer?.name ?? "No layer yet"}</strong></div><button onClick={addNavigationLayer}>＋ Layer</button></div>
       {navigation.layers.length > 0 && <label className="field full"><span>Active authoring layer</span><select value={activeNavigationLayer?.id ?? ""} onChange={(event) => { const layer = navigation.layers.find((candidate) => candidate.id === event.target.value); applyNavigationCommand({ op: "update_map", id: project.activeMapId, changes: { navigation: { ...navigation, activeLayerId: event.target.value } } }, "Active navigation layer changed"); if (layer) setEditorElevation(layer.zMin); }}>
@@ -11584,8 +11788,39 @@ export default function Home() {
         <div className="mini-actions"><button onClick={() => setNavigationChainNodeId(selectedNavigationNode.id)}>Continue chain here</button><button className="danger" onClick={() => { applyNavigationCommand({ op: "remove_navigation_node", id: selectedNavigationNode.id }, "Navigation node removed"); setSelectedNavigationNodeId(null); setNavigationChainNodeId(null); }}>Delete node</button></div>
       </section>}
 
-      {navigation.links.length > 0 && <div className="navigation-list"><span className="eyebrow">Links</span>{navigation.links.map((link) => <button key={link.id} className={selectedNavigationLinkId === link.id ? "active" : ""} onClick={() => { setSelectedNavigationLinkId(link.id); setSelectedNavigationNodeId(null); }}><span><strong>{link.a} → {link.b}</strong><small>{link.oneWay ? "one way" : "both ways"} · cost ×{link.cost}</small></span></button>)}</div>}
-      {selectedNavigationLink && <section className="navigation-selection-card"><div className="field-grid"><label className="field"><span>Cost multiplier</span><input type="number" min="0.01" step="0.25" value={selectedNavigationLink.cost} onChange={(event) => applyNavigationCommand({ op: "update_navigation_link", id: selectedNavigationLink.id, changes: { cost: Math.max(.01, Number(event.target.value)) } }, "Navigation link cost updated")} /></label><label className="toggle-row" htmlFor="nav-link-one-way"><span>One way<small>{selectedNavigationLink.a} → {selectedNavigationLink.b}</small></span><input id="nav-link-one-way" aria-label="One-way navigation link" type="checkbox" checked={selectedNavigationLink.oneWay} onChange={(event) => applyNavigationCommand({ op: "update_navigation_link", id: selectedNavigationLink.id, changes: { oneWay: event.target.checked } }, "Navigation direction updated")} /></label></div><button className="wide-button danger" onClick={() => { applyNavigationCommand({ op: "remove_navigation_link", id: selectedNavigationLink.id }, "Navigation link removed"); setSelectedNavigationLinkId(null); }}>Remove link</button></section>}
+      {navigation.links.length > 0 && <div className="navigation-list"><span className="eyebrow">Links</span>{navigation.links.map((link) => <button key={link.id} className={selectedNavigationLinkId === link.id ? "active" : ""} onClick={() => { setSelectedNavigationLinkId(link.id); setSelectedElevationTransitionId(activeElevationTransitions.transitions.find((transition) => transition.navigationLinkId === link.id)?.id ?? null); setSelectedNavigationNodeId(null); }}><span><strong>{link.a} → {link.b}</strong><small>{link.oneWay ? "one way" : "both ways"} · cost ×{link.cost}</small></span></button>)}</div>}
+      {selectedNavigationLink && <section className="navigation-selection-card">
+        <div><span className="eyebrow">Selected link</span><strong>{selectedNavigationLink.a} → {selectedNavigationLink.b}</strong></div>
+        <div className="field-grid">
+          <label className="field"><span>Cost multiplier</span><input type="number" min="0.01" step="0.25" value={selectedNavigationLink.cost} onChange={(event) => applyNavigationCommand({ op: "update_navigation_link", id: selectedNavigationLink.id, changes: { cost: Math.max(.01, Number(event.target.value)) } }, "Navigation link cost updated")} /></label>
+          <label className="toggle-row" htmlFor="nav-link-one-way"><span>One way<small>{selectedNavigationLink.a} → {selectedNavigationLink.b}</small></span><input id="nav-link-one-way" aria-label="One-way navigation link" type="checkbox" checked={selectedNavigationLink.oneWay} onChange={(event) => setSelectedNavigationLinkDirection(event.target.checked)} /></label>
+        </div>
+        {selectedNavigationLinkTransition
+          ? <button className="wide-button secondary-wide" onClick={() => setSelectedElevationTransitionId(selectedNavigationLinkTransition.id)}>Edit physical {selectedNavigationLinkTransition.kind}</button>
+          : <div className="mini-actions"><button onClick={() => createElevationTransition("ramp")}>Create walkable ramp</button><button onClick={() => createElevationTransition("stairs")}>Create walkable stairs</button></div>}
+        <small className="precision-note">A height-changing link describes route connectivity. A ramp or stair separately owns support-Z interpolation and may bind authored floor collision.</small>
+        <button className="wide-button danger" onClick={removeSelectedNavigationLink}>Remove link</button>
+      </section>}
+
+      {activeElevationTransitions.transitions.length > 0 && <div className="navigation-list">
+        <span className="eyebrow">Walkable ramps & stairs</span>
+        {activeElevationTransitions.transitions.map((transition) => <button key={transition.id} className={selectedElevationTransitionId === transition.id ? "active" : ""} onClick={() => { setSelectedElevationTransitionId(transition.id); setSelectedNavigationLinkId(transition.navigationLinkId ?? null); setSelectedNavigationNodeId(null); setShowPaths(true); }}>
+          <span><strong>{transition.name}</strong><small>{transition.kind} · z {transition.points[0]?.z ?? 0} → {transition.points.at(-1)?.z ?? 0} · {transition.collisionChainId ? "collision bound" : "support only"}</small></span>
+        </button>)}
+      </div>}
+      {selectedElevationTransition && <section className="navigation-selection-card">
+        <div><span className="eyebrow">Physical height transition</span><strong>{selectedElevationTransition.name}</strong></div>
+        <label className="field full"><span>Name</span><input value={selectedElevationTransition.name} onChange={(event) => updateElevationTransition(selectedElevationTransition.id, { name: event.target.value || selectedElevationTransition.id }, "Elevation transition renamed")} /></label>
+        <div className="field-grid">
+          <label className="field"><span>Kind</span><select value={selectedElevationTransition.kind} onChange={(event) => updateElevationTransition(selectedElevationTransition.id, { kind: event.target.value as ElevationTransition["kind"] }, "Elevation transition kind updated")}><option value="ramp">Ramp</option><option value="stairs">Stairs</option></select></label>
+          <label className="field"><span>Walkable width</span><input type="number" min="1" max="4096" step="1" value={selectedElevationTransition.width} onChange={(event) => updateElevationTransition(selectedElevationTransition.id, { width: Math.max(1, Number(event.target.value)) }, "Elevation transition width updated")} /></label>
+          <label className="field"><span>Entry radius</span><input type="number" min="1" max="4096" step="1" value={selectedElevationTransition.entryRadius} onChange={(event) => updateElevationTransition(selectedElevationTransition.id, { entryRadius: Math.max(1, Number(event.target.value)) }, "Elevation entry radius updated")} /></label>
+          <label className="field"><span>Z tolerance</span><input type="number" min="0" max="64" step="0.1" value={selectedElevationTransition.entryZTolerance} onChange={(event) => updateElevationTransition(selectedElevationTransition.id, { entryZTolerance: Math.max(0, Number(event.target.value)) }, "Elevation entry tolerance updated")} /></label>
+        </div>
+        <label className="toggle-row" htmlFor="elevation-transition-enabled"><span>Runtime enabled<small>Disabled transitions remain authored but cannot change support height.</small></span><input id="elevation-transition-enabled" type="checkbox" checked={selectedElevationTransition.enabled} onChange={(event) => updateElevationTransition(selectedElevationTransition.id, { enabled: event.target.checked }, "Elevation transition availability updated")} /></label>
+        <div className="dimetric-contract"><span>OWNERSHIP</span><strong>Support Z: {selectedElevationTransition.id}</strong><small>Navigation: {selectedElevationTransition.navigationLinkId ?? "unbound"} · Collision: {selectedElevationTransition.collisionChainId ?? "unbound"} · Art never defines either.</small></div>
+        <button className="wide-button danger" onClick={removeSelectedElevationTransition}>Remove physical transition</button>
+      </section>}
 
       {navigation.areas.length > 0 && <div className="navigation-list"><span className="eyebrow">Walkable & blocked areas</span>{navigation.areas.map((area) => <button key={area.id} className={selectedNavigationAreaId === area.id ? "active" : ""} onClick={() => setSelectedNavigationAreaId(area.id)}><span><strong>{area.name}</strong><small>{area.kind} · {area.points.length} points · z {area.zMin}–{area.zMax}</small></span></button>)}</div>}
       {selectedNavigationArea && <div className="mini-actions"><button onClick={() => { setMapTool(selectedNavigationArea.kind === "blocked" ? "blocked-area" : "walkable-area"); setEditorElevation(selectedNavigationArea.zMin); }}>Draw another {selectedNavigationArea.kind}</button><button className="danger" onClick={() => { applyNavigationCommand({ op: "remove_navigation_area", id: selectedNavigationArea.id }, "Navigation area removed"); setSelectedNavigationAreaId(null); }}>Delete area</button></div>}
@@ -12061,7 +12296,7 @@ export default function Home() {
               {!isPlaying && navigationAreaDraft && <button className="active" onClick={finishNavigationArea}>Finish area · {navigationAreaDraft.points.length}</button>}
               {!isPlaying && collisionChainDraft && <button className="active" onClick={finishCollisionChain}>Finish collision · {collisionChainDraft.points.length}</button>}
               {!isPlaying && mapTool === "test-route" && (navigationTest.from || navigationTest.to) && <button onClick={clearNavigationTest}>Clear test</button>}
-              {!isPlaying && <button className={showPaths ? "active" : ""} onClick={() => setShowPaths((value) => !value)} title="Show traversal, navigation, elevation layers, and areas">Map data {(project.traversalPaths?.length ?? 0) + navigation.nodes.length + (activeCollisionGeometry?.chains.length ?? 0)}</button>}
+              {!isPlaying && <button className={showPaths ? "active" : ""} onClick={() => setShowPaths((value) => !value)} title="Show traversal, navigation, physical elevation transitions, collision chains, and areas">Map data {(project.traversalPaths?.length ?? 0) + navigation.nodes.length + (activeCollisionGeometry?.chains.length ?? 0) + activeElevationTransitions.transitions.length}</button>}
               <button onClick={() => setShowAssetLab(true)} title="Generate tiles and sprites">Assets</button>
               <button className={captureMode ? "active" : ""} onClick={() => { setCaptureMode((value) => !value); setMode("edit"); setCaptureRegion(null); }} title="Drag an area so AI can find it later">Capture area</button>
               <select className="viewport-picker" aria-label="Viewport safety preset" value={activeDeviceProfile.id} onChange={(event) => setViewportPreset(event.target.value)}>{deviceProfiles.map((profile) => <option key={profile.id} value={profile.id}>{profile.name ?? profile.id} · {profile.width}×{profile.height}{Number(profile.dpr ?? 1) > 1 ? ` @${profile.dpr}×` : ""}</option>)}</select>
@@ -12075,13 +12310,13 @@ export default function Home() {
 
           <div className="map-tabs-bar" role="tablist" aria-label="Project maps">
             <div className="map-tabs-scroll">
-              {maps.map((map, index) => <button key={map.id} role="tab" aria-selected={stageMapId === map.id} title={`${map.name} · ${map.projection?.type === "dimetric-2:1" ? "2.5D dimetric" : "orthographic"} · ${map.objects.length} objects · ${map.traversalPaths?.length ?? 0} traversal paths · ${map.navigation?.nodes?.length ?? 0} navigation nodes · ${map.collisionGeometry?.chains.length ?? 0} collision chains`} onClick={() => isPlaying ? loadPreviewMap(map.id) : switchMap(map.id)}><span>{index + 1}</span>{map.name}<small>{map.projection?.type === "dimetric-2:1" ? "2.5D" : "2D"} · {map.objects.length}/{(map.traversalPaths?.length ?? 0) + (map.navigation?.nodes?.length ?? 0) + (map.collisionGeometry?.chains.length ?? 0)}</small></button>)}
+              {maps.map((map, index) => <button key={map.id} role="tab" aria-selected={stageMapId === map.id} title={`${map.name} · ${map.projection?.type === "dimetric-2:1" ? "2.5D dimetric" : "orthographic"} · ${map.objects.length} objects · ${map.traversalPaths?.length ?? 0} traversal paths · ${map.navigation?.nodes?.length ?? 0} navigation nodes · ${map.elevationTransitions?.transitions.length ?? 0} ramps/stairs · ${map.collisionGeometry?.chains.length ?? 0} collision chains`} onClick={() => isPlaying ? loadPreviewMap(map.id) : switchMap(map.id)}><span>{index + 1}</span>{map.name}<small>{map.projection?.type === "dimetric-2:1" ? "2.5D" : "2D"} · {map.objects.length}/{(map.traversalPaths?.length ?? 0) + (map.navigation?.nodes?.length ?? 0) + (map.elevationTransitions?.transitions.length ?? 0) + (map.collisionGeometry?.chains.length ?? 0)}</small></button>)}
             </div>
             <button className="add-map-tab" onClick={createMap} disabled={isPlaying} title={isPlaying ? "Return to Edit to create a map" : "Create and link another map"} aria-label="Add map tab">＋</button>
           </div>
 
           {mapStudioFocused && !isPlaying && <div className="map-studio-toolbar" aria-label="Map Studio authoring tools">
-            <div className="map-studio-identity"><span>MAP STUDIO</span><strong>{isDimetric ? "2.5D world" : "2D world"}</strong><small>{editorTileRuntime.counts.visualEntries} tiles · {editorTileRuntime.counts.collisionCells} tile colliders · {navigation.nodes.length} nodes · {activeCollisionGeometry?.chains.length ?? 0} chains</small></div>
+            <div className="map-studio-identity"><span>MAP STUDIO</span><strong>{isDimetric ? "2.5D world" : "2D world"}</strong><small>{editorTileRuntime.counts.visualEntries} tiles · {editorTileRuntime.counts.collisionCells} tile colliders · {navigation.nodes.length} nodes · {activeElevationTransitions.transitions.length} ramps/stairs · {activeCollisionGeometry?.chains.length ?? 0} chains</small></div>
             <div className="map-studio-group projection-tools" role="group" aria-label="Projection">
               <button className={!isDimetric ? "active" : ""} onClick={() => setProjectionMode("orthographic")}>2D</button>
               <button className={isDimetric ? "active" : ""} onClick={() => setProjectionMode("dimetric-2:1")}>2.5D · 128×64</button>

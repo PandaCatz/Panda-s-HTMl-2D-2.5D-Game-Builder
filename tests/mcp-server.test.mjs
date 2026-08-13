@@ -51,16 +51,16 @@ test("agent manifest publishes one precise contract for every command surface", 
   const contracts = getLooplabCommandContracts();
   const validation = validateLooplabCommandContracts();
 
-  assert.equal(LOOPLAB_PROTOCOL_VERSION, "1.104.0");
+  assert.equal(LOOPLAB_PROTOCOL_VERSION, "1.105.0");
   assert.equal(manifest.agentOperatingModel.headlessFirst, true);
   assert.match(manifest.agentOperatingModel.primaryConsumer, /Codex, Claude/);
   assert.match(manifest.agentOperatingModel.primarySurface, /canonical product surface/);
   assert.match(manifest.agentOperatingModel.humanUiRole, /secondary inspection/);
   assert.equal(validation.valid, true, validation.errors.join("\n"));
   assert.equal(validation.commandCount, LOOPLAB_AGENT_COMMANDS.length);
-  assert.equal(contracts.length, 266);
-  assert.equal(LOOPLAB_CORE_COMMANDS.length, 185);
-  assert.equal(LOOPLAB_BROWSER_SESSION_COMMANDS.length, 266);
+  assert.equal(contracts.length, 271);
+  assert.equal(LOOPLAB_CORE_COMMANDS.length, 190);
+  assert.equal(LOOPLAB_BROWSER_SESSION_COMMANDS.length, 271);
   assert.equal(manifest.commandContracts.schemaVersion, LOOPLAB_COMMAND_CONTRACT_SCHEMA);
   assert.deepEqual(manifest.commandContracts.commands, contracts);
   assert.equal(contracts.every((contract) => contract.schemaPrecision === "declared"), true);

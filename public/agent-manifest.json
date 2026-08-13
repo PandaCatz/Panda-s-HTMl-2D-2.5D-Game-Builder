@@ -1,6 +1,6 @@
 {
   "name": "Looplab Headless Agent API",
-  "protocolVersion": "1.104.0",
+  "protocolVersion": "1.105.0",
   "agentOperatingModel": {
     "purpose": "LoopLab is an AI capability amplifier and structured game-authoring workstation, not a form the agent is confined to.",
     "headlessFirst": true,
@@ -4030,7 +4030,7 @@
       "harnessSchemaVersion": "looplab-platform-harness/v1",
       "harnessRunner": "playwright-core",
       "harnessRunnerVersion": 2,
-      "runtimeVersion": "2.30.0",
+      "runtimeVersion": "2.31.0",
       "environment": {
         "sandbox": [
           "allow-scripts"
@@ -4170,7 +4170,7 @@
       ],
       "unexpectedCheckPolicy": "reject",
       "visualCaptureRequired": true,
-      "digest": "sha256:bacf9640f1a3e1c4500b759decda5dbdf76625bd144ba495c55940981e280dc0"
+      "digest": "sha256:c1a3d1741aa0132113d5ca2c7b1c1e6c417bdb776a7e247bc0d241c0f199c25f"
     },
     "inspectCommand": "get_release_verification",
     "browserCommand": "verify_release",
@@ -4255,7 +4255,7 @@
       "run_replay_suite",
       "remove_replay_case"
     ],
-    "currentHashVersion": 10,
+    "currentHashVersion": 11,
     "legacyHashVersion": 1,
     "supportedHashVersions": [
       1,
@@ -4267,7 +4267,8 @@
       7,
       8,
       9,
-      10
+      10,
+      11
     ],
     "minimumTickRate": 20,
     "digestAlgorithms": {
@@ -4284,16 +4285,17 @@
         7,
         8,
         9,
-        10
+        10,
+        11
       ],
-      "currentVersion": 10,
+      "currentVersion": 11,
       "current": "SHA-256"
     },
     "digestFormats": {
       "legacy": "replay-<8 lowercase hex>",
       "current": "replay-sha256-<64 lowercase hex>"
     },
-    "hashVersionPolicy": "Fixtures without hashVersion retain the original v1 FNV-1a projection; versions 1 through 9 remain byte-compatible. Every new or explicitly rerecorded fixture writes v10 SHA-256 with explicit motion-body rider, accepted-delta, and crush state in addition to v9 authored segment-ground contact. Runtime-state additions must add a new projection instead of silently invalidating accepted evidence.",
+    "hashVersionPolicy": "Fixtures without hashVersion retain the original v1 FNV-1a projection; versions 1 through 10 remain byte-compatible. Every new or explicitly rerecorded fixture writes v11 SHA-256 with active elevation-transition identity, progress, and support Z in addition to the v10 motion-body and v9 authored segment-ground state. Runtime-state additions must add a new projection instead of silently invalidating accepted evidence.",
     "inputContract": "Semantic input transitions are sampled by zero-based simulation tick and deterministically expose pressed, held, and released action phases; checkpoints bind the state after one-based ticks.",
     "hashContract": "Canonical nested simulation-only snapshots include action/contact state that can affect the next tick and exclude artwork, camera, animation playback, audio, particles, and wall-clock state.",
     "divergencePolicy": "Every recorded checkpoint is compared in tick order and reports the first mismatching tick.",
@@ -4586,8 +4588,49 @@
     },
     "normalFormula": "For point A to B in y-down world coordinates: tangent=(dx/length,dy/length), right-hand normal=(dy/length,-dx/length).",
     "endpointPolicy": "Start inclusive, end exclusive except for the last segment of an open chain; stable chain ID and segment index break equal contacts.",
-    "evidence": "Project Doctor validates geometry, winding, elevation, bounds, and references. Replay v9 introduced segment-ground identity, normal, and slide state; current v10 retains it while adding motion-body rider/crush state. Browser evidence verifies the rendered result.",
+    "evidence": "Project Doctor validates geometry, winding, elevation, bounds, and references. Replay v9 introduced segment-ground identity, normal, and slide state; v10 added motion-body rider/crush state; current v11 retains both and adds active elevation-transition support state. Browser evidence verifies the rendered result.",
     "rendererBoundary": "Canvas, Phaser, Pixi, and melonJS consume the same authored chains. Sprite pixels, visual bounds, projection, and AI-generated art never own collision."
+  },
+  "authoredElevationTransitions": {
+    "schemaVersion": "looplab-elevation-transitions/v1",
+    "reportSchemaVersion": "looplab-elevation-transitions-report/v1",
+    "commands": [
+      "get_elevation_transitions",
+      "get_elevation_transition_report",
+      "suggest_elevation_transitions",
+      "set_elevation_transitions",
+      "remove_elevation_transitions"
+    ],
+    "runtimeMethods": [
+      "getElevationTransitions"
+    ],
+    "runtimeCommands": [
+      "get_elevation_transitions"
+    ],
+    "limits": {
+      "maximumTransitions": 128,
+      "maximumPointsPerTransition": 64,
+      "maximumSegments": 2048,
+      "maximumCoordinateMagnitude": 65536,
+      "maximumElevationMagnitude": 1024,
+      "maximumWidth": 4096,
+      "maximumEntryRadius": 4096,
+      "maximumEntryZTolerance": 64
+    },
+    "policy": {
+      "sourceField": "map.elevationTransitions",
+      "supportAuthority": "Only authored elevation-transition points own interpolated support Z. Generated art, sprite pixels, screen projection, and draw order never create a walkable height change.",
+      "collisionAuthority": "A bound collision chain remains the authority for platformer contact shape. The transition contributes support Z but never replaces or derives the chain from artwork.",
+      "navigationAuthority": "A bound navigation link remains the authority for route connectivity, direction, and cost. The transition proves that the link has an authored physical route between height layers.",
+      "interpolation": "Ramps and stairs both use deterministic piecewise-linear support-Z interpolation. Stair art may remain discrete without turning visible risers into implicit colliders.",
+      "entry": "Top-down and dimetric movement may enter only through a height-compatible endpoint. Mid-corridor screen overlap cannot lift an underpass actor onto a raised route.",
+      "replay": "Active transition ID, segment ID, normalized progress, and support Z are deterministic state and belong in the next replay projection without changing older projections.",
+      "judgmentBoundary": "Project Doctor can prove source ownership, bounds, monotonic height, and collision/navigation agreement. It cannot prove that a ramp width, grade, or placement feels good without playtest evidence."
+    },
+    "supportFormula": "For an authored point A to B, supportZ=A.z+(B.z-A.z)*clamp(dot(P-A,B-A)/|B-A|^2,0,1).",
+    "entryPolicy": "Top-down and dimetric actors enter only near a height-compatible endpoint; one-way transitions enter at the first point only. Active actors cannot leave a corridor side at an intermediate height.",
+    "bindingPolicy": "Collision-chain x/y owns platformer contact shape. Navigation-link endpoints/layers/direction own route connectivity. The transition owns only world-space support interpolation and cross-contract agreement.",
+    "rendererBoundary": "Canvas, Phaser, Pixi, and melonJS render the same canonical transition state. Art, screen projection, and depth sorting never create a ramp or stair implicitly."
   },
   "canonicalTilePrograms": {
     "schemaVersion": "looplab-tile-program/v1",
@@ -4914,8 +4957,12 @@
       },
       "editorTools": [
         "select",
+        "tiles",
         "traversal",
+        "collision-chain",
         "navigation",
+        "walkable-ramp",
+        "walkable-stairs",
         "timed-route",
         "walkable-area",
         "blocked-area",
@@ -4963,12 +5010,13 @@
         "one-way links",
         "cost multipliers",
         "stable destinations",
+        "authored walkable ramps and stairs",
         "walkable polygons",
         "blocked polygons",
         "admissible A-star test routes",
         "exact blocked-polygon crossing checks",
         "Path Editor v2 import and export",
-        "lossless rich-route source documents",
+        "lossless rich-route and elevation-transition source documents",
         "animation timing",
         "per-stop waits",
         "facing and depth",
@@ -4979,7 +5027,7 @@
       "pathEditorRoundTrip": {
         "baseFormat": "path-editor-v2",
         "extension": "looplab-rich-route-v2",
-        "policy": "Portable percentage x/y remains available, while the Looplab extension losslessly preserves projection, z, the complete authored route source document, timings, waits, facing, meetings, events, depth, and hashes. Schedule edits mark preserved hashes stale until measured replay or render evidence verifies the exact current digest."
+        "policy": "Portable percentage x/y remains available, while the Looplab extension losslessly preserves projection, z, authored ramps/stairs, the complete authored route source document, timings, waits, facing, meetings, events, depth, and hashes. Schedule edits mark preserved hashes stale until measured replay or render evidence verifies the exact current digest."
       },
       "authoredRouteEnvelope": {
         "version": 1,
@@ -5136,7 +5184,7 @@
     }
   },
   "exportedRuntime": {
-    "version": "2.30.0",
+    "version": "2.31.0",
     "packaging": "single-self-contained-html",
     "uploadFiles": 1,
     "offlinePlayable": true,
@@ -5259,6 +5307,7 @@
       "getObjects",
       "getTraversalPaths",
       "getCollisionGeometry",
+      "getElevationTransitions",
       "getMotionBodyStates",
       "getActorStates",
       "getCombatState",
@@ -5304,6 +5353,7 @@
       "get_objects",
       "get_traversal_paths",
       "get_collision_geometry",
+      "get_elevation_transitions",
       "get_tile_program",
       "get_tile_runtime",
       "get_motion_body_states",
@@ -5497,6 +5547,11 @@
     "suggest_collision_geometry",
     "set_collision_geometry",
     "remove_collision_geometry",
+    "get_elevation_transitions",
+    "get_elevation_transition_report",
+    "suggest_elevation_transitions",
+    "set_elevation_transitions",
+    "remove_elevation_transitions",
     "get_tile_program",
     "get_tile_program_report",
     "get_tile_region",
@@ -5732,6 +5787,11 @@
       "suggest_collision_geometry",
       "set_collision_geometry",
       "remove_collision_geometry",
+      "get_elevation_transitions",
+      "get_elevation_transition_report",
+      "suggest_elevation_transitions",
+      "set_elevation_transitions",
+      "remove_elevation_transitions",
       "get_tile_program",
       "get_tile_program_report",
       "get_tile_region",
@@ -5953,6 +6013,11 @@
       "suggest_collision_geometry",
       "set_collision_geometry",
       "remove_collision_geometry",
+      "get_elevation_transitions",
+      "get_elevation_transition_report",
+      "suggest_elevation_transitions",
+      "set_elevation_transitions",
+      "remove_elevation_transitions",
       "get_tile_program",
       "get_tile_program_report",
       "get_tile_region",
@@ -20092,6 +20157,446 @@
         }
       },
       {
+        "op": "get_elevation_transitions",
+        "title": "Get Elevation Transitions",
+        "description": "Get Elevation Transitions through LoopLab's canonical validated agent command surface.",
+        "surfaces": [
+          "core",
+          "browser-session"
+        ],
+        "mutatesProject": false,
+        "mutatesBuilderState": false,
+        "requiresSourceDigestInMcp": false,
+        "coordinationOnly": false,
+        "schemaPrecision": "declared",
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "expectedSourceDigest": {
+              "type": "string",
+              "description": "Project Doctor sourceDigest inspected immediately before this command.",
+              "minLength": 1
+            },
+            "expectedLedgerDigest": {
+              "type": "string",
+              "description": "Shared work-ledger digest inspected immediately before this coordination mutation.",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            },
+            "compact": {
+              "type": "boolean",
+              "description": "Return a compact result without repeating the complete embedded project when the transport supports it."
+            },
+            "mapId": {
+              "type": "string",
+              "description": "Stable authored ID.",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+            }
+          },
+          "additionalProperties": false
+        },
+        "annotations": {
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      },
+      {
+        "op": "get_elevation_transition_report",
+        "title": "Get Elevation Transition Report",
+        "description": "Get Elevation Transition Report through LoopLab's canonical validated agent command surface.",
+        "surfaces": [
+          "core",
+          "browser-session"
+        ],
+        "mutatesProject": false,
+        "mutatesBuilderState": false,
+        "requiresSourceDigestInMcp": false,
+        "coordinationOnly": false,
+        "schemaPrecision": "declared",
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "expectedSourceDigest": {
+              "type": "string",
+              "description": "Project Doctor sourceDigest inspected immediately before this command.",
+              "minLength": 1
+            },
+            "expectedLedgerDigest": {
+              "type": "string",
+              "description": "Shared work-ledger digest inspected immediately before this coordination mutation.",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            },
+            "compact": {
+              "type": "boolean",
+              "description": "Return a compact result without repeating the complete embedded project when the transport supports it."
+            },
+            "mapId": {
+              "type": "string",
+              "description": "Stable authored ID.",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+            },
+            "profile": {
+              "type": "string",
+              "enum": [
+                "prototype",
+                "production"
+              ],
+              "description": "Evidence severity profile."
+            }
+          },
+          "additionalProperties": false
+        },
+        "annotations": {
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      },
+      {
+        "op": "suggest_elevation_transitions",
+        "title": "Suggest Elevation Transitions",
+        "description": "Suggest Elevation Transitions through LoopLab's canonical validated agent command surface.",
+        "surfaces": [
+          "core",
+          "browser-session"
+        ],
+        "mutatesProject": false,
+        "mutatesBuilderState": false,
+        "requiresSourceDigestInMcp": false,
+        "coordinationOnly": false,
+        "schemaPrecision": "declared",
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "expectedSourceDigest": {
+              "type": "string",
+              "description": "Project Doctor sourceDigest inspected immediately before this command.",
+              "minLength": 1
+            },
+            "expectedLedgerDigest": {
+              "type": "string",
+              "description": "Shared work-ledger digest inspected immediately before this coordination mutation.",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            },
+            "compact": {
+              "type": "boolean",
+              "description": "Return a compact result without repeating the complete embedded project when the transport supports it."
+            },
+            "mapId": {
+              "type": "string",
+              "description": "Stable authored ID.",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+            },
+            "navigationLinkId": {
+              "type": "string",
+              "description": "Stable authored ID.",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+            },
+            "collisionChainId": {
+              "type": "string",
+              "description": "Stable authored ID.",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+            },
+            "id": {
+              "type": "string",
+              "description": "Stable authored ID.",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+            },
+            "name": {
+              "type": "string",
+              "description": "Transition name.",
+              "minLength": 1
+            },
+            "kind": {
+              "type": "string",
+              "enum": [
+                "ramp",
+                "stairs"
+              ],
+              "description": "Suggested transition kind."
+            },
+            "width": {
+              "type": "number",
+              "description": "Walkable corridor width.",
+              "exclusiveMinimum": 0,
+              "maximum": 4096
+            },
+            "entryRadius": {
+              "type": "number",
+              "description": "Endpoint entry radius.",
+              "exclusiveMinimum": 0,
+              "maximum": 4096
+            },
+            "entryZTolerance": {
+              "type": "number",
+              "description": "Endpoint height tolerance.",
+              "minimum": 0,
+              "maximum": 64
+            }
+          },
+          "additionalProperties": false
+        },
+        "annotations": {
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      },
+      {
+        "op": "set_elevation_transitions",
+        "title": "Set Elevation Transitions",
+        "description": "Set Elevation Transitions through LoopLab's canonical validated agent command surface.",
+        "surfaces": [
+          "core",
+          "browser-session"
+        ],
+        "mutatesProject": false,
+        "mutatesBuilderState": false,
+        "requiresSourceDigestInMcp": false,
+        "coordinationOnly": false,
+        "schemaPrecision": "declared",
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "expectedSourceDigest": {
+              "type": "string",
+              "description": "Project Doctor sourceDigest inspected immediately before this command.",
+              "minLength": 1
+            },
+            "expectedLedgerDigest": {
+              "type": "string",
+              "description": "Shared work-ledger digest inspected immediately before this coordination mutation.",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            },
+            "compact": {
+              "type": "boolean",
+              "description": "Return a compact result without repeating the complete embedded project when the transport supports it."
+            },
+            "mapId": {
+              "type": "string",
+              "description": "Stable authored ID.",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+            },
+            "program": {
+              "type": "object",
+              "description": "Strict authored world-space support-height transitions. Art and projection never imply elevation, collision, or navigation.",
+              "properties": {
+                "schemaVersion": {
+                  "const": "looplab-elevation-transitions/v1"
+                },
+                "supportOwner": {
+                  "const": "authored-map"
+                },
+                "transitions": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "description": "Stable authored ID.",
+                        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+                      },
+                      "name": {
+                        "type": "string",
+                        "description": "Human-readable ramp or stair name.",
+                        "minLength": 1
+                      },
+                      "enabled": {
+                        "type": "boolean",
+                        "description": "Whether the transition participates in deterministic support interpolation."
+                      },
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "ramp",
+                          "stairs"
+                        ],
+                        "description": "Authored presentation/inspection kind; both use continuous support interpolation."
+                      },
+                      "width": {
+                        "type": "number",
+                        "description": "World-space walkable corridor width.",
+                        "exclusiveMinimum": 0,
+                        "maximum": 4096
+                      },
+                      "entryRadius": {
+                        "type": "number",
+                        "description": "Endpoint-only planar entry radius.",
+                        "exclusiveMinimum": 0,
+                        "maximum": 4096
+                      },
+                      "entryZTolerance": {
+                        "type": "number",
+                        "description": "Maximum support-height difference allowed when entering.",
+                        "minimum": 0,
+                        "maximum": 64
+                      },
+                      "oneWay": {
+                        "type": "boolean",
+                        "description": "Permit entry only at the first point and travel toward the final point."
+                      },
+                      "fromLayerId": {
+                        "type": "string",
+                        "description": "Stable authored ID.",
+                        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+                      },
+                      "toLayerId": {
+                        "type": "string",
+                        "description": "Stable authored ID.",
+                        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+                      },
+                      "navigationLinkId": {
+                        "type": "string",
+                        "description": "Stable authored ID.",
+                        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+                      },
+                      "collisionChainId": {
+                        "type": "string",
+                        "description": "Stable authored ID.",
+                        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+                      },
+                      "points": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "description": "Stable authored ID.",
+                              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+                            },
+                            "x": {
+                              "type": "number",
+                              "description": "Authored world x.",
+                              "minimum": -65536,
+                              "maximum": 65536
+                            },
+                            "y": {
+                              "type": "number",
+                              "description": "Authored world y.",
+                              "minimum": -65536,
+                              "maximum": 65536
+                            },
+                            "z": {
+                              "type": "number",
+                              "description": "Authored support Z.",
+                              "minimum": -1024,
+                              "maximum": 1024
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "x",
+                            "y",
+                            "z"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "description": "Ordered world-space transition points.",
+                        "minItems": 2,
+                        "maxItems": 64
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "name",
+                      "enabled",
+                      "kind",
+                      "width",
+                      "entryRadius",
+                      "entryZTolerance",
+                      "oneWay",
+                      "points"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "description": "Stable authored elevation transitions.",
+                  "maxItems": 128
+                }
+              },
+              "required": [
+                "schemaVersion",
+                "supportOwner",
+                "transitions"
+              ],
+              "additionalProperties": false
+            },
+            "profile": {
+              "type": "string",
+              "enum": [
+                "prototype",
+                "production"
+              ],
+              "description": "Evidence severity profile."
+            }
+          },
+          "required": [
+            "program"
+          ],
+          "additionalProperties": false
+        },
+        "annotations": {
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      },
+      {
+        "op": "remove_elevation_transitions",
+        "title": "Remove Elevation Transitions",
+        "description": "Remove Elevation Transitions through LoopLab's canonical validated agent command surface.",
+        "surfaces": [
+          "core",
+          "browser-session"
+        ],
+        "mutatesProject": false,
+        "mutatesBuilderState": false,
+        "requiresSourceDigestInMcp": false,
+        "coordinationOnly": false,
+        "schemaPrecision": "declared",
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "expectedSourceDigest": {
+              "type": "string",
+              "description": "Project Doctor sourceDigest inspected immediately before this command.",
+              "minLength": 1
+            },
+            "expectedLedgerDigest": {
+              "type": "string",
+              "description": "Shared work-ledger digest inspected immediately before this coordination mutation.",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            },
+            "compact": {
+              "type": "boolean",
+              "description": "Return a compact result without repeating the complete embedded project when the transport supports it."
+            },
+            "mapId": {
+              "type": "string",
+              "description": "Stable authored ID.",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+            }
+          },
+          "additionalProperties": false
+        },
+        "annotations": {
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      },
+      {
         "op": "get_tile_program",
         "title": "Get Tile Program",
         "description": "Inspect one map's canonical sparse tile source, exact tile-program digest, independent collision ownership, and validation report.",
@@ -31411,7 +31916,7 @@
   "companion": {
     "baseUrl": "http://127.0.0.1:4317",
     "expectedCompanionVersion": "1.36.0",
-    "expectedProtocolVersion": "1.104.0",
+    "expectedProtocolVersion": "1.105.0",
     "providers": "/providers",
     "promptDrafts": "/prompt-drafts",
     "agentPresence": "/agent-presence",

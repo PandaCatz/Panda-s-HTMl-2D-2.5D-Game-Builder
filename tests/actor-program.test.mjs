@@ -5,7 +5,7 @@ import { applyAgentCommand, buildStandaloneHtml, createTemplate, getAgentManifes
 import { runAcceptanceSuite } from "../lib/looplab-acceptance.mjs";
 import { inspectActorProgram, LOOPLAB_ACTOR_PROGRAM_SCHEMA, suggestActorProgram } from "../lib/looplab-actors.mjs";
 import { analyzeProject } from "../lib/looplab-doctor.mjs";
-import { captureReplayState, LOOPLAB_REPLAY_ACTOR_HASH_VERSION, LOOPLAB_REPLAY_COMBAT_HASH_VERSION, LOOPLAB_REPLAY_MOTION_CARRY_HASH_VERSION } from "../lib/looplab-replay.mjs";
+import { captureReplayState, LOOPLAB_REPLAY_ACTOR_HASH_VERSION, LOOPLAB_REPLAY_COMBAT_HASH_VERSION, LOOPLAB_REPLAY_ELEVATION_HASH_VERSION } from "../lib/looplab-replay.mjs";
 import { createRuntimeModel } from "../lib/looplab-runtime-model.mjs";
 
 const clone = (value) => structuredClone(value);
@@ -202,14 +202,14 @@ test("acceptance, replay v8, headless commands, Doctor, manifest, and one-file e
   assert.ok(manifest.exportedRuntime.methods.includes("getActorStates"));
   assert.ok(manifest.exportedRuntime.commands.includes("get_actor_states"));
   assert.equal(manifest.deterministicActors.schemaVersion, LOOPLAB_ACTOR_PROGRAM_SCHEMA);
-  assert.equal(manifest.deterministicReplay.currentHashVersion, LOOPLAB_REPLAY_MOTION_CARRY_HASH_VERSION);
+  assert.equal(manifest.deterministicReplay.currentHashVersion, LOOPLAB_REPLAY_ELEVATION_HASH_VERSION);
 
   const html = buildStandaloneHtml(project);
   assert.match(html, /getActorStates/);
   assert.match(html, /get_actor_states/);
   assert.match(html, /actor\.mode-changed/);
   assert.match(html, /looplab-runtime-save-state\/v4/);
-  assert.match(html, /\[1,2,3,4,5,6,7,8,9,10\]/);
+  assert.match(html, /\[1,2,3,4,5,6,7,8,9,10,11\]/);
 
   const removed = applyAgentCommand(set.project, { op: "remove_actor_program" });
   assert.equal(removed.changed, true);

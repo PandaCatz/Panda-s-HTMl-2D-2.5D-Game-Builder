@@ -263,7 +263,7 @@ test("ships responsive and accessible editor controls", async () => {
   ]);
   const manifest = JSON.parse(manifestSource);
 
-  assert.equal(manifest.protocolVersion, "1.104.0");
+  assert.equal(manifest.protocolVersion, "1.105.0");
   assert.equal(manifest.agentOperatingModel.headlessFirst, true);
   assert.match(manifest.agentOperatingModel.primarySurface, /canonical product surface/);
   assert.match(manifest.agentOperatingModel.humanUiRole, /secondary inspection/);

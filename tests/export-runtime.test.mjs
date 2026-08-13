@@ -328,7 +328,7 @@ test("exports the tested runtime model, linked maps, mobile-only touch controls,
   project.release = { externalRequests: [], debugMarkers: [] };
   project.assets = [{ id: "embedded-pixel", name: "Embedded pixel", type: "sprite", dataUrl: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M/wHwAF/gL+X1zGkwAAAABJRU5ErkJggg==", width: 1, height: 1, frameWidth: 1, frameHeight: 1, frames: 1, columns: 1, anchorX: 0.5, anchorY: 1, anchorMode: "ground", collisionPolicy: "authored-only", generator: { kind: "test" } }];
   const html = buildStandaloneHtml(project);
-  assert.match(html, /const runtimeApi=\{version:'2\.30\.0',getSourceDigest/);
+  assert.match(html, /const runtimeApi=\{version:'2\.31\.0',getSourceDigest/);
   assert.match(html, /Object\.isExtensible\(window\)/);
   assert.match(html, /id="looplab-runtime-bridge"/);
   assert.match(html, /id="looplab-runtime-form"/);
@@ -469,7 +469,7 @@ test("manifest declares the generated game as one offline-playable HTML file", a
   assert.equal(manifest.exportedRuntime.offlinePlayable, true);
   assert.deepEqual(manifest.exportedRuntime.externalDependencies, []);
   assert.ok(manifest.exportedRuntime.embeds.includes("selected-assets-as-data-urls"));
-  assert.equal(manifest.exportedRuntime.version, "2.30.0");
+  assert.equal(manifest.exportedRuntime.version, "2.31.0");
   assert.ok(manifest.exportedRuntime.embeds.includes("keyboard-gamepad-and-touch-controls"));
   assert.ok(manifest.exportedRuntime.embeds.includes("deterministic-replay-fixtures"));
   assert.ok(manifest.exportedRuntime.embeds.includes("deterministic-acceptance-fixtures"));
