@@ -11,6 +11,10 @@ const publicIndexPath = resolve(projectRoot, "public", "agent-guide-index.json")
 const generatedModulePath = resolve(projectRoot, "lib", "generated", "looplab-agent-guide-index.mjs");
 const checkOnly = process.argv.includes("--check");
 
+function normalizeLineEndings(value) {
+  return typeof value === "string" ? value.replace(/\r\n?/g, "\n") : value;
+}
+
 const source = await readFile(canonicalGuidePath, "utf8");
 const { documentMarkdown, index } = buildAgentGuideArtifacts(source);
 const publicIndex = `${JSON.stringify(index, null, 2)}\n`;
@@ -31,7 +35,7 @@ if (checkOnly) {
     } catch {
       // A missing generated artifact is drift and is reported like any other mismatch.
     }
-    if (actual !== expected) stale.push(path);
+    if (normalizeLineEndings(actual) !== normalizeLineEndings(expected)) stale.push(path);
   }
   if (stale.length) {
     throw new Error(`AI Agent Guide navigation is stale. Run npm run agent-guide:generate. Mismatched artifacts: ${stale.join(", ")}`);

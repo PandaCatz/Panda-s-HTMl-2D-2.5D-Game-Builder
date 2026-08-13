@@ -14,6 +14,8 @@ import { getLooplabCommandContracts } from "../lib/looplab-agent-contracts.mjs";
 import { LOOPLAB_AGENT_GUIDE_INDEX } from "../lib/generated/looplab-agent-guide-index.mjs";
 import { LOOPLAB_BROWSER_SESSION_COMMANDS, LOOPLAB_CORE_COMMANDS } from "../lib/looplab-command-surfaces.mjs";
 
+const normalizeLineEndings = (value) => value.replace(/\r\n?/g, "\n");
+
 test("agent guide navigation artifacts are generated idempotently from one canonical body", async () => {
   const [guide, publicGuide, publicIndexText] = await Promise.all([
     readFile("docs/AI_AGENT_GUIDE.md", "utf8"),
@@ -23,8 +25,8 @@ test("agent guide navigation artifacts are generated idempotently from one canon
   const generated = buildAgentGuideArtifacts(guide);
   const publicIndex = JSON.parse(publicIndexText);
 
-  assert.equal(generated.documentMarkdown, guide);
-  assert.equal(publicGuide, guide);
+  assert.equal(generated.documentMarkdown, normalizeLineEndings(guide));
+  assert.equal(normalizeLineEndings(publicGuide), normalizeLineEndings(guide));
   assert.deepEqual(generated.index, LOOPLAB_AGENT_GUIDE_INDEX);
   assert.deepEqual(publicIndex, LOOPLAB_AGENT_GUIDE_INDEX);
   assert.equal(LOOPLAB_AGENT_GUIDE_INDEX.schemaVersion, LOOPLAB_AGENT_GUIDE_INDEX_SCHEMA);
@@ -37,6 +39,15 @@ test("agent guide navigation artifacts are generated idempotently from one canon
   assert.equal(LOOPLAB_AGENT_GUIDE_INDEX.policy.authority, "orientation-only");
   assert.equal(LOOPLAB_AGENT_GUIDE_INDEX.policy.mayExecute, false);
   assert.equal(LOOPLAB_AGENT_GUIDE_INDEX.policy.verificationEvidence, false);
+});
+
+test("agent guide generation is deterministic across LF and CRLF checkouts", async () => {
+  const guide = normalizeLineEndings(await readFile("docs/AI_AGENT_GUIDE.md", "utf8"));
+  const lf = buildAgentGuideArtifacts(guide);
+  const crlf = buildAgentGuideArtifacts(guide.replace(/\n/g, "\r\n"));
+
+  assert.equal(crlf.documentMarkdown, lf.documentMarkdown);
+  assert.deepEqual(crlf.index, lf.index);
 });
 
 test("heading extraction matches the documented GitHub-compatible subset and ignores fenced pseudo-headings", () => {
