@@ -97,17 +97,21 @@ test("2D routing defaults to the compact one-file Canvas path and never includes
   assert.match(route.boundaries.packaging, /one offline HTML file/i);
 });
 
-test("melonJS knowledge routes without claiming its pending adapter is shipped", () => {
+test("melonJS routes through its pinned release-ready standalone adapter", () => {
   const route = routeGameStudioWork(createTemplate("platformer"), { framework: "melon", track: "maps", prompt: "Use melonJS and Tiled maps" });
   assert.ok(route.route.some((step) => step.capabilityId === "melonjs-engine"));
-  assert.equal(route.runtimeSelection.requestedUnavailableFramework, "melon");
-  assert.equal(route.runtimeSelection.selectedFramework, "canvas");
-  assert.match(route.route.find((step) => step.capabilityId === "melonjs-engine").label, /capability knowledge/i);
-  assert.match(route.runtimeSelection.reasons.join(" "), /not release-ready/i);
+  assert.equal(route.runtimeSelection.requestedUnavailableFramework, null);
+  assert.equal(route.runtimeSelection.selectedFramework, "melon");
+  assert.match(route.route.find((step) => step.capabilityId === "melonjs-engine").label, /inline IIFE/i);
+  assert.match(route.runtimeSelection.reasons.join(" "), /selected explicitly/i);
   assert.deepEqual(getAgentManifest().installedSkills.oneFileRuntimePolicy.melon, {
-    status: "knowledge-integrated-adapter-pending",
-    targetDelivery: "tree-shaken-inline-iife",
+    status: "release-ready",
+    delivery: "tree-shaken-inline-iife",
+    pinnedVersion: "17.4.0",
+    sha256: getAgentManifest().installedSkills.oneFileRuntimePolicy.melon.sha256,
+    integration: "standalone-application-explicit-camera",
   });
+  assert.match(getAgentManifest().installedSkills.oneFileRuntimePolicy.melon.sha256, /^[a-f0-9]{64}$/);
 });
 
 test("Project Doctor blocks runtime and module dependencies that violate one-file export", () => {

@@ -36,24 +36,49 @@ test("artifact audit proves the generated game is one complete offline HTML", ()
   assert.ok(audit.checks.every((check) => check.passed));
 });
 
-test("Phaser projects inline one pinned browser bundle and pass the same one-file audit", () => {
-  const project = applyAgentCommand(createTemplate("platformer"), { op: "set_runtime_profile", framework: "phaser", reason: "Scene and camera tooling improve this game." }).project;
-  const html = buildStandaloneHtml(project);
-  const audit = auditStandaloneHtml(html);
-  assert.equal(audit.valid, true);
-  assert.equal(audit.runtimeVendors.length, 1);
-  assert.deepEqual(audit.runtimeVendors.map(({ vendor, version, trusted }) => ({ vendor, version, trusted })), [{ vendor: "phaser", version: "3.90.0", trusted: true }]);
-  assert.match(html, /data-looplab-vendor="phaser"/);
-  assert.doesNotMatch(html, /<script[^>]+src=/i);
+test("every optional runtime inlines exactly one pinned browser bundle and passes the same one-file audit", () => {
+  const versions = { phaser: "3.90.0", pixi: "8.19.0", melon: "17.4.0" };
+  for (const [framework, version] of Object.entries(versions)) {
+    const project = applyAgentCommand(createTemplate("platformer"), { op: "set_runtime_profile", framework, reason: "The selected adapter materially improves presentation." }).project;
+    const html = buildStandaloneHtml(project);
+    const audit = auditStandaloneHtml(html);
+    assert.equal(audit.valid, true, framework);
+    assert.equal(audit.runtimeVendors.length, 1, framework);
+    assert.deepEqual(audit.runtimeVendors.map(({ vendor, version: actualVersion, trusted }) => ({ vendor, version: actualVersion, trusted })), [{ vendor: framework, version, trusted: true }]);
+    assert.match(html, new RegExp(`data-looplab-vendor="${framework}"`));
+    assert.doesNotMatch(html, /<script[^>]+src=/i);
+    for (const other of Object.keys(versions).filter((candidate) => candidate !== framework)) assert.doesNotMatch(html, new RegExp(`data-looplab-vendor="${other}"`));
+  }
 });
 
-test("the artifact gate rejects a modified or falsely labeled Phaser vendor bundle", () => {
-  const project = applyAgentCommand(createTemplate("platformer"), { op: "set_runtime_profile", framework: "phaser" }).project;
+test("the artifact gate rejects a modified or falsely labeled runtime vendor bundle", () => {
+  for (const framework of ["phaser", "pixi", "melon"]) {
+    const project = applyAgentCommand(createTemplate("platformer"), { op: "set_runtime_profile", framework }).project;
+    const html = buildStandaloneHtml(project);
+    const tampered = html.replace(new RegExp(`(<script data-looplab-vendor="${framework}"[^>]*>)`), "$1 ");
+    const audit = auditStandaloneHtml(tampered);
+    assert.equal(audit.valid, false, framework);
+    assert.ok(audit.errors.some((issue) => issue.code === "runtime-vendor-integrity"), framework);
+  }
+});
+
+test("authenticated vendor exclusions do not hide injected private data or a competing engine", () => {
+  const project = applyAgentCommand(createTemplate("platformer"), { op: "set_runtime_profile", framework: "pixi" }).project;
   const html = buildStandaloneHtml(project);
-  const tampered = html.replace(/(<script data-looplab-vendor="phaser"[^>]*>)/, "$1 ");
-  const audit = auditStandaloneHtml(tampered);
-  assert.equal(audit.valid, false);
-  assert.ok(audit.errors.some((issue) => issue.code === "runtime-vendor-integrity"));
+  const privatePath = ["C:", "Users", "private", "secret.txt"].join("\\");
+  const injected = html.replace(/(<script data-looplab-vendor="pixi"[^>]*>)/, `$1const leaked=${JSON.stringify(privatePath)};`);
+  const injectedAudit = auditStandaloneHtml(injected);
+  assert.equal(injectedAudit.valid, false);
+  assert.ok(injectedAudit.errors.some((issue) => issue.code === "runtime-vendor-integrity"));
+  assert.ok(injectedAudit.errors.some((issue) => issue.code === "embedded-private-data"));
+
+  const phaser = buildStandaloneHtml(applyAgentCommand(createTemplate("platformer"), { op: "set_runtime_profile", framework: "phaser" }).project);
+  const phaserVendor = phaser.match(/<script data-looplab-vendor="phaser"[\s\S]*?<\/script>/)?.[0];
+  assert.ok(phaserVendor);
+  const competing = html.replace("</body>", `${phaserVendor}</body>`);
+  const competingAudit = auditStandaloneHtml(competing);
+  assert.equal(competingAudit.valid, false);
+  assert.ok(competingAudit.errors.some((issue) => issue.code === "runtime-vendor-count"));
 });
 
 test("artifact audit rejects linked scripts, modules, network calls, and browser storage", () => {

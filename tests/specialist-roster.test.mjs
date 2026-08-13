@@ -25,7 +25,7 @@ const EXPECTED_IDS = [
 test("publishes a stable truthful specialist roster", () => {
   assert.deepEqual(LOOPLAB_SPECIALIST_AGENTS.map((agent) => agent.id), EXPECTED_IDS);
   const manifest = getAgentManifest();
-  assert.equal(manifest.protocolVersion, "1.100.0");
+  assert.equal(manifest.protocolVersion, "1.101.0");
   assert.equal(manifest.specialistAgents.executionMode, "single-provider-staged-review");
   assert.equal(manifest.specialistAgents.providerInvocationsPerIteration, 1);
   assert.equal(manifest.specialistAgents.independentAgentProcesses, false);
@@ -33,6 +33,13 @@ test("publishes a stable truthful specialist roster", () => {
   assert.equal(manifest.specialistAgents.roster.find((agent) => agent.id === "project-doctor-critic").executor, "project-doctor");
   assert.equal(manifest.specialistAgents.roster.find((agent) => agent.id === "playtest-qa").executor, "playwright");
   assert.ok(manifest.specialistAgents.roster.filter((agent) => agent.executor === "selected-provider").length >= 7);
+  assert.deepEqual(manifest.exportedRuntime.engineDelivery, {
+    canvas: "built-in-inline",
+    phaser: "inline-script-tag",
+    pixi: "inline-umd-with-official-csp-polyfill",
+    melon: "tree-shaken-inline-iife",
+  });
+  assert.equal(Object.hasOwn(manifest.exportedRuntime, "pendingEngineTargets"), false);
 });
 
 test("Full game creation routes every broad 2D discipline and keeps gates independent", () => {
@@ -123,7 +130,7 @@ test("Auto selects Phaser when its native 2D tooling is likely to improve a new 
   assert.match(route.boundaries.packaging, /one offline HTML file/i);
 });
 
-test("Single-file delivery is not a negative Phaser signal", () => {
+test("Single-file delivery is not a negative engine signal", () => {
   const runtime = selectGameRuntime(createTemplate("platformer"), {
     track: "creation",
     framework: "auto",
@@ -132,7 +139,7 @@ test("Single-file delivery is not a negative Phaser signal", () => {
   });
   assert.equal(runtime.selectedFramework, "phaser");
   assert.equal(runtime.singleFile.compatible, true);
-  assert.match(runtime.singleFile.rule, /never disqualifies Phaser/i);
+  assert.match(runtime.singleFile.rule, /never disqualifies a release-ready adapter/i);
   assert.ok(runtime.signals.every((signal) => signal.id !== "single-file-penalty"));
 });
 
@@ -170,7 +177,7 @@ test("Custom dimetric depth keeps Canvas unless another Phaser benefit wins", ()
   assert.ok(runtime.signals.some((signal) => signal.id === "authored-dimetric-depth"));
 });
 
-test("Canvas, Phaser, PixiJS, and melonJS decision knowledge is native even when an adapter is pending", () => {
+test("Canvas, Phaser, PixiJS, and melonJS decision knowledge and adapters are native", () => {
   assert.deepEqual(Object.keys(LOOPLAB_RUNTIME_KNOWLEDGE).filter((key) => ["canvas", "phaser", "pixi", "melon"].includes(key)), ["canvas", "phaser", "pixi", "melon"]);
   for (const framework of ["canvas", "phaser", "pixi", "melon"]) {
     assert.ok(LOOPLAB_RUNTIME_KNOWLEDGE[framework].chooseWhen.length > 0);
@@ -181,24 +188,54 @@ test("Canvas, Phaser, PixiJS, and melonJS decision knowledge is native even when
 
   const pixi = selectGameRuntime(createTemplate("blank"), { track: "creation", framework: "pixi", prompt: "A renderer-first particle field with filters and thousands of sprites." });
   assert.equal(pixi.bestFitFramework, "pixi");
-  assert.equal(pixi.selectedFramework, "canvas");
-  assert.equal(pixi.requestedUnavailableFramework, "pixi");
-  assert.equal(pixi.adapterAvailability.pixi.status, "knowledge-integrated-adapter-pending");
-  assert.match(pixi.reasons[0], /decision knowledge is available/i);
+  assert.equal(pixi.selectedFramework, "pixi");
+  assert.equal(pixi.requestedUnavailableFramework, null);
+  assert.equal(pixi.adapterAvailability.pixi.status, "available");
+  assert.equal(pixi.singleFile.delivery, "inline-umd-with-official-csp-polyfill");
 
   const melon = selectGameRuntime(createTemplate("blank"), { track: "creation", framework: "melon", prompt: "Import a Tiled TMX world with orthogonal object layers and entity pooling." });
   assert.equal(melon.bestFitFramework, "melon");
-  assert.equal(melon.selectedFramework, "canvas");
-  assert.equal(melon.requestedUnavailableFramework, "melon");
+  assert.equal(melon.selectedFramework, "melon");
+  assert.equal(melon.requestedUnavailableFramework, null);
+  assert.equal(melon.singleFile.delivery, "tree-shaken-inline-iife");
 });
 
-test("the dedicated runtime command applies only release-ready one-file adapters", () => {
-  const phaser = applyAgentCommand(createTemplate("platformer"), { op: "set_runtime_profile", framework: "phaser", reason: "Scene lifecycle" });
-  assert.equal(phaser.project.runtimeProfile.framework, "phaser");
-  assert.equal(phaser.project.release.engineDelivery, "inline-script-tag");
-  assert.equal(phaser.result.primaryFrameOwner, "phaser");
-  assert.equal(phaser.result.version, "3.90.0");
-  assert.throws(() => applyAgentCommand(createTemplate("platformer"), { op: "set_runtime_profile", framework: "pixi" }), /not release-ready/i);
+test("the dedicated runtime command applies every release-ready one-file adapter atomically", () => {
+  const expectations = {
+    canvas: { delivery: "built-in-inline", owner: "looplab-canvas", version: undefined },
+    phaser: { delivery: "inline-script-tag", owner: "phaser", version: "3.90.0" },
+    pixi: { delivery: "inline-umd-with-official-csp-polyfill", owner: "pixi", version: "8.19.0" },
+    melon: { delivery: "tree-shaken-inline-iife", owner: "melon", version: "17.4.0" },
+  };
+  for (const [framework, expected] of Object.entries(expectations)) {
+    const outcome = applyAgentCommand(createTemplate("platformer"), { op: "set_runtime_profile", framework, reason: "Measured runtime fit" });
+    assert.equal(outcome.project.runtimeProfile.framework, framework);
+    assert.equal(outcome.project.release.engineDelivery, expected.delivery);
+    assert.equal(outcome.project.release.runtimeBundleEmbedded, true);
+    assert.equal(outcome.result.primaryFrameOwner, expected.owner);
+    assert.equal(outcome.result.version, expected.version);
+  }
+  assert.throws(() => applyAgentCommand(createTemplate("platformer"), { op: "set_runtime_profile", framework: "three" }), /canvas, phaser, pixi, or melon/i);
+});
+
+test("Auto can select PixiJS or melonJS for a new game when their concrete signals win", () => {
+  const pixi = selectGameRuntime(createTemplate("blank"), {
+    track: "creation",
+    framework: "auto",
+    prompt: "Build a renderer-first field with thousands of sprites, render groups, particle systems, filters, and WebGL batching.",
+  });
+  assert.equal(pixi.recommendedFramework, "pixi");
+  assert.equal(pixi.selectedFramework, "pixi");
+  assert.equal(pixi.selectionSource, "automatic-quality-fit");
+
+  const melon = selectGameRuntime(createTemplate("blank"), {
+    track: "creation",
+    framework: "auto",
+    prompt: "Use a Tiled TMX workflow with orthogonal object layers, a level loader, and entity pooling.",
+  });
+  assert.equal(melon.recommendedFramework, "melon");
+  assert.equal(melon.selectedFramework, "melon");
+  assert.equal(melon.selectionSource, "automatic-quality-fit");
 });
 
 test("work routing is strictly 2D even when a caller asks for a 3D stack", () => {
