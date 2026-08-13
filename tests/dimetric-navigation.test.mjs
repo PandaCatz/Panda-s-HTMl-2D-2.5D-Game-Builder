@@ -386,7 +386,7 @@ test("headless API authors, validates, exports, and preserves per-map 2.5D data"
   assert.equal(project.maps[0].navigation.nodes.length, 2);
 
   const manifest = getAgentManifest();
-  assert.equal(manifest.protocolVersion, "1.107.0");
+  assert.equal(manifest.protocolVersion, "1.108.0");
   assert.ok(manifest.commands.includes("set_map_projection"));
   assert.ok(manifest.commands.includes("import_path_editor_navigation"));
   assert.ok(manifest.commands.includes("export_path_editor_navigation"));

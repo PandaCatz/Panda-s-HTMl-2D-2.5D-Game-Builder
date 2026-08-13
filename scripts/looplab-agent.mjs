@@ -29,6 +29,8 @@ import { composeDirectedGameBrief, directedGameSummary } from "../lib/looplab-ga
 import { companionSessionHeaders, defaultCompanionSessionFile, readCompanionSession } from "../lib/looplab-companion-session.mjs";
 import { runPlatformHarness } from "../lib/looplab-platform-harness.mjs";
 import { getAgentRecipe, listAgentRecipes } from "../lib/looplab-agent-playbook.mjs";
+import { queryAgentGuideIndex } from "../lib/looplab-agent-guide-navigation.mjs";
+import { LOOPLAB_AGENT_GUIDE_INDEX } from "../lib/generated/looplab-agent-guide-index.mjs";
 import { validateReleaseVerification } from "../lib/looplab-release-verification.mjs";
 import { runExactReleaseVerification } from "../lib/looplab-release-verification-runner.mjs";
 import { compareBuilderBenchmarkRuns, listBuilderBenchmarks } from "../lib/looplab-builder-benchmark.mjs";
@@ -77,6 +79,7 @@ function usage() {
     argumentForwarding: npmArgumentForwardingGuidance(npmArgumentRecovery),
     usage: {
       manifest: "npm run agent -- manifest",
+      guide: "npm run agent -- guide [query] [--category=all|section|invariant|lifecycle|recovery] [--limit=24]",
       playbook: "npm run agent -- playbook [query] [--tag=collision] [--issue-code=code] [--status=active|deprecated|all] [--limit=20]",
       recipe: "npm run agent -- recipe <recipe-id>",
       macros: "npm run agent -- macros",
@@ -263,6 +266,16 @@ async function main() {
     const argument = args.find((entry) => entry.startsWith(`--${name}=`));
     return argument ? argument.slice(name.length + 3) : fallback;
   };
+
+  if (operation === "guide" || operation === "agent-guide") {
+    const query = args.filter((argument) => !argument.startsWith("--")).join(" ");
+    print({ ok: true, operation, index: queryAgentGuideIndex(LOOPLAB_AGENT_GUIDE_INDEX, {
+      query,
+      category: optionValue("category", "all"),
+      limit: Number(optionValue("limit", 24)),
+    }) });
+    return;
+  }
 
   if (operation === "projects" || operation === "list-projects") {
     const value = await listSharedProjects({ workspaceRoot: projectDirectory, companionUrl: COMPANION_URL, sessionFile: COMPANION_SESSION_FILE });

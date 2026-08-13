@@ -80,6 +80,11 @@ test("server-renders the Looplab game workshop", async () => {
   assert.match(html, /id="looplab-agent-recipe"/);
   assert.match(html, /Agent playbook/);
   assert.match(html, /Read-only proven operating recipes/);
+  assert.match(html, /id="looplab-agent-guide-navigation"/);
+  assert.match(html, /id="looplab-agent-guide-query"/);
+  assert.match(html, /id="looplab-agent-guide-category"/);
+  assert.match(html, /Agent guide navigator/);
+  assert.match(html, /Source-bound rules and failure recovery without loading the full guide/);
   assert.match(html, /id="looplab-agent-context-pack"/);
   assert.match(html, /id="looplab-agent-context-view"/);
   assert.match(html, /Agent context pack/);
@@ -264,7 +269,7 @@ test("ships responsive and accessible editor controls", async () => {
   ]);
   const manifest = JSON.parse(manifestSource);
 
-  assert.equal(manifest.protocolVersion, "1.107.0");
+  assert.equal(manifest.protocolVersion, "1.108.0");
   assert.equal(manifest.agentOperatingModel.headlessFirst, true);
   assert.match(manifest.agentOperatingModel.primarySurface, /canonical product surface/);
   assert.match(manifest.agentOperatingModel.humanUiRole, /secondary inspection/);
@@ -374,6 +379,9 @@ test("ships responsive and accessible editor controls", async () => {
   assert.match(css, /\.agent-readiness-card\[data-release-blocking="true"\]/);
   assert.match(css, /\.agent-intent-plan-result/);
   assert.match(css, /\.agent-community-exchange/);
+  assert.match(css, /\.agent-guide-navigation/);
+  assert.match(css, /\.agent-guide-results article\[data-guide-kind="recovery"\]/);
+  assert.match(css, /\.statusbar \.agent-bridge-console form \.agent-guide-actions button\s*\{[^}]*background: #3a3a37/s, "guide controls must override the generic lime Agent API button rule");
   assert.match(css, /\.community-exchange-preview\.is-ready/);
   assert.match(css, /\.provider-parity-contract/);
   assert.match(css, /background: #e8e7e2/);
@@ -462,6 +470,14 @@ test("ships responsive and accessible editor controls", async () => {
   assert.match(manifest.agentPlaybook.registryDigest, /^sha256:[a-f0-9]{64}$/);
   assert.ok(manifest.mcpServer.resources.includes("looplab://agent-playbook"));
   assert.match(manifest.headlessResponses.agentPlaybookWorkflow, /read-only context.*never execute/i);
+  assert.equal(manifest.agentGuideNavigation.schemaVersion, "looplab-agent-guide-index/v1");
+  assert.equal(manifest.agentGuideNavigation.counts.invariants, 16);
+  assert.equal(manifest.agentGuideNavigation.counts.lifecycle, 10);
+  assert.match(manifest.agentGuideNavigation.indexDigest, /^sha256:[a-f0-9]{64}$/);
+  assert.ok(manifest.commands.includes("get_agent_guide_index"));
+  assert.ok(manifest.mcpServer.resources.includes("looplab://agent-guide-index"));
+  assert.equal(manifest.transport.agentGuideNavigationSelector, "#looplab-agent-guide-navigation");
+  assert.match(manifest.headlessResponses.agentGuideNavigationWorkflow, /orientation only/i);
   assert.equal(manifest.agentWorkLedger.schemaVersion, "looplab-agent-work-ledger/v1");
   assert.equal(manifest.agentWorkLedger.privacy.exportedHtml, false);
   assert.equal(manifest.agentWorkLedger.privacy.providerContext, false);

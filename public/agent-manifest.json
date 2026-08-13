@@ -1,6 +1,6 @@
 {
   "name": "Looplab Headless Agent API",
-  "protocolVersion": "1.107.0",
+  "protocolVersion": "1.108.0",
   "agentOperatingModel": {
     "purpose": "LoopLab is an AI capability amplifier and structured game-authoring workstation, not a form the agent is confined to.",
     "headlessFirst": true,
@@ -1028,6 +1028,7 @@
     "batchPreviewSelector": "#looplab-agent-batch-preview",
     "changeFeedSelector": "#looplab-agent-change-feed",
     "builderBenchmarkSelector": "#looplab-agent-builder-benchmark",
+    "agentGuideNavigationSelector": "#looplab-agent-guide-navigation",
     "bridgeSelector": "#looplab-agent-bridge",
     "domCommandEvent": "looplab:agent-command",
     "domResponseEvent": "looplab:agent-response",
@@ -1088,6 +1089,7 @@
     "batchPreviewWorkflow": "Use preview_batch for a nontrivial arbitrary canonical batch, review command errors plus current/release Doctor deltas, then call apply_previewed_batch with unchanged commands, summary, profile, expectedSourceDigest, and expectedPreviewDigest. Preview is provider-free and non-persisting; apply re-previews and atomically writes only the exact reviewed projection.",
     "commandMacroWorkflow": "Use list_command_macros, preview_command_macro, then apply_command_macro with both the exact expectedSourceDigest and SHA-256 expectedExpansionDigest. Preview runs current-authoring and production Doctor on a clone; operation receipts are compact by default with detail=full available; macros expand only to canonical core commands and never bypass either gate.",
     "agentPlaybookWorkflow": "Use relevant recipe references from get_agent_brief, search with list_agent_recipes, then read one exact recipe with get_agent_recipe. Recipes are read-only context and never execute or bypass canonical command gates.",
+    "agentGuideNavigationWorkflow": "Use get_agent_guide_index on the browser-session bridge or read looplab://agent-guide-index through MCP to retrieve only the relevant invariant, lifecycle step, failure recovery, or canonical section. Follow the returned anchor into the complete guide before acting. The generated index is source-bound orientation only and never grants authority or becomes evidence.",
     "agentIntentPlanWorkflow": "Send a bounded intent to draft_agent_plan after the warm-start brief. Treat coverage and ordered phases as authoritative: every detected requirement must be satisfied, planned, blocked, or explicitly need input. Retain completed evidence, redraft after authored source changes, resume durable jobs by ID, and never retry an applied mutation receipt. The plan is provider-free, non-executing, and shared identically by Codex, Claude, CLI, MCP, browser bridge, and the secondary UI.",
     "agentPresenceWorkflow": "Read get_agent_presence, then register_agent_presence with one stable ID and renew before half the returned TTL. Retain the opaque leaseToken locally, leave explicitly when possible, and use the durable work ledger—not presence—for ownership, handoff, or completion truth.",
     "sharedProjectStoreWorkflow": "Begin with list_shared_projects and mount the chosen ID before editing. Retain sourceDigest for gameplay-command freshness and the separate complete-document revisionDigest for shared-store concurrency. Save with expectedRevisionDigest or createOnly. On HTTP 412 preserve the local draft, preview and apply only an exact conflict-free rebase receipt, rerun gates, then save explicitly. IndexedDB is a recoverable browser cache, never equal authority.",
@@ -5477,6 +5479,7 @@
   },
   "commands": [
     "get_manifest",
+    "get_agent_guide_index",
     "load_template",
     "list_projects",
     "select_project",
@@ -5969,6 +5972,7 @@
     ],
     "browserSession": [
       "get_manifest",
+      "get_agent_guide_index",
       "load_template",
       "list_projects",
       "select_project",
@@ -6255,6 +6259,7 @@
     ],
     "browserOnly": [
       "get_manifest",
+      "get_agent_guide_index",
       "load_template",
       "list_projects",
       "select_project",
@@ -6493,6 +6498,68 @@
             "compact": {
               "type": "boolean",
               "description": "Return a compact result without repeating the complete embedded project when the transport supports it."
+            }
+          },
+          "additionalProperties": false
+        },
+        "annotations": {
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      },
+      {
+        "op": "get_agent_guide_index",
+        "title": "Get Agent Guide Index",
+        "description": "Search the generated source-bound AI Agent Guide navigation layer. It returns exact canonical anchors, line ranges, invariants, lifecycle steps, and failure recoveries for orientation only; it cannot execute, mutate, verify, or grant authority.",
+        "surfaces": [
+          "browser-session"
+        ],
+        "mutatesProject": false,
+        "mutatesBuilderState": false,
+        "requiresSourceDigestInMcp": false,
+        "coordinationOnly": false,
+        "schemaPrecision": "declared",
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "expectedSourceDigest": {
+              "type": "string",
+              "description": "Project Doctor sourceDigest inspected immediately before this command.",
+              "minLength": 1
+            },
+            "expectedLedgerDigest": {
+              "type": "string",
+              "description": "Shared work-ledger digest inspected immediately before this coordination mutation.",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            },
+            "compact": {
+              "type": "boolean",
+              "description": "Return a compact result without repeating the complete embedded project when the transport supports it."
+            },
+            "query": {
+              "type": "string",
+              "description": "Deterministic bounded text matched against section titles, invariant summaries, lifecycle steps, failure signals, recoveries, anchors, and referenced commands.",
+              "maxLength": 240
+            },
+            "category": {
+              "type": "string",
+              "enum": [
+                "all",
+                "section",
+                "invariant",
+                "lifecycle",
+                "recovery"
+              ],
+              "description": "Optional exact entry-kind filter; defaults to all."
+            },
+            "limit": {
+              "type": "integer",
+              "description": "Maximum compact navigation entries.",
+              "minimum": 1,
+              "maximum": 50
             }
           },
           "additionalProperties": false
@@ -33487,8 +33554,42 @@
       "get_agent_recipe"
     ]
   },
+  "agentGuideNavigation": {
+    "schemaVersion": "looplab-agent-guide-index/v1",
+    "sourceDigest": "sha256:02e79bd55bc39529e1ebbc24f03182183c92fe0381a5806d5fa041ffcc1e24e6",
+    "indexDigest": "sha256:a616ee6b354284f9afc24c38f89a0aadb5c3ff5251bb1a51302675b5a09d6faf",
+    "headingCount": 58,
+    "counts": {
+      "sections": 58,
+      "invariants": 16,
+      "lifecycle": 10,
+      "recoveries": 22
+    },
+    "publicUrl": "/agent-guide-index.json",
+    "guideUrl": "/AI_AGENT_GUIDE.md",
+    "resources": [
+      "looplab://agent-guide-index",
+      "looplab://agent-guide"
+    ],
+    "browserCommand": {
+      "op": "get_agent_guide_index",
+      "query": "stale source",
+      "category": "recovery",
+      "limit": 8
+    },
+    "cli": "npm run agent -- guide [query] [--category=all|section|invariant|lifecycle|recovery] [--limit=24]",
+    "policy": {
+      "authority": "orientation-only",
+      "fullGuideAuthoritative": true,
+      "omissionMeansPermission": false,
+      "mayExecute": false,
+      "mayMutate": false,
+      "verificationEvidence": false,
+      "guidance": "Use the index to find the owning section, then apply the canonical command and evidence rules from the complete guide."
+    }
+  },
   "mcpServer": {
-    "version": "1.3.0",
+    "version": "1.4.0",
     "transport": "stdio",
     "implementation": "generated-from-commandContracts",
     "profiles": {
@@ -33499,6 +33600,7 @@
       "looplab://manifest",
       "looplab://agent-playbook",
       "looplab://agent-guide",
+      "looplab://agent-guide-index",
       "looplab://mcp-setup"
     ],
     "stdoutPolicy": "MCP JSON-RPC messages only; diagnostics use stderr.",
@@ -33506,8 +33608,8 @@
   },
   "companion": {
     "baseUrl": "http://127.0.0.1:4317",
-    "expectedCompanionVersion": "1.38.0",
-    "expectedProtocolVersion": "1.107.0",
+    "expectedCompanionVersion": "1.39.0",
+    "expectedProtocolVersion": "1.108.0",
     "providers": "/providers",
     "promptDrafts": "/prompt-drafts",
     "agentPresence": "/agent-presence",

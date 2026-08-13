@@ -6,11 +6,110 @@ LoopLab is an AI capability amplifier, not a form the agent is confined to. Pref
 
 The product scope is strictly **2D HTML games**. Side-scrollers, top-down games, connected rooms, single-screen games, and dimetric/isometric “2.5D” maps are in scope. A dimetric map may author world x/y/z for elevation, supports, collision separation, and deterministic draw order, but its renderer and assets remain 2D Canvas, tiles, and sprites. Do not route LoopLab through Three.js, React Three Fiber, a 3D editor, or a GLB/glTF asset pipeline.
 
+<!-- LOOPLAB_AGENT_GUIDE_NAV_START -->
+## Contents
+
+- [Discover and connect](#discover-and-connect)
+  - [One shared project store](#one-shared-project-store)
+  - [Use explicit preference memory as adjacent context](#use-explicit-preference-memory-as-adjacent-context)
+  - [Provider connection preflight](#provider-connection-preflight)
+- [Select the project and prompt draft](#select-the-project-and-prompt-draft)
+  - [Choose a complete playable foundation without hiding the alternatives](#choose-a-complete-playable-foundation-without-hiding-the-alternatives)
+  - [Fuse context; do not let LoopLab certify itself](#fuse-context-do-not-let-looplab-certify-itself)
+  - [Measure builder improvements with visible golden briefs](#measure-builder-improvements-with-visible-golden-briefs)
+  - [Resume from bounded semantic changes](#resume-from-bounded-semantic-changes)
+  - [Author executable gameplay systems](#author-executable-gameplay-systems)
+    - [Build systems games without choosing a movement genre](#build-systems-games-without-choosing-a-movement-genre)
+  - [Design an executable verb system, not a mechanic quota](#design-an-executable-verb-system-not-a-mechanic-quota)
+- [Measure and search gameplay tuning without guessing](#measure-and-search-gameplay-tuning-without-guessing)
+- [Author camera, animation, sound, and motion from gameplay truth](#author-camera-animation-sound-and-motion-from-gameplay-truth)
+- [Search valid game structures before spending provider tokens](#search-valid-game-structures-before-spending-provider-tokens)
+- [Search projection-correct map layouts before provider art](#search-projection-correct-map-layouts-before-provider-art)
+- [Claim a prompt](#claim-a-prompt)
+  - [Start from a real game-shaped scaffold](#start-from-a-real-game-shaped-scaffold)
+- [Mandatory preflight](#mandatory-preflight)
+  - [Specialist build roster](#specialist-build-roster)
+  - [Select the 2D runtime from one shared policy](#select-the-2d-runtime-from-one-shared-policy)
+  - [Reuse-guide architecture contract](#reuse-guide-architecture-contract)
+- [Build an atomic candidate](#build-an-atomic-candidate)
+  - [Source-bound Tiled and Aseprite exchange](#source-bound-tiled-and-aseprite-exchange)
+  - [Repair deterministic Doctor mechanics without guessing](#repair-deterministic-doctor-mechanics-without-guessing)
+  - [Draft a source-bound plan from a short intent](#draft-a-source-bound-plan-from-a-short-intent)
+  - [Use the living Agent Playbook](#use-the-living-agent-playbook)
+  - [Publish live agent presence without confusing it with ownership](#publish-live-agent-presence-without-confusing-it-with-ownership)
+  - [Coordinate Codex and Claude with the shared work ledger](#coordinate-codex-and-claude-with-the-shared-work-ledger)
+  - [Reuse a proven command macro](#reuse-a-proven-command-macro)
+- [Open HTML projects and work across maps](#open-html-projects-and-work-across-maps)
+  - [Define the player-facing map route](#define-the-player-facing-map-route)
+- [Author 2.5D dimetric maps and route layers](#author-25d-dimetric-maps-and-route-layers)
+  - [Preserve timed authored routes](#preserve-timed-authored-routes)
+- [Ground and raised-surface attachment](#ground-and-raised-surface-attachment)
+- [Visual asset generation](#visual-asset-generation)
+  - [Author and apply the project visual identity](#author-and-apply-the-project-visual-identity)
+- [Visual references](#visual-references)
+- [Installed commercial-use asset packs](#installed-commercial-use-asset-packs)
+- [Standard game shell and player lifecycle](#standard-game-shell-and-player-lifecycle)
+- [Project Doctor and verification](#project-doctor-and-verification)
+  - [Interrogate design coverage without mistaking bots for players](#interrogate-design-coverage-without-mistaking-bots-for-players)
+  - [Read exact-pixel color accessibility as bounded evidence](#read-exact-pixel-color-accessibility-as-bounded-evidence)
+- [Loop strategies](#loop-strategies)
+  - [Frozen cross-genre acceptance profile](#frozen-cross-genre-acceptance-profile)
+  - [Improve](#improve)
+  - [Explore](#explore)
+  - [Cycle](#cycle)
+  - [Provider context budget and bounded passes](#provider-context-budget-and-bounded-passes)
+- [Iteration ledger and safe restore](#iteration-ledger-and-safe-restore)
+- [Sprite and palette contract](#sprite-and-palette-contract)
+- [Visual-first build loop](#visual-first-build-loop)
+  - [Grounded AI visual critique requires per-job consent](#grounded-ai-visual-critique-requires-per-job-consent)
+- [Playtest evidence](#playtest-evidence)
+  - [Deterministic editor-preview control](#deterministic-editor-preview-control)
+- [Exported-game runtime contract](#exported-game-runtime-contract)
+  - [Hostile platform emulation](#hostile-platform-emulation)
+- [Completion response](#completion-response)
+
+## Collected invariants
+
+These summaries are orientation only. Each links to the authoritative section that supplies its context; omission is never permission and this list never overrides the full guide.
+
+1. **2D only.** Never route work through a 3D engine, editor, or asset pipeline. Dimetric 2.5D remains reversible authored 2D data rendered with sprites and tiles. [Source](#discover-and-connect).
+2. **Collision is authored data.** Generated or imported art never owns collision; visual assets remain separate from authored gameplay geometry. [Source](#ground-and-raised-surface-attachment).
+3. **Three digests, three duties.** sourceDigest gates gameplay truth, revisionDigest gates shared document concurrency, and expectedLedgerDigest gates coordination mutations. [Source](#one-shared-project-store).
+4. **Apply only what was previewed.** Nontrivial batches, repairs, rebases, and macros apply only with the exact source-bound receipt returned by their preview. [Source](#build-an-atomic-candidate).
+5. **Companion bytes are authoritative.** Browser storage is a recoverable cache. Explicitly mount the companion-owned shared project before live work. [Source](#one-shared-project-store).
+6. **Never silently rerecord replay.** Replacing a deterministic fixture requires deliberate review, a higher revision, and a non-empty change reason. [Source](#iteration-ledger-and-safe-restore).
+7. **Never claim an unrun check.** Do not fabricate tests, screenshots, coverage, or completion. Inconclusive evidence remains inconclusive. [Source](#project-doctor-and-verification).
+8. **Searches propose; judgment selects.** Tuning, structural, spatial, and foundation searches preserve alternatives and never choose an automatic creative winner. [Source](#search-valid-game-structures-before-spending-provider-tokens).
+9. **Bots are not players.** Bot cohorts measure reachability and strategy shape; they do not establish fun, taste, or preference. [Source](#interrogate-design-coverage-without-mistaking-bots-for-players).
+10. **Consent gates are hard gates.** Playtest observation and image-bearing visual critique require the documented consent for each exact session or submission. [Source](#grounded-ai-visual-critique-requires-per-job-consent).
+11. **Privacy precedes provider work.** A blocked exact-payload preflight spends zero provider tokens and must be repaired locally without forwarding matched values. [Source](#mandatory-preflight).
+12. **Creative work crosses a ready provider boundary.** Deterministic composition and validation are not presented as AI output; schema-invalid provider output is a failed pass. [Source](#provider-connection-preflight).
+13. **Keys and tokens stay out of artifacts.** Credentials and the local mutation token never enter projects, prompts, logs, commits, research, or exports. [Source](#discover-and-connect).
+14. **Current is not release.** An authoring-profile pass may protect an iteration; only production assessment and exact-artifact verification govern shipping one offline HTML file. [Source](#exported-game-runtime-contract).
+15. **Presence is not ownership.** Presence is ephemeral liveness. The shared work ledger is durable coordination authority. [Source](#coordinate-codex-and-claude-with-the-shared-work-ledger).
+16. **Never truncate authored truth.** Context budgets never justify trimming collision, replay, acceptance, map truth, or the fresh-press portal contract. [Source](#provider-context-budget-and-bounded-passes).
+
+## Standard pass at a glance
+
+1. **Arrive.** Mount the shared project when live, establish the change bookmark, read the brief and ledger, then claim work before editing. [Source](#discover-and-connect).
+2. **Select.** Select the exact project and create a protected variation before experiments that must not affect the baseline. [Source](#select-the-project-and-prompt-draft).
+3. **Contract the design.** Author gameplay systems, verbs, narrative, visual identity, shell, and tuning intent as inspectable data before implementation. [Source](#author-executable-gameplay-systems).
+4. **Search before guessing.** Generate structurally valid, spatially valid, and tunable alternatives; inspect the archive and select deliberately. [Source](#search-valid-game-structures-before-spending-provider-tokens).
+5. **Build.** Draft a source-bound plan where useful, preview the coherent canonical batch, then apply only the exact receipt. [Source](#build-an-atomic-candidate).
+6. **Converge.** Use provider-free repair for deterministic findings and leave judgment residue explicit instead of looping mechanically. [Source](#repair-deterministic-doctor-mechanics-without-guessing).
+7. **Collect deterministic evidence.** Run acceptance, replay, completion, simulation, and input-liveness checks against the exact current source. [Source](#project-doctor-and-verification).
+8. **Collect browser evidence.** Exercise the real browser, review clean and annotated captures, and use consented critique only for advisory taste judgment. [Source](#visual-first-build-loop).
+9. **Release.** Run privacy and production gates, export one self-contained HTML artifact, and verify those exact bytes including hostile-platform behavior. [Source](#exported-game-runtime-contract).
+10. **Report and hand off.** Report measured evidence and usage, update the shared work item, preserve resumable IDs, and release presence. [Source](#completion-response).
+
+Machine-readable lookup is available at `/agent-guide-index.json`, through `looplab://agent-guide-index`, and with `{ "op": "get_agent_guide_index" }` on the browser-session bridge. The index is generated from this guide and cannot execute, mutate, verify, or grant authority.
+<!-- LOOPLAB_AGENT_GUIDE_NAV_END -->
+
 ## Discover and connect
 
 The complete machine-readable manifest is available at `/agent-manifest.json`. Its `commandContracts` section is the canonical JSON Schema 2020-12 definition for every operation. In a local project, use `npm run agent -- manifest`. The live browser command `{ "op": "get_manifest" }` defaults to a bounded, parseable bootstrap index containing every operation, surface, mutation class, required field, and accepted field. Use the static URL or `looplab://manifest` when complete nested schemas are required; request `compact: false` only on a transport that can safely carry the full document. Never treat character-truncated text as JSON.
 
-Prefer LoopLab's official-SDK MCP stdio server when Codex or Claude should operate the builder as a native toolset. The `core` profile works only on workspace-contained `.loop.json` files, requires the current Project Doctor digest for gameplay mutations, and writes valid projects atomically. The `browser` profile keeps one private Playwright page connected to the running app and exposes project-library selection, Director/provider work, visual review, preview input, and the complete browser-session surface. Read `looplab://manifest`, `looplab://agent-playbook`, `looplab://agent-guide`, and `looplab://mcp-setup` as MCP resources. For core work, begin with `get_agent_changes`; for live work, call `list_projects`, explicitly `select_project`, then `get_agent_changes`. Pass the caller's last opaque cursor or omit it once to establish a bookmark. Next read `get_agent_brief`. Its `readiness.current` is the active authoring profile, while `readiness.release` is the production target evaluated on the same source; a current/prototype pass is never release readiness. Read `get_work_ledger`, then request a source-bound `get_project_context` campaign or selected-map view. Its omissions are explicit and never mean absence; it is neither mutation input nor verification evidence. Request `get_project` only when complete embedded data is actually required. See `docs/MCP_AGENT_SETUP.md` for Codex and Claude registration.
+Prefer LoopLab's official-SDK MCP stdio server when Codex or Claude should operate the builder as a native toolset. The `core` profile works only on workspace-contained `.loop.json` files, requires the current Project Doctor digest for gameplay mutations, and writes valid projects atomically. The `browser` profile keeps one private Playwright page connected to the running app and exposes project-library selection, Director/provider work, visual review, preview input, and the complete browser-session surface. Read `looplab://manifest`, `looplab://agent-playbook`, `looplab://agent-guide-index`, `looplab://agent-guide`, and `looplab://mcp-setup` as MCP resources. Use the compact index to locate only the relevant invariant, lifecycle stage, failure recovery, or section, then read that canonical section in the full guide. The same bounded lookup is available through browser command `get_agent_guide_index`, visible `#looplab-agent-guide-navigation`, static `/agent-guide-index.json`, and `npm run agent -- guide`; it is orientation only, never authority or evidence. For core work, begin with `get_agent_changes`; for live work, call `list_projects`, explicitly `select_project`, then `get_agent_changes`. Pass the caller's last opaque cursor or omit it once to establish a bookmark. Next read `get_agent_brief`. Its `readiness.current` is the active authoring profile, while `readiness.release` is the production target evaluated on the same source; a current/prototype pass is never release readiness. Read `get_work_ledger`, then request a source-bound `get_project_context` campaign or selected-map view. Its omissions are explicit and never mean absence; it is neither mutation input nor verification evidence. Request `get_project` only when complete embedded data is actually required. See `docs/MCP_AGENT_SETUP.md` for Codex and Claude registration.
 
 MCP equips the external agent operating LoopLab. It does not change the provider security boundary: LoopLab's own Codex/Claude subprocesses remain task-scoped, schema-bound, nonpersistent, and MCP-free.
 
@@ -1636,6 +1735,37 @@ The runtime exposes:
 DOM command names are the snake-case equivalents: `get_completion_report`, `get_state`, `get_objects`, `get_traversal_paths`, `get_navigation`, `get_elevation_transitions`, `get_runtime_join_plan`, `get_collision_geometry`, `get_tile_program`, `get_tile_runtime`, `get_collision_box`, `get_game_shell`, `get_game_shell_report`, `get_game_shell_state`, `set_input`, `step`, `reset`, `load_map`, `start_game`, `pause`, `resume`, `restart`, `open_game_settings`, `close_game_settings`, `set_audio_muted`, `set_master_volume`, `set_reduced_motion`, and `set_touch_control_size`.
 
 For every affected export, verify linked-map portals and target spawns, explicit collider offsets, ground anchors, z-separated high routes and underpasses, deterministic depth slices, persistent collection state, hazards/goals, keyboard controls, touch controls, page-visibility pause, focus, reduced motion, and zero unexpected external requests. A held interaction must not bounce between portals: each portal entry requires a fresh E/LOCK press.
+
+<!-- LOOPLAB_AGENT_GUIDE_RECOVERY_START -->
+## Failure modes and recovery
+
+This table routes a stable signal back to the guide section that owns recovery. It does not execute the repair or upgrade failed evidence into a pass.
+
+| Signal | Meaning | Recovery |
+|---|---|---|
+| [stale-source] on a mutation | The project changed after the sourceDigest was read. | Re-read the brief or Doctor, rebase the intent, re-preview, and apply only against the current source. Never overwrite newer work. [Source](#build-an-atomic-candidate). |
+| Stale revisionDigest or HTTP 412 | The companion-owned document changed under this draft. | Preserve the draft, preview the shared-project rebase, apply only its exact conflict-free receipt, rerun gates, and save explicitly. [Source](#one-shared-project-store). |
+| expectedLedgerDigest mismatch | The coordination ledger changed after it was read. | Read get_work_ledger again and issue the claim or update against the returned digest. [Source](#coordinate-codex-and-claude-with-the-shared-work-ledger). |
+| Preview, plan, expansion, or rebase receipt rejected | The requested action is no longer byte-for-byte the reviewed action. | Generate a fresh preview and apply only its unchanged current receipt. [Source](#build-an-atomic-candidate). |
+| Presence lease expired | The actor's liveness heartbeat elapsed. | Register presence again and confirm that the durable ledger claim still names the actor before continuing. [Source](#publish-live-agent-presence-without-confusing-it-with-ownership). |
+| converge returns residue | The remaining findings do not have an unambiguous mechanical repair. | Treat them as the judgment queue and resolve each through its owning authoring section; do not repeat converge hoping for a different answer. [Source](#repair-deterministic-doctor-mechanics-without-guessing). |
+| Doctor input-action-dead | A declared semantic action has no observable gameplay effect. | Wire the action into shipped movement or rules, then rerun input liveness and the affected evidence. [Source](#author-executable-gameplay-systems). |
+| Doctor game-shell-missing | The release lacks the authored title, pause, terminal, restart, or settings lifecycle. | Author the game shell and exercise its keyboard, focus, visibility, and reduced-motion controls in the exported artifact. [Source](#standard-game-shell-and-player-lifecycle). |
+| Doctor reachability finding | A required target lies outside the real movement or route envelope. | Change authored geometry or movement tuning, then rerun the shipped-integrator reachability check rather than trusting a screenshot. [Source](#project-doctor-and-verification). |
+| Narrative reachability error | No authored ending is structurally reachable from the entry page. | Repair the page and edge graph until at least one ending is actually reachable. [Source](#author-executable-gameplay-systems). |
+| Replay firstDivergence | Deterministic state diverged from a pinned fixture at one exact tick. | Treat that tick as a regression. If the behavior is intentional, rerecord with the same ID, higher revision, and a non-empty reviewed reason. [Source](#iteration-ledger-and-safe-restore). |
+| Acceptance missing or spec-only | Promised behavior lacks executable proof. | Author the executable test or record the required deterministic fixture before making the behavior claim. [Source](#project-doctor-and-verification). |
+| Completion harness inconclusive | Bounded search neither proved nor disproved completability. | Report inconclusive, then deliberately adjust the design or search bounds. Never relabel it as a pass. [Source](#project-doctor-and-verification). |
+| No acceptable search candidate | The declared targets are unsatisfiable inside the searched design space. | Deliberately revise the targets or design. Do not cherry-pick a candidate that failed the hard gate. [Source](#search-valid-game-structures-before-spending-provider-tokens). |
+| provider.context.blocked | The scoped provider context exceeded its budget before model launch. | Narrow the task, map set, or conditions without removing authored truth. The failed preflight used zero provider tokens. [Source](#provider-context-budget-and-bounded-passes). |
+| Claude result lacks structured_output | The CLI response failed LoopLab's schema contract. | Reject the pass without mutation. Free-form text is not an equivalent result. [Source](#provider-connection-preflight). |
+| Privacy preflight blocked | The outbound payload or artifact contains a flagged value or incomplete scan. | Repair locally from the stable codes and sanitized paths, then rerun. Never send the raw finding to another provider. [Source](#mandatory-preflight). |
+| Consent absent for observation or critique | The required per-job consent was not granted for the exact data. | Request consent or continue without that evidence path. Never substitute another submission route. [Source](#grounded-ai-visual-critique-requires-per-job-consent). |
+| verification.automatic.failed or stale evidence | Browser evidence is missing or bound to an older source digest. | Recollect evidence against the current source. The candidate remains unverified until the new evidence passes. [Source](#project-doctor-and-verification). |
+| Exact-artifact release verification failed | The shipped bytes violate a production requirement. | Repair the authoring source, export a new artifact, and verify the new exact bytes. Never hand-patch exported HTML. [Source](#exported-game-runtime-contract). |
+| Companion health protocol mismatch | The running companion predates the current manifest and validators. | Restart through LoopLab's managed launcher; do not let an old companion judge current work. [Source](#discover-and-connect). |
+| Mutation rejected for missing session token | The caller lacks the current x-looplab-session-token. | Read the ignored local session descriptor and set the header without printing or persisting the token. [Source](#discover-and-connect). |
+<!-- LOOPLAB_AGENT_GUIDE_RECOVERY_END -->
 
 ## Completion response
 

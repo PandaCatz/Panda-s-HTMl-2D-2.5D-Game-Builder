@@ -30,7 +30,7 @@ test("browser preview serves exact exported bytes and a constrained harness on a
   assert.equal(status.artifactSha256, preview.artifactSha256);
 
   const manifest = getAgentManifest();
-  assert.equal(manifest.protocolVersion, "1.107.0");
+  assert.equal(manifest.protocolVersion, "1.108.0");
   assert.equal(manifest.browserHarness.schemaVersion, "looplab-browser-preview/v1");
   assert.match(manifest.browserHarness.automatedCommand, /browser-harness/);
   assert.match(manifest.browserHarness.interactiveCommand, /preview:browser/);

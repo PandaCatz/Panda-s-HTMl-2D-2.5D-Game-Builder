@@ -84,7 +84,7 @@ test("benchmark commands have core, browser, contract, and manifest parity", () 
     assert.ok(manifest.builderBenchmark.commands.includes(operation));
   }
   assert.equal(LOOPLAB_CORE_COMMANDS.length, 203);
-  assert.equal(LOOPLAB_BROWSER_SESSION_COMMANDS.length, 284);
+  assert.equal(LOOPLAB_BROWSER_SESSION_COMMANDS.length, 285);
   assert.equal(manifest.builderBenchmark.providerFreeEvaluation, true);
   assert.match(manifest.builderBenchmark.evidenceBoundary, /never claims taste/i);
 });

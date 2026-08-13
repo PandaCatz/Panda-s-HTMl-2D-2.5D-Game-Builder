@@ -27,7 +27,7 @@ test("platform wrapper preserves a scripts-only opaque sandbox", () => {
   assert.ok(recorderIndex < artifactScriptIndex, "the instrumentation bootstrap must execute before artifact scripts");
   assert.deepEqual(LOOPLAB_PLATFORM_HARNESS_DEFAULTS, { frameCount: 1_200, frameMs: 16, malformedInputInterval: 8 });
   const manifest = getAgentManifest();
-  assert.equal(manifest.protocolVersion, "1.107.0");
+  assert.equal(manifest.protocolVersion, "1.108.0");
   assert.equal(manifest.platformHarness.schemaVersion, LOOPLAB_PLATFORM_HARNESS_SCHEMA);
   assert.equal(manifest.platformHarness.environment.exactFrameCount, 1_200);
   assert.equal(manifest.platformHarness.cli.operation, "platform-harness");

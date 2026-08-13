@@ -1,0 +1,1648 @@
+{
+  "schemaVersion": "looplab-agent-guide-index/v1",
+  "source": {
+    "canonicalPath": "docs/AI_AGENT_GUIDE.md",
+    "publicUrl": "/AI_AGENT_GUIDE.md",
+    "resourceUri": "looplab://agent-guide",
+    "digest": "sha256:02e79bd55bc39529e1ebbc24f03182183c92fe0381a5806d5fa041ffcc1e24e6",
+    "headingCount": 58,
+    "generatedBlocksExcludedFromDigest": true
+  },
+  "indexResource": {
+    "publicUrl": "/agent-guide-index.json",
+    "resourceUri": "looplab://agent-guide-index"
+  },
+  "policy": {
+    "authority": "orientation-only",
+    "fullGuideAuthoritative": true,
+    "omissionMeansPermission": false,
+    "mayExecute": false,
+    "mayMutate": false,
+    "verificationEvidence": false,
+    "guidance": "Use the index to find the owning section, then apply the canonical command and evidence rules from the complete guide."
+  },
+  "sections": [
+    {
+      "kind": "section",
+      "id": "discover-and-connect",
+      "title": "Discover and connect",
+      "summary": "Guide section: Discover and connect",
+      "level": 2,
+      "anchor": "discover-and-connect",
+      "parentAnchor": "using-looplab-as-an-ai-game-building-agent",
+      "href": "/AI_AGENT_GUIDE.md#discover-and-connect",
+      "resourceUri": "looplab://agent-guide#discover-and-connect",
+      "source": {
+        "startLine": 108,
+        "endLine": 239
+      }
+    },
+    {
+      "kind": "section",
+      "id": "one-shared-project-store",
+      "title": "One shared project store",
+      "summary": "Guide section: One shared project store",
+      "level": 3,
+      "anchor": "one-shared-project-store",
+      "parentAnchor": "discover-and-connect",
+      "href": "/AI_AGENT_GUIDE.md#one-shared-project-store",
+      "resourceUri": "looplab://agent-guide#one-shared-project-store",
+      "source": {
+        "startLine": 116,
+        "endLine": 168
+      }
+    },
+    {
+      "kind": "section",
+      "id": "use-explicit-preference-memory-as-adjacent-context",
+      "title": "Use explicit preference memory as adjacent context",
+      "summary": "Guide section: Use explicit preference memory as adjacent context",
+      "level": 3,
+      "anchor": "use-explicit-preference-memory-as-adjacent-context",
+      "parentAnchor": "discover-and-connect",
+      "href": "/AI_AGENT_GUIDE.md#use-explicit-preference-memory-as-adjacent-context",
+      "resourceUri": "looplab://agent-guide#use-explicit-preference-memory-as-adjacent-context",
+      "source": {
+        "startLine": 169,
+        "endLine": 209
+      }
+    },
+    {
+      "kind": "section",
+      "id": "provider-connection-preflight",
+      "title": "Provider connection preflight",
+      "summary": "Guide section: Provider connection preflight",
+      "level": 3,
+      "anchor": "provider-connection-preflight",
+      "parentAnchor": "discover-and-connect",
+      "href": "/AI_AGENT_GUIDE.md#provider-connection-preflight",
+      "resourceUri": "looplab://agent-guide#provider-connection-preflight",
+      "source": {
+        "startLine": 210,
+        "endLine": 239
+      }
+    },
+    {
+      "kind": "section",
+      "id": "select-the-project-and-prompt-draft",
+      "title": "Select the project and prompt draft",
+      "summary": "Guide section: Select the project and prompt draft",
+      "level": 2,
+      "anchor": "select-the-project-and-prompt-draft",
+      "parentAnchor": "using-looplab-as-an-ai-game-building-agent",
+      "href": "/AI_AGENT_GUIDE.md#select-the-project-and-prompt-draft",
+      "resourceUri": "looplab://agent-guide#select-the-project-and-prompt-draft",
+      "source": {
+        "startLine": 240,
+        "endLine": 388
+      }
+    },
+    {
+      "kind": "section",
+      "id": "choose-a-complete-playable-foundation-without-hiding-the-alternatives",
+      "title": "Choose a complete playable foundation without hiding the alternatives",
+      "summary": "Guide section: Choose a complete playable foundation without hiding the alternatives",
+      "level": 3,
+      "anchor": "choose-a-complete-playable-foundation-without-hiding-the-alternatives",
+      "parentAnchor": "select-the-project-and-prompt-draft",
+      "href": "/AI_AGENT_GUIDE.md#choose-a-complete-playable-foundation-without-hiding-the-alternatives",
+      "resourceUri": "looplab://agent-guide#choose-a-complete-playable-foundation-without-hiding-the-alternatives",
+      "source": {
+        "startLine": 246,
+        "endLine": 279
+      }
+    },
+    {
+      "kind": "section",
+      "id": "fuse-context-do-not-let-looplab-certify-itself",
+      "title": "Fuse context; do not let LoopLab certify itself",
+      "summary": "Guide section: Fuse context; do not let LoopLab certify itself",
+      "level": 3,
+      "anchor": "fuse-context-do-not-let-looplab-certify-itself",
+      "parentAnchor": "select-the-project-and-prompt-draft",
+      "href": "/AI_AGENT_GUIDE.md#fuse-context-do-not-let-looplab-certify-itself",
+      "resourceUri": "looplab://agent-guide#fuse-context-do-not-let-looplab-certify-itself",
+      "source": {
+        "startLine": 280,
+        "endLine": 283
+      }
+    },
+    {
+      "kind": "section",
+      "id": "measure-builder-improvements-with-visible-golden-briefs",
+      "title": "Measure builder improvements with visible golden briefs",
+      "summary": "Guide section: Measure builder improvements with visible golden briefs",
+      "level": 3,
+      "anchor": "measure-builder-improvements-with-visible-golden-briefs",
+      "parentAnchor": "select-the-project-and-prompt-draft",
+      "href": "/AI_AGENT_GUIDE.md#measure-builder-improvements-with-visible-golden-briefs",
+      "resourceUri": "looplab://agent-guide#measure-builder-improvements-with-visible-golden-briefs",
+      "source": {
+        "startLine": 284,
+        "endLine": 298
+      }
+    },
+    {
+      "kind": "section",
+      "id": "resume-from-bounded-semantic-changes",
+      "title": "Resume from bounded semantic changes",
+      "summary": "Guide section: Resume from bounded semantic changes",
+      "level": 3,
+      "anchor": "resume-from-bounded-semantic-changes",
+      "parentAnchor": "select-the-project-and-prompt-draft",
+      "href": "/AI_AGENT_GUIDE.md#resume-from-bounded-semantic-changes",
+      "resourceUri": "looplab://agent-guide#resume-from-bounded-semantic-changes",
+      "source": {
+        "startLine": 299,
+        "endLine": 321
+      }
+    },
+    {
+      "kind": "section",
+      "id": "author-executable-gameplay-systems",
+      "title": "Author executable gameplay systems",
+      "summary": "Guide section: Author executable gameplay systems",
+      "level": 3,
+      "anchor": "author-executable-gameplay-systems",
+      "parentAnchor": "select-the-project-and-prompt-draft",
+      "href": "/AI_AGENT_GUIDE.md#author-executable-gameplay-systems",
+      "resourceUri": "looplab://agent-guide#author-executable-gameplay-systems",
+      "source": {
+        "startLine": 322,
+        "endLine": 345
+      }
+    },
+    {
+      "kind": "section",
+      "id": "build-systems-games-without-choosing-a-movement-genre",
+      "title": "Build systems games without choosing a movement genre",
+      "summary": "Guide section: Build systems games without choosing a movement genre",
+      "level": 4,
+      "anchor": "build-systems-games-without-choosing-a-movement-genre",
+      "parentAnchor": "author-executable-gameplay-systems",
+      "href": "/AI_AGENT_GUIDE.md#build-systems-games-without-choosing-a-movement-genre",
+      "resourceUri": "looplab://agent-guide#build-systems-games-without-choosing-a-movement-genre",
+      "source": {
+        "startLine": 326,
+        "endLine": 345
+      }
+    },
+    {
+      "kind": "section",
+      "id": "design-an-executable-verb-system-not-a-mechanic-quota",
+      "title": "Design an executable verb system, not a mechanic quota",
+      "summary": "Guide section: Design an executable verb system, not a mechanic quota",
+      "level": 3,
+      "anchor": "design-an-executable-verb-system-not-a-mechanic-quota",
+      "parentAnchor": "select-the-project-and-prompt-draft",
+      "href": "/AI_AGENT_GUIDE.md#design-an-executable-verb-system-not-a-mechanic-quota",
+      "resourceUri": "looplab://agent-guide#design-an-executable-verb-system-not-a-mechanic-quota",
+      "source": {
+        "startLine": 346,
+        "endLine": 388
+      }
+    },
+    {
+      "kind": "section",
+      "id": "measure-and-search-gameplay-tuning-without-guessing",
+      "title": "Measure and search gameplay tuning without guessing",
+      "summary": "Guide section: Measure and search gameplay tuning without guessing",
+      "level": 2,
+      "anchor": "measure-and-search-gameplay-tuning-without-guessing",
+      "parentAnchor": "using-looplab-as-an-ai-game-building-agent",
+      "href": "/AI_AGENT_GUIDE.md#measure-and-search-gameplay-tuning-without-guessing",
+      "resourceUri": "looplab://agent-guide#measure-and-search-gameplay-tuning-without-guessing",
+      "source": {
+        "startLine": 389,
+        "endLine": 446
+      }
+    },
+    {
+      "kind": "section",
+      "id": "author-camera-animation-sound-and-motion-from-gameplay-truth",
+      "title": "Author camera, animation, sound, and motion from gameplay truth",
+      "summary": "Guide section: Author camera, animation, sound, and motion from gameplay truth",
+      "level": 2,
+      "anchor": "author-camera-animation-sound-and-motion-from-gameplay-truth",
+      "parentAnchor": "using-looplab-as-an-ai-game-building-agent",
+      "href": "/AI_AGENT_GUIDE.md#author-camera-animation-sound-and-motion-from-gameplay-truth",
+      "resourceUri": "looplab://agent-guide#author-camera-animation-sound-and-motion-from-gameplay-truth",
+      "source": {
+        "startLine": 447,
+        "endLine": 570
+      }
+    },
+    {
+      "kind": "section",
+      "id": "search-valid-game-structures-before-spending-provider-tokens",
+      "title": "Search valid game structures before spending provider tokens",
+      "summary": "Guide section: Search valid game structures before spending provider tokens",
+      "level": 2,
+      "anchor": "search-valid-game-structures-before-spending-provider-tokens",
+      "parentAnchor": "using-looplab-as-an-ai-game-building-agent",
+      "href": "/AI_AGENT_GUIDE.md#search-valid-game-structures-before-spending-provider-tokens",
+      "resourceUri": "looplab://agent-guide#search-valid-game-structures-before-spending-provider-tokens",
+      "source": {
+        "startLine": 571,
+        "endLine": 622
+      }
+    },
+    {
+      "kind": "section",
+      "id": "search-projection-correct-map-layouts-before-provider-art",
+      "title": "Search projection-correct map layouts before provider art",
+      "summary": "Guide section: Search projection-correct map layouts before provider art",
+      "level": 2,
+      "anchor": "search-projection-correct-map-layouts-before-provider-art",
+      "parentAnchor": "using-looplab-as-an-ai-game-building-agent",
+      "href": "/AI_AGENT_GUIDE.md#search-projection-correct-map-layouts-before-provider-art",
+      "resourceUri": "looplab://agent-guide#search-projection-correct-map-layouts-before-provider-art",
+      "source": {
+        "startLine": 623,
+        "endLine": 678
+      }
+    },
+    {
+      "kind": "section",
+      "id": "claim-a-prompt",
+      "title": "Claim a prompt",
+      "summary": "Guide section: Claim a prompt",
+      "level": 2,
+      "anchor": "claim-a-prompt",
+      "parentAnchor": "using-looplab-as-an-ai-game-building-agent",
+      "href": "/AI_AGENT_GUIDE.md#claim-a-prompt",
+      "resourceUri": "looplab://agent-guide#claim-a-prompt",
+      "source": {
+        "startLine": 679,
+        "endLine": 706
+      }
+    },
+    {
+      "kind": "section",
+      "id": "start-from-a-real-game-shaped-scaffold",
+      "title": "Start from a real game-shaped scaffold",
+      "summary": "Guide section: Start from a real game-shaped scaffold",
+      "level": 3,
+      "anchor": "start-from-a-real-game-shaped-scaffold",
+      "parentAnchor": "claim-a-prompt",
+      "href": "/AI_AGENT_GUIDE.md#start-from-a-real-game-shaped-scaffold",
+      "resourceUri": "looplab://agent-guide#start-from-a-real-game-shaped-scaffold",
+      "source": {
+        "startLine": 697,
+        "endLine": 706
+      }
+    },
+    {
+      "kind": "section",
+      "id": "mandatory-preflight",
+      "title": "Mandatory preflight",
+      "summary": "Guide section: Mandatory preflight",
+      "level": 2,
+      "anchor": "mandatory-preflight",
+      "parentAnchor": "using-looplab-as-an-ai-game-building-agent",
+      "href": "/AI_AGENT_GUIDE.md#mandatory-preflight",
+      "resourceUri": "looplab://agent-guide#mandatory-preflight",
+      "source": {
+        "startLine": 707,
+        "endLine": 754
+      }
+    },
+    {
+      "kind": "section",
+      "id": "specialist-build-roster",
+      "title": "Specialist build roster",
+      "summary": "Guide section: Specialist build roster",
+      "level": 3,
+      "anchor": "specialist-build-roster",
+      "parentAnchor": "mandatory-preflight",
+      "href": "/AI_AGENT_GUIDE.md#specialist-build-roster",
+      "resourceUri": "looplab://agent-guide#specialist-build-roster",
+      "source": {
+        "startLine": 718,
+        "endLine": 723
+      }
+    },
+    {
+      "kind": "section",
+      "id": "select-the-2d-runtime-from-one-shared-policy",
+      "title": "Select the 2D runtime from one shared policy",
+      "summary": "Guide section: Select the 2D runtime from one shared policy",
+      "level": 3,
+      "anchor": "select-the-2d-runtime-from-one-shared-policy",
+      "parentAnchor": "mandatory-preflight",
+      "href": "/AI_AGENT_GUIDE.md#select-the-2d-runtime-from-one-shared-policy",
+      "resourceUri": "looplab://agent-guide#select-the-2d-runtime-from-one-shared-policy",
+      "source": {
+        "startLine": 724,
+        "endLine": 744
+      }
+    },
+    {
+      "kind": "section",
+      "id": "reuse-guide-architecture-contract",
+      "title": "Reuse-guide architecture contract",
+      "summary": "Guide section: Reuse-guide architecture contract",
+      "level": 3,
+      "anchor": "reuse-guide-architecture-contract",
+      "parentAnchor": "mandatory-preflight",
+      "href": "/AI_AGENT_GUIDE.md#reuse-guide-architecture-contract",
+      "resourceUri": "looplab://agent-guide#reuse-guide-architecture-contract",
+      "source": {
+        "startLine": 745,
+        "endLine": 754
+      }
+    },
+    {
+      "kind": "section",
+      "id": "build-an-atomic-candidate",
+      "title": "Build an atomic candidate",
+      "summary": "Guide section: Build an atomic candidate",
+      "level": 2,
+      "anchor": "build-an-atomic-candidate",
+      "parentAnchor": "using-looplab-as-an-ai-game-building-agent",
+      "href": "/AI_AGENT_GUIDE.md#build-an-atomic-candidate",
+      "resourceUri": "looplab://agent-guide#build-an-atomic-candidate",
+      "source": {
+        "startLine": 755,
+        "endLine": 1112
+      }
+    },
+    {
+      "kind": "section",
+      "id": "source-bound-tiled-and-aseprite-exchange",
+      "title": "Source-bound Tiled and Aseprite exchange",
+      "summary": "Guide section: Source-bound Tiled and Aseprite exchange",
+      "level": 3,
+      "anchor": "source-bound-tiled-and-aseprite-exchange",
+      "parentAnchor": "build-an-atomic-candidate",
+      "href": "/AI_AGENT_GUIDE.md#source-bound-tiled-and-aseprite-exchange",
+      "resourceUri": "looplab://agent-guide#source-bound-tiled-and-aseprite-exchange",
+      "source": {
+        "startLine": 821,
+        "endLine": 898
+      }
+    },
+    {
+      "kind": "section",
+      "id": "repair-deterministic-doctor-mechanics-without-guessing",
+      "title": "Repair deterministic Doctor mechanics without guessing",
+      "summary": "Guide section: Repair deterministic Doctor mechanics without guessing",
+      "level": 3,
+      "anchor": "repair-deterministic-doctor-mechanics-without-guessing",
+      "parentAnchor": "build-an-atomic-candidate",
+      "href": "/AI_AGENT_GUIDE.md#repair-deterministic-doctor-mechanics-without-guessing",
+      "resourceUri": "looplab://agent-guide#repair-deterministic-doctor-mechanics-without-guessing",
+      "source": {
+        "startLine": 899,
+        "endLine": 937
+      }
+    },
+    {
+      "kind": "section",
+      "id": "draft-a-source-bound-plan-from-a-short-intent",
+      "title": "Draft a source-bound plan from a short intent",
+      "summary": "Guide section: Draft a source-bound plan from a short intent",
+      "level": 3,
+      "anchor": "draft-a-source-bound-plan-from-a-short-intent",
+      "parentAnchor": "build-an-atomic-candidate",
+      "href": "/AI_AGENT_GUIDE.md#draft-a-source-bound-plan-from-a-short-intent",
+      "resourceUri": "looplab://agent-guide#draft-a-source-bound-plan-from-a-short-intent",
+      "source": {
+        "startLine": 938,
+        "endLine": 961
+      }
+    },
+    {
+      "kind": "section",
+      "id": "use-the-living-agent-playbook",
+      "title": "Use the living Agent Playbook",
+      "summary": "Guide section: Use the living Agent Playbook",
+      "level": 3,
+      "anchor": "use-the-living-agent-playbook",
+      "parentAnchor": "build-an-atomic-candidate",
+      "href": "/AI_AGENT_GUIDE.md#use-the-living-agent-playbook",
+      "resourceUri": "looplab://agent-guide#use-the-living-agent-playbook",
+      "source": {
+        "startLine": 962,
+        "endLine": 983
+      }
+    },
+    {
+      "kind": "section",
+      "id": "publish-live-agent-presence-without-confusing-it-with-ownership",
+      "title": "Publish live agent presence without confusing it with ownership",
+      "summary": "Guide section: Publish live agent presence without confusing it with ownership",
+      "level": 3,
+      "anchor": "publish-live-agent-presence-without-confusing-it-with-ownership",
+      "parentAnchor": "build-an-atomic-candidate",
+      "href": "/AI_AGENT_GUIDE.md#publish-live-agent-presence-without-confusing-it-with-ownership",
+      "resourceUri": "looplab://agent-guide#publish-live-agent-presence-without-confusing-it-with-ownership",
+      "source": {
+        "startLine": 984,
+        "endLine": 1017
+      }
+    },
+    {
+      "kind": "section",
+      "id": "coordinate-codex-and-claude-with-the-shared-work-ledger",
+      "title": "Coordinate Codex and Claude with the shared work ledger",
+      "summary": "Guide section: Coordinate Codex and Claude with the shared work ledger",
+      "level": 3,
+      "anchor": "coordinate-codex-and-claude-with-the-shared-work-ledger",
+      "parentAnchor": "build-an-atomic-candidate",
+      "href": "/AI_AGENT_GUIDE.md#coordinate-codex-and-claude-with-the-shared-work-ledger",
+      "resourceUri": "looplab://agent-guide#coordinate-codex-and-claude-with-the-shared-work-ledger",
+      "source": {
+        "startLine": 1018,
+        "endLine": 1060
+      }
+    },
+    {
+      "kind": "section",
+      "id": "reuse-a-proven-command-macro",
+      "title": "Reuse a proven command macro",
+      "summary": "Guide section: Reuse a proven command macro",
+      "level": 3,
+      "anchor": "reuse-a-proven-command-macro",
+      "parentAnchor": "build-an-atomic-candidate",
+      "href": "/AI_AGENT_GUIDE.md#reuse-a-proven-command-macro",
+      "resourceUri": "looplab://agent-guide#reuse-a-proven-command-macro",
+      "source": {
+        "startLine": 1061,
+        "endLine": 1112
+      }
+    },
+    {
+      "kind": "section",
+      "id": "open-html-projects-and-work-across-maps",
+      "title": "Open HTML projects and work across maps",
+      "summary": "Guide section: Open HTML projects and work across maps",
+      "level": 2,
+      "anchor": "open-html-projects-and-work-across-maps",
+      "parentAnchor": "using-looplab-as-an-ai-game-building-agent",
+      "href": "/AI_AGENT_GUIDE.md#open-html-projects-and-work-across-maps",
+      "resourceUri": "looplab://agent-guide#open-html-projects-and-work-across-maps",
+      "source": {
+        "startLine": 1113,
+        "endLine": 1170
+      }
+    },
+    {
+      "kind": "section",
+      "id": "define-the-player-facing-map-route",
+      "title": "Define the player-facing map route",
+      "summary": "Guide section: Define the player-facing map route",
+      "level": 3,
+      "anchor": "define-the-player-facing-map-route",
+      "parentAnchor": "open-html-projects-and-work-across-maps",
+      "href": "/AI_AGENT_GUIDE.md#define-the-player-facing-map-route",
+      "resourceUri": "looplab://agent-guide#define-the-player-facing-map-route",
+      "source": {
+        "startLine": 1125,
+        "endLine": 1170
+      }
+    },
+    {
+      "kind": "section",
+      "id": "author-25d-dimetric-maps-and-route-layers",
+      "title": "Author 2.5D dimetric maps and route layers",
+      "summary": "Guide section: Author 2.5D dimetric maps and route layers",
+      "level": 2,
+      "anchor": "author-25d-dimetric-maps-and-route-layers",
+      "parentAnchor": "using-looplab-as-an-ai-game-building-agent",
+      "href": "/AI_AGENT_GUIDE.md#author-25d-dimetric-maps-and-route-layers",
+      "resourceUri": "looplab://agent-guide#author-25d-dimetric-maps-and-route-layers",
+      "source": {
+        "startLine": 1171,
+        "endLine": 1230
+      }
+    },
+    {
+      "kind": "section",
+      "id": "preserve-timed-authored-routes",
+      "title": "Preserve timed authored routes",
+      "summary": "Guide section: Preserve timed authored routes",
+      "level": 3,
+      "anchor": "preserve-timed-authored-routes",
+      "parentAnchor": "author-25d-dimetric-maps-and-route-layers",
+      "href": "/AI_AGENT_GUIDE.md#preserve-timed-authored-routes",
+      "resourceUri": "looplab://agent-guide#preserve-timed-authored-routes",
+      "source": {
+        "startLine": 1223,
+        "endLine": 1230
+      }
+    },
+    {
+      "kind": "section",
+      "id": "ground-and-raised-surface-attachment",
+      "title": "Ground and raised-surface attachment",
+      "summary": "Guide section: Ground and raised-surface attachment",
+      "level": 2,
+      "anchor": "ground-and-raised-surface-attachment",
+      "parentAnchor": "using-looplab-as-an-ai-game-building-agent",
+      "href": "/AI_AGENT_GUIDE.md#ground-and-raised-surface-attachment",
+      "resourceUri": "looplab://agent-guide#ground-and-raised-surface-attachment",
+      "source": {
+        "startLine": 1231,
+        "endLine": 1253
+      }
+    },
+    {
+      "kind": "section",
+      "id": "visual-asset-generation",
+      "title": "Visual asset generation",
+      "summary": "Guide section: Visual asset generation",
+      "level": 2,
+      "anchor": "visual-asset-generation",
+      "parentAnchor": "using-looplab-as-an-ai-game-building-agent",
+      "href": "/AI_AGENT_GUIDE.md#visual-asset-generation",
+      "resourceUri": "looplab://agent-guide#visual-asset-generation",
+      "source": {
+        "startLine": 1254,
+        "endLine": 1319
+      }
+    },
+    {
+      "kind": "section",
+      "id": "author-and-apply-the-project-visual-identity",
+      "title": "Author and apply the project visual identity",
+      "summary": "Guide section: Author and apply the project visual identity",
+      "level": 3,
+      "anchor": "author-and-apply-the-project-visual-identity",
+      "parentAnchor": "visual-asset-generation",
+      "href": "/AI_AGENT_GUIDE.md#author-and-apply-the-project-visual-identity",
+      "resourceUri": "looplab://agent-guide#author-and-apply-the-project-visual-identity",
+      "source": {
+        "startLine": 1291,
+        "endLine": 1319
+      }
+    },
+    {
+      "kind": "section",
+      "id": "visual-references",
+      "title": "Visual references",
+      "summary": "Guide section: Visual references",
+      "level": 2,
+      "anchor": "visual-references",
+      "parentAnchor": "using-looplab-as-an-ai-game-building-agent",
+      "href": "/AI_AGENT_GUIDE.md#visual-references",
+      "resourceUri": "looplab://agent-guide#visual-references",
+      "source": {
+        "startLine": 1320,
+        "endLine": 1330
+      }
+    },
+    {
+      "kind": "section",
+      "id": "installed-commercial-use-asset-packs",
+      "title": "Installed commercial-use asset packs",
+      "summary": "Guide section: Installed commercial-use asset packs",
+      "level": 2,
+      "anchor": "installed-commercial-use-asset-packs",
+      "parentAnchor": "using-looplab-as-an-ai-game-building-agent",
+      "href": "/AI_AGENT_GUIDE.md#installed-commercial-use-asset-packs",
+      "resourceUri": "looplab://agent-guide#installed-commercial-use-asset-packs",
+      "source": {
+        "startLine": 1331,
+        "endLine": 1343
+      }
+    },
+    {
+      "kind": "section",
+      "id": "standard-game-shell-and-player-lifecycle",
+      "title": "Standard game shell and player lifecycle",
+      "summary": "Guide section: Standard game shell and player lifecycle",
+      "level": 2,
+      "anchor": "standard-game-shell-and-player-lifecycle",
+      "parentAnchor": "using-looplab-as-an-ai-game-building-agent",
+      "href": "/AI_AGENT_GUIDE.md#standard-game-shell-and-player-lifecycle",
+      "resourceUri": "looplab://agent-guide#standard-game-shell-and-player-lifecycle",
+      "source": {
+        "startLine": 1344,
+        "endLine": 1366
+      }
+    },
+    {
+      "kind": "section",
+      "id": "project-doctor-and-verification",
+      "title": "Project Doctor and verification",
+      "summary": "Guide section: Project Doctor and verification",
+      "level": 2,
+      "anchor": "project-doctor-and-verification",
+      "parentAnchor": "using-looplab-as-an-ai-game-building-agent",
+      "href": "/AI_AGENT_GUIDE.md#project-doctor-and-verification",
+      "resourceUri": "looplab://agent-guide#project-doctor-and-verification",
+      "source": {
+        "startLine": 1367,
+        "endLine": 1518
+      }
+    },
+    {
+      "kind": "section",
+      "id": "interrogate-design-coverage-without-mistaking-bots-for-players",
+      "title": "Interrogate design coverage without mistaking bots for players",
+      "summary": "Guide section: Interrogate design coverage without mistaking bots for players",
+      "level": 3,
+      "anchor": "interrogate-design-coverage-without-mistaking-bots-for-players",
+      "parentAnchor": "project-doctor-and-verification",
+      "href": "/AI_AGENT_GUIDE.md#interrogate-design-coverage-without-mistaking-bots-for-players",
+      "resourceUri": "looplab://agent-guide#interrogate-design-coverage-without-mistaking-bots-for-players",
+      "source": {
+        "startLine": 1394,
+        "endLine": 1495
+      }
+    },
+    {
+      "kind": "section",
+      "id": "read-exact-pixel-color-accessibility-as-bounded-evidence",
+      "title": "Read exact-pixel color accessibility as bounded evidence",
+      "summary": "Guide section: Read exact-pixel color accessibility as bounded evidence",
+      "level": 3,
+      "anchor": "read-exact-pixel-color-accessibility-as-bounded-evidence",
+      "parentAnchor": "project-doctor-and-verification",
+      "href": "/AI_AGENT_GUIDE.md#read-exact-pixel-color-accessibility-as-bounded-evidence",
+      "resourceUri": "looplab://agent-guide#read-exact-pixel-color-accessibility-as-bounded-evidence",
+      "source": {
+        "startLine": 1496,
+        "endLine": 1518
+      }
+    },
+    {
+      "kind": "section",
+      "id": "loop-strategies",
+      "title": "Loop strategies",
+      "summary": "Guide section: Loop strategies",
+      "level": 2,
+      "anchor": "loop-strategies",
+      "parentAnchor": "using-looplab-as-an-ai-game-building-agent",
+      "href": "/AI_AGENT_GUIDE.md#loop-strategies",
+      "resourceUri": "looplab://agent-guide#loop-strategies",
+      "source": {
+        "startLine": 1519,
+        "endLine": 1557
+      }
+    },
+    {
+      "kind": "section",
+      "id": "frozen-cross-genre-acceptance-profile",
+      "title": "Frozen cross-genre acceptance profile",
+      "summary": "Guide section: Frozen cross-genre acceptance profile",
+      "level": 3,
+      "anchor": "frozen-cross-genre-acceptance-profile",
+      "parentAnchor": "loop-strategies",
+      "href": "/AI_AGENT_GUIDE.md#frozen-cross-genre-acceptance-profile",
+      "resourceUri": "looplab://agent-guide#frozen-cross-genre-acceptance-profile",
+      "source": {
+        "startLine": 1523,
+        "endLine": 1535
+      }
+    },
+    {
+      "kind": "section",
+      "id": "improve",
+      "title": "Improve",
+      "summary": "Guide section: Improve",
+      "level": 3,
+      "anchor": "improve",
+      "parentAnchor": "loop-strategies",
+      "href": "/AI_AGENT_GUIDE.md#improve",
+      "resourceUri": "looplab://agent-guide#improve",
+      "source": {
+        "startLine": 1536,
+        "endLine": 1539
+      }
+    },
+    {
+      "kind": "section",
+      "id": "explore",
+      "title": "Explore",
+      "summary": "Guide section: Explore",
+      "level": 3,
+      "anchor": "explore",
+      "parentAnchor": "loop-strategies",
+      "href": "/AI_AGENT_GUIDE.md#explore",
+      "resourceUri": "looplab://agent-guide#explore",
+      "source": {
+        "startLine": 1540,
+        "endLine": 1543
+      }
+    },
+    {
+      "kind": "section",
+      "id": "cycle",
+      "title": "Cycle",
+      "summary": "Guide section: Cycle",
+      "level": 3,
+      "anchor": "cycle",
+      "parentAnchor": "loop-strategies",
+      "href": "/AI_AGENT_GUIDE.md#cycle",
+      "resourceUri": "looplab://agent-guide#cycle",
+      "source": {
+        "startLine": 1544,
+        "endLine": 1547
+      }
+    },
+    {
+      "kind": "section",
+      "id": "provider-context-budget-and-bounded-passes",
+      "title": "Provider context budget and bounded passes",
+      "summary": "Guide section: Provider context budget and bounded passes",
+      "level": 3,
+      "anchor": "provider-context-budget-and-bounded-passes",
+      "parentAnchor": "loop-strategies",
+      "href": "/AI_AGENT_GUIDE.md#provider-context-budget-and-bounded-passes",
+      "resourceUri": "looplab://agent-guide#provider-context-budget-and-bounded-passes",
+      "source": {
+        "startLine": 1548,
+        "endLine": 1557
+      }
+    },
+    {
+      "kind": "section",
+      "id": "iteration-ledger-and-safe-restore",
+      "title": "Iteration ledger and safe restore",
+      "summary": "Guide section: Iteration ledger and safe restore",
+      "level": 2,
+      "anchor": "iteration-ledger-and-safe-restore",
+      "parentAnchor": "using-looplab-as-an-ai-game-building-agent",
+      "href": "/AI_AGENT_GUIDE.md#iteration-ledger-and-safe-restore",
+      "resourceUri": "looplab://agent-guide#iteration-ledger-and-safe-restore",
+      "source": {
+        "startLine": 1558,
+        "endLine": 1587
+      }
+    },
+    {
+      "kind": "section",
+      "id": "sprite-and-palette-contract",
+      "title": "Sprite and palette contract",
+      "summary": "Guide section: Sprite and palette contract",
+      "level": 2,
+      "anchor": "sprite-and-palette-contract",
+      "parentAnchor": "using-looplab-as-an-ai-game-building-agent",
+      "href": "/AI_AGENT_GUIDE.md#sprite-and-palette-contract",
+      "resourceUri": "looplab://agent-guide#sprite-and-palette-contract",
+      "source": {
+        "startLine": 1588,
+        "endLine": 1597
+      }
+    },
+    {
+      "kind": "section",
+      "id": "visual-first-build-loop",
+      "title": "Visual-first build loop",
+      "summary": "Guide section: Visual-first build loop",
+      "level": 2,
+      "anchor": "visual-first-build-loop",
+      "parentAnchor": "using-looplab-as-an-ai-game-building-agent",
+      "href": "/AI_AGENT_GUIDE.md#visual-first-build-loop",
+      "resourceUri": "looplab://agent-guide#visual-first-build-loop",
+      "source": {
+        "startLine": 1598,
+        "endLine": 1637
+      }
+    },
+    {
+      "kind": "section",
+      "id": "grounded-ai-visual-critique-requires-per-job-consent",
+      "title": "Grounded AI visual critique requires per-job consent",
+      "summary": "Guide section: Grounded AI visual critique requires per-job consent",
+      "level": 3,
+      "anchor": "grounded-ai-visual-critique-requires-per-job-consent",
+      "parentAnchor": "visual-first-build-loop",
+      "href": "/AI_AGENT_GUIDE.md#grounded-ai-visual-critique-requires-per-job-consent",
+      "resourceUri": "looplab://agent-guide#grounded-ai-visual-critique-requires-per-job-consent",
+      "source": {
+        "startLine": 1602,
+        "endLine": 1637
+      }
+    },
+    {
+      "kind": "section",
+      "id": "playtest-evidence",
+      "title": "Playtest evidence",
+      "summary": "Guide section: Playtest evidence",
+      "level": 2,
+      "anchor": "playtest-evidence",
+      "parentAnchor": "using-looplab-as-an-ai-game-building-agent",
+      "href": "/AI_AGENT_GUIDE.md#playtest-evidence",
+      "resourceUri": "looplab://agent-guide#playtest-evidence",
+      "source": {
+        "startLine": 1638,
+        "endLine": 1668
+      }
+    },
+    {
+      "kind": "section",
+      "id": "deterministic-editor-preview-control",
+      "title": "Deterministic editor-preview control",
+      "summary": "Guide section: Deterministic editor-preview control",
+      "level": 3,
+      "anchor": "deterministic-editor-preview-control",
+      "parentAnchor": "playtest-evidence",
+      "href": "/AI_AGENT_GUIDE.md#deterministic-editor-preview-control",
+      "resourceUri": "looplab://agent-guide#deterministic-editor-preview-control",
+      "source": {
+        "startLine": 1652,
+        "endLine": 1668
+      }
+    },
+    {
+      "kind": "section",
+      "id": "exported-game-runtime-contract",
+      "title": "Exported-game runtime contract",
+      "summary": "Guide section: Exported-game runtime contract",
+      "level": 2,
+      "anchor": "exported-game-runtime-contract",
+      "parentAnchor": "using-looplab-as-an-ai-game-building-agent",
+      "href": "/AI_AGENT_GUIDE.md#exported-game-runtime-contract",
+      "resourceUri": "looplab://agent-guide#exported-game-runtime-contract",
+      "source": {
+        "startLine": 1669,
+        "endLine": 1769
+      }
+    },
+    {
+      "kind": "section",
+      "id": "hostile-platform-emulation",
+      "title": "Hostile platform emulation",
+      "summary": "Guide section: Hostile platform emulation",
+      "level": 3,
+      "anchor": "hostile-platform-emulation",
+      "parentAnchor": "exported-game-runtime-contract",
+      "href": "/AI_AGENT_GUIDE.md#hostile-platform-emulation",
+      "resourceUri": "looplab://agent-guide#hostile-platform-emulation",
+      "source": {
+        "startLine": 1693,
+        "endLine": 1769
+      }
+    },
+    {
+      "kind": "section",
+      "id": "completion-response",
+      "title": "Completion response",
+      "summary": "Guide section: Completion response",
+      "level": 2,
+      "anchor": "completion-response",
+      "parentAnchor": "using-looplab-as-an-ai-game-building-agent",
+      "href": "/AI_AGENT_GUIDE.md#completion-response",
+      "resourceUri": "looplab://agent-guide#completion-response",
+      "source": {
+        "startLine": 1770,
+        "endLine": 1784
+      }
+    }
+  ],
+  "invariants": [
+    {
+      "kind": "invariant",
+      "id": "2d-only",
+      "title": "2D only",
+      "statement": "Never route work through a 3D engine, editor, or asset pipeline. Dimetric 2.5D remains reversible authored 2D data rendered with sprites and tiles.",
+      "anchor": "discover-and-connect",
+      "href": "/AI_AGENT_GUIDE.md#discover-and-connect",
+      "resourceUri": "looplab://agent-guide#discover-and-connect",
+      "source": {
+        "startLine": 108,
+        "endLine": 239
+      }
+    },
+    {
+      "kind": "invariant",
+      "id": "authored-collision",
+      "title": "Collision is authored data",
+      "statement": "Generated or imported art never owns collision; visual assets remain separate from authored gameplay geometry.",
+      "anchor": "ground-and-raised-surface-attachment",
+      "href": "/AI_AGENT_GUIDE.md#ground-and-raised-surface-attachment",
+      "resourceUri": "looplab://agent-guide#ground-and-raised-surface-attachment",
+      "source": {
+        "startLine": 1231,
+        "endLine": 1253
+      }
+    },
+    {
+      "kind": "invariant",
+      "id": "digest-duties",
+      "title": "Three digests, three duties",
+      "statement": "sourceDigest gates gameplay truth, revisionDigest gates shared document concurrency, and expectedLedgerDigest gates coordination mutations.",
+      "anchor": "one-shared-project-store",
+      "href": "/AI_AGENT_GUIDE.md#one-shared-project-store",
+      "resourceUri": "looplab://agent-guide#one-shared-project-store",
+      "source": {
+        "startLine": 116,
+        "endLine": 168
+      }
+    },
+    {
+      "kind": "invariant",
+      "id": "preview-before-apply",
+      "title": "Apply only what was previewed",
+      "statement": "Nontrivial batches, repairs, rebases, and macros apply only with the exact source-bound receipt returned by their preview.",
+      "anchor": "build-an-atomic-candidate",
+      "href": "/AI_AGENT_GUIDE.md#build-an-atomic-candidate",
+      "resourceUri": "looplab://agent-guide#build-an-atomic-candidate",
+      "source": {
+        "startLine": 755,
+        "endLine": 1112
+      }
+    },
+    {
+      "kind": "invariant",
+      "id": "companion-authority",
+      "title": "Companion bytes are authoritative",
+      "statement": "Browser storage is a recoverable cache. Explicitly mount the companion-owned shared project before live work.",
+      "anchor": "one-shared-project-store",
+      "href": "/AI_AGENT_GUIDE.md#one-shared-project-store",
+      "resourceUri": "looplab://agent-guide#one-shared-project-store",
+      "source": {
+        "startLine": 116,
+        "endLine": 168
+      }
+    },
+    {
+      "kind": "invariant",
+      "id": "replay-integrity",
+      "title": "Never silently rerecord replay",
+      "statement": "Replacing a deterministic fixture requires deliberate review, a higher revision, and a non-empty change reason.",
+      "anchor": "iteration-ledger-and-safe-restore",
+      "href": "/AI_AGENT_GUIDE.md#iteration-ledger-and-safe-restore",
+      "resourceUri": "looplab://agent-guide#iteration-ledger-and-safe-restore",
+      "source": {
+        "startLine": 1558,
+        "endLine": 1587
+      }
+    },
+    {
+      "kind": "invariant",
+      "id": "honest-evidence",
+      "title": "Never claim an unrun check",
+      "statement": "Do not fabricate tests, screenshots, coverage, or completion. Inconclusive evidence remains inconclusive.",
+      "anchor": "project-doctor-and-verification",
+      "href": "/AI_AGENT_GUIDE.md#project-doctor-and-verification",
+      "resourceUri": "looplab://agent-guide#project-doctor-and-verification",
+      "source": {
+        "startLine": 1367,
+        "endLine": 1518
+      }
+    },
+    {
+      "kind": "invariant",
+      "id": "explicit-selection",
+      "title": "Searches propose; judgment selects",
+      "statement": "Tuning, structural, spatial, and foundation searches preserve alternatives and never choose an automatic creative winner.",
+      "anchor": "search-valid-game-structures-before-spending-provider-tokens",
+      "href": "/AI_AGENT_GUIDE.md#search-valid-game-structures-before-spending-provider-tokens",
+      "resourceUri": "looplab://agent-guide#search-valid-game-structures-before-spending-provider-tokens",
+      "source": {
+        "startLine": 571,
+        "endLine": 622
+      }
+    },
+    {
+      "kind": "invariant",
+      "id": "bots-not-players",
+      "title": "Bots are not players",
+      "statement": "Bot cohorts measure reachability and strategy shape; they do not establish fun, taste, or preference.",
+      "anchor": "interrogate-design-coverage-without-mistaking-bots-for-players",
+      "href": "/AI_AGENT_GUIDE.md#interrogate-design-coverage-without-mistaking-bots-for-players",
+      "resourceUri": "looplab://agent-guide#interrogate-design-coverage-without-mistaking-bots-for-players",
+      "source": {
+        "startLine": 1394,
+        "endLine": 1495
+      }
+    },
+    {
+      "kind": "invariant",
+      "id": "consent-gates",
+      "title": "Consent gates are hard gates",
+      "statement": "Playtest observation and image-bearing visual critique require the documented consent for each exact session or submission.",
+      "anchor": "grounded-ai-visual-critique-requires-per-job-consent",
+      "href": "/AI_AGENT_GUIDE.md#grounded-ai-visual-critique-requires-per-job-consent",
+      "resourceUri": "looplab://agent-guide#grounded-ai-visual-critique-requires-per-job-consent",
+      "source": {
+        "startLine": 1602,
+        "endLine": 1637
+      }
+    },
+    {
+      "kind": "invariant",
+      "id": "privacy-first",
+      "title": "Privacy precedes provider work",
+      "statement": "A blocked exact-payload preflight spends zero provider tokens and must be repaired locally without forwarding matched values.",
+      "anchor": "mandatory-preflight",
+      "href": "/AI_AGENT_GUIDE.md#mandatory-preflight",
+      "resourceUri": "looplab://agent-guide#mandatory-preflight",
+      "source": {
+        "startLine": 707,
+        "endLine": 754
+      }
+    },
+    {
+      "kind": "invariant",
+      "id": "provider-boundary",
+      "title": "Creative work crosses a ready provider boundary",
+      "statement": "Deterministic composition and validation are not presented as AI output; schema-invalid provider output is a failed pass.",
+      "anchor": "provider-connection-preflight",
+      "href": "/AI_AGENT_GUIDE.md#provider-connection-preflight",
+      "resourceUri": "looplab://agent-guide#provider-connection-preflight",
+      "source": {
+        "startLine": 210,
+        "endLine": 239
+      }
+    },
+    {
+      "kind": "invariant",
+      "id": "secret-boundary",
+      "title": "Keys and tokens stay out of artifacts",
+      "statement": "Credentials and the local mutation token never enter projects, prompts, logs, commits, research, or exports.",
+      "anchor": "discover-and-connect",
+      "href": "/AI_AGENT_GUIDE.md#discover-and-connect",
+      "resourceUri": "looplab://agent-guide#discover-and-connect",
+      "source": {
+        "startLine": 108,
+        "endLine": 239
+      }
+    },
+    {
+      "kind": "invariant",
+      "id": "release-truth",
+      "title": "Current is not release",
+      "statement": "An authoring-profile pass may protect an iteration; only production assessment and exact-artifact verification govern shipping one offline HTML file.",
+      "anchor": "exported-game-runtime-contract",
+      "href": "/AI_AGENT_GUIDE.md#exported-game-runtime-contract",
+      "resourceUri": "looplab://agent-guide#exported-game-runtime-contract",
+      "source": {
+        "startLine": 1669,
+        "endLine": 1769
+      }
+    },
+    {
+      "kind": "invariant",
+      "id": "coordination-authority",
+      "title": "Presence is not ownership",
+      "statement": "Presence is ephemeral liveness. The shared work ledger is durable coordination authority.",
+      "anchor": "coordinate-codex-and-claude-with-the-shared-work-ledger",
+      "href": "/AI_AGENT_GUIDE.md#coordinate-codex-and-claude-with-the-shared-work-ledger",
+      "resourceUri": "looplab://agent-guide#coordinate-codex-and-claude-with-the-shared-work-ledger",
+      "source": {
+        "startLine": 1018,
+        "endLine": 1060
+      }
+    },
+    {
+      "kind": "invariant",
+      "id": "truth-before-budget",
+      "title": "Never truncate authored truth",
+      "statement": "Context budgets never justify trimming collision, replay, acceptance, map truth, or the fresh-press portal contract.",
+      "anchor": "provider-context-budget-and-bounded-passes",
+      "href": "/AI_AGENT_GUIDE.md#provider-context-budget-and-bounded-passes",
+      "resourceUri": "looplab://agent-guide#provider-context-budget-and-bounded-passes",
+      "source": {
+        "startLine": 1548,
+        "endLine": 1557
+      }
+    }
+  ],
+  "lifecycle": [
+    {
+      "kind": "lifecycle",
+      "id": "arrive",
+      "title": "Arrive",
+      "summary": "Mount the shared project when live, establish the change bookmark, read the brief and ledger, then claim work before editing.",
+      "anchor": "discover-and-connect",
+      "commands": [
+        "list_shared_projects",
+        "mount_shared_project",
+        "get_agent_changes",
+        "get_agent_brief",
+        "get_work_ledger"
+      ],
+      "href": "/AI_AGENT_GUIDE.md#discover-and-connect",
+      "resourceUri": "looplab://agent-guide#discover-and-connect",
+      "source": {
+        "startLine": 108,
+        "endLine": 239
+      }
+    },
+    {
+      "kind": "lifecycle",
+      "id": "select",
+      "title": "Select",
+      "summary": "Select the exact project and create a protected variation before experiments that must not affect the baseline.",
+      "anchor": "select-the-project-and-prompt-draft",
+      "commands": [
+        "select_project",
+        "create_variation"
+      ],
+      "href": "/AI_AGENT_GUIDE.md#select-the-project-and-prompt-draft",
+      "resourceUri": "looplab://agent-guide#select-the-project-and-prompt-draft",
+      "source": {
+        "startLine": 240,
+        "endLine": 388
+      }
+    },
+    {
+      "kind": "lifecycle",
+      "id": "contract",
+      "title": "Contract the design",
+      "summary": "Author gameplay systems, verbs, narrative, visual identity, shell, and tuning intent as inspectable data before implementation.",
+      "anchor": "author-executable-gameplay-systems",
+      "commands": [
+        "set_gameplay_program",
+        "set_verb_architecture",
+        "set_visual_identity",
+        "set_game_shell",
+        "set_tuning_contract"
+      ],
+      "href": "/AI_AGENT_GUIDE.md#author-executable-gameplay-systems",
+      "resourceUri": "looplab://agent-guide#author-executable-gameplay-systems",
+      "source": {
+        "startLine": 322,
+        "endLine": 345
+      }
+    },
+    {
+      "kind": "lifecycle",
+      "id": "search",
+      "title": "Search before guessing",
+      "summary": "Generate structurally valid, spatially valid, and tunable alternatives; inspect the archive and select deliberately.",
+      "anchor": "search-valid-game-structures-before-spending-provider-tokens",
+      "commands": [
+        "run_structural_scaffold_search",
+        "run_spatial_layout_search",
+        "run_tuning_search",
+        "run_bot_cohorts"
+      ],
+      "href": "/AI_AGENT_GUIDE.md#search-valid-game-structures-before-spending-provider-tokens",
+      "resourceUri": "looplab://agent-guide#search-valid-game-structures-before-spending-provider-tokens",
+      "source": {
+        "startLine": 571,
+        "endLine": 622
+      }
+    },
+    {
+      "kind": "lifecycle",
+      "id": "build",
+      "title": "Build",
+      "summary": "Draft a source-bound plan where useful, preview the coherent canonical batch, then apply only the exact receipt.",
+      "anchor": "build-an-atomic-candidate",
+      "commands": [
+        "draft_agent_plan",
+        "preview_batch",
+        "apply_previewed_batch"
+      ],
+      "href": "/AI_AGENT_GUIDE.md#build-an-atomic-candidate",
+      "resourceUri": "looplab://agent-guide#build-an-atomic-candidate",
+      "source": {
+        "startLine": 755,
+        "endLine": 1112
+      }
+    },
+    {
+      "kind": "lifecycle",
+      "id": "converge",
+      "title": "Converge",
+      "summary": "Use provider-free repair for deterministic findings and leave judgment residue explicit instead of looping mechanically.",
+      "anchor": "repair-deterministic-doctor-mechanics-without-guessing",
+      "commands": [
+        "auto_repair",
+        "converge"
+      ],
+      "href": "/AI_AGENT_GUIDE.md#repair-deterministic-doctor-mechanics-without-guessing",
+      "resourceUri": "looplab://agent-guide#repair-deterministic-doctor-mechanics-without-guessing",
+      "source": {
+        "startLine": 899,
+        "endLine": 937
+      }
+    },
+    {
+      "kind": "lifecycle",
+      "id": "deterministic-evidence",
+      "title": "Collect deterministic evidence",
+      "summary": "Run acceptance, replay, completion, simulation, and input-liveness checks against the exact current source.",
+      "anchor": "project-doctor-and-verification",
+      "commands": [
+        "run_acceptance_suite",
+        "run_replay_suite",
+        "get_completion_report",
+        "simulate"
+      ],
+      "href": "/AI_AGENT_GUIDE.md#project-doctor-and-verification",
+      "resourceUri": "looplab://agent-guide#project-doctor-and-verification",
+      "source": {
+        "startLine": 1367,
+        "endLine": 1518
+      }
+    },
+    {
+      "kind": "lifecycle",
+      "id": "browser-evidence",
+      "title": "Collect browser evidence",
+      "summary": "Exercise the real browser, review clean and annotated captures, and use consented critique only for advisory taste judgment.",
+      "anchor": "visual-first-build-loop",
+      "commands": [
+        "run_post_generation_qa",
+        "capture_visual_review",
+        "start_visual_critique",
+        "describe_frame"
+      ],
+      "href": "/AI_AGENT_GUIDE.md#visual-first-build-loop",
+      "resourceUri": "looplab://agent-guide#visual-first-build-loop",
+      "source": {
+        "startLine": 1598,
+        "endLine": 1637
+      }
+    },
+    {
+      "kind": "lifecycle",
+      "id": "release",
+      "title": "Release",
+      "summary": "Run privacy and production gates, export one self-contained HTML artifact, and verify those exact bytes including hostile-platform behavior.",
+      "anchor": "exported-game-runtime-contract",
+      "commands": [
+        "get_privacy_report",
+        "prepare_export",
+        "export_html",
+        "verify_release"
+      ],
+      "href": "/AI_AGENT_GUIDE.md#exported-game-runtime-contract",
+      "resourceUri": "looplab://agent-guide#exported-game-runtime-contract",
+      "source": {
+        "startLine": 1669,
+        "endLine": 1769
+      }
+    },
+    {
+      "kind": "lifecycle",
+      "id": "report",
+      "title": "Report and hand off",
+      "summary": "Report measured evidence and usage, update the shared work item, preserve resumable IDs, and release presence.",
+      "anchor": "completion-response",
+      "commands": [
+        "update_work_item",
+        "leave_agent_presence"
+      ],
+      "href": "/AI_AGENT_GUIDE.md#completion-response",
+      "resourceUri": "looplab://agent-guide#completion-response",
+      "source": {
+        "startLine": 1770,
+        "endLine": 1784
+      }
+    }
+  ],
+  "recoveries": [
+    {
+      "kind": "recovery",
+      "id": "stale-source",
+      "signal": "[stale-source] on a mutation",
+      "meaning": "The project changed after the sourceDigest was read.",
+      "recovery": "Re-read the brief or Doctor, rebase the intent, re-preview, and apply only against the current source. Never overwrite newer work.",
+      "anchor": "build-an-atomic-candidate",
+      "title": "[stale-source] on a mutation",
+      "summary": "The project changed after the sourceDigest was read.",
+      "href": "/AI_AGENT_GUIDE.md#build-an-atomic-candidate",
+      "resourceUri": "looplab://agent-guide#build-an-atomic-candidate",
+      "source": {
+        "startLine": 755,
+        "endLine": 1112
+      }
+    },
+    {
+      "kind": "recovery",
+      "id": "stale-revision",
+      "signal": "Stale revisionDigest or HTTP 412",
+      "meaning": "The companion-owned document changed under this draft.",
+      "recovery": "Preserve the draft, preview the shared-project rebase, apply only its exact conflict-free receipt, rerun gates, and save explicitly.",
+      "anchor": "one-shared-project-store",
+      "title": "Stale revisionDigest or HTTP 412",
+      "summary": "The companion-owned document changed under this draft.",
+      "href": "/AI_AGENT_GUIDE.md#one-shared-project-store",
+      "resourceUri": "looplab://agent-guide#one-shared-project-store",
+      "source": {
+        "startLine": 116,
+        "endLine": 168
+      }
+    },
+    {
+      "kind": "recovery",
+      "id": "stale-ledger",
+      "signal": "expectedLedgerDigest mismatch",
+      "meaning": "The coordination ledger changed after it was read.",
+      "recovery": "Read get_work_ledger again and issue the claim or update against the returned digest.",
+      "anchor": "coordinate-codex-and-claude-with-the-shared-work-ledger",
+      "title": "expectedLedgerDigest mismatch",
+      "summary": "The coordination ledger changed after it was read.",
+      "href": "/AI_AGENT_GUIDE.md#coordinate-codex-and-claude-with-the-shared-work-ledger",
+      "resourceUri": "looplab://agent-guide#coordinate-codex-and-claude-with-the-shared-work-ledger",
+      "source": {
+        "startLine": 1018,
+        "endLine": 1060
+      }
+    },
+    {
+      "kind": "recovery",
+      "id": "stale-preview",
+      "signal": "Preview, plan, expansion, or rebase receipt rejected",
+      "meaning": "The requested action is no longer byte-for-byte the reviewed action.",
+      "recovery": "Generate a fresh preview and apply only its unchanged current receipt.",
+      "anchor": "build-an-atomic-candidate",
+      "title": "Preview, plan, expansion, or rebase receipt rejected",
+      "summary": "The requested action is no longer byte-for-byte the reviewed action.",
+      "href": "/AI_AGENT_GUIDE.md#build-an-atomic-candidate",
+      "resourceUri": "looplab://agent-guide#build-an-atomic-candidate",
+      "source": {
+        "startLine": 755,
+        "endLine": 1112
+      }
+    },
+    {
+      "kind": "recovery",
+      "id": "presence-expired",
+      "signal": "Presence lease expired",
+      "meaning": "The actor's liveness heartbeat elapsed.",
+      "recovery": "Register presence again and confirm that the durable ledger claim still names the actor before continuing.",
+      "anchor": "publish-live-agent-presence-without-confusing-it-with-ownership",
+      "title": "Presence lease expired",
+      "summary": "The actor's liveness heartbeat elapsed.",
+      "href": "/AI_AGENT_GUIDE.md#publish-live-agent-presence-without-confusing-it-with-ownership",
+      "resourceUri": "looplab://agent-guide#publish-live-agent-presence-without-confusing-it-with-ownership",
+      "source": {
+        "startLine": 984,
+        "endLine": 1017
+      }
+    },
+    {
+      "kind": "recovery",
+      "id": "converge-residue",
+      "signal": "converge returns residue",
+      "meaning": "The remaining findings do not have an unambiguous mechanical repair.",
+      "recovery": "Treat them as the judgment queue and resolve each through its owning authoring section; do not repeat converge hoping for a different answer.",
+      "anchor": "repair-deterministic-doctor-mechanics-without-guessing",
+      "title": "converge returns residue",
+      "summary": "The remaining findings do not have an unambiguous mechanical repair.",
+      "href": "/AI_AGENT_GUIDE.md#repair-deterministic-doctor-mechanics-without-guessing",
+      "resourceUri": "looplab://agent-guide#repair-deterministic-doctor-mechanics-without-guessing",
+      "source": {
+        "startLine": 899,
+        "endLine": 937
+      }
+    },
+    {
+      "kind": "recovery",
+      "id": "dead-input",
+      "signal": "Doctor input-action-dead",
+      "meaning": "A declared semantic action has no observable gameplay effect.",
+      "recovery": "Wire the action into shipped movement or rules, then rerun input liveness and the affected evidence.",
+      "anchor": "author-executable-gameplay-systems",
+      "title": "Doctor input-action-dead",
+      "summary": "A declared semantic action has no observable gameplay effect.",
+      "href": "/AI_AGENT_GUIDE.md#author-executable-gameplay-systems",
+      "resourceUri": "looplab://agent-guide#author-executable-gameplay-systems",
+      "source": {
+        "startLine": 322,
+        "endLine": 345
+      }
+    },
+    {
+      "kind": "recovery",
+      "id": "missing-shell",
+      "signal": "Doctor game-shell-missing",
+      "meaning": "The release lacks the authored title, pause, terminal, restart, or settings lifecycle.",
+      "recovery": "Author the game shell and exercise its keyboard, focus, visibility, and reduced-motion controls in the exported artifact.",
+      "anchor": "standard-game-shell-and-player-lifecycle",
+      "title": "Doctor game-shell-missing",
+      "summary": "The release lacks the authored title, pause, terminal, restart, or settings lifecycle.",
+      "href": "/AI_AGENT_GUIDE.md#standard-game-shell-and-player-lifecycle",
+      "resourceUri": "looplab://agent-guide#standard-game-shell-and-player-lifecycle",
+      "source": {
+        "startLine": 1344,
+        "endLine": 1366
+      }
+    },
+    {
+      "kind": "recovery",
+      "id": "unreachable",
+      "signal": "Doctor reachability finding",
+      "meaning": "A required target lies outside the real movement or route envelope.",
+      "recovery": "Change authored geometry or movement tuning, then rerun the shipped-integrator reachability check rather than trusting a screenshot.",
+      "anchor": "project-doctor-and-verification",
+      "title": "Doctor reachability finding",
+      "summary": "A required target lies outside the real movement or route envelope.",
+      "href": "/AI_AGENT_GUIDE.md#project-doctor-and-verification",
+      "resourceUri": "looplab://agent-guide#project-doctor-and-verification",
+      "source": {
+        "startLine": 1367,
+        "endLine": 1518
+      }
+    },
+    {
+      "kind": "recovery",
+      "id": "narrative-unreachable",
+      "signal": "Narrative reachability error",
+      "meaning": "No authored ending is structurally reachable from the entry page.",
+      "recovery": "Repair the page and edge graph until at least one ending is actually reachable.",
+      "anchor": "author-executable-gameplay-systems",
+      "title": "Narrative reachability error",
+      "summary": "No authored ending is structurally reachable from the entry page.",
+      "href": "/AI_AGENT_GUIDE.md#author-executable-gameplay-systems",
+      "resourceUri": "looplab://agent-guide#author-executable-gameplay-systems",
+      "source": {
+        "startLine": 322,
+        "endLine": 345
+      }
+    },
+    {
+      "kind": "recovery",
+      "id": "replay-divergence",
+      "signal": "Replay firstDivergence",
+      "meaning": "Deterministic state diverged from a pinned fixture at one exact tick.",
+      "recovery": "Treat that tick as a regression. If the behavior is intentional, rerecord with the same ID, higher revision, and a non-empty reviewed reason.",
+      "anchor": "iteration-ledger-and-safe-restore",
+      "title": "Replay firstDivergence",
+      "summary": "Deterministic state diverged from a pinned fixture at one exact tick.",
+      "href": "/AI_AGENT_GUIDE.md#iteration-ledger-and-safe-restore",
+      "resourceUri": "looplab://agent-guide#iteration-ledger-and-safe-restore",
+      "source": {
+        "startLine": 1558,
+        "endLine": 1587
+      }
+    },
+    {
+      "kind": "recovery",
+      "id": "acceptance-missing",
+      "signal": "Acceptance missing or spec-only",
+      "meaning": "Promised behavior lacks executable proof.",
+      "recovery": "Author the executable test or record the required deterministic fixture before making the behavior claim.",
+      "anchor": "project-doctor-and-verification",
+      "title": "Acceptance missing or spec-only",
+      "summary": "Promised behavior lacks executable proof.",
+      "href": "/AI_AGENT_GUIDE.md#project-doctor-and-verification",
+      "resourceUri": "looplab://agent-guide#project-doctor-and-verification",
+      "source": {
+        "startLine": 1367,
+        "endLine": 1518
+      }
+    },
+    {
+      "kind": "recovery",
+      "id": "completion-inconclusive",
+      "signal": "Completion harness inconclusive",
+      "meaning": "Bounded search neither proved nor disproved completability.",
+      "recovery": "Report inconclusive, then deliberately adjust the design or search bounds. Never relabel it as a pass.",
+      "anchor": "project-doctor-and-verification",
+      "title": "Completion harness inconclusive",
+      "summary": "Bounded search neither proved nor disproved completability.",
+      "href": "/AI_AGENT_GUIDE.md#project-doctor-and-verification",
+      "resourceUri": "looplab://agent-guide#project-doctor-and-verification",
+      "source": {
+        "startLine": 1367,
+        "endLine": 1518
+      }
+    },
+    {
+      "kind": "recovery",
+      "id": "search-empty",
+      "signal": "No acceptable search candidate",
+      "meaning": "The declared targets are unsatisfiable inside the searched design space.",
+      "recovery": "Deliberately revise the targets or design. Do not cherry-pick a candidate that failed the hard gate.",
+      "anchor": "search-valid-game-structures-before-spending-provider-tokens",
+      "title": "No acceptable search candidate",
+      "summary": "The declared targets are unsatisfiable inside the searched design space.",
+      "href": "/AI_AGENT_GUIDE.md#search-valid-game-structures-before-spending-provider-tokens",
+      "resourceUri": "looplab://agent-guide#search-valid-game-structures-before-spending-provider-tokens",
+      "source": {
+        "startLine": 571,
+        "endLine": 622
+      }
+    },
+    {
+      "kind": "recovery",
+      "id": "context-blocked",
+      "signal": "provider.context.blocked",
+      "meaning": "The scoped provider context exceeded its budget before model launch.",
+      "recovery": "Narrow the task, map set, or conditions without removing authored truth. The failed preflight used zero provider tokens.",
+      "anchor": "provider-context-budget-and-bounded-passes",
+      "title": "provider.context.blocked",
+      "summary": "The scoped provider context exceeded its budget before model launch.",
+      "href": "/AI_AGENT_GUIDE.md#provider-context-budget-and-bounded-passes",
+      "resourceUri": "looplab://agent-guide#provider-context-budget-and-bounded-passes",
+      "source": {
+        "startLine": 1548,
+        "endLine": 1557
+      }
+    },
+    {
+      "kind": "recovery",
+      "id": "claude-unstructured",
+      "signal": "Claude result lacks structured_output",
+      "meaning": "The CLI response failed LoopLab's schema contract.",
+      "recovery": "Reject the pass without mutation. Free-form text is not an equivalent result.",
+      "anchor": "provider-connection-preflight",
+      "title": "Claude result lacks structured_output",
+      "summary": "The CLI response failed LoopLab's schema contract.",
+      "href": "/AI_AGENT_GUIDE.md#provider-connection-preflight",
+      "resourceUri": "looplab://agent-guide#provider-connection-preflight",
+      "source": {
+        "startLine": 210,
+        "endLine": 239
+      }
+    },
+    {
+      "kind": "recovery",
+      "id": "privacy-blocked",
+      "signal": "Privacy preflight blocked",
+      "meaning": "The outbound payload or artifact contains a flagged value or incomplete scan.",
+      "recovery": "Repair locally from the stable codes and sanitized paths, then rerun. Never send the raw finding to another provider.",
+      "anchor": "mandatory-preflight",
+      "title": "Privacy preflight blocked",
+      "summary": "The outbound payload or artifact contains a flagged value or incomplete scan.",
+      "href": "/AI_AGENT_GUIDE.md#mandatory-preflight",
+      "resourceUri": "looplab://agent-guide#mandatory-preflight",
+      "source": {
+        "startLine": 707,
+        "endLine": 754
+      }
+    },
+    {
+      "kind": "recovery",
+      "id": "consent-absent",
+      "signal": "Consent absent for observation or critique",
+      "meaning": "The required per-job consent was not granted for the exact data.",
+      "recovery": "Request consent or continue without that evidence path. Never substitute another submission route.",
+      "anchor": "grounded-ai-visual-critique-requires-per-job-consent",
+      "title": "Consent absent for observation or critique",
+      "summary": "The required per-job consent was not granted for the exact data.",
+      "href": "/AI_AGENT_GUIDE.md#grounded-ai-visual-critique-requires-per-job-consent",
+      "resourceUri": "looplab://agent-guide#grounded-ai-visual-critique-requires-per-job-consent",
+      "source": {
+        "startLine": 1602,
+        "endLine": 1637
+      }
+    },
+    {
+      "kind": "recovery",
+      "id": "evidence-stale",
+      "signal": "verification.automatic.failed or stale evidence",
+      "meaning": "Browser evidence is missing or bound to an older source digest.",
+      "recovery": "Recollect evidence against the current source. The candidate remains unverified until the new evidence passes.",
+      "anchor": "project-doctor-and-verification",
+      "title": "verification.automatic.failed or stale evidence",
+      "summary": "Browser evidence is missing or bound to an older source digest.",
+      "href": "/AI_AGENT_GUIDE.md#project-doctor-and-verification",
+      "resourceUri": "looplab://agent-guide#project-doctor-and-verification",
+      "source": {
+        "startLine": 1367,
+        "endLine": 1518
+      }
+    },
+    {
+      "kind": "recovery",
+      "id": "release-failed",
+      "signal": "Exact-artifact release verification failed",
+      "meaning": "The shipped bytes violate a production requirement.",
+      "recovery": "Repair the authoring source, export a new artifact, and verify the new exact bytes. Never hand-patch exported HTML.",
+      "anchor": "exported-game-runtime-contract",
+      "title": "Exact-artifact release verification failed",
+      "summary": "The shipped bytes violate a production requirement.",
+      "href": "/AI_AGENT_GUIDE.md#exported-game-runtime-contract",
+      "resourceUri": "looplab://agent-guide#exported-game-runtime-contract",
+      "source": {
+        "startLine": 1669,
+        "endLine": 1769
+      }
+    },
+    {
+      "kind": "recovery",
+      "id": "protocol-mismatch",
+      "signal": "Companion health protocol mismatch",
+      "meaning": "The running companion predates the current manifest and validators.",
+      "recovery": "Restart through LoopLab's managed launcher; do not let an old companion judge current work.",
+      "anchor": "discover-and-connect",
+      "title": "Companion health protocol mismatch",
+      "summary": "The running companion predates the current manifest and validators.",
+      "href": "/AI_AGENT_GUIDE.md#discover-and-connect",
+      "resourceUri": "looplab://agent-guide#discover-and-connect",
+      "source": {
+        "startLine": 108,
+        "endLine": 239
+      }
+    },
+    {
+      "kind": "recovery",
+      "id": "session-token-missing",
+      "signal": "Mutation rejected for missing session token",
+      "meaning": "The caller lacks the current x-looplab-session-token.",
+      "recovery": "Read the ignored local session descriptor and set the header without printing or persisting the token.",
+      "anchor": "discover-and-connect",
+      "title": "Mutation rejected for missing session token",
+      "summary": "The caller lacks the current x-looplab-session-token.",
+      "href": "/AI_AGENT_GUIDE.md#discover-and-connect",
+      "resourceUri": "looplab://agent-guide#discover-and-connect",
+      "source": {
+        "startLine": 108,
+        "endLine": 239
+      }
+    }
+  ],
+  "indexDigest": "sha256:a616ee6b354284f9afc24c38f89a0aadb5c3ff5251bb1a51302675b5a09d6faf"
+}

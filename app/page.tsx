@@ -40,6 +40,8 @@ import {
   prepareBoundedAgentFormResponse,
 } from "../lib/looplab-bounded-agent-response.mjs";
 import { validateLooplabCommandInput } from "../lib/looplab-agent-contracts.mjs";
+import { queryAgentGuideIndex } from "../lib/looplab-agent-guide-navigation.mjs";
+import { LOOPLAB_AGENT_GUIDE_INDEX } from "../lib/generated/looplab-agent-guide-index.mjs";
 import { LOOPLAB_SHARED_PROJECT_STORE_POLICY, LOOPLAB_SHARED_PROJECT_STORE_SCHEMA } from "../lib/looplab-shared-project-contract.mjs";
 import { previewSharedProjectRebase, sharedProjectRevisionDigest } from "../lib/looplab-shared-project-rebase.mjs";
 import { LOOPLAB_GAME_DIRECTOR, composeDirectedGameBrief, composeProviderGeneratedGameBrief, directedGameSummary, reconcileDirectedGameBrief } from "../lib/looplab-game-director.mjs";
@@ -1252,6 +1254,26 @@ type PreviewTransition = {
 
 type AgentCommand = { op?: string; [key: string]: unknown };
 type AgentRunResult = Record<string, unknown>;
+type AgentGuideCategory = "all" | "section" | "invariant" | "lifecycle" | "recovery";
+type AgentGuideEntryRef = {
+  kind: Exclude<AgentGuideCategory, "all">;
+  id: string;
+  title: string;
+  summary: string;
+  statement?: string;
+  recovery?: string;
+  anchor: string;
+  href: string;
+  source: { startLine: number | null; endLine: number | null };
+};
+type AgentGuideQueryRef = {
+  sourceDigest: string;
+  indexDigest: string;
+  totalMatches: number;
+  returned: number;
+  truncated: boolean;
+  entries: AgentGuideEntryRef[];
+};
 type AgentRecipeRef = {
   id: string;
   title: string;
@@ -3765,6 +3787,8 @@ export default function Home() {
   const [agentCommandText, setAgentCommandText] = useState('{"op":"get_project"}');
   const [agentCommandResult, setAgentCommandResult] = useState('{"ok":true,"ready":true}');
   const [agentCommandRunning, setAgentCommandRunning] = useState(false);
+  const [agentGuideQuery, setAgentGuideQuery] = useState("");
+  const [agentGuideCategory, setAgentGuideCategory] = useState<AgentGuideCategory>("all");
   const [agentContextView, setAgentContextView] = useState<"campaign" | "map">("campaign");
   const [agentContextMapId, setAgentContextMapId] = useState(() => project.activeMapId ?? "map-main");
   const [agentRecipeQuery, setAgentRecipeQuery] = useState("");
@@ -4061,6 +4085,7 @@ export default function Home() {
     };
   }, [project.presentationProgram, project.resources]);
   const visibleAgentRecipes = useMemo(() => listAgentRecipes({ status: "all", limit: 50, query: agentRecipeQuery }).recipes as AgentRecipeRef[], [agentRecipeQuery]);
+  const agentGuideResults = useMemo(() => queryAgentGuideIndex(LOOPLAB_AGENT_GUIDE_INDEX, { query: agentGuideQuery, category: agentGuideCategory, limit: 12 }) as AgentGuideQueryRef, [agentGuideCategory, agentGuideQuery]);
   const visibleAgentRecipeId = visibleAgentRecipes.some((recipe) => recipe.id === agentRecipeId) ? agentRecipeId : visibleAgentRecipes[0]?.id ?? agentRecipeId;
   const selectedAgentRecipe = useMemo(() => getAgentRecipe(visibleAgentRecipeId).recipe as AgentRecipeRef, [visibleAgentRecipeId]);
   const agentWorkLedgerView = useMemo(() => getAgentWorkLedger(project, { query: agentWorkQuery, status: agentWorkStatus, limit: 50, eventLimit: 6 }) as AgentWorkLedgerView, [agentWorkQuery, agentWorkStatus, project]);
@@ -8172,6 +8197,16 @@ export default function Home() {
             return value;
           }
           if (command.op === "get_manifest") return { ok: true, manifest: command.compact === false ? getAgentManifest() : getCompactAgentManifest() };
+          if (command.op === "get_agent_guide_index") {
+            return {
+              ok: true,
+              index: queryAgentGuideIndex(LOOPLAB_AGENT_GUIDE_INDEX, {
+                query: typeof command.query === "string" ? command.query : undefined,
+                category: typeof command.category === "string" ? command.category : undefined,
+                limit: typeof command.limit === "number" ? command.limit : undefined,
+              }),
+            };
+          }
           if (command.op === "list_projects") {
             const loadedSharedIds = new Set(projectLibraryRef.current.map((entry) => entry.sharedProjectId).filter((id): id is string => Boolean(id)));
             return {
@@ -13103,6 +13138,32 @@ export default function Home() {
               disabled={agentCommandRunning}
               onRun={runCommunityExchangeCommand}
             />
+            <nav id="looplab-agent-guide-navigation" className="agent-guide-navigation" aria-labelledby="agent-guide-navigation-heading" data-index-digest={agentGuideResults.indexDigest} data-guide-source-digest={agentGuideResults.sourceDigest}>
+              <header><div><strong id="agent-guide-navigation-heading">Agent guide navigator</strong><small>Source-bound rules and failure recovery without loading the full guide</small></div><span>{agentGuideResults.totalMatches} match{agentGuideResults.totalMatches === 1 ? "" : "es"}</span></header>
+              <div className="agent-guide-controls">
+                <label htmlFor="looplab-agent-guide-query">Find a rule, failure, command, or workflow</label>
+                <input id="looplab-agent-guide-query" type="search" value={agentGuideQuery} onChange={(event) => setAgentGuideQuery(event.target.value)} maxLength={240} placeholder="stale source, collision, release, privacy…" />
+                <label htmlFor="looplab-agent-guide-category">Kind</label>
+                <select id="looplab-agent-guide-category" value={agentGuideCategory} onChange={(event) => setAgentGuideCategory(event.target.value as AgentGuideCategory)}>
+                  <option value="all">All navigation</option>
+                  <option value="invariant">Invariants</option>
+                  <option value="lifecycle">Standard pass</option>
+                  <option value="recovery">Failure recovery</option>
+                  <option value="section">Guide sections</option>
+                </select>
+              </div>
+              <div className="agent-guide-results" aria-live="polite">
+                {agentGuideResults.entries.map((entry) => <article key={`${entry.kind}:${entry.id}`} data-guide-kind={entry.kind} data-guide-anchor={entry.anchor}>
+                  <header><span>{entry.kind}</span><a href={entry.href} target="_blank" rel="noreferrer">{entry.title} ↗</a></header>
+                  <p>{entry.statement ?? entry.summary}</p>
+                  {entry.recovery && <b>{entry.recovery}</b>}
+                  <small>{entry.source.startLine == null ? "Canonical section" : `Guide lines ${entry.source.startLine}–${entry.source.endLine}`} · #{entry.anchor}</small>
+                </article>)}
+                {!agentGuideResults.entries.length && <div className="agent-guide-empty" role="status">No indexed guide entry matches this query. Clear the filter or open the complete guide.</div>}
+              </div>
+              <div className="agent-guide-actions"><a href="/AI_AGENT_GUIDE.md" target="_blank" rel="noreferrer">Open complete guide ↗</a><button type="button" onClick={() => setAgentCommandText(JSON.stringify({ op: "get_agent_guide_index", query: agentGuideQuery, category: agentGuideCategory, limit: 24 }, null, 2))}>Load headless query</button></div>
+              <small>Orientation only. The full guide remains authoritative; omitted entries never grant permission, and this navigator cannot execute, mutate, or verify anything.</small>
+            </nav>
             <section id="looplab-agent-context-pack" className="agent-context-pack" aria-labelledby="agent-context-heading" data-source-digest={agentProjectContext.sourceDigest} data-context-view={agentProjectContext.view} data-context-fresh={doctorReportFresh ? "true" : "false"}>
               <header><div><strong id="agent-context-heading">Agent context pack</strong><small>{agentContextView === "map" ? "Exact selected-map truth without unrelated map documents" : "Campaign truth without the embedded payload"}</small></div><span>{agentProjectContext.measurements.roughTokenEstimate.toLocaleString()} est. tokens</span></header>
               <div className="agent-context-controls">

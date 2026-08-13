@@ -304,7 +304,7 @@ Inside the running editor, agents can use `window.looplabAgent.run(command)`, th
 
 For a file-based resume, run `npm run agent -- changes game.loop.json --cursor=<opaque-bookmark> --limit=32`. Omit `--cursor` on first contact to establish the current bookmark.
 
-See [the AI agent guide](docs/AI_AGENT_GUIDE.md), [the MCP setup guide](docs/MCP_AGENT_SETUP.md), and [the machine-readable manifest](public/agent-manifest.json) for the complete contract.
+See [the AI agent guide](docs/AI_AGENT_GUIDE.md), [its generated machine-readable navigation index](public/agent-guide-index.json), [the MCP setup guide](docs/MCP_AGENT_SETUP.md), and [the machine-readable manifest](public/agent-manifest.json) for the complete contract.
 
 ## One-file HTML delivery
 
@@ -432,6 +432,7 @@ scripts/                     Launcher, companion, CLI, loops, asset utilities, a
 public/agent-manifest.json   Versioned machine-readable agent contract
 public/asset-packs/          Installed browseable asset library and provenance indexes
 docs/AI_AGENT_GUIDE.md       Complete Codex/Claude operating guide
+public/agent-guide-index.json Generated source-bound guide navigation and recovery index
 docs/AI_MAP_REQUIREMENTS.md  Map, collision, support, transition, and depth contracts
 tests/                       Build-independent domain and regression tests
 tests-build/                 Production-render verification
@@ -446,6 +447,7 @@ Its 2.5D mode means 2D rendering with authored elevation and depth—not hidden 
 ## Documentation
 
 - [AI Agent Guide](docs/AI_AGENT_GUIDE.md) — full visual and headless workflow
+- [Agent Guide Index](public/agent-guide-index.json) — bounded invariants, lifecycle, section anchors, and failure recovery for Codex/Claude context
 - [AI Map Requirements](docs/AI_MAP_REQUIREMENTS.md) — collision, support, route, projection, and map-join contracts
 - [Asset Packs](docs/ASSET_PACKS.md) — catalog, installation, browsing, selection, and license evidence
 - [Reuse Guide Integration](docs/REUSE_GUIDE_INTEGRATION.md) — reusable runtime and packaging principles
