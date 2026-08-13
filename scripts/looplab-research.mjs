@@ -7,8 +7,9 @@ import { buildOpenAiResponsesRequest, requireOpenAiStructuredResult } from "../l
 import { isUnsupportedCodexSearchOption, requestProviderJson } from "../lib/looplab-provider-http.mjs";
 import { parseProviderJson, runProviderProcess } from "../lib/looplab-provider-process.mjs";
 import { assertProviderPayloadPrivacy } from "../lib/looplab-project-privacy.mjs";
-import { buildClaudeCliArgs, inspectClaudeCliOutput, requireClaudeCliStructuredResult } from "../lib/looplab-claude-cli.mjs";
-import { attachUsageReceipt, createUsageReceipt, readCodexConfiguredModel, usageFromCliOutput, usageReceiptSummary } from "../lib/looplab-provider-usage.mjs";
+import { buildClaudeCliInvocation, inspectClaudeCliOutput, requireClaudeCliStructuredResult } from "../lib/looplab-claude-cli.mjs";
+import { buildCodexCliInvocation, createProviderModelSelectionReceipt } from "../lib/looplab-provider-model-policy.mjs";
+import { attachUsageReceipt, createUsageReceipt, usageFromCliOutput, usageReceiptSummary } from "../lib/looplab-provider-usage.mjs";
 
 const args = process.argv.slice(2);
 const PROVIDER_AUTH_METHOD = process.env.LOOPLAB_PROVIDER_AUTH_METHOD || null;
@@ -134,42 +135,45 @@ async function invokeProvider({ provider, input, schema, schemaPath, responseFil
   }
   if (provider === "codex") {
     let result;
+    let invocation;
     try {
-      result = await runProcess("codex", ["--search", "exec", "--json", "--skip-git-repo-check", "--ephemeral", "--output-schema", schemaPath, "-o", responseFile, providerPrompt], payload, cwd);
+      invocation = buildCodexCliInvocation(["--search", "exec", "--json", "--skip-git-repo-check", "--ephemeral", "--output-schema", schemaPath, "-o", responseFile, providerPrompt], { purpose: "research" });
+      result = await runProcess("codex", invocation.args, payload, cwd);
     } catch (error) {
       if (!isUnsupportedCodexSearchOption(error)) throw error;
       emit("research.search-fallback", { message: "Codex --search was unavailable; retrying with the installed agent toolset.", detail: error.message });
-      result = await runProcess("codex", ["exec", "--json", "--skip-git-repo-check", "--ephemeral", "--output-schema", schemaPath, "-o", responseFile, providerPrompt], payload, cwd);
+      invocation = buildCodexCliInvocation(["exec", "--json", "--skip-git-repo-check", "--ephemeral", "--output-schema", schemaPath, "-o", responseFile, providerPrompt], { purpose: "research" });
+      result = await runProcess("codex", invocation.args, payload, cwd);
     }
     const responseText = await readFile(responseFile, "utf8").catch(() => result.stdout);
     const measured = usageFromCliOutput(result.stdout, result.stderr);
-    const model = measured.model ?? process.env.LOOPLAB_CODEX_MODEL ?? await readCodexConfiguredModel() ?? "codex-cli";
-    return { report: parseAgentJson(responseText), sources: [], receipt: createUsageReceipt({ provider, model, usage: measured.usage, source: "codex-cli-jsonl", authMethod: PROVIDER_AUTH_METHOD }) };
+    const model = measured.model ?? invocation.modelPolicy.model;
+    return { report: parseAgentJson(responseText), sources: [], receipt: createUsageReceipt({ provider, model, usage: measured.usage, source: "codex-cli-jsonl", authMethod: PROVIDER_AUTH_METHOD, modelSelection: createProviderModelSelectionReceipt(invocation.modelPolicy, { providerReportedModel: measured.model }) }) };
   }
   if (provider === "claude") {
+    const invocation = buildClaudeCliInvocation({
+      prompt: providerPrompt,
+      schema,
+      maxTurns: DEPTH_RULES[input.depth].turns,
+      tools: ["WebSearch", "WebFetch"],
+      purpose: "research",
+      maxBudgetUsd: process.env.LOOPLAB_CLAUDE_MAX_BUDGET_USD,
+    });
     try {
-      const result = await runProcess("claude", buildClaudeCliArgs({
-        prompt: providerPrompt,
-        schema,
-        maxTurns: DEPTH_RULES[input.depth].turns,
-        tools: ["WebSearch", "WebFetch"],
-        model: process.env.LOOPLAB_CLAUDE_RESEARCH_MODEL ?? process.env.LOOPLAB_CLAUDE_MODEL,
-        effort: process.env.LOOPLAB_CLAUDE_EFFORT,
-        maxBudgetUsd: process.env.LOOPLAB_CLAUDE_MAX_BUDGET_USD,
-      }), payload, cwd);
+      const result = await runProcess("claude", invocation.args, payload, cwd);
       const structured = requireClaudeCliStructuredResult(result.stdout);
       const measured = usageFromCliOutput(result.stdout, result.stderr);
-      const model = structured.model ?? measured.model ?? process.env.LOOPLAB_CLAUDE_RESEARCH_MODEL ?? process.env.LOOPLAB_CLAUDE_MODEL ?? "claude-code-cli";
+      const model = structured.model ?? measured.model ?? invocation.modelPolicy.model;
       return {
         report: structured.structuredOutput,
         sources: [],
-        receipt: createUsageReceipt({ provider, model, usage: structured.usage ?? measured.usage, source: "claude-code-cli-stream-json", providerReportedUsd: structured.providerReportedUsd, authMethod: PROVIDER_AUTH_METHOD }),
+        receipt: createUsageReceipt({ provider, model, usage: structured.usage ?? measured.usage, source: "claude-code-cli-stream-json", providerReportedUsd: structured.providerReportedUsd, authMethod: PROVIDER_AUTH_METHOD, modelSelection: createProviderModelSelectionReceipt(invocation.modelPolicy, { providerReportedModel: structured.model ?? measured.model }) }),
       };
     } catch (error) {
       const telemetry = error?.claudeTelemetry ?? inspectClaudeCliOutput(error?.processResult?.stdout);
       const measured = usageFromCliOutput(error?.processResult?.stdout, error?.processResult?.stderr);
-      const model = telemetry.model ?? measured.model ?? process.env.LOOPLAB_CLAUDE_RESEARCH_MODEL ?? process.env.LOOPLAB_CLAUDE_MODEL ?? "claude-code-cli";
-      if (error && typeof error === "object") error.usageReceipt = createUsageReceipt({ provider, model, usage: telemetry.usage ?? measured.usage, source: "claude-code-cli-stream-json", providerReportedUsd: telemetry.providerReportedUsd, authMethod: PROVIDER_AUTH_METHOD });
+      const model = telemetry.model ?? measured.model ?? invocation.modelPolicy.model;
+      if (error && typeof error === "object") error.usageReceipt = createUsageReceipt({ provider, model, usage: telemetry.usage ?? measured.usage, source: "claude-code-cli-stream-json", providerReportedUsd: telemetry.providerReportedUsd, authMethod: PROVIDER_AUTH_METHOD, modelSelection: createProviderModelSelectionReceipt(invocation.modelPolicy, { providerReportedModel: telemetry.model ?? measured.model }) });
       throw error;
     }
   }

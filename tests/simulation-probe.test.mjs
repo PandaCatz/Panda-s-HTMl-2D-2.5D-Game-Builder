@@ -135,7 +135,7 @@ test("simulate is one strict read-only core contract shared by Codex, Claude, MC
   assert.equal(LOOPLAB_BROWSER_SESSION_COMMANDS.includes("simulate"), true);
 
   const manifest = getAgentManifest();
-  assert.equal(LOOPLAB_PROTOCOL_VERSION, "1.101.0");
+  assert.equal(LOOPLAB_PROTOCOL_VERSION, "1.112.0");
   assert.equal(manifest.simulationProbe.command, "simulate");
   assert.equal(manifest.simulationProbe.limits.maximumTicks, LOOPLAB_SIMULATION_LIMITS.maximumTicks);
   assert.match(manifest.simulationProbe.fixtureWorkflow, /explicitly record and rerun/i);

@@ -51,16 +51,16 @@ test("agent manifest publishes one precise contract for every command surface", 
   const contracts = getLooplabCommandContracts();
   const validation = validateLooplabCommandContracts();
 
-  assert.equal(LOOPLAB_PROTOCOL_VERSION, "1.101.0");
+  assert.equal(LOOPLAB_PROTOCOL_VERSION, "1.112.0");
   assert.equal(manifest.agentOperatingModel.headlessFirst, true);
   assert.match(manifest.agentOperatingModel.primaryConsumer, /Codex, Claude/);
   assert.match(manifest.agentOperatingModel.primarySurface, /canonical product surface/);
   assert.match(manifest.agentOperatingModel.humanUiRole, /secondary inspection/);
   assert.equal(validation.valid, true, validation.errors.join("\n"));
   assert.equal(validation.commandCount, LOOPLAB_AGENT_COMMANDS.length);
-  assert.equal(contracts.length, 265);
-  assert.equal(LOOPLAB_CORE_COMMANDS.length, 184);
-  assert.equal(LOOPLAB_BROWSER_SESSION_COMMANDS.length, 265);
+  assert.equal(contracts.length, 306);
+  assert.equal(LOOPLAB_CORE_COMMANDS.length, 217);
+  assert.equal(LOOPLAB_BROWSER_SESSION_COMMANDS.length, 306);
   assert.equal(manifest.commandContracts.schemaVersion, LOOPLAB_COMMAND_CONTRACT_SCHEMA);
   assert.deepEqual(manifest.commandContracts.commands, contracts);
   assert.equal(contracts.every((contract) => contract.schemaPrecision === "declared"), true);
@@ -234,7 +234,7 @@ test("core MCP exposes typed resources and enforces optimistic file mutations", 
   const listedResources = await client.listResources();
   assert.deepEqual(
     listedResources.resources.map((resource) => resource.uri).sort(),
-    ["looplab://agent-guide", "looplab://agent-playbook", "looplab://manifest", "looplab://mcp-setup"],
+    ["looplab://agent-guide", "looplab://agent-guide-index", "looplab://agent-playbook", "looplab://capability-packs", "looplab://manifest", "looplab://mcp-setup"],
   );
   const manifestResource = await client.readResource({ uri: "looplab://manifest" });
   const resourceManifest = JSON.parse(manifestResource.contents[0].text);
@@ -245,6 +245,19 @@ test("core MCP exposes typed resources and enforces optimistic file mutations", 
   assert.equal(resourcePlaybook.schemaVersion, "looplab-agent-playbook/v1");
   assert.equal(resourcePlaybook.policy.autoExecution, false);
   assert.equal(resourcePlaybook.count, 10);
+  const capabilityResource = await client.readResource({ uri: "looplab://capability-packs" });
+  const resourceCapabilityPacks = JSON.parse(capabilityResource.contents[0].text);
+  assert.equal(resourceCapabilityPacks.schemaVersion, "looplab-capability-pack-registry/v1");
+  assert.equal(resourceCapabilityPacks.packCount, 6);
+  assert.equal(resourceCapabilityPacks.capabilityCount, 28);
+  assert.equal(resourceCapabilityPacks.calibration.valid, true);
+  assert.equal(resourceCapabilityPacks.policy.executable, false);
+  const guideIndexResource = await client.readResource({ uri: "looplab://agent-guide-index" });
+  const resourceGuideIndex = JSON.parse(guideIndexResource.contents[0].text);
+  assert.equal(resourceGuideIndex.schemaVersion, "looplab-agent-guide-index/v1");
+  assert.equal(resourceGuideIndex.policy.authority, "orientation-only");
+  assert.equal(resourceGuideIndex.source.headingCount, resourceGuideIndex.sections.length);
+  assert.ok(resourceGuideIndex.recoveries.some((entry) => entry.id === "stale-source"));
 
   const recipesCall = await client.callTool({ name: "list_agent_recipes", arguments: { projectPath: projectName, query: "map transition" } });
   assert.equal(recipesCall.isError, undefined);
@@ -399,6 +412,7 @@ test("browser MCP advertises the complete live-session surface without launching
   assert.equal(listed.tools.length, LOOPLAB_BROWSER_SESSION_COMMANDS.length);
   assert.ok(listed.tools.some((tool) => tool.name === "list_projects"));
   assert.ok(listed.tools.some((tool) => tool.name === "get_agent_brief"));
+  assert.ok(listed.tools.some((tool) => tool.name === "get_agent_guide_index"));
   assert.ok(listed.tools.some((tool) => tool.name === "get_agent_changes"));
   assert.ok(listed.tools.some((tool) => tool.name === "get_project_context"));
   assert.ok(listed.tools.some((tool) => tool.name === "get_work_ledger"));
@@ -437,6 +451,11 @@ test("browser MCP drives the real running editor through one persistent page", {
   assert.equal(briefCall.structuredContent.response.result.schemaVersion, "looplab-agent-brief/v2");
   assert.equal(briefCall.structuredContent.response.result.readiness.release.profile, "production");
   assert.equal(briefCall.structuredContent.response.result.provider.source, "live-director-state");
+
+  const guideCall = await client.callTool({ name: "get_agent_guide_index", arguments: { query: "stale source", category: "recovery", limit: 3 } });
+  assert.equal(guideCall.isError, undefined);
+  assert.equal(guideCall.structuredContent.response.index.entries[0].id, "stale-source");
+  assert.equal(guideCall.structuredContent.response.index.policy.mayMutate, false);
 
   const contextCall = await client.callTool({ name: "get_project_context", arguments: { view: "campaign" } });
   assert.equal(contextCall.isError, undefined);

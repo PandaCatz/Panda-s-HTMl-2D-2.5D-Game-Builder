@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { spawn } from "node:child_process";
+import { access, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { dirname, join } from "node:path";
 import test from "node:test";
+import { fileURLToPath } from "node:url";
 
 import { applyAgentCommand, createTemplate, getAgentManifest, getCompactAgentManifest } from "../lib/looplab-agent-core.mjs";
 import {
@@ -59,6 +63,9 @@ test("core transport reports the correct browser-session transport instead of a 
 
 test("every browser-only command is represented by the real browser dispatcher", async () => {
   const page = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
+  assert.match(page, /import \{ flushSync \} from "react-dom";/);
+  assert.match(page, /flushSync\(\(\) => setProject\(syncedNext\)\);\s*projectRef\.current = syncedNext;/);
+  assert.match(page, /A headless caller can issue its next command immediately/);
   assert.match(page, /import \{ validateLooplabCommandInput \} from "\.\.\/lib\/looplab-agent-contracts\.mjs";/);
   assert.match(page, /const inputValidation = validateLooplabCommandInput\(command\);[\s\S]*?\[invalid-command\]/);
   assert.match(page, /const activeProvider = overrides\.provider \?\? aiProvider;/);
@@ -68,13 +75,41 @@ test("every browser-only command is represented by the real browser dispatcher",
   }
 });
 
-test("verify-everything is discoverable, exact-artifact-bound, and refuses stale project writes", async () => {
-  const source = await readFile(new URL("../scripts/looplab-agent.mjs", import.meta.url), "utf8");
-  assert.match(source, /verifyEverything: "npm run agent -- verify-everything/);
-  assert.match(source, /collectVerificationEvidence: true/);
-  assert.match(source, /applyCollectedVerificationEvidence\(outcome\.project, outcome\.verificationEvidence\.evidenceRefs\)/);
-  assert.match(source, /currentProjectSha256 !== originalProjectSha256/);
-  assert.match(source, /No HTML, receipt, or project update was written/);
-  assert.match(source, /writeTextAtomic\(outputPath, outcome\.html\)/);
-  assert.match(source, /schemaVersion: "looplab-verify-everything-receipt\/v1"/);
+test("verify-everything is discoverable and refuses a blocked candidate atomically", async (context) => {
+  const manifest = getAgentManifest();
+  assert.equal(manifest.verification.verifyEverythingCli.operation, "verify-everything");
+  assert.equal(manifest.verification.verifyEverythingCli.receiptSchemaVersion, "looplab-verify-everything-receipt/v1");
+
+  const directory = await mkdtemp(join(tmpdir(), "looplab-verify-everything-"));
+  context.after(() => rm(directory, { recursive: true, force: true }));
+  const projectPath = join(directory, "blocked.loop.json");
+  const outputPath = join(directory, "blocked.html");
+  const receiptPath = join(directory, "blocked.verification.json");
+  const captureDirectory = join(directory, "captures");
+  const blocked = createTemplate("kinetic");
+  const originalBytes = `${JSON.stringify(blocked, null, 2)}\n`;
+  await writeFile(projectPath, originalBytes, "utf8");
+
+  const repositoryRoot = dirname(dirname(fileURLToPath(import.meta.url)));
+  const scriptPath = join(repositoryRoot, "scripts", "looplab-agent.mjs");
+  const child = spawn(process.execPath, [scriptPath, "verify-everything", projectPath, outputPath, `--receipt=${receiptPath}`, `--captures=${captureDirectory}`], { cwd: repositoryRoot, windowsHide: true });
+  let stdout = "";
+  let stderr = "";
+  child.stdout.on("data", (chunk) => { stdout += chunk; });
+  child.stderr.on("data", (chunk) => { stderr += chunk; });
+  const exitCode = await new Promise((resolveExit, rejectExit) => {
+    child.once("error", rejectExit);
+    child.once("close", resolveExit);
+  });
+
+  assert.notEqual(exitCode, 0, stderr);
+  const structuredLine = `${stdout}\n${stderr}`.split(/\r?\n/).map((line) => line.trim()).filter((line) => line.startsWith("{")).at(-1);
+  assert.ok(structuredLine, `Expected one structured CLI failure record.\nstdout:\n${stdout}\nstderr:\n${stderr}`);
+  const result = JSON.parse(structuredLine);
+  assert.equal(result.ok, false);
+  assert.match(result.error, /Project Doctor blocked (?:HTML export|release verification)/);
+  assert.equal(await readFile(projectPath, "utf8"), originalBytes);
+  for (const path of [outputPath, receiptPath, captureDirectory]) {
+    await assert.rejects(access(path));
+  }
 });

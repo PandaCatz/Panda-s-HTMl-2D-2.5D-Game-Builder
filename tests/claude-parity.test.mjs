@@ -175,7 +175,7 @@ test("provider scan blocks an authenticated old Claude and accepts the current C
 test("every Claude creative path uses the same structured adapter and no implicit timeout", () => {
   for (const file of ["scripts/looplab-prompt.mjs", "scripts/looplab-loop.mjs", "scripts/looplab-research.mjs"]) {
     const source = readFileSync(resolve(file), "utf8");
-    assert.match(source, /buildClaudeCliArgs/);
+    assert.match(source, /buildClaudeCliInvocation/);
     assert.match(source, /requireClaudeCliStructuredResult/);
     assert.doesNotMatch(source, /"--output-format", "text"/);
   }
@@ -199,11 +199,12 @@ test("manifest and Claude memories expose one canonical parity contract", () => 
   assert.equal(manifest.providerParity.providerTransports.claude.minimumVersion, "2.1.205");
   assert.equal(manifest.providerParity.operations["game-loop"].tools, "none");
   assert.equal(manifest.providerParity.operations.research.tools, "read-only web research");
-  assert.equal(manifest.claudeIntegration.modelPolicy.smokeDefault, "haiku");
+  assert.equal(manifest.claudeIntegration.modelPolicy.smokeDefault, "claude-opus-5");
+  assert.equal(manifest.claudeIntegration.modelPolicy.smokeEffort, "max");
   assert.equal(manifest.claudeIntegration.modelPolicy.smokePurpose, "operability-only");
   assert.equal(manifest.claudeIntegration.modelPolicy.smokeUsedForGameCreation, false);
-  assert.match(manifest.claudeIntegration.modelPolicy.creativeCliSelection, /Claude Code's current default/);
-  assert.match(manifest.claudeIntegration.smokeBoundary, /not selected for game creation/i);
+  assert.match(manifest.claudeIntegration.modelPolicy.creativeCliSelection, /Claude Opus 5/i);
+  assert.match(manifest.claudeIntegration.smokeBoundary, /Claude-Opus-5\/max-effort/i);
   assert.equal(manifest.iterationLedger.candidateDecisionSchema, "looplab-candidate-decision/v1");
   assert.match(manifest.iterationLedger.selectionPolicy, /Codex, and Claude/);
   assert.match(manifest.iterationLedger.selectionPolicy, /without naming an automatic creative winner/);

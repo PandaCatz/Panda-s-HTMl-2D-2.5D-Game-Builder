@@ -165,11 +165,11 @@ test("production Doctor and the manifest expose executable replay truth", () => 
   assert.ok(manifest.requiredWorkflow.includes("run_replay_suite"));
   assert.ok(manifest.commands.includes("record_replay_case"));
   assert.ok(manifest.exportedRuntime.methods.includes("runReplayCase"));
-  assert.equal(manifest.exportedRuntime.version, "2.28.0");
-  assert.equal(manifest.deterministicReplay.currentHashVersion, 10);
+  assert.equal(manifest.exportedRuntime.version, "2.35.0");
+  assert.equal(manifest.deterministicReplay.currentHashVersion, LOOPLAB_REPLAY_HASH_VERSION);
   assert.equal(manifest.deterministicReplay.legacyHashVersion, 1);
-  assert.deepEqual(manifest.deterministicReplay.supportedHashVersions, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+  assert.deepEqual(manifest.deterministicReplay.supportedHashVersions, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]);
   assert.equal(manifest.deterministicReplay.minimumTickRate, 20);
-  assert.deepEqual(manifest.deterministicReplay.digestAlgorithms, { legacyVersions: [1, 2, 3, 4, 5], legacy: "FNV-1a-32", sha256Versions: [6, 7, 8, 9, 10], currentVersion: 10, current: "SHA-256" });
+  assert.deepEqual(manifest.deterministicReplay.digestAlgorithms, { legacyVersions: [1, 2, 3, 4, 5], legacy: "FNV-1a-32", sha256Versions: [6, 7, 8, 9, 10, 11, 12, 13, 14], currentVersion: LOOPLAB_REPLAY_HASH_VERSION, current: "SHA-256" });
   assert.match(manifest.deterministicReplay.hashVersionPolicy, /must add a new projection/i);
 });

@@ -1,15 +1,18 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
-import { TextEncoder } from "node:util";
+import { TextDecoder, TextEncoder } from "node:util";
 import { runInNewContext } from "node:vm";
 import { applyAgentCommand, buildStandaloneArtifact, buildStandaloneHtml, buildStandaloneRuntimePrelude, createTemplate, validateProject } from "../lib/looplab-agent-core.mjs";
 import { runAcceptanceSuite } from "../lib/looplab-acceptance.mjs";
 import { analyzeProject } from "../lib/looplab-doctor.mjs";
+import { normalizeGameplayProgram } from "../lib/looplab-gameplay-rules.mjs";
+import { normalizeRunVariationProgram } from "../lib/looplab-run-variation.mjs";
 import { createRuntimeModel } from "../lib/looplab-runtime-model.mjs";
 import { readGamepadInputCodes } from "../lib/looplab-gamepad.mjs";
 import { canonicalReplaySerialize, LOOPLAB_REPLAY_HASH_VERSION, LOOPLAB_REPLAY_MOTION_HASH_VERSION, replayStateDigest, runReplaySuite } from "../lib/looplab-replay.mjs";
 import { DEFAULT_DIMETRIC_PROJECTION } from "../lib/looplab-spatial.mjs";
+import { normalizeWorldStream } from "../lib/looplab-world-stream.mjs";
 
 function object(kind, id, changes = {}) {
   const presets = {
@@ -42,7 +45,67 @@ function linkedProject() {
   return { name: "Runtime Contract", width: 200, height: 120, background: "#e8e0ca", gravity: 0, grid: 10, controlMode: "topdown", objects: mapAObjects, assets: [], maps, activeMapId: "map-a" };
 }
 
-function executeStandaloneRuntime(html) {
+function continuousWorldProject() {
+  const mapAObjects = [object("player", "player-a", { x: 10, y: 48 }), object("decor", "decor-a", { x: 80, y: 30 })];
+  const mapBObjects = [object("decor", "decor-b", { x: 80, y: 30 })];
+  const maps = [map("map-a", mapAObjects), map("map-b", mapBObjects)];
+  const program = normalizeWorldStream({
+    mode: "finite",
+    axis: "horizontal",
+    seed: "exported-world",
+    startTemplateId: "a",
+    horizon: 2,
+    sequence: ["a", "b"],
+    templates: [
+      { id: "a", name: "Atrium chunk", mapId: "map-a", weight: 1, entry: { id: "entry", tag: "route", edge: "left", x: 0, y: 60, z: 0, span: 40 }, exit: { id: "exit", tag: "route", edge: "right", x: 200, y: 60, z: 0, span: 40 } },
+      { id: "b", name: "Roof chunk", mapId: "map-b", weight: 1, entry: { id: "entry", tag: "route", edge: "left", x: 0, y: 60, z: 0, span: 40 }, exit: { id: "exit", tag: "route", edge: "right", x: 200, y: 60, z: 0, span: 40 } },
+    ],
+    budgets: { retainBehind: 1, prefetchAhead: 1, maxResidentChunks: 3, maxResidentTileCells: 64, maxResidentCollisionCells: 64, maxDecodedRgbaBytes: 4096, cullPadding: 16 },
+  });
+  maps[0].worldStream = program;
+  return { name: "Continuous World Contract", width: 200, height: 120, background: "#e8e0ca", gravity: 0, grid: 10, controlMode: "topdown", objects: mapAObjects, assets: [], maps, activeMapId: "map-a", worldStream: program };
+}
+
+function questBridgeProject() {
+  const project = createTemplate("systems");
+  project.replay.cases = [];
+  const program = structuredClone(project.gameplayProgram);
+  program.variables.push(
+    { id: "quest-status", label: "Quest status", type: "number", initial: 1, min: 0, max: 3, visible: false },
+    { id: "quest-progress", label: "Quest progress", type: "number", initial: 2, min: 0, max: 3, visible: true },
+  );
+  program.rules.push({
+    id: "complete-bridge-quest",
+    name: "Complete bridge quest",
+    enabled: true,
+    trigger: { type: "state", variableId: "quest-progress", operator: "gte", value: 3 },
+    conditions: [{ variableId: "quest-status", operator: "eq", value: 1 }],
+    once: "run",
+    effects: [{ type: "set-variable", variableId: "quest-status", value: 2 }],
+  });
+  program.quests = [{
+    id: "bridge-quest",
+    title: "Bridge quest",
+    description: "Prove the exported DOM bridge.",
+    statusVariableId: "quest-status",
+    visibleWhen: [],
+    completionRuleId: "complete-bridge-quest",
+    objectives: [{
+      id: "bridge-objective",
+      label: "Make progress",
+      visibleWhen: [],
+      completeWhen: [{ variableId: "quest-progress", operator: "gte", value: 3 }],
+      progressVariableId: "quest-progress",
+      target: 3,
+      acceptanceTestIds: ["market-choice-route"],
+    }],
+    acceptanceTestIds: ["market-choice-route"],
+  }];
+  project.gameplayProgram = normalizeGameplayProgram(program);
+  return project;
+}
+
+function executeStandaloneRuntimeHarness(html) {
   const projectText = html.match(/<script id="looplab-project-data" type="application\/json">([\s\S]*?)<\/script>/i)?.[1];
   const script = html.match(/<script>([\s\S]*?)<\/script>\s*<\/body>/i)?.[1];
   assert.ok(projectText && script, "standalone artifact must expose project metadata and one runtime script");
@@ -94,17 +157,28 @@ function executeStandaloneRuntime(html) {
       Object.assign(this, options);
     }
   }
+  const documentListeners = new Map();
+  let lastRuntimeResponse = null;
+  const documentApi = {
+    hidden: false,
+    hasFocus: () => true,
+    getElementById: element,
+    createElement: (tagName) => ({ tagName: String(tagName).toUpperCase(), dataset: {}, style: {}, disabled: false, textContent: "", addEventListener() {}, append() {}, focus() {}, setAttribute(name, next) { this[name] = String(next); }, removeAttribute(name) { delete this[name]; } }),
+    querySelectorAll: () => [],
+    addEventListener(type, handler) {
+      const handlers = documentListeners.get(type) ?? [];
+      handlers.push(handler);
+      documentListeners.set(type, handlers);
+    },
+    dispatchEvent(event) {
+      if (event?.type === "looplab:runtime-response") lastRuntimeResponse = event.detail ?? null;
+      for (const handler of documentListeners.get(event?.type) ?? []) handler(event);
+      return true;
+    },
+  };
   const sandbox = {
     console,
-    document: {
-      hidden: false,
-      hasFocus: () => true,
-      getElementById: element,
-      createElement: (tagName) => ({ tagName: String(tagName).toUpperCase(), dataset: {}, style: {}, disabled: false, textContent: "", addEventListener() {}, append() {}, focus() {}, setAttribute(name, next) { this[name] = String(next); }, removeAttribute(name) { delete this[name]; } }),
-      querySelectorAll: () => [],
-      addEventListener() {},
-      dispatchEvent() {},
-    },
+    document: documentApi,
     navigator: { getGamepads: () => [] },
     performance: { now: () => 0 },
     requestAnimationFrame: () => 1,
@@ -112,12 +186,26 @@ function executeStandaloneRuntime(html) {
     addEventListener() {},
     Image: StubImage,
     CustomEvent: StubCustomEvent,
+    TextDecoder,
     TextEncoder,
   };
   sandbox.window = sandbox;
   runInNewContext(script, sandbox, { timeout: 5_000 });
   assert.ok(sandbox.window.looplabRuntime, "standalone runtime API must initialize in the artifact scope");
-  return sandbox.window.looplabRuntime;
+  return {
+    runtime: sandbox.window.looplabRuntime,
+    command(command, id = "runtime-test") {
+      lastRuntimeResponse = null;
+      documentApi.dispatchEvent({ type: "looplab:runtime-command", detail: { id, command } });
+      assert.ok(lastRuntimeResponse, "standalone DOM bridge must dispatch a runtime response");
+      assert.equal(lastRuntimeResponse.id, id);
+      return lastRuntimeResponse.result;
+    },
+  };
+}
+
+function executeStandaloneRuntime(html) {
+  return executeStandaloneRuntimeHarness(html).runtime;
 }
 
 test("the exact exported dependency prelude remains import-free and covers every runtime branch in isolation", () => {
@@ -152,6 +240,12 @@ test("the exact exported dependency prelude remains import-free and covers every
   assert.doesNotThrow(() => dimetricRuntime.renderEntries());
   assert.deepEqual(isolated.worldToScreen({ x: 0, y: 0, z: 0 }, isolated.DEFAULT_DIMETRIC_PROJECTION), { x: 480, y: 96 });
 
+  const continuousRuntime = isolated.createRuntimeModel(continuousWorldProject());
+  const continuousPlayer = continuousRuntime.getObjects().find((entry) => entry.kind === "player");
+  continuousPlayer.x = 250;
+  continuousRuntime.update(0);
+  assert.equal(continuousRuntime.getState().worldStream.currentOrdinal, 1, "the exact string-inlined compiler must rotate the resident window");
+
   const buttons = Array.from({ length: 16 }, () => ({ pressed: false, value: 0 }));
   buttons[0] = { pressed: true, value: 1 };
   assert.ok(isolated.readGamepadInputCodes([{ buttons, axes: [0, 0] }]).includes("GamepadButton0"));
@@ -159,7 +253,33 @@ test("the exact exported dependency prelude remains import-free and covers every
   const html = buildStandaloneHtml(linkedProject());
   assert.ok(html.includes(prelude), "the export must embed the exact dependency prelude exercised by the isolation test");
   assert.ok(html.includes(`const createRuntimeModelFactory=${createRuntimeModel.toString()};`), "the export must embed the audited factory literally");
-  assert.ok(html.includes("const createRuntimeModel=(project)=>createRuntimeModelFactory(project,{compileTileRuntimeProgram});"), "the export must inject the audited tile compiler into the runtime factory");
+  assert.ok(html.includes("const compileWorldStreamRuntime="), "the export must embed the audited deterministic world-stream compiler");
+  assert.ok(html.includes("const createRuntimeModel=(project)=>createRuntimeModelFactory(project,{compileTileRuntimeProgram,compileWorldStreamRuntime,normalizeRunVariationProgram,resolveRunVariation,runVariationProgramDigest});"), "the export must inject the audited tile, world-stream, and run-variation dependencies into the runtime factory");
+});
+
+test("the one-file browser runtime crosses a continuous-world seam without fetch or player replacement", () => {
+  const project = continuousWorldProject();
+  const runtime = executeStandaloneRuntime(buildStandaloneHtml(project));
+  const playerId = runtime.getState().player.id;
+  runtime.setInput("move-right", true);
+  for (let index = 0; index < 24; index += 1) runtime.step(50);
+  runtime.setInput("move-right", false);
+  const state = JSON.parse(JSON.stringify(runtime.getState()));
+  assert.equal(state.worldStream.currentOrdinal, 1);
+  assert.equal(state.player.id, playerId, "the live player identity must survive chunk residency changes");
+  assert.deepEqual(state.worldStream.residentRange, { start: 0, end: 1 });
+  assert.equal(runtime.getWorldStreamState().routeDigest, state.worldStream.routeDigest);
+});
+
+test("the one-file DOM bridge returns the same derived quest journal as the exported runtime API", () => {
+  const harness = executeStandaloneRuntimeHarness(buildStandaloneHtml(questBridgeProject()));
+  const direct = JSON.parse(JSON.stringify(harness.runtime.getQuestState()));
+  const bridged = JSON.parse(JSON.stringify(harness.command({ op: "get_quest_state" })));
+
+  assert.deepEqual(bridged, { ok: true, quests: direct });
+  assert.equal(bridged.quests.quests[0].status, "active");
+  assert.equal(bridged.quests.quests[0].objectives[0].progress, 2);
+  assert.equal(bridged.quests.quests[0].objectives[0].target, 3);
 });
 
 test("the built artifact replay and acceptance runners stay identical to the canonical Node runners", () => {
@@ -328,7 +448,7 @@ test("exports the tested runtime model, linked maps, mobile-only touch controls,
   project.release = { externalRequests: [], debugMarkers: [] };
   project.assets = [{ id: "embedded-pixel", name: "Embedded pixel", type: "sprite", dataUrl: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M/wHwAF/gL+X1zGkwAAAABJRU5ErkJggg==", width: 1, height: 1, frameWidth: 1, frameHeight: 1, frames: 1, columns: 1, anchorX: 0.5, anchorY: 1, anchorMode: "ground", collisionPolicy: "authored-only", generator: { kind: "test" } }];
   const html = buildStandaloneHtml(project);
-  assert.match(html, /const runtimeApi=\{version:'2\.28\.0',getSourceDigest/);
+  assert.match(html, /const runtimeApi=\{version:'2\.35\.0',getSourceDigest/);
   assert.match(html, /Object\.isExtensible\(window\)/);
   assert.match(html, /id="looplab-runtime-bridge"/);
   assert.match(html, /id="looplab-runtime-form"/);
@@ -394,6 +514,55 @@ test("embeds the Narrative Contract and source-bound Narrative Report in the one
   assert.equal(runtime.getNarrativeReport().status, "passed");
   assert.equal(runtime.getNarrativeReport().metrics.reachableEndingCount, 1);
   assert.match(runtime.getNarrativeReport().sourceDigest, /^source-[a-f0-9]{64}$/);
+});
+
+test("exports seeded runs, daily challenges, LR1 codes, ghosts, and matching DOM commands", () => {
+  const project = createTemplate("systems");
+  project.replay.cases = [];
+  project.gameplayProgram = normalizeGameplayProgram({
+    ...project.gameplayProgram,
+    variables: [...project.gameplayProgram.variables, { id: "run-density", label: "Run density", type: "number", initial: 1, min: 1, max: 3, resetPolicy: "run", visible: true }],
+  });
+  project.runVariationProgram = normalizeRunVariationProgram({
+    version: 1,
+    enabled: true,
+    seedNamespace: "export-run-test",
+    defaultSeed: "standard",
+    dailyChallenge: { enabled: true, namespace: "daily" },
+    pools: [{ id: "density", label: "Density", variants: [
+      { id: "calm", label: "Calm", weight: 1, assignments: [{ variableId: "run-density", value: 1 }] },
+      { id: "busy", label: "Busy", weight: 1, assignments: [{ variableId: "run-density", value: 3 }] },
+    ] }],
+    ghosts: [],
+    acceptanceTestIds: [],
+  });
+  const html = buildStandaloneHtml(project);
+  assert.match(html, /id="run-toggle"/);
+  assert.match(html, /id="run-dialog"/);
+  assert.match(html, /function ghostRenderEntries\(\)/);
+  assert.match(html, /\.\.\.ghostRenderEntries\(\)/);
+  assert.match(html, /item\.kind==='ghost'\)drawGhost\(item\.entry\.ghost,item\.entry\.object\)/);
+  assert.doesNotMatch(html, /forEach\(paintTile\);drawGhosts\(\)/);
+  assert.match(html, /start_daily_challenge/);
+  assert.match(html, /export_run_code/);
+  const harness = executeStandaloneRuntimeHarness(html);
+  assert.equal(harness.runtime.getRunVariationReport().program.enabled, true);
+  assert.equal(harness.runtime.previewRunVariation({ seed: "alpha" }).seed, "alpha");
+  const started = harness.command({ op: "start_run", seed: "alpha" });
+  assert.equal(started.ok, true);
+  assert.equal(started.run.seed, "alpha");
+  assert.equal(harness.command({ op: "get_run_variation_state" }).run.simulationTick, 0);
+  const exported = harness.command({ op: "export_run_code" });
+  assert.equal(exported.ok, true);
+  assert.match(exported.code, /^LR1\./);
+  assert.equal(harness.command({ op: "start_run", seed: "beta" }).run.seed, "beta");
+  const restored = harness.command({ op: "import_run_code", code: exported.code });
+  assert.equal(restored.ok, true);
+  assert.equal(harness.runtime.getRunVariationState().seed, "alpha");
+  const daily = harness.command({ op: "start_daily_challenge", utcDay: "2026-08-13" });
+  assert.equal(daily.ok, true);
+  assert.equal(daily.run.utcDay, "2026-08-13");
+  assert.equal(harness.command({ op: "get_ghost_states" }).ghosts.length, 0);
 });
 
 test("returns a source-bound draft receipt from an audited prototype artifact", () => {
@@ -469,7 +638,7 @@ test("manifest declares the generated game as one offline-playable HTML file", a
   assert.equal(manifest.exportedRuntime.offlinePlayable, true);
   assert.deepEqual(manifest.exportedRuntime.externalDependencies, []);
   assert.ok(manifest.exportedRuntime.embeds.includes("selected-assets-as-data-urls"));
-  assert.equal(manifest.exportedRuntime.version, "2.28.0");
+  assert.equal(manifest.exportedRuntime.version, "2.35.0");
   assert.ok(manifest.exportedRuntime.embeds.includes("keyboard-gamepad-and-touch-controls"));
   assert.ok(manifest.exportedRuntime.embeds.includes("deterministic-replay-fixtures"));
   assert.ok(manifest.exportedRuntime.embeds.includes("deterministic-acceptance-fixtures"));
@@ -478,6 +647,11 @@ test("manifest declares the generated game as one offline-playable HTML file", a
   assert.ok(manifest.exportedRuntime.methods.includes("runAcceptanceSuite"));
   assert.ok(manifest.exportedRuntime.methods.includes("runAcceptanceTest"));
   assert.ok(manifest.exportedRuntime.methods.includes("getRuntimeJoinPlan"));
+  assert.ok(manifest.exportedRuntime.methods.includes("startDailyChallenge"));
+  assert.ok(manifest.exportedRuntime.methods.includes("exportRunCode"));
+  assert.ok(manifest.exportedRuntime.methods.includes("getGhostStates"));
+  assert.ok(manifest.exportedRuntime.commands.includes("start_run"));
+  assert.ok(manifest.exportedRuntime.commands.includes("import_run_code"));
   assert.equal(manifest.exportedRuntime.domBridge.form.commandInput, "#looplab-runtime-command");
   assert.equal(manifest.exportReceipt.prepareCommand, "prepare_export");
   assert.equal(manifest.exportReceipt.exportCommand, "export_html");

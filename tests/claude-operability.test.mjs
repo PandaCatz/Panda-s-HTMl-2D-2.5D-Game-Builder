@@ -51,8 +51,9 @@ test("Claude operability args enable only the two privacy-safe read-only MCP too
   assert.ok(!args.includes("--safe-mode"), "safe mode would disable the MCP profiles this command must prove");
   assert.ok(args.includes("--strict-mcp-config"));
   assert.equal(args[args.indexOf("--mcp-config") + 1], mcpConfigPath);
-  assert.equal(args[args.indexOf("--model") + 1], "haiku");
-  assert.equal(args[args.indexOf("--max-budget-usd") + 1], "0.25");
+  assert.equal(args[args.indexOf("--model") + 1], "claude-opus-5");
+  assert.equal(args[args.indexOf("--effort") + 1], "max");
+  assert.equal(args[args.indexOf("--max-budget-usd") + 1], "1");
 });
 
 test("Claude operability config advertises exactly one schema on each isolated MCP profile", () => {

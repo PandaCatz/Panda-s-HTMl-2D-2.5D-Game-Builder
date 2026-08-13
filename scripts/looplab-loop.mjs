@@ -42,9 +42,10 @@ import { runDeterministicPlaytest } from "../lib/looplab-verification.mjs";
 import { summarizeLoopOutcome } from "../lib/looplab-loop-outcome.mjs";
 import { appendLoopAttempt, appendLoopRun, nextLoopAttemptNumber, normalizeLoopHistory } from "../lib/looplab-loop-history.mjs";
 import { claudeActivityFromJsonLine, codexActivityFromJsonLine, providerLivenessSnapshot, providerProgressMessage } from "../lib/looplab-provider-activity.mjs";
-import { buildClaudeCliArgs, inspectClaudeCliOutput, requireClaudeCliStructuredResult } from "../lib/looplab-claude-cli.mjs";
+import { buildClaudeCliInvocation, inspectClaudeCliOutput, requireClaudeCliStructuredResult } from "../lib/looplab-claude-cli.mjs";
 import { createProviderParityReceipt } from "../lib/looplab-provider-parity.mjs";
 import { createProviderFailoverReceipt, isRetryableProviderPathFailure } from "../lib/looplab-provider-routing.mjs";
+import { buildCodexCliInvocation, createProviderModelSelectionReceipt } from "../lib/looplab-provider-model-policy.mjs";
 import { buildAnthropicMessagesRequest, requireAnthropicStructuredResult } from "../lib/looplab-anthropic-api.mjs";
 import { artDirectionInstruction, normalizeArtDirectionPolicy } from "../lib/looplab-art-direction.mjs";
 import { inspectVerbArchitecture, LOOPLAB_VERB_ARCHITECTURE_POLICY } from "../lib/looplab-verb-architecture.mjs";
@@ -58,7 +59,6 @@ import {
   aggregateUsageReceipts,
   attachUsageReceipt,
   createUsageReceipt,
-  readCodexConfiguredModel,
   usageFromCliOutput,
   usageReceiptSummary,
 } from "../lib/looplab-provider-usage.mjs";
@@ -171,6 +171,8 @@ The input includes verbArchitecture.policy and verbArchitecture.inspection. Auth
 
 The input also includes gameplayProgram.policy and gameplayProgram.inspection. Implement sophisticated mechanics with set_gameplay_program so the deterministic editor preview, replay runner, and exported offline HTML execute the same typed variables and rules. Input triggers support phase=pressed|held|released (default pressed), and overlap triggers support edge=enter|stay|exit (default enter). Use these runtime phases directly; never approximate hold/release or exit with project-only latch variables. Prefer input, event, overlap, and state triggers with bounded effects over prose-only feature claims. Every verb implementationId should resolve to an actual input action, gameplay rule, object, path, or map—not a feature-contract description.
 
+For authored dialogue, bind choice-page lineId and speakerId to the Narrative Contract and portraitAssetId to an embedded project asset. For quests, use gameplayProgram.quests only as a derived journal over existing typed variables and deterministic activation/progress/completion/failure/reward rules; never create another mutable story or quest state store. Typewriter reveal is presentation-only, must become instant under reduced motion, exposes the complete readable text atomically, and never auto-advances in this contract. Every quest and objective must retain current acceptance or replay evidence IDs.
+
 If project.templateProvenance.adaptationStatus is starter, replace its neutral sample labels and semantics with game-specific authored meaning before setting adaptationStatus to adapted. Do not carry a starter's genre, character, traversal verb, object names, palette, or setting into a different brief merely because its geometry is convenient.
 
 Structured-output providers require each commands item to use {"op":"set_project","argumentsJson":"{\\"changes\\":{\\"background\\":\\"#242424\\"}}"}. argumentsJson must be valid JSON text for an object containing every command field except op. Providers without a structured-output schema may return the direct command objects shown below.
@@ -263,53 +265,53 @@ async function invokeProvider({ provider, context, schemaPath, responseFile, res
     }
   }
   if (provider === "codex") {
+    const invocation = buildCodexCliInvocation(["exec", "--json", "--skip-git-repo-check", "--ephemeral", "--output-schema", schemaPath, "-o", responseFile, ITERATION_PROMPT], { purpose: "game-iteration" });
     try {
-      const result = await runProcess("codex", ["exec", "--json", "--skip-git-repo-check", "--ephemeral", "--output-schema", schemaPath, "-o", responseFile, ITERATION_PROMPT], input, cwd, undefined, (line) => {
+      const result = await runProcess("codex", invocation.args, input, cwd, undefined, (line) => {
         const activity = codexActivityFromJsonLine(line);
         if (activity) onProviderActivity?.(activity);
       });
       const responseText = await readFile(responseFile, "utf8").catch(() => result.stdout);
       const measured = usageFromCliOutput(result.stdout, result.stderr);
-      const model = measured.model ?? process.env.LOOPLAB_CODEX_MODEL ?? await readCodexConfiguredModel() ?? "codex-cli";
+      const model = measured.model ?? invocation.modelPolicy.model;
       return {
         proposal: parseAgentJson(responseText),
-        receipt: createUsageReceipt({ provider, model, usage: measured.usage, source: "codex-cli-jsonl", authMethod: providerAuthMethod(provider) }),
+        receipt: createUsageReceipt({ provider, model, usage: measured.usage, source: "codex-cli-jsonl", authMethod: providerAuthMethod(provider), modelSelection: createProviderModelSelectionReceipt(invocation.modelPolicy, { providerReportedModel: measured.model }) }),
       };
     } catch (error) {
       const measured = usageFromCliOutput(error?.processResult?.stdout, error?.processResult?.stderr);
-      const model = measured.model ?? process.env.LOOPLAB_CODEX_MODEL ?? await readCodexConfiguredModel() ?? "codex-cli";
-      if (error && typeof error === "object") error.usageReceipt = createUsageReceipt({ provider, model, usage: measured.usage, source: "codex-cli-jsonl", authMethod: providerAuthMethod(provider) });
+      const model = measured.model ?? invocation.modelPolicy.model;
+      if (error && typeof error === "object") error.usageReceipt = createUsageReceipt({ provider, model, usage: measured.usage, source: "codex-cli-jsonl", authMethod: providerAuthMethod(provider), modelSelection: createProviderModelSelectionReceipt(invocation.modelPolicy, { providerReportedModel: measured.model }) });
       throw error;
     }
   }
   if (provider === "claude") {
+    const invocation = buildClaudeCliInvocation({
+      prompt: ITERATION_PROMPT,
+      schema: await readJson(schemaPath),
+      maxTurns: 5,
+      tools: [],
+      purpose: "game-iteration",
+      maxBudgetUsd: process.env.LOOPLAB_CLAUDE_MAX_BUDGET_USD,
+    });
     try {
-      const schema = await readJson(schemaPath);
-      const result = await runProcess("claude", buildClaudeCliArgs({
-        prompt: ITERATION_PROMPT,
-        schema,
-        maxTurns: 5,
-        tools: [],
-        model: process.env.LOOPLAB_CLAUDE_MODEL,
-        effort: process.env.LOOPLAB_CLAUDE_EFFORT,
-        maxBudgetUsd: process.env.LOOPLAB_CLAUDE_MAX_BUDGET_USD,
-      }), input, cwd, undefined, (line) => {
+      const result = await runProcess("claude", invocation.args, input, cwd, undefined, (line) => {
         const activity = claudeActivityFromJsonLine(line);
         if (activity) onProviderActivity?.(activity);
       });
       const structured = requireClaudeCliStructuredResult(result.stdout);
       const measured = usageFromCliOutput(result.stdout, result.stderr);
-      const model = structured.model ?? measured.model ?? process.env.LOOPLAB_CLAUDE_MODEL ?? "claude-code-cli";
+      const model = structured.model ?? measured.model ?? invocation.modelPolicy.model;
       return {
         proposal: structured.structuredOutput,
-        receipt: createUsageReceipt({ provider, model, usage: structured.usage ?? measured.usage, source: "claude-code-cli-stream-json", providerReportedUsd: structured.providerReportedUsd, authMethod: providerAuthMethod(provider) }),
+        receipt: createUsageReceipt({ provider, model, usage: structured.usage ?? measured.usage, source: "claude-code-cli-stream-json", providerReportedUsd: structured.providerReportedUsd, authMethod: providerAuthMethod(provider), modelSelection: createProviderModelSelectionReceipt(invocation.modelPolicy, { providerReportedModel: structured.model ?? measured.model }) }),
       };
     } catch (error) {
       const telemetry = error?.claudeTelemetry ?? inspectClaudeCliOutput(error?.processResult?.stdout);
       const measured = usageFromCliOutput(error?.processResult?.stdout, error?.processResult?.stderr);
-      const model = telemetry.model ?? measured.model ?? process.env.LOOPLAB_CLAUDE_MODEL ?? "claude-code-cli";
+      const model = telemetry.model ?? measured.model ?? invocation.modelPolicy.model;
       if (error && typeof error === "object") {
-        error.usageReceipt = createUsageReceipt({ provider, model, usage: telemetry.usage ?? measured.usage, source: "claude-code-cli-stream-json", providerReportedUsd: telemetry.providerReportedUsd, authMethod: providerAuthMethod(provider) });
+        error.usageReceipt = createUsageReceipt({ provider, model, usage: telemetry.usage ?? measured.usage, source: "claude-code-cli-stream-json", providerReportedUsd: telemetry.providerReportedUsd, authMethod: providerAuthMethod(provider), modelSelection: createProviderModelSelectionReceipt(invocation.modelPolicy, { providerReportedModel: telemetry.model ?? measured.model }) });
       }
       throw error;
     }

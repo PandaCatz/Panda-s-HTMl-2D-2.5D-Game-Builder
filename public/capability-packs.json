@@ -1,0 +1,1439 @@
+{
+  "schemaVersion": "looplab-capability-pack-registry/v1",
+  "revision": 1,
+  "packCount": 6,
+  "capabilityCount": 28,
+  "packs": [
+    {
+      "schemaVersion": "looplab-capability-pack/v1",
+      "id": "architecture-delivery",
+      "revision": 1,
+      "label": "Architecture & one-file delivery",
+      "scope": "Renderer-independent architecture and the self-contained HTML upload contract.",
+      "categories": [
+        "architecture",
+        "packaging",
+        "offline"
+      ],
+      "capabilities": [
+        {
+          "id": "web-game-foundations",
+          "label": "Architecture",
+          "owns": [
+            "simulation-boundary",
+            "input-model",
+            "asset-manifest",
+            "save-debug-performance-strategy"
+          ],
+          "specialistOwnerIds": [
+            "technical-architect",
+            "release-engineer"
+          ],
+          "chooseWhen": [
+            "starting or restructuring any game",
+            "defining simulation/render/input/save boundaries"
+          ],
+          "avoidWhen": [
+            "never skip it because a renderer already supplies a scene graph"
+          ],
+          "guidance": "Keep serializable authored state and fixed-tick simulation independent from every renderer, DOM overlay, effect, and wall clock.",
+          "sourceCapabilityDigest": "sha256:14bbeb45748ffdc970091abbe2ddfac6d3f53ea2bf9ffa510bb0084aeec8e152"
+        },
+        {
+          "id": "single-file-html-games",
+          "label": "One-file HTML",
+          "owns": [
+            "single-html-artifact",
+            "inline-runtime",
+            "offline-assets",
+            "encoded-and-decoded-budgets",
+            "artifact-preflight"
+          ],
+          "specialistOwnerIds": [
+            "technical-architect",
+            "release-engineer"
+          ],
+          "chooseWhen": [
+            "the deliverable is one offline HTML file",
+            "evaluating encoded and decoded package cost"
+          ],
+          "avoidWhen": [
+            "do not leave CDN, module, runtime fetch, or storage dependencies"
+          ],
+          "guidance": "Inline the selected runtime and assets, audit the exact emitted HTML, and measure encoded bytes separately from decoded memory.",
+          "sourceCapabilityDigest": "sha256:46348aef909588c7d62291c56b5688ef38563f54d8a8efbd62c0dededb04b29b"
+        }
+      ],
+      "specialistOwners": [
+        {
+          "id": "technical-architect",
+          "label": "Technical Architect",
+          "owns": [
+            "simulation boundary",
+            "renderer choice",
+            "input model",
+            "data ownership"
+          ]
+        },
+        {
+          "id": "release-engineer",
+          "label": "Performance & One-File Engineer",
+          "owns": [
+            "frame budget",
+            "culling",
+            "asset memory",
+            "inline engine",
+            "offline HTML"
+          ]
+        }
+      ],
+      "decisionRules": [
+        "Establish simulation, render, input, asset, save, and evidence ownership before selecting a renderer.",
+        "A framework is eligible for a one-file game only when its exact browser bytes and every asset can be inlined and audited."
+      ],
+      "calibrationCaseIds": [
+        "phaser-runtime-route",
+        "dimetric-map-route",
+        "pixel-assets-route",
+        "one-file-release-route"
+      ],
+      "policy": {
+        "orientationOnly": true,
+        "executable": false,
+        "autoDownload": false,
+        "projectMutation": false,
+        "collisionAuthority": false,
+        "evidenceAuthority": false,
+        "creativeWinnerAuthority": false,
+        "refreshMode": "inspect-only",
+        "routerAuthority": "lib/looplab-capability-router.mjs",
+        "rule": "Capability packs provide bounded decision knowledge. The canonical router, authored project, Project Doctor, replay, browser evidence, and explicit human or agent judgment retain their existing authority."
+      },
+      "contentDigest": "sha256:0f761bf3e9fffd4717357caa4c69cc5383865a668e1ee8aad43b3665e66b3a67",
+      "sources": [
+        {
+          "id": "architecture-delivery-native-source",
+          "uri": "looplab://capability-pack-source/architecture-delivery@1",
+          "immutableRef": "looplab-native:architecture-delivery@1",
+          "mediaType": "application/json",
+          "sha256": "0f761bf3e9fffd4717357caa4c69cc5383865a668e1ee8aad43b3665e66b3a67",
+          "licenseExpression": "NOASSERTION",
+          "licenseEvidenceUri": "https://github.com/PandaCatz/Panda-s-HTMl-2D-2.5D-Game-Builder/blob/main/lib/looplab-capability-router.mjs",
+          "rightsBoundary": "The repository currently publishes no license file. Integrity metadata must not be interpreted as permission to copy third-party material or as a commercial-use grant."
+        }
+      ],
+      "provenance": {
+        "schemaVersion": "looplab-capability-pack-provenance/v1",
+        "kind": "unsigned-local-build",
+        "builderId": "lib/looplab-capability-packs.mjs",
+        "builderSourceUri": "https://github.com/PandaCatz/Panda-s-HTMl-2D-2.5D-Game-Builder/blob/main/lib/looplab-capability-packs.mjs",
+        "sourceDigest": "sha256:0f761bf3e9fffd4717357caa4c69cc5383865a668e1ee8aad43b3665e66b3a67",
+        "reproducible": true,
+        "claimBoundary": "This deterministic local statement binds content to the checked-in builder. It does not claim signer identity, remote authenticity, or SLSA certification."
+      },
+      "digest": "sha256:2decaf6ff7c7a54eef2206bf1f4ca2ba66e02bcb8d648f555d2b66256be8c361"
+    },
+    {
+      "schemaVersion": "looplab-capability-pack/v1",
+      "id": "art-presentation",
+      "revision": 1,
+      "label": "Sprites, animation & visual effects",
+      "scope": "Measured game-ready 2D art normalization, stable animation identity, palette control, and removable effects.",
+      "categories": [
+        "art",
+        "sprites",
+        "animation",
+        "palette",
+        "effects"
+      ],
+      "capabilities": [
+        {
+          "id": "sprite-pipeline",
+          "label": "Sprite Pipeline",
+          "owns": [
+            "full-strip-generation",
+            "identity-lock",
+            "shared-scale",
+            "ground-anchor",
+            "frame-analysis"
+          ],
+          "specialistOwnerIds": [
+            "art-director",
+            "gameplay-engineer",
+            "release-engineer"
+          ],
+          "chooseWhen": [
+            "generated or imported characters, props, effects, or tile strips require game-ready normalization"
+          ],
+          "avoidWhen": [
+            "unmeasured frames are attached directly to a project"
+          ],
+          "guidance": "Split, analyze, matte-clean, shared-scale normalize, ground-anchor, palette-lock when requested, pack, and provenance-stamp before attachment.",
+          "sourceCapabilityDigest": "sha256:bb3bd57e0488214f985f0339eed4091300861aa931f85367933a39c64553d4ec"
+        },
+        {
+          "id": "animation-state-editor",
+          "label": "Animation State Editor",
+          "owns": [
+            "frame-slicing",
+            "feet-and-action-anchors",
+            "animation-definitions",
+            "state-transitions",
+            "interruptibility",
+            "presentation-only-frame-events"
+          ],
+          "specialistOwnerIds": [
+            "art-director",
+            "gameplay-engineer",
+            "release-engineer"
+          ],
+          "chooseWhen": [
+            "sprite frames must become interruptible gameplay-facing animation states"
+          ],
+          "avoidWhen": [
+            "frame timing or event placement changes simulation truth implicitly"
+          ],
+          "guidance": "Author frame slicing, anchors, rates, transitions, and presentation-only frame events with stable state IDs.",
+          "sourceCapabilityDigest": "sha256:973389aaa65663b644dc3553c35886adfe9188e0f195ff5e85c4a2d06fc1040f"
+        },
+        {
+          "id": "pixel-art-palette-pipeline",
+          "label": "Palette Pipeline",
+          "owns": [
+            "one-palette-across-frames",
+            "deterministic-quantization",
+            "alpha-weighted-resample",
+            "on-palette-gate",
+            "flicker-report",
+            "gameplay-color-protection"
+          ],
+          "specialistOwnerIds": [
+            "art-director",
+            "gameplay-engineer",
+            "release-engineer"
+          ],
+          "chooseWhen": [
+            "pixel art must remain stable across frames, tiles, scales, and generated sources"
+          ],
+          "avoidWhen": [
+            "each frame is independently quantized or downscaled without alpha-aware filtering"
+          ],
+          "guidance": "Use one approved palette, deterministic quantization, alpha-weighted resampling, and explicit flicker/on-palette gates.",
+          "sourceCapabilityDigest": "sha256:d2d8ff2837766d81c4239b466a626ac9b54ace482d5b07ea4b3fc91082930dbe"
+        },
+        {
+          "id": "effects-plugin-system",
+          "label": "Effects Plugins",
+          "owns": [
+            "afterimage-history",
+            "parallax-planes",
+            "effect-parameters",
+            "sidecar-requirements",
+            "reduced-motion-presets",
+            "simulation-independence"
+          ],
+          "specialistOwnerIds": [
+            "art-director",
+            "gameplay-engineer",
+            "release-engineer"
+          ],
+          "chooseWhen": [
+            "afterimages, parallax, filters, trails, reflections, or grading should be reusable"
+          ],
+          "avoidWhen": [
+            "an effect becomes required simulation state or ignores reduced motion"
+          ],
+          "guidance": "Keep effects parameterized, renderer-side, removable, budgeted, and paired with reduced-motion behavior.",
+          "sourceCapabilityDigest": "sha256:00f2ef8166450f2b871b5994d6cf7f8c7a2f0ac1865aa29a1af6bf788dc6b2a4"
+        }
+      ],
+      "specialistOwners": [
+        {
+          "id": "art-director",
+          "label": "Art Director",
+          "owns": [
+            "tiles",
+            "sprites",
+            "palette",
+            "animation identity",
+            "visual hierarchy"
+          ]
+        },
+        {
+          "id": "gameplay-engineer",
+          "label": "Gameplay Engineer",
+          "owns": [
+            "movement",
+            "interactions",
+            "physics",
+            "game feel",
+            "determinism"
+          ]
+        },
+        {
+          "id": "release-engineer",
+          "label": "Performance & One-File Engineer",
+          "owns": [
+            "frame budget",
+            "culling",
+            "asset memory",
+            "inline engine",
+            "offline HTML"
+          ]
+        }
+      ],
+      "decisionRules": [
+        "Generated art remains source material until frame analysis, anchor/scale normalization, palette handling, packing, and provenance succeed.",
+        "Art and effects never create collision or deterministic gameplay state."
+      ],
+      "calibrationCaseIds": [
+        "pixel-assets-route"
+      ],
+      "policy": {
+        "orientationOnly": true,
+        "executable": false,
+        "autoDownload": false,
+        "projectMutation": false,
+        "collisionAuthority": false,
+        "evidenceAuthority": false,
+        "creativeWinnerAuthority": false,
+        "refreshMode": "inspect-only",
+        "routerAuthority": "lib/looplab-capability-router.mjs",
+        "rule": "Capability packs provide bounded decision knowledge. The canonical router, authored project, Project Doctor, replay, browser evidence, and explicit human or agent judgment retain their existing authority."
+      },
+      "contentDigest": "sha256:172e9eead04ee7966bd3906dc51781443c70e445074b21d65bc01ce6ef058813",
+      "sources": [
+        {
+          "id": "art-presentation-native-source",
+          "uri": "looplab://capability-pack-source/art-presentation@1",
+          "immutableRef": "looplab-native:art-presentation@1",
+          "mediaType": "application/json",
+          "sha256": "172e9eead04ee7966bd3906dc51781443c70e445074b21d65bc01ce6ef058813",
+          "licenseExpression": "NOASSERTION",
+          "licenseEvidenceUri": "https://github.com/PandaCatz/Panda-s-HTMl-2D-2.5D-Game-Builder/blob/main/lib/looplab-capability-router.mjs",
+          "rightsBoundary": "The repository currently publishes no license file. Integrity metadata must not be interpreted as permission to copy third-party material or as a commercial-use grant."
+        }
+      ],
+      "provenance": {
+        "schemaVersion": "looplab-capability-pack-provenance/v1",
+        "kind": "unsigned-local-build",
+        "builderId": "lib/looplab-capability-packs.mjs",
+        "builderSourceUri": "https://github.com/PandaCatz/Panda-s-HTMl-2D-2.5D-Game-Builder/blob/main/lib/looplab-capability-packs.mjs",
+        "sourceDigest": "sha256:172e9eead04ee7966bd3906dc51781443c70e445074b21d65bc01ce6ef058813",
+        "reproducible": true,
+        "claimBoundary": "This deterministic local statement binds content to the checked-in builder. It does not claim signer identity, remote authenticity, or SLSA certification."
+      },
+      "digest": "sha256:3db0596ecc0d31963fdcf73b6c1340d13c5af52a8dc83de0f9a0d38680ed6efb"
+    },
+    {
+      "schemaVersion": "looplab-capability-pack/v1",
+      "id": "experience-content",
+      "revision": 1,
+      "label": "Narrative, audio & interface",
+      "scope": "Player-facing story, sound, HUD, menus, overlays, accessibility, and playfield protection.",
+      "categories": [
+        "narrative",
+        "audio",
+        "ui",
+        "accessibility"
+      ],
+      "capabilities": [
+        {
+          "id": "narrative-design",
+          "label": "Narrative Design & Writing",
+          "owns": [
+            "story-structure",
+            "character-continuity",
+            "dialogue-and-barks",
+            "quests-and-lore",
+            "environmental-storytelling",
+            "ending-payoff",
+            "narrative-state-bindings"
+          ],
+          "specialistOwnerIds": [
+            "narrative-designer",
+            "narrator-dialogue-writer",
+            "audio-designer",
+            "ui-accessibility-designer"
+          ],
+          "chooseWhen": [
+            "the authored brief materially includes story, character, dialogue, quest, lore, choices, or endings"
+          ],
+          "avoidWhen": [
+            "mandatory story is added to a mechanics-first brief",
+            "prose is treated as implemented gameplay"
+          ],
+          "guidance": "Bind beats, lines, choices, and endings to stable gameplay/map/state IDs and provide readable equivalents for spoken information.",
+          "sourceCapabilityDigest": "sha256:658918b8bccca3a0e160414efd381313718f60039d74121968fdc36968549744"
+        },
+        {
+          "id": "procedural-web-audio",
+          "label": "Procedural Web Audio",
+          "owns": [
+            "gesture-unlock",
+            "click-free-envelopes",
+            "voice-cap",
+            "master-limiter",
+            "pause-and-mute",
+            "simulation-owned-beat-grid"
+          ],
+          "specialistOwnerIds": [
+            "narrative-designer",
+            "narrator-dialogue-writer",
+            "audio-designer",
+            "ui-accessibility-designer"
+          ],
+          "chooseWhen": [
+            "a self-contained build needs compact sound or music systems"
+          ],
+          "avoidWhen": [
+            "audio starts before user gesture or clicks through unsafe envelopes"
+          ],
+          "guidance": "Unlock on gesture, cap voices, use click-free envelopes and a master limiter, and keep beat timing simulation-owned when gameplay depends on it.",
+          "sourceCapabilityDigest": "sha256:95c0dfcbf9b410778b8e89120591a8771c67d75368c3ca209dd7b2b4dd1e8f36"
+        },
+        {
+          "id": "game-ui-frontend",
+          "label": "Game UI",
+          "owns": [
+            "hud",
+            "menus",
+            "overlays",
+            "responsive-layout",
+            "playfield-protection",
+            "accessibility"
+          ],
+          "specialistOwnerIds": [
+            "narrative-designer",
+            "narrator-dialogue-writer",
+            "audio-designer",
+            "ui-accessibility-designer"
+          ],
+          "chooseWhen": [
+            "HUD, menus, overlays, onboarding, settings, or accessibility surfaces are required"
+          ],
+          "avoidWhen": [
+            "persistent UI obscures the playfield or modal UI leaks gameplay input"
+          ],
+          "guidance": "Prefer responsive semantic DOM overlays, protect the center/lower playfield, and gate controls while overlays are active.",
+          "sourceCapabilityDigest": "sha256:9e76c5ea8d7a1c0128814a725cd8443fc13dce149ad12e1116f751c3dc326967"
+        }
+      ],
+      "specialistOwners": [
+        {
+          "id": "narrative-designer",
+          "label": "Narrative Designer",
+          "owns": [
+            "story structure",
+            "branching causality",
+            "character continuity",
+            "quests and lore",
+            "environmental storytelling",
+            "ending payoff"
+          ]
+        },
+        {
+          "id": "narrator-dialogue-writer",
+          "label": "Narrator & Dialogue Writer",
+          "owns": [
+            "narrator voice",
+            "dialogue",
+            "barks",
+            "tutorial copy",
+            "line continuity",
+            "readable text equivalents"
+          ]
+        },
+        {
+          "id": "audio-designer",
+          "label": "Audio Designer",
+          "owns": [
+            "sound cues",
+            "music system",
+            "mix budget",
+            "gesture unlock"
+          ]
+        },
+        {
+          "id": "ui-accessibility-designer",
+          "label": "UI & Accessibility Designer",
+          "owns": [
+            "HUD",
+            "menus",
+            "touch controls",
+            "safe areas",
+            "readability"
+          ]
+        }
+      ],
+      "decisionRules": [
+        "Route narrative only when authored intent materially asks for it, then bind required information to stable runtime state.",
+        "Keep essential information readable without audio and keep modal UI from leaking gameplay input."
+      ],
+      "calibrationCaseIds": [
+        "one-file-release-route"
+      ],
+      "policy": {
+        "orientationOnly": true,
+        "executable": false,
+        "autoDownload": false,
+        "projectMutation": false,
+        "collisionAuthority": false,
+        "evidenceAuthority": false,
+        "creativeWinnerAuthority": false,
+        "refreshMode": "inspect-only",
+        "routerAuthority": "lib/looplab-capability-router.mjs",
+        "rule": "Capability packs provide bounded decision knowledge. The canonical router, authored project, Project Doctor, replay, browser evidence, and explicit human or agent judgment retain their existing authority."
+      },
+      "contentDigest": "sha256:7bfb9d2572bee97d3cbde8a5530f7b9e8bb66709962f0b42e9f4f7ad336d8e09",
+      "sources": [
+        {
+          "id": "experience-content-native-source",
+          "uri": "looplab://capability-pack-source/experience-content@1",
+          "immutableRef": "looplab-native:experience-content@1",
+          "mediaType": "application/json",
+          "sha256": "7bfb9d2572bee97d3cbde8a5530f7b9e8bb66709962f0b42e9f4f7ad336d8e09",
+          "licenseExpression": "NOASSERTION",
+          "licenseEvidenceUri": "https://github.com/PandaCatz/Panda-s-HTMl-2D-2.5D-Game-Builder/blob/main/lib/looplab-capability-router.mjs",
+          "rightsBoundary": "The repository currently publishes no license file. Integrity metadata must not be interpreted as permission to copy third-party material or as a commercial-use grant."
+        }
+      ],
+      "provenance": {
+        "schemaVersion": "looplab-capability-pack-provenance/v1",
+        "kind": "unsigned-local-build",
+        "builderId": "lib/looplab-capability-packs.mjs",
+        "builderSourceUri": "https://github.com/PandaCatz/Panda-s-HTMl-2D-2.5D-Game-Builder/blob/main/lib/looplab-capability-packs.mjs",
+        "sourceDigest": "sha256:7bfb9d2572bee97d3cbde8a5530f7b9e8bb66709962f0b42e9f4f7ad336d8e09",
+        "reproducible": true,
+        "claimBoundary": "This deterministic local statement binds content to the checked-in builder. It does not claim signer identity, remote authenticity, or SLSA certification."
+      },
+      "digest": "sha256:c685eb4137d55bc1db1ede08f026166955b8303bf9facea5b95bf1b2ae415b32"
+    },
+    {
+      "schemaVersion": "looplab-capability-pack/v1",
+      "id": "runtime-renderers",
+      "revision": 1,
+      "label": "2D runtimes & renderers",
+      "scope": "Canvas, Phaser, PixiJS, and melonJS decision knowledge with one primary frame owner.",
+      "categories": [
+        "runtime",
+        "rendering",
+        "performance"
+      ],
+      "capabilities": [
+        {
+          "id": "phaser-core",
+          "label": "Phaser Core · inline script",
+          "owns": [
+            "phaser-config",
+            "scene-lifecycle",
+            "asset-loader",
+            "camera",
+            "scene-transitions",
+            "inline-script-delivery"
+          ],
+          "specialistOwnerIds": [
+            "technical-architect",
+            "gameplay-engineer",
+            "release-engineer"
+          ],
+          "chooseWhen": [
+            "scene lifecycle, cameras, loading, or scene transitions materially reduce custom orchestration"
+          ],
+          "avoidWhen": [
+            "a lean custom renderer is sufficient",
+            "Phaser would become gameplay truth"
+          ],
+          "guidance": "Use the pinned browser script-tag bundle in one-file builds; Phaser scenes remain thin adapters over LoopLab simulation.",
+          "sourceCapabilityDigest": "sha256:545c309318c57d83c0557fd99601f542e1d4416b30b4684e87c35c7297462a5e"
+        },
+        {
+          "id": "phaser-2d-game",
+          "label": "Phaser 2D",
+          "owns": [
+            "2d-scenes",
+            "camera",
+            "sprite-playback",
+            "thin-render-adapter",
+            "phaser-export"
+          ],
+          "specialistOwnerIds": [
+            "technical-architect",
+            "gameplay-engineer",
+            "release-engineer"
+          ],
+          "chooseWhen": [
+            "a larger 2D game benefits from scenes, animation managers, cameras, tilemaps, or debug tooling"
+          ],
+          "avoidWhen": [
+            "engine migration is not explicitly approved for an existing project"
+          ],
+          "guidance": "Let Phaser organize presentation and lifecycle while stable authored IDs, collision, replay, and semantic input stay renderer-independent.",
+          "sourceCapabilityDigest": "sha256:624325dbf62b29df28a0cae6d21c84e9090648abbaef91889b349b9a32072750"
+        },
+        {
+          "id": "phaser-arcade-physics",
+          "label": "Phaser Arcade Physics",
+          "owns": [
+            "arcade-bodies",
+            "velocity-and-gravity",
+            "colliders-and-overlaps",
+            "world-bounds",
+            "physics-debug"
+          ],
+          "specialistOwnerIds": [
+            "technical-architect",
+            "gameplay-engineer",
+            "release-engineer"
+          ],
+          "chooseWhen": [
+            "Arcade bodies, gravity, overlaps, and debug views accelerate a compatible 2D mechanic"
+          ],
+          "avoidWhen": [
+            "generated or engine geometry would replace authored collision",
+            "the game needs unsupported general rigid-body physics"
+          ],
+          "guidance": "Treat Arcade Physics as an adapter and diagnostic aid; reconcile every body with authored collision and deterministic acceptance evidence.",
+          "sourceCapabilityDigest": "sha256:5f0a3eb571888c3d4be4d428e74f5af986c505add13f4635b693910c4305b308"
+        },
+        {
+          "id": "pixijs-rendering",
+          "label": "PixiJS Rendering · strict-CSP inline UMD",
+          "owns": [
+            "scene-graph-patterns",
+            "texture-lifecycle",
+            "render-groups",
+            "ticker-ownership",
+            "pointer-event-patterns",
+            "inline-umd-delivery",
+            "strict-csp-static-sync-polyfills"
+          ],
+          "specialistOwnerIds": [
+            "technical-architect",
+            "gameplay-engineer",
+            "release-engineer"
+          ],
+          "chooseWhen": [
+            "sprite count, batching, filters, compositing, or scene-graph control dominate"
+          ],
+          "avoidWhen": [
+            "the project expects Pixi to supply gameplay, collision, scenes, or progression"
+          ],
+          "guidance": "Use the pinned browser UMD/IIFE path and one visible ticker; LoopLab continues to own gameplay and evidence.",
+          "sourceCapabilityDigest": "sha256:a74ebc1101744bf9c3d8ae6dd4c8e132239764029d3e818c2ff1d6c832564a3f"
+        },
+        {
+          "id": "melonjs-engine",
+          "label": "melonJS Engine · inline IIFE",
+          "owns": [
+            "application-and-stage-patterns",
+            "tiled-import-validation",
+            "pool-lifecycle",
+            "sparse-tile-layers",
+            "collision-debug-patterns",
+            "tree-shaken-inline-delivery"
+          ],
+          "specialistOwnerIds": [
+            "technical-architect",
+            "gameplay-engineer",
+            "release-engineer"
+          ],
+          "chooseWhen": [
+            "Tiled/TMX authoring, level loading, pooling, or integrated stage conventions provide a concrete benefit"
+          ],
+          "avoidWhen": [
+            "imported visual tile geometry would become collision truth"
+          ],
+          "guidance": "Use the pinned tree-shaken inline IIFE and validate imported Tiled data before mapping it to separate authored gameplay layers.",
+          "sourceCapabilityDigest": "sha256:c0416bff689f889a7a72ce050fded5a54069cff9236c2631f4b558cf0f6b41a5"
+        },
+        {
+          "id": "canvas-2d-performance",
+          "label": "Canvas Performance",
+          "owns": [
+            "fixed-backbuffer",
+            "capped-dpr",
+            "atlas-seams",
+            "render-state-budget",
+            "culling",
+            "p95-frame-time"
+          ],
+          "specialistOwnerIds": [
+            "technical-architect",
+            "gameplay-engineer",
+            "release-engineer"
+          ],
+          "chooseWhen": [
+            "using Canvas directly or sharing renderer-neutral frame-budget rules"
+          ],
+          "avoidWhen": [
+            "uncapped DPR, multiple frame owners, or per-frame allocation is left unmeasured"
+          ],
+          "guidance": "Use a fixed logical backbuffer, capped DPR, stable draw order, culling, prerendering, and measured p95 frame cost.",
+          "sourceCapabilityDigest": "sha256:096aa10e29aed8e17457a145428c478663ef1a06ff032a7e0f914cb14d66d9dc"
+        }
+      ],
+      "specialistOwners": [
+        {
+          "id": "technical-architect",
+          "label": "Technical Architect",
+          "owns": [
+            "simulation boundary",
+            "renderer choice",
+            "input model",
+            "data ownership"
+          ]
+        },
+        {
+          "id": "gameplay-engineer",
+          "label": "Gameplay Engineer",
+          "owns": [
+            "movement",
+            "interactions",
+            "physics",
+            "game feel",
+            "determinism"
+          ]
+        },
+        {
+          "id": "release-engineer",
+          "label": "Performance & One-File Engineer",
+          "owns": [
+            "frame budget",
+            "culling",
+            "asset memory",
+            "inline engine",
+            "offline HTML"
+          ]
+        }
+      ],
+      "decisionRules": [
+        "Choose the smallest release-ready adapter that provides a concrete quality or tooling benefit for the brief.",
+        "Compose renderer capabilities, not competing engines: exactly one runtime owns visible frames while LoopLab services remain shared.",
+        "Do not migrate an existing game's runtime without explicit opt-in and equivalent release evidence."
+      ],
+      "calibrationCaseIds": [
+        "phaser-runtime-route",
+        "dimetric-map-route",
+        "pixel-assets-route",
+        "one-file-release-route"
+      ],
+      "policy": {
+        "orientationOnly": true,
+        "executable": false,
+        "autoDownload": false,
+        "projectMutation": false,
+        "collisionAuthority": false,
+        "evidenceAuthority": false,
+        "creativeWinnerAuthority": false,
+        "refreshMode": "inspect-only",
+        "routerAuthority": "lib/looplab-capability-router.mjs",
+        "rule": "Capability packs provide bounded decision knowledge. The canonical router, authored project, Project Doctor, replay, browser evidence, and explicit human or agent judgment retain their existing authority."
+      },
+      "contentDigest": "sha256:f41d3510c39e712852ef063b4ea30fe6f6cfb4b3776f259e02b1bd80a468696a",
+      "sources": [
+        {
+          "id": "runtime-renderers-native-source",
+          "uri": "looplab://capability-pack-source/runtime-renderers@1",
+          "immutableRef": "looplab-native:runtime-renderers@1",
+          "mediaType": "application/json",
+          "sha256": "f41d3510c39e712852ef063b4ea30fe6f6cfb4b3776f259e02b1bd80a468696a",
+          "licenseExpression": "NOASSERTION",
+          "licenseEvidenceUri": "https://github.com/PandaCatz/Panda-s-HTMl-2D-2.5D-Game-Builder/blob/main/lib/looplab-capability-router.mjs",
+          "rightsBoundary": "The repository currently publishes no license file. Integrity metadata must not be interpreted as permission to copy third-party material or as a commercial-use grant."
+        }
+      ],
+      "provenance": {
+        "schemaVersion": "looplab-capability-pack-provenance/v1",
+        "kind": "unsigned-local-build",
+        "builderId": "lib/looplab-capability-packs.mjs",
+        "builderSourceUri": "https://github.com/PandaCatz/Panda-s-HTMl-2D-2.5D-Game-Builder/blob/main/lib/looplab-capability-packs.mjs",
+        "sourceDigest": "sha256:f41d3510c39e712852ef063b4ea30fe6f6cfb4b3776f259e02b1bd80a468696a",
+        "reproducible": true,
+        "claimBoundary": "This deterministic local statement binds content to the checked-in builder. It does not claim signer identity, remote authenticity, or SLSA certification."
+      },
+      "digest": "sha256:51218f322f746293952bba5619c0991acdbc20390efed2bd7f109db9c947bcfd"
+    },
+    {
+      "schemaVersion": "looplab-capability-pack/v1",
+      "id": "spatial-gameplay",
+      "revision": 1,
+      "label": "Spatial gameplay & control",
+      "scope": "Authored collision, traversal, elevation, camera, input, feel, actors, and connected-world behavior.",
+      "categories": [
+        "gameplay",
+        "collision",
+        "maps",
+        "input",
+        "dimetric"
+      ],
+      "capabilities": [
+        {
+          "id": "collision-and-response-2d",
+          "label": "Collision & Response",
+          "owns": [
+            "authored-collision",
+            "polyline-chains",
+            "right-hand-normals",
+            "slope-grounding",
+            "grounded-snap",
+            "bounded-step-up",
+            "axis-separated-resolution",
+            "half-open-endpoints",
+            "substeps",
+            "one-way-platforms",
+            "z-gated-routes",
+            "deterministic-order"
+          ],
+          "specialistOwnerIds": [
+            "gameplay-engineer",
+            "actor-systems-designer",
+            "level-collision-architect"
+          ],
+          "chooseWhen": [
+            "any object contacts floors, walls, slopes, supports, or one-way surfaces"
+          ],
+          "avoidWhen": [
+            "inferring gameplay geometry from pixels or sprite bounds"
+          ],
+          "guidance": "Author collision separately, use deterministic stable ordering and explicit support/z contracts, then verify response rather than appearance.",
+          "sourceCapabilityDigest": "sha256:d8a1854b1b184450430c8bc5e19ef9d127cb55b2153d78532a59a1d35ebaf7ee"
+        },
+        {
+          "id": "high-speed-sweep-2d",
+          "label": "Swept Collision",
+          "owns": [
+            "swept-aabb",
+            "thin-obstacle-tunneling",
+            "one-way-surfaces",
+            "slope-and-segment-tests",
+            "swept-preview"
+          ],
+          "specialistOwnerIds": [
+            "gameplay-engineer",
+            "actor-systems-designer",
+            "level-collision-architect"
+          ],
+          "chooseWhen": [
+            "fast bodies may cross thin geometry between fixed ticks"
+          ],
+          "avoidWhen": [
+            "substeps alone are assumed to prove tunneling cannot occur"
+          ],
+          "guidance": "Sweep the authored body against eligible segments and surfaces, resolve earliest time of impact with stable ties, and expose a preview receipt.",
+          "sourceCapabilityDigest": "sha256:6906f65a15a13e8922933ed2b879b44c01de2136cd441d2cf2b00517bacb01c9"
+        },
+        {
+          "id": "rail-path-authoring",
+          "label": "Rail & Path Authoring",
+          "owns": [
+            "authored-control-points",
+            "entry-radius",
+            "minimum-entry-speed",
+            "direction-rules",
+            "transfers",
+            "exit-impulse",
+            "bail-behavior"
+          ],
+          "specialistOwnerIds": [
+            "gameplay-engineer",
+            "actor-systems-designer",
+            "level-collision-architect"
+          ],
+          "chooseWhen": [
+            "gameplay follows rails, grinds, ziplines, splines, or authored transfer paths"
+          ],
+          "avoidWhen": [
+            "artwork or proximity implicitly captures the player"
+          ],
+          "guidance": "Use stable authored control points, explicit entry/speed/direction/exit/bail rules, and a fresh interaction input.",
+          "sourceCapabilityDigest": "sha256:017e61b7bb22c743c39566f0a43ba574d5c67f71577ca5097be68b70a67f0e71"
+        },
+        {
+          "id": "isometric-depth-sorting",
+          "label": "Isometric Depth",
+          "owns": [
+            "2-to-1-projection",
+            "screen-space-facing",
+            "raised-surface-slices",
+            "composite-depth-key",
+            "rail-midpoint-sort",
+            "high-route-underpass"
+          ],
+          "specialistOwnerIds": [
+            "gameplay-engineer",
+            "actor-systems-designer",
+            "level-collision-architect"
+          ],
+          "chooseWhen": [
+            "2:1 dimetric/isometric maps contain elevation, underpasses, or foreground occlusion"
+          ],
+          "avoidWhen": [
+            "screen position is treated as sufficient world or collision identity"
+          ],
+          "guidance": "Keep reversible world x/y/z projection, support height, collision z ranges, and visual depth slices as separate contracts.",
+          "sourceCapabilityDigest": "sha256:c9ec9ec9eaab05ac36cc78362b6f23b5dda0601587e70527557e5c5fd97686c3"
+        },
+        {
+          "id": "input-and-mobile-viewport",
+          "label": "Input & Mobile",
+          "owns": [
+            "event-to-tick-snapshots",
+            "key-and-code",
+            "pointer-capture",
+            "focus-release",
+            "visual-viewport",
+            "safe-areas",
+            "gamepad"
+          ],
+          "specialistOwnerIds": [
+            "gameplay-engineer",
+            "actor-systems-designer",
+            "level-collision-architect"
+          ],
+          "chooseWhen": [
+            "keyboard, pointer, gamepad, focus lifecycle, touch, or responsive viewport behavior matters"
+          ],
+          "avoidWhen": [
+            "desktop builds display touch controls without a touch-capable profile"
+          ],
+          "guidance": "Convert devices to semantic per-tick action snapshots and clear held state on every focus, visibility, and pointer-cancel boundary.",
+          "sourceCapabilityDigest": "sha256:84d8b6ca597ffb78f3c1f828a81e0096d846e411a2b0090ea23b3eb05600724d"
+        },
+        {
+          "id": "camera-strategy-library",
+          "label": "Camera Strategies",
+          "owns": [
+            "smooth-follow",
+            "velocity-lead",
+            "room-camera",
+            "dead-zones",
+            "look-ahead",
+            "cue-zones",
+            "reduced-motion-camera"
+          ],
+          "specialistOwnerIds": [
+            "gameplay-engineer",
+            "actor-systems-designer",
+            "level-collision-architect"
+          ],
+          "chooseWhen": [
+            "camera framing materially affects anticipation, navigation, or comfort"
+          ],
+          "avoidWhen": [
+            "camera motion hides required cues or ignores reduced-motion settings"
+          ],
+          "guidance": "Select an explicit camera strategy with dead zones, look-ahead, cue zones, and bounded motion rather than ad hoc following.",
+          "sourceCapabilityDigest": "sha256:50721ab314d72e4c37baeb6fa9fdd6a4ca019b4b0af2ec14f8d0fb2c4c4d9915"
+        },
+        {
+          "id": "game-feel-and-juice",
+          "label": "Game Feel",
+          "owns": [
+            "coyote-time",
+            "input-buffering",
+            "variable-action-shape",
+            "presentation-events",
+            "hitstop",
+            "camera-trauma",
+            "particle-pools"
+          ],
+          "specialistOwnerIds": [
+            "gameplay-engineer",
+            "actor-systems-designer",
+            "level-collision-architect"
+          ],
+          "chooseWhen": [
+            "controls are correct but stiff, delayed, unclear, or unrewarding"
+          ],
+          "avoidWhen": [
+            "presentation effects mutate deterministic gameplay state"
+          ],
+          "guidance": "Improve input forgiveness and feedback through explicit bounded contracts; keep shake, hitstop, particles, and audio presentation-only.",
+          "sourceCapabilityDigest": "sha256:4c83a5ec293db3df26619f33eb4cd20a30443e7cd56b8d4754d69ea8b1015302"
+        },
+        {
+          "id": "deterministic-actor-systems",
+          "label": "Actor Systems",
+          "owns": [
+            "patrol-and-cutscene-routes",
+            "perception-and-memory",
+            "chase-flee-return-priority",
+            "authored-navigation",
+            "actor-events",
+            "actor-replay-and-acceptance"
+          ],
+          "specialistOwnerIds": [
+            "gameplay-engineer",
+            "actor-systems-designer",
+            "level-collision-architect"
+          ],
+          "chooseWhen": [
+            "NPCs, enemies, companions, patrols, perception, chase, flee, or cutscene routes are authored"
+          ],
+          "avoidWhen": [
+            "render sprites own navigation or behavior state"
+          ],
+          "guidance": "Bind actors to authored objects/navigation and evaluate fixed-tick stable-ID behavior priority with replay and acceptance coverage.",
+          "sourceCapabilityDigest": "sha256:9036d59ccfbe7c66b9aa0ed1b28cc3c91f64c5597720a01ffb1e413ce2beddc1"
+        },
+        {
+          "id": "continuous-world-chunks",
+          "label": "Continuous World Chunks",
+          "owns": [
+            "chunk-schema",
+            "entry-exit-grammar",
+            "runtime-join-seams",
+            "embedded-prefetch",
+            "decode-and-residency-budget",
+            "closed-loop-validation"
+          ],
+          "specialistOwnerIds": [
+            "gameplay-engineer",
+            "actor-systems-designer",
+            "level-collision-architect"
+          ],
+          "chooseWhen": [
+            "large connected districts, streaming panoramas, endless routes, or closed loops need bounded residency"
+          ],
+          "avoidWhen": [
+            "copied overlap or prefetch claims are accepted without a real runtime join"
+          ],
+          "guidance": "Author entry/exit grammar and embedded chunks, then verify exact joins, draw coverage, decode timing, residency, and loop closure.",
+          "sourceCapabilityDigest": "sha256:ff6d7f8b51aafd105c568a9677210251a5a25533b885d4945db472de013a56f4"
+        }
+      ],
+      "specialistOwners": [
+        {
+          "id": "gameplay-engineer",
+          "label": "Gameplay Engineer",
+          "owns": [
+            "movement",
+            "interactions",
+            "physics",
+            "game feel",
+            "determinism"
+          ]
+        },
+        {
+          "id": "actor-systems-designer",
+          "label": "Actor Systems Designer",
+          "owns": [
+            "actor state machines",
+            "patrol and cutscene routes",
+            "perception",
+            "chase and flee",
+            "navigation evidence"
+          ]
+        },
+        {
+          "id": "level-collision-architect",
+          "label": "Level & Collision Architect",
+          "owns": [
+            "map flow",
+            "ground anchors",
+            "support heights",
+            "AABB and polyline collision",
+            "slope normals",
+            "depth",
+            "transitions"
+          ]
+        }
+      ],
+      "decisionRules": [
+        "Author gameplay geometry and state separately from visible pixels and renderer objects.",
+        "Every route, support, portal, and raised surface uses stable IDs plus explicit world-space and z/depth contracts.",
+        "Responsive feel may add forgiveness and presentation, but must not weaken deterministic collision or evidence."
+      ],
+      "calibrationCaseIds": [
+        "phaser-runtime-route",
+        "dimetric-map-route",
+        "one-file-release-route"
+      ],
+      "policy": {
+        "orientationOnly": true,
+        "executable": false,
+        "autoDownload": false,
+        "projectMutation": false,
+        "collisionAuthority": false,
+        "evidenceAuthority": false,
+        "creativeWinnerAuthority": false,
+        "refreshMode": "inspect-only",
+        "routerAuthority": "lib/looplab-capability-router.mjs",
+        "rule": "Capability packs provide bounded decision knowledge. The canonical router, authored project, Project Doctor, replay, browser evidence, and explicit human or agent judgment retain their existing authority."
+      },
+      "contentDigest": "sha256:323424ebb45254fe37e506634bd83f22be3956bf245be236e990aa3d977990cf",
+      "sources": [
+        {
+          "id": "spatial-gameplay-native-source",
+          "uri": "looplab://capability-pack-source/spatial-gameplay@1",
+          "immutableRef": "looplab-native:spatial-gameplay@1",
+          "mediaType": "application/json",
+          "sha256": "323424ebb45254fe37e506634bd83f22be3956bf245be236e990aa3d977990cf",
+          "licenseExpression": "NOASSERTION",
+          "licenseEvidenceUri": "https://github.com/PandaCatz/Panda-s-HTMl-2D-2.5D-Game-Builder/blob/main/lib/looplab-capability-router.mjs",
+          "rightsBoundary": "The repository currently publishes no license file. Integrity metadata must not be interpreted as permission to copy third-party material or as a commercial-use grant."
+        }
+      ],
+      "provenance": {
+        "schemaVersion": "looplab-capability-pack-provenance/v1",
+        "kind": "unsigned-local-build",
+        "builderId": "lib/looplab-capability-packs.mjs",
+        "builderSourceUri": "https://github.com/PandaCatz/Panda-s-HTMl-2D-2.5D-Game-Builder/blob/main/lib/looplab-capability-packs.mjs",
+        "sourceDigest": "sha256:323424ebb45254fe37e506634bd83f22be3956bf245be236e990aa3d977990cf",
+        "reproducible": true,
+        "claimBoundary": "This deterministic local statement binds content to the checked-in builder. It does not claim signer identity, remote authenticity, or SLSA certification."
+      },
+      "digest": "sha256:83ff3fb4a01567985bf392b027b650e2a8a1f225dbede4f8a70d5fd7b47296b5"
+    },
+    {
+      "schemaVersion": "looplab-capability-pack/v1",
+      "id": "verification-release",
+      "revision": 1,
+      "label": "Replay, profiling & browser QA",
+      "scope": "Deterministic regression evidence, calibrated gates, measured performance, and real browser playtests.",
+      "categories": [
+        "verification",
+        "replay",
+        "performance",
+        "playtest",
+        "release"
+      ],
+      "capabilities": [
+        {
+          "id": "deterministic-sim-replay",
+          "label": "Deterministic Replay",
+          "owns": [
+            "fixed-60hz-simulation",
+            "seeded-prng",
+            "state-digest",
+            "behavioral-replay-fixtures",
+            "headless-sim-driver",
+            "versioned-rerecord"
+          ],
+          "specialistOwnerIds": [
+            "project-doctor-critic",
+            "playtest-qa",
+            "release-engineer"
+          ],
+          "chooseWhen": [
+            "mechanics, regression fixtures, ghosts, seeds, or repeatable QA require exact simulation"
+          ],
+          "avoidWhen": [
+            "changed hashes are silently rerecorded or old versions are reinterpreted"
+          ],
+          "guidance": "Use fixed ticks, seeded randomness, semantic inputs, versioned state projections, and fail at the first divergent tick.",
+          "sourceCapabilityDigest": "sha256:07216b2830d8fda9c9eca31894870ea1b2ebb29e6ac8a827a4170417c2c5006f"
+        },
+        {
+          "id": "performance-profiler",
+          "label": "Runtime Profiler",
+          "owns": [
+            "p95-frame-time",
+            "fixed-step-count",
+            "dropped-catch-up",
+            "long-frame",
+            "decoded-and-gpu-bytes",
+            "first-draw",
+            "input-to-render-latency"
+          ],
+          "specialistOwnerIds": [
+            "project-doctor-critic",
+            "playtest-qa",
+            "release-engineer"
+          ],
+          "chooseWhen": [
+            "release decisions require measured frame, memory, startup, or input-latency evidence"
+          ],
+          "avoidWhen": [
+            "average FPS or encoded bytes alone are treated as sufficient"
+          ],
+          "guidance": "Report p95 frame cost, catch-up drops, long frames, first draw, input-to-render latency, encoded bytes, decoded bytes, and GPU estimates separately.",
+          "sourceCapabilityDigest": "sha256:936b13b6e9ac2c3d1d277ea84d2f03e0fb0c20a0a7c3eea53c071ad5ad3975cc"
+        },
+        {
+          "id": "verification-gates",
+          "label": "Verification Gates",
+          "owns": [
+            "artifact-invariants",
+            "known-good-calibration",
+            "false-positive-control",
+            "numeric-budget-reporting",
+            "generated-output-gate"
+          ],
+          "specialistOwnerIds": [
+            "project-doctor-critic",
+            "playtest-qa",
+            "release-engineer"
+          ],
+          "chooseWhen": [
+            "every implementation or release pass"
+          ],
+          "avoidWhen": [
+            "a validator is added without known-good calibration or false-positive control"
+          ],
+          "guidance": "Bind every receipt to exact source/artifact identity, calibrate the check, report numeric limits, and never turn a proxy into a quality claim.",
+          "sourceCapabilityDigest": "sha256:a3d8e1bc3692ef1b8fd1e088eec156bb39623844ec52d2d5452ab3b36b15048a"
+        },
+        {
+          "id": "game-playtest",
+          "label": "Playtest & QA · Playwright",
+          "owns": [
+            "playwright-browser-automation",
+            "browser-smoke-test",
+            "screenshot-evidence",
+            "hud-review",
+            "input-and-transition-test",
+            "responsive-qa"
+          ],
+          "specialistOwnerIds": [
+            "project-doctor-critic",
+            "playtest-qa",
+            "release-engineer"
+          ],
+          "chooseWhen": [
+            "every browser-visible change and every release candidate"
+          ],
+          "avoidWhen": [
+            "DOM state or deterministic simulation is used as a substitute for rendered browser evidence"
+          ],
+          "guidance": "Use Playwright to drive semantic inputs, transitions, overlays, and affected viewports; retain screenshots and unexpected-request evidence.",
+          "sourceCapabilityDigest": "sha256:93956a3d8355edc619389d5e3ef74fbb0594499f405dac0597a889b708cfda9b"
+        }
+      ],
+      "specialistOwners": [
+        {
+          "id": "project-doctor-critic",
+          "label": "Project Doctor Critic",
+          "owns": [
+            "regression identity",
+            "feature contracts",
+            "artifact invariants",
+            "promotion gate"
+          ]
+        },
+        {
+          "id": "playtest-qa",
+          "label": "Playtest QA",
+          "owns": [
+            "Playwright",
+            "input paths",
+            "viewports",
+            "screenshots",
+            "browser evidence"
+          ]
+        },
+        {
+          "id": "release-engineer",
+          "label": "Performance & One-File Engineer",
+          "owns": [
+            "frame budget",
+            "culling",
+            "asset memory",
+            "inline engine",
+            "offline HTML"
+          ]
+        }
+      ],
+      "decisionRules": [
+        "Technical gates prove only their measured invariants; they never prove fun, beauty, originality, or player preference.",
+        "Run deterministic checks before browser QA, and bind every receipt to the exact source or emitted artifact it measured."
+      ],
+      "calibrationCaseIds": [
+        "phaser-runtime-route",
+        "dimetric-map-route",
+        "pixel-assets-route",
+        "one-file-release-route"
+      ],
+      "policy": {
+        "orientationOnly": true,
+        "executable": false,
+        "autoDownload": false,
+        "projectMutation": false,
+        "collisionAuthority": false,
+        "evidenceAuthority": false,
+        "creativeWinnerAuthority": false,
+        "refreshMode": "inspect-only",
+        "routerAuthority": "lib/looplab-capability-router.mjs",
+        "rule": "Capability packs provide bounded decision knowledge. The canonical router, authored project, Project Doctor, replay, browser evidence, and explicit human or agent judgment retain their existing authority."
+      },
+      "contentDigest": "sha256:6f44eeec560f0aaf25acf188f8935329ce5c961ffe3cf9542d7b91dae8d93d08",
+      "sources": [
+        {
+          "id": "verification-release-native-source",
+          "uri": "looplab://capability-pack-source/verification-release@1",
+          "immutableRef": "looplab-native:verification-release@1",
+          "mediaType": "application/json",
+          "sha256": "6f44eeec560f0aaf25acf188f8935329ce5c961ffe3cf9542d7b91dae8d93d08",
+          "licenseExpression": "NOASSERTION",
+          "licenseEvidenceUri": "https://github.com/PandaCatz/Panda-s-HTMl-2D-2.5D-Game-Builder/blob/main/lib/looplab-capability-router.mjs",
+          "rightsBoundary": "The repository currently publishes no license file. Integrity metadata must not be interpreted as permission to copy third-party material or as a commercial-use grant."
+        }
+      ],
+      "provenance": {
+        "schemaVersion": "looplab-capability-pack-provenance/v1",
+        "kind": "unsigned-local-build",
+        "builderId": "lib/looplab-capability-packs.mjs",
+        "builderSourceUri": "https://github.com/PandaCatz/Panda-s-HTMl-2D-2.5D-Game-Builder/blob/main/lib/looplab-capability-packs.mjs",
+        "sourceDigest": "sha256:6f44eeec560f0aaf25acf188f8935329ce5c961ffe3cf9542d7b91dae8d93d08",
+        "reproducible": true,
+        "claimBoundary": "This deterministic local statement binds content to the checked-in builder. It does not claim signer identity, remote authenticity, or SLSA certification."
+      },
+      "digest": "sha256:861832ce91f84b219d679fc0560937884f772b857feda20486a1f62081f70291"
+    }
+  ],
+  "calibration": {
+    "schemaVersion": "looplab-capability-pack-calibration/v1",
+    "router": "lib/looplab-capability-router.mjs",
+    "caseCount": 4,
+    "passedCount": 4,
+    "valid": true,
+    "cases": [
+      {
+        "id": "phaser-runtime-route",
+        "label": "Phaser runtime and physics routing",
+        "requestDigest": "sha256:09426323f8ab7c2215d566db6fe45a5c34e7ee8eff8e52218363cd3d0c7b52fb",
+        "expectationDigest": "sha256:b7df808d240ce457ff227ca093741ff8f0f83307d8540d206122f899df33d4f0",
+        "actualDigest": "sha256:b7df808d240ce457ff227ca093741ff8f0f83307d8540d206122f899df33d4f0",
+        "expectedCapabilityIds": [
+          "web-game-foundations",
+          "single-file-html-games",
+          "phaser-core",
+          "phaser-2d-game",
+          "phaser-arcade-physics",
+          "canvas-2d-performance",
+          "collision-and-response-2d",
+          "verification-gates",
+          "game-playtest"
+        ],
+        "actualCapabilityIds": [
+          "web-game-foundations",
+          "single-file-html-games",
+          "phaser-core",
+          "phaser-2d-game",
+          "phaser-arcade-physics",
+          "canvas-2d-performance",
+          "collision-and-response-2d",
+          "verification-gates",
+          "game-playtest"
+        ],
+        "passed": true
+      },
+      {
+        "id": "dimetric-map-route",
+        "label": "Dimetric elevation and authored collision routing",
+        "requestDigest": "sha256:7b0bf11846f3ef996ba7e28a97082f28c520d343ca97e99a0080df4962dbe914",
+        "expectationDigest": "sha256:a13659f4ee0d8f7738c8f71d0833500d32a4baa94679ea834d10be93b2935b16",
+        "actualDigest": "sha256:a13659f4ee0d8f7738c8f71d0833500d32a4baa94679ea834d10be93b2935b16",
+        "expectedCapabilityIds": [
+          "web-game-foundations",
+          "single-file-html-games",
+          "canvas-2d-performance",
+          "collision-and-response-2d",
+          "high-speed-sweep-2d",
+          "rail-path-authoring",
+          "isometric-depth-sorting",
+          "camera-strategy-library",
+          "deterministic-sim-replay",
+          "verification-gates",
+          "game-playtest"
+        ],
+        "actualCapabilityIds": [
+          "web-game-foundations",
+          "single-file-html-games",
+          "canvas-2d-performance",
+          "collision-and-response-2d",
+          "high-speed-sweep-2d",
+          "rail-path-authoring",
+          "isometric-depth-sorting",
+          "camera-strategy-library",
+          "deterministic-sim-replay",
+          "verification-gates",
+          "game-playtest"
+        ],
+        "passed": true
+      },
+      {
+        "id": "pixel-assets-route",
+        "label": "Pixel sprite and palette routing",
+        "requestDigest": "sha256:47bab314496b306921f5e04cf198366565b59128d951ee2366ae7f70218cdaf2",
+        "expectationDigest": "sha256:88a0492fb170910bfaceef4a127b65c775b6a2bf056009a9bfe3223cb0a8df86",
+        "actualDigest": "sha256:88a0492fb170910bfaceef4a127b65c775b6a2bf056009a9bfe3223cb0a8df86",
+        "expectedCapabilityIds": [
+          "web-game-foundations",
+          "single-file-html-games",
+          "canvas-2d-performance",
+          "sprite-pipeline",
+          "animation-state-editor",
+          "pixel-art-palette-pipeline",
+          "effects-plugin-system",
+          "verification-gates",
+          "game-playtest"
+        ],
+        "actualCapabilityIds": [
+          "web-game-foundations",
+          "single-file-html-games",
+          "canvas-2d-performance",
+          "sprite-pipeline",
+          "animation-state-editor",
+          "pixel-art-palette-pipeline",
+          "effects-plugin-system",
+          "verification-gates",
+          "game-playtest"
+        ],
+        "passed": true
+      },
+      {
+        "id": "one-file-release-route",
+        "label": "One-file release and browser evidence routing",
+        "requestDigest": "sha256:2bd6ed152e956ebf3f32a33226f2e00ab048bca308b46e8aab0d0e976e4bb243",
+        "expectationDigest": "sha256:b6325ec428fd2e8baa4109b2fc9f78bd50fe62e0f036324cb93011209f21609d",
+        "actualDigest": "sha256:b6325ec428fd2e8baa4109b2fc9f78bd50fe62e0f036324cb93011209f21609d",
+        "expectedCapabilityIds": [
+          "web-game-foundations",
+          "single-file-html-games",
+          "canvas-2d-performance",
+          "input-and-mobile-viewport",
+          "game-ui-frontend",
+          "deterministic-sim-replay",
+          "performance-profiler",
+          "verification-gates",
+          "game-playtest"
+        ],
+        "actualCapabilityIds": [
+          "web-game-foundations",
+          "single-file-html-games",
+          "canvas-2d-performance",
+          "input-and-mobile-viewport",
+          "game-ui-frontend",
+          "deterministic-sim-replay",
+          "performance-profiler",
+          "verification-gates",
+          "game-playtest"
+        ],
+        "passed": true
+      }
+    ],
+    "claimBoundary": "These deterministic fixtures detect registry/router drift. They do not prove provider judgment, game quality, or runtime correctness.",
+    "digest": "sha256:d12c140143b0895e9b1f4e503397239ce2e532a0a091f4c98b3e51136a9666f3"
+  },
+  "policy": {
+    "orientationOnly": true,
+    "executable": false,
+    "autoDownload": false,
+    "projectMutation": false,
+    "collisionAuthority": false,
+    "evidenceAuthority": false,
+    "creativeWinnerAuthority": false,
+    "refreshMode": "inspect-only",
+    "routerAuthority": "lib/looplab-capability-router.mjs",
+    "rule": "Capability packs provide bounded decision knowledge. The canonical router, authored project, Project Doctor, replay, browser evidence, and explicit human or agent judgment retain their existing authority."
+  },
+  "source": {
+    "uri": "looplab://capability-packs",
+    "builderSourceUri": "https://github.com/PandaCatz/Panda-s-HTMl-2D-2.5D-Game-Builder/blob/main/lib/looplab-capability-packs.mjs",
+    "licenseExpression": "NOASSERTION",
+    "licenseBoundary": "License declarations are metadata and evidence pointers, not proof of rights. No third-party capability text or executable code is downloaded or redistributed by this registry."
+  },
+  "digest": "sha256:c3961f23ce90e61ad3ef59eecddf6be2248f716529298d7763110a5444da804e"
+}

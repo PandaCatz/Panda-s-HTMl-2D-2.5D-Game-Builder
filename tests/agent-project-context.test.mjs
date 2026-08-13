@@ -176,9 +176,9 @@ test("manifest and typed command contracts publish the bounded context workflow"
   const manifest = getAgentManifest();
   const contract = getLooplabCommandContracts().find((entry) => entry.op === "get_project_context");
 
-  assert.equal(manifest.protocolVersion, "1.101.0");
-  assert.equal(manifest.commandSurfaces.core.length, 184);
-  assert.equal(manifest.commandSurfaces.browserSession.length, 265);
+  assert.equal(manifest.protocolVersion, "1.112.0");
+  assert.equal(manifest.commandSurfaces.core.length, 217);
+  assert.equal(manifest.commandSurfaces.browserSession.length, 306);
   assert.equal(manifest.requiredWorkflow[0], "list_shared_projects");
   assert.equal(manifest.requiredWorkflow[1], "get_agent_changes");
   assert.equal(manifest.requiredWorkflow[2], "get_agent_brief");

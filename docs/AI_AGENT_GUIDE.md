@@ -6,11 +6,112 @@ LoopLab is an AI capability amplifier, not a form the agent is confined to. Pref
 
 The product scope is strictly **2D HTML games**. Side-scrollers, top-down games, connected rooms, single-screen games, and dimetric/isometric “2.5D” maps are in scope. A dimetric map may author world x/y/z for elevation, supports, collision separation, and deterministic draw order, but its renderer and assets remain 2D Canvas, tiles, and sprites. Do not route LoopLab through Three.js, React Three Fiber, a 3D editor, or a GLB/glTF asset pipeline.
 
+<!-- LOOPLAB_AGENT_GUIDE_NAV_START -->
+## Contents
+
+- [Discover and connect](#discover-and-connect)
+  - [One shared project store](#one-shared-project-store)
+  - [Use explicit preference memory as adjacent context](#use-explicit-preference-memory-as-adjacent-context)
+  - [Provider connection preflight](#provider-connection-preflight)
+- [Select the project and prompt draft](#select-the-project-and-prompt-draft)
+  - [Choose a complete playable foundation without hiding the alternatives](#choose-a-complete-playable-foundation-without-hiding-the-alternatives)
+  - [Fuse context; do not let LoopLab certify itself](#fuse-context-do-not-let-looplab-certify-itself)
+  - [Measure builder improvements with visible golden briefs](#measure-builder-improvements-with-visible-golden-briefs)
+  - [Resume from bounded semantic changes](#resume-from-bounded-semantic-changes)
+  - [Author executable gameplay systems](#author-executable-gameplay-systems)
+    - [Build systems games without choosing a movement genre](#build-systems-games-without-choosing-a-movement-genre)
+  - [Design an executable verb system, not a mechanic quota](#design-an-executable-verb-system-not-a-mechanic-quota)
+- [Measure and search gameplay tuning without guessing](#measure-and-search-gameplay-tuning-without-guessing)
+- [Author camera, animation, sound, and motion from gameplay truth](#author-camera-animation-sound-and-motion-from-gameplay-truth)
+- [Search valid game structures before spending provider tokens](#search-valid-game-structures-before-spending-provider-tokens)
+- [Search projection-correct map layouts before provider art](#search-projection-correct-map-layouts-before-provider-art)
+- [Claim a prompt](#claim-a-prompt)
+  - [Start from a real game-shaped scaffold](#start-from-a-real-game-shaped-scaffold)
+- [Mandatory preflight](#mandatory-preflight)
+  - [Specialist build roster](#specialist-build-roster)
+  - [Select the 2D runtime from one shared policy](#select-the-2d-runtime-from-one-shared-policy)
+  - [Discover native capability packs and inspect refreshes](#discover-native-capability-packs-and-inspect-refreshes)
+  - [Reuse-guide architecture contract](#reuse-guide-architecture-contract)
+- [Build an atomic candidate](#build-an-atomic-candidate)
+  - [Author replayable variety without hidden randomness](#author-replayable-variety-without-hidden-randomness)
+  - [Source-bound Tiled and Aseprite exchange](#source-bound-tiled-and-aseprite-exchange)
+  - [Repair deterministic Doctor mechanics without guessing](#repair-deterministic-doctor-mechanics-without-guessing)
+  - [Draft a source-bound plan from a short intent](#draft-a-source-bound-plan-from-a-short-intent)
+  - [Use the living Agent Playbook](#use-the-living-agent-playbook)
+  - [Publish live agent presence without confusing it with ownership](#publish-live-agent-presence-without-confusing-it-with-ownership)
+  - [Coordinate Codex and Claude with the shared work ledger](#coordinate-codex-and-claude-with-the-shared-work-ledger)
+  - [Reuse a proven command macro](#reuse-a-proven-command-macro)
+- [Open HTML projects and work across maps](#open-html-projects-and-work-across-maps)
+  - [Define the player-facing map route](#define-the-player-facing-map-route)
+- [Author 2.5D dimetric maps and route layers](#author-25d-dimetric-maps-and-route-layers)
+  - [Preserve timed authored routes](#preserve-timed-authored-routes)
+- [Ground and raised-surface attachment](#ground-and-raised-surface-attachment)
+- [Visual asset generation](#visual-asset-generation)
+  - [Author and apply the project visual identity](#author-and-apply-the-project-visual-identity)
+- [Visual references](#visual-references)
+- [Installed commercial-use asset packs](#installed-commercial-use-asset-packs)
+- [Standard game shell and player lifecycle](#standard-game-shell-and-player-lifecycle)
+- [Project Doctor and verification](#project-doctor-and-verification)
+  - [Interrogate design coverage without mistaking bots for players](#interrogate-design-coverage-without-mistaking-bots-for-players)
+  - [Read exact-pixel color accessibility as bounded evidence](#read-exact-pixel-color-accessibility-as-bounded-evidence)
+- [Loop strategies](#loop-strategies)
+  - [Frozen cross-genre acceptance profile](#frozen-cross-genre-acceptance-profile)
+  - [Improve](#improve)
+  - [Explore](#explore)
+  - [Cycle](#cycle)
+  - [Provider context budget and bounded passes](#provider-context-budget-and-bounded-passes)
+- [Iteration ledger and safe restore](#iteration-ledger-and-safe-restore)
+- [Sprite and palette contract](#sprite-and-palette-contract)
+- [Visual-first build loop](#visual-first-build-loop)
+  - [Grounded AI visual critique requires per-job consent](#grounded-ai-visual-critique-requires-per-job-consent)
+- [Playtest evidence](#playtest-evidence)
+  - [Deterministic editor-preview control](#deterministic-editor-preview-control)
+- [Exported-game runtime contract](#exported-game-runtime-contract)
+  - [Hostile platform emulation](#hostile-platform-emulation)
+- [Completion response](#completion-response)
+
+## Collected invariants
+
+These summaries are orientation only. Each links to the authoritative section that supplies its context; omission is never permission and this list never overrides the full guide.
+
+1. **2D only.** Never route work through a 3D engine, editor, or asset pipeline. Dimetric 2.5D remains reversible authored 2D data rendered with sprites and tiles. [Source](#discover-and-connect).
+2. **Collision is authored data.** Generated or imported art never owns collision; visual assets remain separate from authored gameplay geometry. [Source](#ground-and-raised-surface-attachment).
+3. **Three digests, three duties.** sourceDigest gates gameplay truth, revisionDigest gates shared document concurrency, and expectedLedgerDigest gates coordination mutations. [Source](#one-shared-project-store).
+4. **Apply only what was previewed.** Nontrivial batches, repairs, rebases, and macros apply only with the exact source-bound receipt returned by their preview. [Source](#build-an-atomic-candidate).
+5. **Companion bytes are authoritative.** Browser storage is a recoverable cache. Explicitly mount the companion-owned shared project before live work. [Source](#one-shared-project-store).
+6. **Never silently rerecord replay.** Replacing a deterministic fixture requires deliberate review, a higher revision, and a non-empty change reason. [Source](#iteration-ledger-and-safe-restore).
+7. **Never claim an unrun check.** Do not fabricate tests, screenshots, coverage, or completion. Inconclusive evidence remains inconclusive. [Source](#project-doctor-and-verification).
+8. **Searches propose; judgment selects.** Tuning, structural, spatial, and foundation searches preserve alternatives and never choose an automatic creative winner. [Source](#search-valid-game-structures-before-spending-provider-tokens).
+9. **Bots are not players.** Bot cohorts measure reachability and strategy shape; they do not establish fun, taste, or preference. [Source](#interrogate-design-coverage-without-mistaking-bots-for-players).
+10. **Consent gates are hard gates.** Playtest observation and image-bearing visual critique require the documented consent for each exact session or submission. [Source](#grounded-ai-visual-critique-requires-per-job-consent).
+11. **Privacy precedes provider work.** A blocked exact-payload preflight spends zero provider tokens and must be repaired locally without forwarding matched values. [Source](#mandatory-preflight).
+12. **Creative work crosses a ready provider boundary.** Deterministic composition and validation are not presented as AI output; schema-invalid provider output is a failed pass. [Source](#provider-connection-preflight).
+13. **Keys and tokens stay out of artifacts.** Credentials and the local mutation token never enter projects, prompts, logs, commits, research, or exports. [Source](#discover-and-connect).
+14. **Current is not release.** An authoring-profile pass may protect an iteration; only production assessment and exact-artifact verification govern shipping one offline HTML file. [Source](#exported-game-runtime-contract).
+15. **Presence is not ownership.** Presence is ephemeral liveness. The shared work ledger is durable coordination authority. [Source](#coordinate-codex-and-claude-with-the-shared-work-ledger).
+16. **Never truncate authored truth.** Context budgets never justify trimming collision, replay, acceptance, map truth, or the fresh-press portal contract. [Source](#provider-context-budget-and-bounded-passes).
+
+## Standard pass at a glance
+
+1. **Arrive.** Mount the shared project when live, establish the change bookmark, read the brief and ledger, then claim work before editing. [Source](#discover-and-connect).
+2. **Select.** Select the exact project and create a protected variation before experiments that must not affect the baseline. [Source](#select-the-project-and-prompt-draft).
+3. **Contract the design.** Author gameplay systems, verbs, narrative, visual identity, shell, and tuning intent as inspectable data before implementation. [Source](#author-executable-gameplay-systems).
+4. **Search before guessing.** Generate structurally valid, spatially valid, and tunable alternatives; inspect the archive and select deliberately. [Source](#search-valid-game-structures-before-spending-provider-tokens).
+5. **Build.** Draft a source-bound plan where useful, preview the coherent canonical batch, then apply only the exact receipt. [Source](#build-an-atomic-candidate).
+6. **Converge.** Use provider-free repair for deterministic findings and leave judgment residue explicit instead of looping mechanically. [Source](#repair-deterministic-doctor-mechanics-without-guessing).
+7. **Collect deterministic evidence.** Run acceptance, replay, completion, simulation, and input-liveness checks against the exact current source. [Source](#project-doctor-and-verification).
+8. **Collect browser evidence.** Exercise the real browser, review clean and annotated captures, and use consented critique only for advisory taste judgment. [Source](#visual-first-build-loop).
+9. **Release.** Run privacy and production gates, export one self-contained HTML artifact, and verify those exact bytes including hostile-platform behavior. [Source](#exported-game-runtime-contract).
+10. **Report and hand off.** Report measured evidence and usage, update the shared work item, preserve resumable IDs, and release presence. [Source](#completion-response).
+
+Machine-readable lookup is available at `/agent-guide-index.json`, through `looplab://agent-guide-index`, and with `{ "op": "get_agent_guide_index" }` on the browser-session bridge. The index is generated from this guide and cannot execute, mutate, verify, or grant authority.
+<!-- LOOPLAB_AGENT_GUIDE_NAV_END -->
+
 ## Discover and connect
 
 The complete machine-readable manifest is available at `/agent-manifest.json`. Its `commandContracts` section is the canonical JSON Schema 2020-12 definition for every operation. In a local project, use `npm run agent -- manifest`. The live browser command `{ "op": "get_manifest" }` defaults to a bounded, parseable bootstrap index containing every operation, surface, mutation class, required field, and accepted field. Use the static URL or `looplab://manifest` when complete nested schemas are required; request `compact: false` only on a transport that can safely carry the full document. Never treat character-truncated text as JSON.
 
-Prefer LoopLab's official-SDK MCP stdio server when Codex or Claude should operate the builder as a native toolset. The `core` profile works only on workspace-contained `.loop.json` files, requires the current Project Doctor digest for gameplay mutations, and writes valid projects atomically. The `browser` profile keeps one private Playwright page connected to the running app and exposes project-library selection, Director/provider work, visual review, preview input, and the complete browser-session surface. Read `looplab://manifest`, `looplab://agent-playbook`, `looplab://agent-guide`, and `looplab://mcp-setup` as MCP resources. For core work, begin with `get_agent_changes`; for live work, call `list_projects`, explicitly `select_project`, then `get_agent_changes`. Pass the caller's last opaque cursor or omit it once to establish a bookmark. Next read `get_agent_brief`. Its `readiness.current` is the active authoring profile, while `readiness.release` is the production target evaluated on the same source; a current/prototype pass is never release readiness. Read `get_work_ledger`, then request a source-bound `get_project_context` campaign or selected-map view. Its omissions are explicit and never mean absence; it is neither mutation input nor verification evidence. Request `get_project` only when complete embedded data is actually required. See `docs/MCP_AGENT_SETUP.md` for Codex and Claude registration.
+Prefer LoopLab's official-SDK MCP stdio server when Codex or Claude should operate the builder as a native toolset. The `core` profile works only on workspace-contained `.loop.json` files, requires the current Project Doctor digest for gameplay mutations, and writes valid projects atomically. The `browser` profile keeps one private Playwright page connected to the running app and exposes project-library selection, Director/provider work, visual review, preview input, and the complete browser-session surface. Read `looplab://manifest`, `looplab://agent-playbook`, `looplab://agent-guide-index`, `looplab://agent-guide`, and `looplab://mcp-setup` as MCP resources. Use the compact index to locate only the relevant invariant, lifecycle stage, failure recovery, or section, then read that canonical section in the full guide. The same bounded lookup is available through browser command `get_agent_guide_index`, visible `#looplab-agent-guide-navigation`, static `/agent-guide-index.json`, and `npm run agent -- guide`; it is orientation only, never authority or evidence. For core work, begin with `get_agent_changes`; for live work, call `list_projects`, explicitly `select_project`, then `get_agent_changes`. Pass the caller's last opaque cursor or omit it once to establish a bookmark. Next read `get_agent_brief`. Its `readiness.current` is the active authoring profile, while `readiness.release` is the production target evaluated on the same source; a current/prototype pass is never release readiness. Read `get_work_ledger`, then request a source-bound `get_project_context` campaign or selected-map view. Its omissions are explicit and never mean absence; it is neither mutation input nor verification evidence. Request `get_project` only when complete embedded data is actually required. See `docs/MCP_AGENT_SETUP.md` for Codex and Claude registration.
 
 MCP equips the external agent operating LoopLab. It does not change the provider security boundary: LoopLab's own Codex/Claude subprocesses remain task-scoped, schema-bound, nonpersistent, and MCP-free.
 
@@ -128,7 +229,9 @@ The headless `retry_prompt`, `start_ai_build`, `start_research`, and `start_visu
 - Codex uses `codex login status`. The Connection Center can launch `codex login --device-auth`, which avoids requiring an API key for local Codex use.
 - Claude uses `claude auth status`. The Connection Center can launch `claude auth login`. Its provider scan includes `looplab-claude-headless/v1` capability metadata and blocks versions older than 2.1.205 from structured runs instead of silently falling back to free-form text.
 
-An external Claude Code session gets direct cross-project access through `npm run claude:status` and `npm run claude:setup -- "<games-root>"`. Setup registers the existing `looplab-core` and `looplab-live` stdio MCP profiles at private user scope with absolute paths and no provider credential. Status verifies exact definitions and synchronized skill bytes, then independently fetches the running editor's manifest and requires the current protocol; a connected MCP stdio process is not live-editor evidence. After setup or an upgrade, start LoopLab and run `npm run claude:smoke -- "<games-root>"`. That bounded proof fails before model launch with 0 tokens when preflight fails; otherwise it gives one nonpersistent Haiku session a strict temporary MCP config containing only synthetic-fixture `get_agent_brief` and public-query `list_agent_recipes`, with a default $0.25 CLI budget cap. Haiku is used only for this operability smoke, never selected by default for game creation. Real Claude Code creative work uses `LOOPLAB_CLAUDE_MODEL` or a task-specific research/vision override when configured, otherwise the CLI's current default; the resolved model comes from measured telemetry. The smoke never submits a user project or shared catalog.
+CLI quality policy is centralized and explicit. Codex prompt, generation, loop, research, and visual-critique launches pass `--model gpt-5.6-sol` plus `--config model_reasoning_effort="max"` by default. Claude launches pass `--model claude-opus-5 --effort max`, while the usage receipt records the exact provider-reported model when available. Task-specific environment overrides precede generic overrides and remain visible in `usage.modelSelection`. Claude and direct Anthropic visual critique default to Opus 5. A full Sonnet model override requires `LOOPLAB_VISUAL_CRITIQUE_MODEL_BENCHMARK` to point to a canonical matched receipt whose same-input trials prove that exact Sonnet model beats Opus 5. LoopLab validates the frozen profile, evaluator rubric digest, unique input/evaluation digests, at least three trials, a two-thirds decisive preference rate, a mean-score advantage, and the receipt's canonical content digest. A bare hash, quota, latency, overload, or route failover is not evidence that Sonnet is visually better, and LoopLab passes no silent model fallback.
+
+An external Claude Code session gets direct cross-project access through `npm run claude:status` and `npm run claude:setup -- "<games-root>"`. Setup registers the existing `looplab-core` and `looplab-live` stdio MCP profiles at private user scope with absolute paths and no provider credential. Status verifies exact definitions and synchronized skill bytes, then independently fetches the running editor's manifest and requires the current protocol; a connected MCP stdio process is not live-editor evidence. After setup or an upgrade, start LoopLab and run `npm run claude:smoke -- "<games-root>"`. That bounded proof fails before model launch with 0 tokens when preflight fails; otherwise it gives one nonpersistent Claude-Opus-5/max-effort session a strict temporary MCP config containing only synthetic-fixture `get_agent_brief` and public-query `list_agent_recipes`, with a default $1 CLI budget cap. The smoke never submits a user project or shared catalog.
 - OpenAI API readiness means `OPENAI_API_KEY` is available to the companion from its process environment, Windows user environment, or Looplab's current-user DPAPI vault and succeeds against OpenAI's non-generation models endpoint.
 - Anthropic API readiness means `ANTHROPIC_API_KEY` is available through the same server-only sources and succeeds against Anthropic's non-generation models endpoint.
 
@@ -229,7 +332,9 @@ Choice/dialogue pages, clocks, integer formulas, and HUD bindings are genre-neut
 Use the built-in `systems` template (`load_template` with `template: "systems"`, or `npm run agent -- init <file.loop.json> systems`) when movement is not the game's organizing assumption. **Lantern Market Ledger** is a playerless reference: its economy, decision pages, day clock, formula effects, accessible HUD, acceptance checks, replay v4 fixture, preview, and one-file export all share the same authored state.
 
 - `choicePages[]` owns player-facing `title`, `body`, and choices. Text may interpolate a declared variable as `{credits}`. Every choice references a declared semantic `actionId`; this keeps mouse buttons, keyboard/gamepad, replay, acceptance tests, and AI control on the same decision path.
+- Optional `lineId` and `speakerId` resolve only to the Narrative Contract; `portraitAssetId` resolves only to an embedded project asset. `revealMode:"typewriter"` is presentation-only, exposes the complete readable line atomically, becomes instant under reduced motion, and never auto-advances in the current contract.
 - `visibleWhen` and `enabledWhen` use the normal bounded variable predicates. Modal pages freeze movement and clear held gameplay input. `nextPageId` chains pages; `close` returns to the underlying game.
+- `quests[]` is a derived journal, never a second mutable story store. Status variables use `0=inactive`, `1=active`, `2=completed`, and `3=failed`; activation, progress, completion, failure, and rewards remain ordinary deterministic rules. Objectives bind typed progress variables and completion predicates to current acceptance or replay evidence. Inspect the artifact through `getQuestState()` / `get_quest_state`.
 - `clocks[]` names a deterministic counter such as a turn, round, day, phase, or wave. `advance-clock` is the only special behavior; narrative meaning remains in the project.
 - `set-variable-expression` accepts a JSON expression tree, never JavaScript text. Leaves are safe integers or `{ "variableId": "credits" }`. Operators are `add`, `subtract`, `multiply`, `divide`, `modulo`, `min`, `max`, `clamp`, `abs`, and `negate`, with at most 64 nodes and depth 12. Division/modulo by zero deterministically yields zero and emits `gameplay.expression-fault`.
 - `hudBindings[]` resolves text into `primary`, `secondary`, or `ticker` DOM regions with optional predicates and accessible labels.
@@ -343,9 +448,9 @@ npm run agent -- doctor game.loop.json prototype
 npm run agent -- tuning-search game.loop.json --source-digest=source-...
 ```
 
-## Author sound and motion from gameplay events
+## Author camera, animation, sound, and motion from gameplay truth
 
-Use the presentation program when a game is technically correct but lacks readable response, audio identity, or motion feedback. Do not add sound, particles, shake, flash, or squash directly to simulation code. Author one renderer-neutral, bounded `presentationProgram`; the editor preview, Canvas export, pinned Phaser canvas hook, headless runtime, and Project Doctor all consume the same source.
+Use the presentation program when a game is technically correct but lacks readable camera composition, sprite state, response, audio identity, or motion feedback. Do not add camera rules, animation heuristics, sound, particles, shake, flash, or squash directly to simulation or renderer-specific code. Author one renderer-neutral, bounded `presentationProgram`; the editor preview, every runtime adapter, the exact one-file export, headless runtime, and Project Doctor all consume the same source.
 
 ```js
 const suggestion = (await api.run({
@@ -368,16 +473,92 @@ const doctorReport = await api.run({ op: "get_presentation_report" });
 console.log(authored.result.program, doctorReport.result);
 ```
 
-The authored contract supports at most 32 audio cues, 32 motion cues, six effects per motion cue, 24 live voices, 320 live particles, and two seconds per cue. Unknown fields, unstable or duplicate IDs, unsupported effect kinds, and invalid limits fail closed. Suggestions use project evidence: platformer jump/land cues are never inferred merely because a top-down or systems game has a player.
+To use selected CC0 or user-imported sound instead of synthesis, first import the browser-ready file through the asset library, then bind the resulting stable resource ID. Never bind a filesystem path or network URL.
+
+```js
+await api.run({ op: "list_pack_assets", packId: "interface-sfx-pack-1", kind: "audio", limit: 24 });
+await api.run({ op: "import_pack_assets", packId: "interface-sfx-pack-1", assetIds: ["<reviewed-audio-asset-id>"] });
+
+const project = (await api.run({ op: "get_project" })).project;
+const clip = project.resources.find((resource) => resource.source?.assetId === "<reviewed-audio-asset-id>");
+const program = structuredClone((await api.run({ op: "get_presentation_program" })).result.program);
+program.audio.cues.push({
+  id: "choice-confirm-clip",
+  event: "choice.selected",
+  enabled: true,
+  kind: "sample",
+  resourceId: clip.id,
+  playbackRate: 1,
+  waveform: "sine",
+  frequency: 220,
+  endFrequency: 220,
+  filterFrequency: 800,
+  durationMs: 600,
+  attackMs: 4,
+  releaseMs: 80,
+  volume: 0.18,
+  pitchVariationCents: 0,
+});
+const current = (await api.run({ op: "get_doctor" })).doctor;
+await api.run({ op: "set_presentation_program", program, expectedSourceDigest: current.sourceDigest });
+```
+
+Camera zones, animation machines, and reusable effect plugins live in that same program. Mouse users edit them in Fine Tune; agents should mutate the exact source returned by `get_presentation_program` and save it through `set_presentation_program` with the latest source digest.
+
+```js
+const follow = (zoom, transitionMs = 180) => ({
+  mode: "follow", centerX: 0, centerY: 0, offsetX: 24, offsetY: -12,
+  zoom, lerpX: 0.2, lerpY: 0.16, deadzoneWidth: 128, deadzoneHeight: 72,
+  transitionMs, clampToMap: true,
+});
+const program = structuredClone((await api.run({ op: "get_presentation_program" })).result.program);
+program.camera = {
+  enabled: true,
+  subject: { type: "object-kind", id: "player" },
+  defaultBehavior: follow(1),
+  zones: [{
+    id: "arrival-closeup", mapId: "map-main", enabled: true, priority: 10,
+    x: 640, y: 200, width: 240, height: 220,
+    behavior: follow(1.35, 220),
+    reducedMotionBehavior: { ...follow(1.1, 0), lerpX: 1, lerpY: 1 },
+  }],
+};
+program.animation = {
+  enabled: true,
+  machines: [{
+    id: "player-motion", enabled: true,
+    target: { type: "object-kind", id: "player" }, initialState: "idle",
+    states: [
+      { id: "idle", assetId: "player-strip", frames: [0], fps: 8, loop: true, interruptMode: "immediate", reducedMotionFrame: 0 },
+      { id: "run", assetId: "player-strip", frames: [1, 2, 3, 4], fps: 12, loop: true, interruptMode: "frame-end", reducedMotionFrame: 2 },
+    ],
+    transitions: [
+      { id: "start-running", from: "idle", to: "run", trigger: "moving", priority: 10, queue: true },
+      { id: "stop-running", from: "run", to: "idle", trigger: "stopped", priority: 10, queue: true },
+    ],
+  }],
+};
+program.effectPlugins = [{
+  id: "heavy-impact", enabled: true,
+  effects: [{ type: "shake", intensity: 3, durationMs: 120 }, { type: "particles", count: 8, color: "#eee", secondaryColor: "#777", speed: 180, spread: 6.283, direction: 0, lifetimeMs: 300, size: 3, gravity: 90, assetId: "impact-strip", frame: 0 }],
+  reducedMotion: { mode: "replace", effects: [{ type: "flash", color: "#eee", opacity: 0.08, durationMs: 80 }] },
+  assetRequirements: [{ assetId: "impact-strip", minimumFrames: 1, purpose: "impact particle" }],
+}];
+program.motion.cues.push({ id: "heavy-land", event: "player.landed", enabled: true, target: "event-object", effects: [{ type: "plugin", pluginId: "heavy-impact" }] });
+const current = (await api.run({ op: "get_doctor" })).doctor;
+await api.run({ op: "set_presentation_program", program, expectedSourceDigest: current.sourceDigest });
+```
+
+The authored contract supports at most 32 audio cues, 32 motion cues, six effects per cue, 32 camera zones, 32 animation machines with 32 states and 64 transitions each, 32 effect plugins with eight primitives and eight asset requirements each, 24 live voices, 320 live particles, and two seconds per audio cue. Unknown fields, unstable or duplicate IDs, unsupported effect kinds, nested/arbitrary plugin code, and invalid limits fail closed. Suggestions use project evidence: platformer jump/land cues are never inferred merely because a top-down or systems game has a player.
 
 Follow these boundaries:
 
 1. Map stable runtime or authored `emit` event IDs; never derive collision from art or let presentation mutate gameplay.
-2. Keep `reducedMotion: "respect"` unless the user explicitly requests a different accessible policy. Reduced motion skips particles, shake, and squash while retaining a static flash/status equivalent.
-3. Accept input before attempting audio unlock. The runtime creates one `AudioContext` lazily after a real gesture, bounds voices and pending events, and contains unavailable/rejected audio without aborting play.
+2. Keep `reducedMotion: "respect"` unless the user explicitly requests a different accessible policy. Approved camera zones require explicit reduced-motion behavior, multi-frame states require a stable reduced-motion frame, and plugins must explicitly replace or omit their normal recipe. Legacy inline effects still skip particles, shake, and squash while retaining a static flash/status equivalent.
+3. Accept input before attempting audio unlock. The runtime creates one `AudioContext` lazily after a real gesture, bounds voices and pending events, and contains unavailable/rejected audio without aborting play. Referenced sample resources decode only after unlock; one failed clip remains a resource-level error while gameplay and other cues continue.
 4. Treat `approved` as an authoring lifecycle state, not proof that the mix, rhythm, intensity, or feel is good. Preview and playtest it.
 5. Run Doctor, deterministic replay, acceptance, completion, semantic-input liveness, and the hostile browser harness after changes. Presentation must leave the deterministic state and replay hashes unchanged.
-6. Preserve the one-file boundary: procedural cues and the controller are embedded in the exported HTML and make no network request.
+6. Preserve the one-file boundary: procedural cues, selected sample bytes, and the controller are embedded in the exported HTML and make no network request. Project Doctor requires every sample binding to resolve to an embedded OGG Vorbis or PCM/float WAV resource, caps referenced encoded audio at 16 MiB and decoded 32-bit PCM at 32 MiB, and reports both values. Browser QA should also inspect actual `decodedBytes` after unlock.
 
 In an exported game, use `getPresentationProgram()`, `getPresentationReport()`, `getPresentationStatus()`, and `setAudioMuted(boolean)`. The DOM bridge equivalents are `get_presentation_program`, `get_presentation_report`, `get_presentation_status`, and `set_audio_muted`. The hostile browser harness deliberately rejects a suspended audio resume and passes only when the presentation controller contains that failure while semantic input remains operational.
 
@@ -561,6 +742,22 @@ Read `runtimeSelection.selectedFramework`, `recommendedFramework`, `bestFitFrame
 
 The same compact receipt is supplied to OpenAI, Anthropic, Codex CLI, and Claude CLI inside `capabilityRoute`. Do not run a provider-specific engine heuristic or a second model call. Compose capabilities, not competing engines: one primary frame/render owner is allowed, while semantic input enters LoopLab's deterministic simulation, snapshots leave it for rendering, DOM owns text-heavy HUD/menu surfaces, authored map geometry owns collision, and Playwright verifies the exact generated artifact. Renderer selection must not change deterministic replay, acceptance, saves, or collision truth.
 
+### Discover native capability packs and inspect refreshes
+
+LoopLab exposes its absorbed, program-owned decision knowledge as `looplab-capability-pack-registry/v1`. Read `looplab://capability-packs`, `/capability-packs.json`, or the visible **Native capability packs** panel when you need broad orientation. For bounded context, prefer the strict browser commands:
+
+```js
+const packs = await api.run({ op: "list_capability_packs", query: "sprite palette", limit: 8 });
+const knowledge = await api.run({ op: "query_capability_knowledge", query: "should this game use Phaser?", limit: 8 });
+const exact = await api.run({ op: "get_capability_pack", packId: "runtime-renderers" });
+```
+
+The six built-in packs cover every current `route_work` capability exactly once. Read `chooseWhen`, `avoidWhen`, `guidance`, `owns`, `specialistOwnerIds`, pack-level `decisionRules`, `sources`, `provenance`, and calibration cases. The registry is provider-free, deterministic, and excluded from project JSON, provider-authored game state, runtime payloads, and one-file exports. It supplements the canonical router; it does not replace `route_work`, make a provider request, or prove that a game implements a routed capability.
+
+Treat every pack as non-executable orientation. It has no project-mutation, collision, evidence, or creative-winner authority. License expressions are declarations with evidence pointers, not proof of rights. Built-in packs currently use `NOASSERTION` because this repository has no published license file; do not infer a commercial-use grant or redistribute third-party source text from a digest.
+
+To examine a proposed update, pass one complete `looplab-capability-pack/v1` document to `inspect_capability_pack_refresh`. A lower revision is rejected as rollback. Different content at the installed revision is rejected as equivocation. A higher revision must preserve strict schema, canonical content/envelope digests, exact immutable source reference, license metadata, unsigned-local provenance claims, non-executable authority, canonical capability ownership, and router calibration coverage. A result of `reviewable-newer-revision` still does **not** install anything: review it in source control, update decision knowledge and calibration deliberately, run `npm run capability-packs:generate`, then require `npm run capability-packs:check` in validation.
+
 `route_work.context.narrative` is a separate `looplab-narrative-routing/v1` receipt. In Auto mode it scores authored story, character/dialogue, quest/lore, environmental-storytelling, branching-choice, narrative-genre, and opening/ending-payoff signals. It also activates for the `narrative` workstream. `narrativeMode: "include"` forces narrative work and `"exclude"` keeps the pass mechanics-first. When `included` is true, the existing single provider invocation gains two ordered stages: the **Narrative Designer** owns causality, continuity, choices, stable state bindings, and ending payoff; the **Narrator & Dialogue Writer** owns narrator voice, dialogue, barks, tutorial copy, line continuity, and readable text equivalents. Both must return specialist receipts, but no second provider call or runtime state store is implied.
 
 Use `set_narrative_contract` to author `looplab-narrative-contract/v1` over the existing deterministic `gameplayProgram`; use `get_narrative_contract` or `get_narrative_report` to inspect it. Required beats and endings must reference stable choice-page, choice, rule, event, variable, map, object, or feature IDs plus acceptance/replay IDs. Every declared proof reference must pass; one passing witness never hides a failed, stale, specified-only, or unknown sibling. Project Doctor derives `looplab-narrative-report/v1` with bounded structural reachability, shortest ending paths, unreachable beats/pages, blocking terminals, trap cycles, reference validity, readable-delivery checks, and current evidence status. The exported one-file runtime exposes `getNarrativeContract`, `getNarrativeReport`, and matching DOM commands. The report does not claim prose quality, emotional impact, pacing taste, or fun.
@@ -583,6 +780,9 @@ Use commands instead of UI clicks. Common commands:
 - `load_template` with `template: "kinetic"` for the polished connected-map starter, or `template: "dimetric"` for the explicit ground/deck/underpass 2.5D proof (`blank`, `platformer`, and `topdown` remain available)
 - `replace_project` with `{ project }` for an intentional full-project replacement
 - `add_object`, `update_object`, `remove_object`, `duplicate_object`, `reorder_object`
+- `list_interactable_templates`, `get_interactable_template`, and `get_interactable_report` for the native reusable behavior vocabulary
+- `preview_interactable_template` and `apply_interactable_template` for source-, template-, and preview-digest-bound placement
+- `remove_interactable_instance` to remove one complete stable-ID bundle without leaving detached roles
 - `add_traversal_path`, `update_traversal_path`, `remove_traversal_path` for authored rail, grind, zipline, and route geometry
 - `suggest_motion_body`, `set_motion_body`, and `remove_motion_body` for deterministic moving platforms, hazards, doors, carriers, and other authored objects
 - `get_motion_body_report` for source-bound geometry, driver, collision, replay, and acceptance diagnostics
@@ -596,6 +796,9 @@ Use commands instead of UI clicks. Common commands:
 - `get_authored_route_document`, `set_authored_route_document`, `update_authored_route_actor`, `update_authored_route_step`, `update_authored_route_meeting`, `verify_authored_route_document`, `export_authored_route_document`
 - `add_map`, `add_dimetric_map`, `update_map`, `switch_map`, `remove_map`
 - `set_start_map`, `reorder_map`, `connect_maps` for the player-facing map sequence
+- `get_world_stream`, `get_world_stream_report`, `get_world_stream_plan`, `suggest_world_stream`, `set_world_stream`, `remove_world_stream` for deterministic finite or seeded embedded chunk routes
+- `get_run_variation_program`, `get_run_variation_report`, `suggest_run_variation_program`, `preview_run_variation`, `set_run_variation_program`, `remove_run_variation_program` for authored seeded runs and explicit UTC daily challenges
+- `preview_replay_ghost`, `apply_replay_ghost` for source-bound presentation ghosts derived from passing deterministic replay trajectories
 - `import_html` for Looplab exports containing `#looplab-project-data`
 - `inspect_supports`, `attach_to_support`
 - `generate_tiles`, `generate_sprite`, `add_asset`, `update_asset`, `remove_asset`
@@ -614,6 +817,14 @@ The fixed simulation advances enabled bodies in stable object-ID order and resol
 
 Projects without motion bodies retain the exact runtime save-state v1 shape. Projects with them use save-state v2 and persist progress, speed, direction, blocker contact, and endpoint completion while clearing transient rider/contact engagement on restore. Replay v5 introduced the frozen legacy motion projection and v6 changed its digest to SHA-256; v1-v9 remain byte-compatible. Replay v10 adds rider ID, exact accepted delta, and crush state that can affect a later tick. Link each production body to executable acceptance evidence covering activation or automatic start, release where applicable, collision stop, rider carry and both authored crush behavior where applicable, endpoint behavior, map persistence, replay, and the exact standalone export.
 
+Reusable interactables solve a different recurring problem: agents repeatedly rebuilding ordinary mechanics with inconsistent anchors, sensors, collision, save state, and evidence. The strict `looplab-interactable-template-registry/v1` currently contains springs, ladders, conveyors, crumble platforms, key/door pairs, pressure-plate/gate pairs, and drop-through one-way platforms. Treat a template as a versioned authored behavior bundle, not art and not executable third-party code. Every role declares its ground-contact anchor, visual bounds, support or sensor footprint, authored collider, initial runtime state, resolved parameters, emitted events, authority policy, and evidence starters.
+
+Use `list_interactable_templates` to search bounded summaries and `get_interactable_template` before placement. Call `preview_interactable_template` with a stable `instanceId`, exact `mapId`, bottom-center ground anchor `x/y/z`, and only explicit parameter overrides. Review all returned objects, role references, feature-contract starter, acceptance requirements, replay starter, placement conflicts, `sourceDigest`, `templateDigest`, and `previewDigest`. Apply the unchanged specification through `apply_interactable_template`; any source, registry revision, parameter, anchor, or preview change invalidates the receipt. Use `remove_interactable_instance` rather than deleting one constituent object.
+
+The canonical runtime owns every behavior. Swept trigger tests prevent thin springs and pickups from tunneling; conveyors act only through the player's exact resolved support object; ladders enter on fresh interaction and replace gravity only while their explicit controller state is active; crumble and drop-through timers advance in simulation ticks; key inventory uses logical IDs; pressure plates affect only their authored same-instance gate; collider re-enable waits until it is safe. Portable saves retain logical inventory and exact object overrides. Replay v13 adds `groundObjectId`, ladder/interactable target state, and conveyor ownership plus the already canonical object countdown/runtime state, while v1-v12 remain frozen. Canvas, Phaser, PixiJS, and melonJS only render these canonical objects.
+
+Project Doctor validates exact template revision/digest, required roles, sensor-versus-solid policy, ground anchors, authored collision ownership, target references, full resolved parameter agreement, and production evidence. Applying a template returns acceptance and replay starters; those are specifications, not passed evidence. Calibrate them against the actual project route and fixed-tick input tape, then run Doctor, acceptance, replay, browser playtest, and exact one-file verification. Never rerecord an unrelated protected baseline merely because adding an interactable changed its hash.
+
 Deterministic actors are authored simulation capabilities, not renderer AI. Start from provider-free `suggest_actor_program`, inspect `get_actor_report`, and persist only reviewed `looplab-actor-program/v1` source through `set_actor_program`. Each actor binds to one same-map object with a ground-contact anchor, enabled authored collider, `collisionOwner: "authored-map"`, explicit support height, an authored home node, and a connected directed navigation route. Reject self targets, cross-map actor targets, duplicate movement owners, missing/wrong-way links, and routes that only look connected in pixels.
 
 The fixed simulation advances stable actor IDs and applies one priority chain per tick: cutscene override, visible-target response, remembered-target response, return, then hold/patrol base behavior. Chase, flee, and return use deterministic A* with bounded repath cadence; line of sight tests every authored solid collider and selects the nearest hit fraction with stable object-ID ties. Explicit arrival radii and overshoot-safe route progress prevent oscillation at nodes. Version 1 intentionally omits reciprocal crowd avoidance. Inspect `actor.mode-changed`, `actor.detected`, `actor.lost`, `actor.blocked`, `actor.node-reached`, and `actor.arrived`, plus `getActorStates()` / `get_actor_states`. Link production actors to executable `actor-state` acceptance evidence. Save-state v4 and replay v8 preserve latent actor state; earlier save/replay schemas remain readable and frozen.
@@ -622,13 +833,52 @@ Connected floors, slopes, terrain lips, and planar boundaries use optional stric
 
 Each chain keeps stable chain and point IDs, explicit point order, `role`, `oneWay`, `frontFace: "right"`, and `zMin`/`zMax`. In y-down world coordinates the canonical right-hand normal is `(dy / length, -dx / length)`, so a left-to-right floor faces upward. Segments own their start endpoint and exclude their end except for the final open segment; equal-time contacts resolve by stable chain ID and segment index. Platformer response uses deterministic bounded sweeps, X before Y, foot-center floor sampling, grounded-only snap, bounded step-up, and explicit steep-surface stop/slide tuning. Top-down chains act as authored planar boundaries. Projection and draw order never decide elevation overlap.
 
-Map Studio's Collision tool creates, selects, moves, classifies, and removes the same canonical chains while its overlay shows control-point order and normal direction. Replay v9 introduced ground chain/segment IDs, contact normals, and slope-slide state while v1–v8 remained byte-compatible; current v10 retains that projection and adds motion-body rider/crush state. Exported games expose read-only `getCollisionGeometry()` / `get_collision_geometry`, and ordinary runtime state exposes the current contact. Run Doctor, acceptance/replay, browser playtest, and exact one-file gates after every collision change.
+Map Studio's Collision tool creates, selects, moves, classifies, and removes the same canonical chains while its overlay shows control-point order and normal direction. Replay v9 introduced ground chain/segment IDs, contact normals, and slope-slide state while v1–v8 remained byte-compatible; current v14 retains that projection, the v10 motion-body rider/crush state, the v11 elevation-transition state, the v12 deterministic continuous-world route state, the v13 exact-support/interactable state, and the v14 gameplay-only run-selection identity. Exported games expose read-only `getCollisionGeometry()` / `get_collision_geometry`, and ordinary runtime state exposes the current contact. Run Doctor, acceptance/replay, browser playtest, and exact one-file gates after every collision change.
+
+Walkable height changes use optional strict map-owned `looplab-elevation-transitions/v1` source. Read it with `get_elevation_transitions` and `get_elevation_transition_report`; request a provider-free draft with `suggest_elevation_transitions`; persist only reviewed source with `set_elevation_transitions`; remove the complete map contract with `remove_elevation_transitions`. A transition owns only its ordered x/y/z corridor, entry tolerance, direction, and support-Z interpolation. A bound navigation link still owns connectivity and route cost, a bound collision chain still owns platformer contact geometry, and art/projection/depth own neither.
+
+For a layered top-down or dimetric production map, bind exact endpoints on different compatible navigation layers. For a production platformer, also bind an exact two-point floor chain with matching world x/y, floor role, direction, and z window. Entry is endpoint- and elevation-gated, one-way high-end entry is rejected, side exits stop interpolation, and stairs use continuous support interpolation even when their artwork is stepped. Runtime state identifies the active transition, segment, progress, and support height. Save-state v5 and replay v11 preserve that state while all older save/replay projections remain frozen. A support-only ramp may be valid in a top-down prototype; it is not collision evidence for a platformer.
+
+Continuous horizontal or vertical routes use optional strict map-owned `looplab-world-stream/v1` source. Start with the provider-free, read-only `suggest_world_stream`, inspect `get_world_stream_report` and `get_world_stream_plan`, then persist only the reviewed program with `set_world_stream`. Each template references one embedded source map and owns exact entry/exit socket edge, tag, x/y, support z, and span. Finite mode follows an explicit template sequence. Seeded mode stable-ID sorts only compatible candidates and selects from canonical SHA-256 over seed, ordinal, prior template ID, and prior exit-socket ID. Array order and `Math.random()` never own the route.
+
+Budgets separately bound chunks behind and ahead, total resident chunks, resident tile cells, resident collision cells, unique decoded RGBA bytes, and camera cull padding. The runtime keeps one live player while rotating map objects, tile entries, and collision through the resident window; it activates embedded source only and never fetches a chunk or asset. Version 1 rejects templates containing portals, moving bodies, traversal paths, elevation transitions, navigation, actors, or combat because those systems do not yet have safe instance-ID and coordinate remapping. It also rejects arbitrary branches, rotation, scaling, and 3D. Use ordinary connected maps instead when those systems are required.
+
+`getWorldStreamState()` / `get_world_stream_state` exposes route digest, current ordinal/instance, resident range, resource counts, and seam evidence. `markWorldStreamDraw()` / `mark_world_stream_draw` may record ready embedded asset IDs and visible/drawn tile counts, but that renderer observation never enters collision, completion, acceptance, or replay truth. Save-state v6 and replay v12 retain deterministic stream position while excluding camera, draw timing, and asset readiness. Project Doctor can prove source validity, exact sockets, deterministic planning, memory limits, and unsupported-system rejection; it cannot prove pacing, composition, or fun. Do not claim a seamless release until the exact one-file browser artifact crosses a join and provides first-draw, asset-ready, and unique-pixel seam evidence.
+
+### Author replayable variety without hidden randomness
+
+Use optional project-owned `looplab-run-variation-program/v1` source for standard seeded runs and explicit UTC daily challenges. Start with the provider-free `suggest_run_variation_program`, inspect `get_run_variation_report`, and call `preview_run_variation` for more than one seed before persisting the exact reviewed program with `set_run_variation_program`. Pools and variants require stable unique IDs, positive bounded weights, and typed assignments to existing gameplay variables. Every assigned variable must declare `resetPolicy: "run" | "session"`, and one variable cannot be owned by multiple pools. Stable-ID sorting plus canonical SHA-256 selection means authored array order and `Math.random()` never own a result.
+
+Standard mode requires an explicit non-empty seed. Daily mode requires an explicit real UTC date in `YYYY-MM-DD`; the host may derive that value, but simulation and replay never read `Date.now()`, locale time, or timezone state. Selection resolves before tick zero. `startRun({ seed })` resets run-scoped variables while preserving session-scoped variables; a full runtime reset clears the session. `startDailyChallenge({ utcDay })` follows the same boundary. Inspect `getRunVariationState()` / `get_run_variation_state`, and use `preview_start_run`, `preview_start_daily_challenge`, and `get_preview_ghost_states` against the live editor preview without mutating canonical source.
+
+LoopLab intentionally maintains two digests. The full program digest includes labels, evidence references, and ghost metadata so saves and source-bound run codes fail closed across a changed authoring revision. The selection-program digest includes only gameplay selection inputs: enabled state, namespaces, pool/variant IDs, weights, and typed assignments. Labels, evidence IDs, ghost frames, color, and opacity cannot reshuffle variants or alter replay v14. Never replace either digest with a renderer hash or a random-number-generator snapshot.
+
+`export_run_code` returns a compact `LR1` code for the exact source-bound tick-zero standard or daily run. `inspect_run_code` is read-only; `import_run_code` restarts that run only after source and program compatibility checks. Its checksum detects accidental corruption but does not authenticate scores, prove fairness, or preserve a mid-run position. Use the existing `LL1` portable save for mid-run state. Project Doctor production status requires valid source, executable typed assignments, explicit reset ownership, and replay evidence from at least two distinct `runSeed` or `utcDay` cases; ordinary numeric replay RNG seeds do not count.
+
+Create a replay ghost only through `preview_replay_ghost` followed by its exact returned `apply_replay_ghost` command. Both the current source digest and preview digest must still match. The resulting replay trajectory is a presentation observation: it never enters runtime objects, collision, navigation, support, save overrides, completion, acceptance, or replay hashes. Canvas, Phaser, Pixi, and melon may draw `getGhostStates()` / `get_ghost_states`, but no adapter may promote a ghost into gameplay truth. A technically valid seed set and ghost do not prove variety is meaningful, a daily is fair, or a route is fun; compare captured play, cohort evidence, and human preference separately.
 
 Canonical repeated terrain uses optional map-owned `looplab-tile-program/v1` source. Read it with `get_tile_program` and `get_tile_program_report`; request only bounded cells through `get_tile_region`. `suggest_tile_program` is provider-free and may derive palette/frame references plus empty visual/collision layers only from explicitly selected embedded tileset assets. It never infers adjacency, terrain semantics, support, or collision from filenames or pixels.
 
 Direct visual cells, authored terrain IDs, and collision profiles occupy separate sparse chunks. Terrain sets require exact eight-neighbor signatures; unresolved signatures are actionable Doctor blockers rather than approximate visual matches. Equivalent variants are selected from a stable hash of the map, layer, coordinate, terrain set, and variation seed, so paint order does not create texture drift. Collision profiles remain `authored-map` truth even when a palette frame or generated asset changes.
 
 Preview every `looplab-tile-patch/v1` through `preview_tile_patch`. It clones the project, validates the projected tile program, runs current and production Doctor, and returns an apply command bound to the exact source, tile-program, and patch digests. Run only that unchanged `apply_tile_patch`; stale source, stale program, stale patch, locked layer, out-of-bounds cell, unauthorized transform, or new blocker must fail. Map Studio's Tiles tool uses these same commands for direct tile, terrain, and collision brushes. Orthographic cells match projection dimensions; dimetric artwork is exact 128×64 while logical coverage uses reversible world cells. The one-file runtime exposes `getTileProgram()` / `get_tile_program`, compiled `getTileRuntime()` / `get_tile_runtime`, and tile-owned rectangles inside `getCollisionGeometry()`.
+
+### Source-bound Tiled and Aseprite exchange
+
+Use community files as exact authoring evidence, never as direct project truth. The core, browser, CLI/MCP, Codex, Claude, and visible Agent API panel share these commands:
+
+- `list_community_exchanges` / `get_community_exchange_report`
+- `preview_tiled_import` / `apply_tiled_import`
+- `preview_aseprite_import` / `apply_aseprite_import`
+- `export_community_exchange`
+
+For Tiled JSON/TMJ or uncompressed TMX, supply the complete `sourceText`, destination `mapId`, and an explicit `assetBindings` entry for every tileset source/name/image key. Supply every referenced TSX or external tileset JSON body in `dependencies`; LoopLab never reads its path or URL. Review imported logical dimensions and projection before setting `resizeMap` or `allowProjectionChange`, and set `replaceExisting` only when the exact visual tile replacement is intended. Tiled object layers, tileset collision objects, Wang data, filenames, and pixels are advisory. Existing LoopLab collision profiles and collision layers remain the only authored gameplay geometry.
+
+For Aseprite, first embed the matching PNG atlas as a project asset. Supply the complete exported JSON, exact `assetId`, stable machine ID, and an object-ID or object-kind presentation target. The importer accepts JSON array/hash frames only when they describe an unrotated, untrimmed row-major uniform grid. Per-frame duration differences are rejected unless `allowTimingApproximation:true` is explicitly reviewed; native `.ase`/`.aseprite`, rotated frames, trim offsets, and ambiguous multi-file atlases are not guessed.
+
+Both preview commands parse and project on a clone, validate the specialized program, run current and production Doctor, and return `applyCommand` only when applicable. Execute that returned command unchanged. It binds the exact current `expectedSourceDigest`, retained source/dependency hashes, and `expectedPreviewDigest`; a stale project or changed file must be previewed again. Import source lives only under `project.authoring.communityExchange`, is omitted from gameplay source digests and standalone runtime bytes, and cannot satisfy collision, replay, acceptance, or visual-quality evidence.
+
+`export_community_exchange` returns exact originally imported text. It is `byteIdentical:true` only while the canonical target still matches the imported projection. After canonical edits, the original requires `allowStaleOriginal:true`, returns `status:"stale-original-source"`, and must not be described as current or semantics-preserving. Exchange v1 does not regenerate an edited Tiled/Aseprite document.
 
 A valid tile report proves authored references, exact signatures, collision ownership, bounds, and deterministic compilation; it does not prove a visual layer is perceptible. After material tile paint, inspect a clean browser capture at representative viewports and query the exact exported `getTileRuntime()` result. If a platform, terrain lip, or other authored object hides the painted cells, correct the visual layer/row/depth without moving collision merely to match the pixels, then invalidate and regenerate exact release evidence.
 
@@ -1003,6 +1253,8 @@ Navigation data describes intentional travel, not generated artwork. Use stable 
 
 High and low routes at the same ground position require distinct route layers and non-overlapping z ranges. Visual z, support z, collider zMin/zMax, navigation layer, traversal route layer, and terrain depth slices are separate authoring decisions. Project Doctor reports ambiguous heights, missing endpoints/layers, blocked links, disconnected islands, duplicate destinations, failed saved routes, and links crossing blocked ground.
 
+A height-changing navigation link is not yet a physical route. Select it in Map Studio and create a walkable ramp or stair, or author the same canonical program headlessly. Doctor then verifies exact link endpoints/layers/direction and any authored collision binding. Path Editor v2 exports retain exact `nodeWorldPositions` and `areaWorldPoints` in the LoopLab extension as well as portable percentages; never discard that extension when an exact ramp, stair, underpass, or other elevation-sensitive binding depends on world coordinates.
+
 To reuse an existing Path Editor map from any local project, pass its exported v2 JSON without rewriting it by hand:
 
 ```js
@@ -1176,15 +1428,25 @@ const acceptance = await api.run({ op: "run_acceptance_suite" });
 if (acceptance.result.executableCount && !acceptance.result.passed) throw new Error(JSON.stringify(acceptance.result));
 const completion = await api.run({ op: "get_completion_report", profile: "production" });
 if (completion.result.target.required && !completion.result.passed) throw new Error(JSON.stringify(completion.result));
+const cohorts = await api.run({ op: "run_bot_cohorts", expectedSourceDigest: after.sourceDigest });
+for (const finding of cohorts.result.findings) console.log(finding.code, finding.observation, finding.designQuestion);
 ```
 
 An acceptance record remains a specification unless a restricted deterministic driver executes and passes, a current replay passes, or a current source-bound behavior receipt explicitly contains the passed check ID. Deterministic cases use `runner: "looplab-deterministic-runtime"`, a bounded fixed-tick `driver` with semantic pressed/released inputs, and allowlisted `assertions` over gameplay variables, completed rules, emitted events, object state, runtime state, or traversal paths. Each case receives fresh runtime state. The runner rejects JavaScript, `eval`, arbitrary object paths, DOM selectors, storage, network, and shell commands. Providers may author a spec, but may never claim their own output passed. CLI equivalents are `npm run agent -- acceptance-plan game.loop.json` and `npm run agent -- acceptance game.loop.json [test-id]`.
 
 The completion harness is genre-neutral. It looks for an authored goal or enabled `win` effect, reuses a passing `runtime.won` acceptance route first, and otherwise runs a bounded breadth-first search over live semantic actions in the same deterministic runtime. A pass includes a source-bound replay tape. `dead-end` proves only that the initial state has no state-changing executable action under the current macro model; `inconclusive` means the bound or abstraction did not find a witness and must never be reported as “unwinnable.” Projects explicitly designed without a terminal target may use `qualityContracts.completionMode: "open-ended"`. Production projects with a required target need a passing witness. The CLI equivalent is `npm run agent -- completion game.loop.json production`.
 
+### Interrogate design coverage without mistaking bots for players
+
+`run_bot_cohorts` is a deterministic, provider-free design diagnostic over a cloned canonical runtime. It runs bounded idle, semantic-action sweep, seeded-explorer, known-completion-witness, isolated-map, and single-action-pressure policies at fixed 60 Hz. It never mutates the project, never rerecords evidence, and returns exact input/replay digests plus a zero-token usage receipt.
+
+Read `coverage.routeMaps` for maps reached through the authored start route; do not inflate that number with isolated-map probes. Then inspect live actions, authored verbs, combinations, gameplay rules, choices, traversal paths, portals, contacts, spatial cells, completion, stalls, and meaningful-event density. The most useful findings are concrete discrepancies such as a live action never exercised, an authored combination never co-exercised, a route map never reached, a rule never fired, a portal never entered, or a terminal witness found under single-action pressure. Use those observations to revise teaching, affordances, decision relationships, route structure, pacing, feedback, and recovery—not merely to maximize a coverage percentage.
+
+The report's proof boundary is mandatory. These policies are deterministic test strategies, not human personas. They cannot establish fun, taste, aesthetics, fairness, accessibility, narrative quality, player preference, true unreachability, or the absence of another dominant strategy. A clean cohort report means no configured advisory threshold fired under these bounded runs; it does not mean the design is good. Follow it with provider critique when useful, responsive browser QA, deliberate human play, and pairwise candidate comparison. The CLI equivalent is `npm run agent -- bot-cohorts game.loop.json --source-digest=source-... [--ticks-per-run=720] [--max-runs=24] [--seeds=1,2,3] [--maps=map-a,map-b]`.
+
 For orthographic platformers, Doctor measures the maximum jump rise by fork-stepping the shipped 60 Hz integrator, then builds a conservative support graph from authored colliders. An unreachable optional platform is diagnostic; a goal or connected-map portal with no route under the measured movement envelope blocks production. Repair geometry or intentionally retune `movementTuning`, then prove the route with a behavior-asserting acceptance case, a versioned replay, and a browser playtest. The Pocket Platformer starter carries the `pocket-route-completion` acceptance/replay pair as a protected example.
 
-Replay snapshot schemas are versioned: fixtures without `hashVersion` retain the original v1 projection and FNV-1a-32 digest; v1-v5 fixtures remain byte-compatible. Version 6 introduced the `replay-sha256-` full SHA-256 digest, v7 added deterministic combat state, v8 added latent actor state, v9 added authored collision-chain contact, and current v10 adds moving-platform rider, accepted-delta, and crush state while preserving every earlier projection. Adding deterministic runtime state must add a new projection instead of silently invalidating accepted evidence. Record a short semantic-input route before polishing the implementation, then rerun it after every candidate:
+Replay snapshot schemas are versioned: fixtures without `hashVersion` retain the original v1 projection and FNV-1a-32 digest; v1-v5 fixtures remain byte-compatible. Version 6 introduced the `replay-sha256-` full SHA-256 digest, v7 added deterministic combat state, v8 added latent actor state, v9 added authored collision-chain contact, v10 added moving-platform rider, accepted-delta, and crush state, v11 added authored elevation-transition identity, segment, progress, and support height, v12 added deterministic world-stream route digest, current ordinal/instance, and resident range, and current v13 adds exact support-object ownership plus ladder/interactable/conveyor player state while preserving every earlier projection. Camera, first-draw timing, decoded-asset readiness, and other visual state remain excluded. Adding deterministic runtime state must add a new projection instead of silently invalidating accepted evidence. Record a short semantic-input route before polishing the implementation, then rerun it after every candidate:
 
 ```js
 await api.run({
@@ -1227,7 +1489,7 @@ if (!promotion.ok) throw new Error(promotion.error);
 
 `preview_playtest_replay` is provider-free, read-only, and clone-executes the ordinary `record_replay_case` path. It returns the exact replay specification, immediate pinned-hash result, comparable canonical event-count differences, and source/session/promotion digests. `promote_playtest_replay` recomputes that review and applies only if all three digests still match. Stale source, legacy timing, a non-reset start, zero ticks, dropped semantic input or runtime events, recorder timeout, mid-run reset/map manipulation, unresolved actions, unsafe fixture replacement, replay failure, or event-count mismatch remains a visible blocker. Heatmaps, world samples, source-device labels, feedback, and wall-clock timing never enter the fixture. Once promoted, the result is an ordinary versioned replay case that Project Doctor and release gates rerun normally.
 
-Inputs address zero-based simulation ticks; checkpoint hashes describe state after one-based ticks. Hashes use canonical nested simulation-only state, including active input/action and overlap-contact state that can change the next tick, while excluding artwork, camera, animation playback, audio, particles, shell lifecycle/preferences, and wall-clock values. A mismatch reports the first recorded divergent tick. Do not silently rerecord a changed result: replacing a fixture requires a higher `revision` and a non-empty `changeReason`. Automatic browser QA adds one source-bound replay evidence receipt when fixtures exist. CLI equivalents are `npm run agent -- replay game.loop.json [case-id]` and `<case-json> | npm run agent -- record-replay game.loop.json`. Exported runtime API 2.28 exposes `getSourceDigest()`, `getCollisionGeometry()`, `getTileProgram()`, `getTileRuntime()`, `getMotionBodyStates()`, `getActorStates()`, `getRuntimeAdapterInfo()`, `getInputActionLiveness()`, `getCompletionReport()`, `getCombatState()`, `getNarrativeContract()`, `getNarrativeReport()`, `getPresentationProgram()`, `getPresentationReport()`, `getPresentationStatus()`, `getGameShell()`, `getGameShellReport()`, `getGameShellState()`, `setAudioMuted(boolean)`, `setMasterVolume(number)`, `setReducedMotion(boolean)`, `setTouchControlSize(string)`, `startGame()`, `openGameSettings()`, `closeGameSettings()`, `getAcceptanceTests()`, `runAcceptanceTest(id)`, `runAcceptanceSuite()`, `getReplayCases()`, `runReplayCase(id)`, and `runReplaySuite()` plus matching DOM bridge commands, so the one-file artifact remains independently testable offline.
+Inputs address zero-based simulation ticks; checkpoint hashes describe state after one-based ticks. Hashes use canonical nested simulation-only state, including active input/action and overlap-contact state that can change the next tick, while excluding artwork, camera, animation playback, audio, particles, shell lifecycle/preferences, and wall-clock values. A mismatch reports the first recorded divergent tick. Do not silently rerecord a changed result: replacing a fixture requires a higher `revision` and a non-empty `changeReason`. Automatic browser QA adds one source-bound replay evidence receipt when fixtures exist. CLI equivalents are `npm run agent -- replay game.loop.json [case-id]` and `<case-json> | npm run agent -- record-replay game.loop.json`. Exported runtime API 2.35 exposes `getSourceDigest()`, `getCollisionGeometry()`, `getElevationTransitions()`, `getTileProgram()`, `getTileRuntime()`, `getWorldStreamState()`, `markWorldStreamDraw(observation)`, `getMotionBodyStates()`, `getActorStates()`, `getRuntimeAdapterInfo()`, `getInputActionLiveness()`, `getCompletionReport()`, `getCombatState()`, `getNarrativeContract()`, `getNarrativeReport()`, `getPresentationProgram()`, `getPresentationReport()`, `getPresentationStatus()`, `getGameShell()`, `getGameShellReport()`, `getGameShellState()`, `setAudioMuted(boolean)`, `setMasterVolume(number)`, `setReducedMotion(boolean)`, `setTouchControlSize(string)`, `startGame()`, `openGameSettings()`, `closeGameSettings()`, `getAcceptanceTests()`, `runAcceptanceTest(id)`, `runAcceptanceSuite()`, `getReplayCases()`, `runReplayCase(id)`, and `runReplaySuite()` plus matching DOM bridge commands, so the one-file artifact remains independently testable offline.
 
 After the real browser playtest, render the complete visual review and pass its receipts unchanged into verification:
 
@@ -1275,6 +1537,12 @@ For a directed generated game, this source-derived report checks four things the
 Evidence is not a label or free-form note. The browser collector first runs deterministic movement, map-load, depth-order, exact portal-spawn, and fresh-interaction checks. It then enters clean play mode, disables editor overlays, loads every authored map under every configured device profile, captures the displayed canvas at the profile capture scale, and records responsive HUD/touch measurements. The gate asserts the full map × profile matrix rather than a screenshot count. Desktop profiles must hide touch controls; touch profiles must expose contained controls with the configured minimum target size.
 
 Every receipt carries the current Doctor `sourceDigest`, `mapId`/`profileId` where applicable, SHA-256, rendered bounds, and both `targetViewport` and the actual browser `viewport`. The target is an honest in-app simulation; it is never reported as if the browser window had been resized. `#looplab-visual-review-state` and `get_visual_review` expose receipt metadata without image bytes. Use `select_visual_review_capture` to open one review image; pass `includeThumbnails: true` to `get_visual_review` only when a headless client truly needs all ephemeral thumbnails. Screenshot data URLs are never written into the editable project or one-file export.
+
+### Read exact-pixel color accessibility as bounded evidence
+
+Every capture's `perception.colorAccessibility` is the same `looplab-color-accessibility/v1` receipt in the mouse review panel and headless `capture_visual_review` / `get_visual_review` result. Inspect `status`, `summary`, `targets`, `issues`, and `policy`. Computed HUD text/background layers are composited over the exact captured pixels beneath translucent surfaces; authored gameplay colors are measured only when observed inside their bounded capture geometry. `unobserved-authored-color` and `unmeasured` are not passes. Normal text uses the 4.5:1 WCAG 2.2 review threshold; large text and declared essential non-text/gameplay cues use 3:1. Protan/deutan/tritan Delta E and retained-separation results use the pinned full-severity Machado model and LoopLab heuristic thresholds, not WCAG pass criteria.
+
+For a color-only issue, inspect the authored `semantics.redundantCue` rather than trying to infer meaning from pixels. Add or repair a real text, shape, outline, pattern, motion, or other non-color cue, then recapture the complete matrix. Use each issue's exact `bounds` and matching numbered annotation to localize the work. A clear receipt is advisory evidence only: it does not prove accessibility conformance, diagnose color vision, replace assistive-technology or human testing, select a creative winner, or certify taste.
 
 Empty arrays, legacy strings, failed checks, incomplete map/profile pairs, missing responsive profiles, and stale digests are rejected during verification, promotion, and final export. A protocol-1 legacy verification may still be opened as history, but it is stale for promotion/export until the matrix is recollected.
 
@@ -1340,11 +1608,15 @@ Use the browser bridge or generic CLI apply command:
 
 ```js
 const ledger = await api.run({ op: "get_iteration_history" });
-const comparison = await api.run({ op: "compare_iterations", ids: ["iteration-001", "iteration-002"] });
+const comparison = await api.run({ op: "compare_iterations", ids: ["iteration-001", "iteration-002"], maximumStructuralChanges: 512 });
 const restored = await api.run({ op: "restore_iteration", id: "iteration-001" });
 ```
 
 `compare_iterations` returns `looplab-candidate-decision/v1` on every surface. Hard gates constrain feasibility; matching frozen-profile dimensions can establish `first-dominates`, `second-dominates`, `tradeoff`, or `equivalent`. Missing, stale, or mismatched receipts produce `insufficient-evidence`. `automaticWinner` is always `null` for this contract. A dominance result is technical evidence, not a claim about fun or art quality. Review the supplied play-feel, pacing, visual-composition, player-clarity, and overall-preference prompts, then explicitly keep the current candidate or restore the selected historical candidate as a new child.
+
+The packet also includes `structuralDiff` with schema `looplab-structural-iteration-diff/v1`. It binds both iteration IDs and exact Doctor source digests, then compares stable authored IDs for maps, objects, object colliders, authored collision chains, and canonical compiled tile colliders. Object placement and every collision authority remain separate. Before/after geometry stays in authored world space; projection changes are declared rather than inferred from screen pixels. Aggregate counts are complete, while `maximumStructuralChanges` bounds deterministic detail from 32 to 4096 records and reports every omission. The mouse overlay renders this same receipt and digest with dashed/solid geometry plus `+`, `−`, `M`, and `C` labels. Do not infer identity from array order, proximity, names, art, or pixels, and never treat more/fewer changes as a creative ranking.
+
+Headless browser commands may be issued back-to-back without artificial sleeps. Each accepted mutation synchronously publishes the fully hydrated active-map state before its promise resolves. If a zero-delay sequence loses an earlier edit, treat that as an agent-operability defect; do not add caller delays or retry against guessed state.
 
 Codex and Claude receive this exact packet through the same canonical command; neither provider gets a private ranking rule. If they reach different creative judgments, preserve the provider-attributed rationale and let the user's stated vision decide which source-bound snapshot continues.
 
@@ -1449,13 +1721,15 @@ In the browser bridge, call `{"op":"prepare_export","filename":"my-game.html"}` 
 
 Persistence is an explicit export-profile decision. Inspect it with `get_export_profile` and `get_save_report`; change it only through `set_export_profile` with the current `expectedSourceDigest`, so an agent cannot overwrite a newer authoring state. The default `strict` profile remains one-file, offline, network-free, and storage-free; it can embed deterministic, source-bound portable save codes without invoking a browser persistence API. The `hosted` profile remains one-file and network-free but permits exactly LoopLab's declared, versioned, SHA-256-pinned localStorage wrapper for automatic saves under a stable HTTP(S) origin. Project Doctor and the artifact audit reject any other storage implementation, a duplicate wrapper, a modified wrapper, or storage in a strict artifact.
 
-Portable saves include only bounded authored gameplay state: active map and player state, collected IDs, completed rules, declared variables, authored object/path overrides, active choices, and the win state. They deliberately exclude input/replay internals, camera/presentation state, evidence, credentials, provider data, and authoring history. Restore is atomic and source-digest-bound; malformed, oversized, corrupt, or foreign-project codes leave the current runtime unchanged. A checksum detects accidental corruption but is not authentication. Hosted storage denial, an opaque sandbox, `file:` launch, or `SecurityError` must degrade safely to the portable-code path. At runtime use `get_save_status`, `export_save_code`, `inspect_save_code`, and `import_save_code`; hosted artifacts additionally support `persist_hosted_save` and `clear_hosted_save`.
+Portable saves include only bounded authored gameplay state: active map and player state, collected IDs, completed rules, declared variables, authored object/path overrides, active choices, the win state, and—when present—the source-bound world-stream route digest plus current ordinal/instance. Save-state v6 adds that stream position without changing earlier projections. Saves deliberately exclude input/replay internals, camera/presentation state, chunk first-draw timing, asset readiness, evidence, credentials, provider data, and authoring history. Restore is atomic and source-digest-bound; malformed, oversized, corrupt, foreign-project, or route-mismatched codes leave the current runtime unchanged. A checksum detects accidental corruption but is not authentication. Hosted storage denial, an opaque sandbox, `file:` launch, or `SecurityError` must degrade safely to the portable-code path. At runtime use `get_save_status`, `export_save_code`, `inspect_save_code`, and `import_save_code`; hosted artifacts additionally support `persist_hosted_save` and `clear_hosted_save`.
 
 The visible Export drawer uses the same builder and audit. **Verify exact build** starts a durable local companion job, streams the static-audit and hostile-browser stages into the live console, records the exact SHA-256 attestation only after every required check passes, and reports 0 provider tokens / $0.00. It can be cancelled without claiming a pass. Export downloads the HTML and enables **Open exact build** in a scripts-only in-app sandbox with an opaque origin. Save the adjacent `.loop.json` whenever future editing or AI looping must remain possible; the HTML is the playable release artifact, while the project file is the authoritative editable source.
 
 The exported game is one self-contained, offline-playable HTML file. It embeds the runtime, CSS, every authored map and portal-to-spawn connection, collision data, keyboard/touch controls, project metadata, and every asset selected into the project as a data URL. It must open directly from disk in a modern browser without a server, package install, CDN, provider connection, or Looplab companion. Canvas 2D uses the built-in inline runtime. Phaser uses LoopLab’s pinned 3.90.0 browser script. PixiJS uses the pinned 8.19.0 browser UMD followed by its same-version official strict-CSP static-synchronizer UMD under one trusted vendor hash. melonJS uses a pinned 17.4.0 tree-shaken IIFE with only the standalone application, camera, stage, renderable, state, boot, and Canvas capabilities required by the adapter. The static audit authenticates the exact selected bundle and rejects any competing runtime; the hostile opaque-origin browser harness proves the loaded version, one frame owner, replay, acceptance, input, saves, and zero external requests or unhandled errors. Module-only or network-loaded engine paths are release blockers. The larger installed CC0 library remains a builder resource; only chosen project assets belong in the exported game.
 
 When production Doctor is blocked only by `offline-unverified`, run `npm run agent -- verify-release <project.loop.json> <game.html> --captures=.looplab/release-game`. This single canonical operation builds the exact verification subject, runs the static one-file audit and the complete 1,200-frame hostile-browser policy, writes the passed HTML, and atomically records `releaseVerification` in the editable project. The attestation binds the Project Doctor source digest, runtime/verifier/policy versions, required check results, input-receipt digests, and exact HTML SHA-256. A loose `release.offlineVerified` Boolean is never authority. Afterward collect current editor evidence, run `verify_iteration`, and export normally; lifecycle/evidence metadata is deliberately excluded from shipped runtime bytes, so the final exporter must reproduce the attested SHA-256 exactly.
+
+When a CLI agent needs the whole evidence closure without an editor dance, use `npm run agent -- verify-everything <project.loop.json> [game.html] [--captures=directory] [--receipt=receipt.json] [--promote]`. It invokes the same exact-subject runner, collects every required map × device-profile screenshot and runtime join, applies those records through the ordinary trusted `verify_iteration` authority, optionally calls the ordinary promotion authority, and performs all project/HTML/receipt writes atomically after a final project-file SHA-256 check. Do not reproduce those steps with hand-authored receipts. Persisted evidence contains portable capture filenames rather than machine-local absolute paths; the separate local receipt retains capture locations. On failure, inspect `stage`, structured Doctor issues, evidence counts, and `writesApplied:false`; repair the source and rerun once rather than weakening a gate or resubmitting a still-running process.
 
 Headless browser callers use `{"op":"verify_release","filename":"game.html","wait":false}` once, retain its job ID, inspect it with `get_release_verification_job`, and resume that exact ID with `{"op":"verify_release","jobId":"…","wait":true}`. Do not resubmit while it is running. `cancel_release_verification_job` closes the browser harness and leaves the project unchanged. Before applying a completed result, LoopLab rechecks the selected project's source digest and reproduces the final exporter bytes; a stale or byte-different result is rejected. This is a local digest-bound integrity receipt rooted in the trusted LoopLab runner, not a public signature against malicious project-JSON forgery.
 
@@ -1481,7 +1755,7 @@ It performs the same hostile platform checks and additionally writes `initial.pn
 
 melonJS source and releases may be evaluated from its official repository. Awesome Canvas is a discovery catalog only: do not copy its list wholesale or assume linked projects share the catalog's own license. Inspect the original linked repository/site and verify its current license before adopting any implementation.
 
-In the exported game, wait for `looplab-runtime-ready`, then read `window.looplabRuntime` when the page allows new window globals. Runtime API 2.28 also provides a hardened DOM transport for automation sandboxes where that global is unavailable: dispatch `looplab:runtime-command` on `document` and await `looplab:runtime-response`, or open `#looplab-runtime-bridge`, fill `#looplab-runtime-command`, activate `#looplab-runtime-submit`, and read `#looplab-runtime-result`. Read `getSourceDigest()` or send `get_source_digest` before accepting any browser receipt for the artifact; read `getCollisionGeometry()` / `get_collision_geometry` for the active map-owned chain and tile-collision source; read `getTileProgram()` / `get_tile_program` and `getTileRuntime()` / `get_tile_runtime` for canonical tile source and compiled render/collision inspection; read `getRuntimeAdapterInfo()` / `get_runtime_adapter` to prove which primary adapter and pinned vendor version actually booted; use `getInputActionLiveness()` / `get_input_action_liveness` for its exact consumer report, `getCompletionReport()` / `get_completion_report` for its source-bound terminal witness, `getCombatState()` / `get_combat_state` for deterministic health, teams, emitters, and fixed projectile slots, `getActorStates()` / `get_actor_states` for deterministic route, perception, transition, target, and blocker state, and `getNarrativeContract()` / `get_narrative_contract` plus `getNarrativeReport()` / `get_narrative_report` for story structure and current proof; use `getPresentationProgram()` / `get_presentation_program`, `getPresentationReport()` / `get_presentation_report`, `getPresentationStatus()` / `get_presentation_status`, and `setAudioMuted(boolean)` / `set_audio_muted` for event-driven sound and motion. Use `getGameShell()` / `get_game_shell`, `getGameShellReport()` / `get_game_shell_report`, and `getGameShellState()` / `get_game_shell_state` for the authored player lifecycle; control it with `startGame()` / `start_game`, `pause`, `resume`, `restart`, `openGameSettings()` / `open_game_settings`, `closeGameSettings()` / `close_game_settings`, and the explicit preference setters.
+In the exported game, wait for `looplab-runtime-ready`, then read `window.looplabRuntime` when the page allows new window globals. Runtime API 2.35 also provides a hardened DOM transport for automation sandboxes where that global is unavailable: dispatch `looplab:runtime-command` on `document` and await `looplab:runtime-response`, or open `#looplab-runtime-bridge`, fill `#looplab-runtime-command`, activate `#looplab-runtime-submit`, and read `#looplab-runtime-result`. Read `getSourceDigest()` or send `get_source_digest` before accepting any browser receipt for the artifact; read `getCollisionGeometry()` / `get_collision_geometry` for the active map-owned chain and tile-collision source; read `getElevationTransitions()` / `get_elevation_transitions` for the active map-owned walkable ramp/stair source; read `getTileProgram()` / `get_tile_program` and `getTileRuntime()` / `get_tile_runtime` for canonical tile source and compiled render/collision inspection; read `getWorldStreamState()` / `get_world_stream_state` for deterministic route, resident chunks, budgets, and seam evidence, and use `markWorldStreamDraw(observation)` / `mark_world_stream_draw` only to record renderer first-draw observations; inspect `getRunVariationState()` / `get_run_variation_state`, start only explicit seeds or UTC days through `startRun()` / `start_run` and `startDailyChallenge()` / `start_daily_challenge`, treat `getGhostStates()` / `get_ghost_states` as presentation-only, and use `LR1` run-code methods only at tick zero; read `getRuntimeAdapterInfo()` / `get_runtime_adapter` to prove which primary adapter and pinned vendor version actually booted; use `getInputActionLiveness()` / `get_input_action_liveness` for its exact consumer report, `getCompletionReport()` / `get_completion_report` for its source-bound terminal witness, `getCombatState()` / `get_combat_state` for deterministic health, teams, emitters, and fixed projectile slots, `getActorStates()` / `get_actor_states` for deterministic route, perception, transition, target, and blocker state, and `getNarrativeContract()` / `get_narrative_contract` plus `getNarrativeReport()` / `get_narrative_report` for story structure and current proof; use `getPresentationProgram()` / `get_presentation_program`, `getPresentationReport()` / `get_presentation_report`, `getPresentationStatus()` / `get_presentation_status`, and `setAudioMuted(boolean)` / `set_audio_muted` for event-driven sound and motion. Use `getGameShell()` / `get_game_shell`, `getGameShellReport()` / `get_game_shell_report`, and `getGameShellState()` / `get_game_shell_state` for the authored player lifecycle; control it with `startGame()` / `start_game`, `pause`, `resume`, `restart`, `openGameSettings()` / `open_game_settings`, `closeGameSettings()` / `close_game_settings`, and the explicit preference setters.
 
 ```js
 await page.locator("#looplab-runtime-bridge > summary").click();
@@ -1498,14 +1772,45 @@ The runtime exposes:
 
 - `getState()` for the active map, player transform, score, pause state, persistent collectibles, and transition state;
 - `getCompletionReport()` for the source-bound terminal target, proof status, search coverage, and semantic-action witness;
-- `getObjects()`, `getTraversalPaths()`, `getNavigation()`, `getRuntimeJoinPlan()`, and `getCollisionBox(id)` for authored geometry, layered routes, and enabled transition-capture contracts;
+- `getObjects()`, `getTraversalPaths()`, `getNavigation()`, `getElevationTransitions()`, `getRuntimeJoinPlan()`, and `getCollisionBox(id)` for authored geometry, layered routes, physical height transitions, and enabled transition-capture contracts;
 - `setInput(action, pressed)` and `step(deltaMs)` for deterministic headless input and simulation;
 - `loadMap(mapId, spawnId)`, `reset()`, `pause()`, and `resume()` for deterministic test setup;
 - `getGameShell()`, `getGameShellReport()`, `getGameShellState()`, `startGame()`, `restart()`, `openGameSettings()`, `closeGameSettings()`, `setAudioMuted()`, `setMasterVolume()`, `setReducedMotion()`, and `setTouchControlSize()` for player-facing lifecycle and accessibility checks.
 
-DOM command names are the snake-case equivalents: `get_completion_report`, `get_state`, `get_objects`, `get_traversal_paths`, `get_navigation`, `get_runtime_join_plan`, `get_collision_geometry`, `get_tile_program`, `get_tile_runtime`, `get_collision_box`, `get_game_shell`, `get_game_shell_report`, `get_game_shell_state`, `set_input`, `step`, `reset`, `load_map`, `start_game`, `pause`, `resume`, `restart`, `open_game_settings`, `close_game_settings`, `set_audio_muted`, `set_master_volume`, `set_reduced_motion`, and `set_touch_control_size`.
+DOM command names are the snake-case equivalents: `get_completion_report`, `get_state`, `get_objects`, `get_traversal_paths`, `get_navigation`, `get_elevation_transitions`, `get_runtime_join_plan`, `get_collision_geometry`, `get_tile_program`, `get_tile_runtime`, `get_collision_box`, `get_game_shell`, `get_game_shell_report`, `get_game_shell_state`, `set_input`, `step`, `reset`, `load_map`, `start_game`, `pause`, `resume`, `restart`, `open_game_settings`, `close_game_settings`, `set_audio_muted`, `set_master_volume`, `set_reduced_motion`, and `set_touch_control_size`.
 
 For every affected export, verify linked-map portals and target spawns, explicit collider offsets, ground anchors, z-separated high routes and underpasses, deterministic depth slices, persistent collection state, hazards/goals, keyboard controls, touch controls, page-visibility pause, focus, reduced motion, and zero unexpected external requests. A held interaction must not bounce between portals: each portal entry requires a fresh E/LOCK press.
+
+<!-- LOOPLAB_AGENT_GUIDE_RECOVERY_START -->
+## Failure modes and recovery
+
+This table routes a stable signal back to the guide section that owns recovery. It does not execute the repair or upgrade failed evidence into a pass.
+
+| Signal | Meaning | Recovery |
+|---|---|---|
+| [stale-source] on a mutation | The project changed after the sourceDigest was read. | Re-read the brief or Doctor, rebase the intent, re-preview, and apply only against the current source. Never overwrite newer work. [Source](#build-an-atomic-candidate). |
+| Stale revisionDigest or HTTP 412 | The companion-owned document changed under this draft. | Preserve the draft, preview the shared-project rebase, apply only its exact conflict-free receipt, rerun gates, and save explicitly. [Source](#one-shared-project-store). |
+| expectedLedgerDigest mismatch | The coordination ledger changed after it was read. | Read get_work_ledger again and issue the claim or update against the returned digest. [Source](#coordinate-codex-and-claude-with-the-shared-work-ledger). |
+| Preview, plan, expansion, or rebase receipt rejected | The requested action is no longer byte-for-byte the reviewed action. | Generate a fresh preview and apply only its unchanged current receipt. [Source](#build-an-atomic-candidate). |
+| Presence lease expired | The actor's liveness heartbeat elapsed. | Register presence again and confirm that the durable ledger claim still names the actor before continuing. [Source](#publish-live-agent-presence-without-confusing-it-with-ownership). |
+| converge returns residue | The remaining findings do not have an unambiguous mechanical repair. | Treat them as the judgment queue and resolve each through its owning authoring section; do not repeat converge hoping for a different answer. [Source](#repair-deterministic-doctor-mechanics-without-guessing). |
+| Doctor input-action-dead | A declared semantic action has no observable gameplay effect. | Wire the action into shipped movement or rules, then rerun input liveness and the affected evidence. [Source](#author-executable-gameplay-systems). |
+| Doctor game-shell-missing | The release lacks the authored title, pause, terminal, restart, or settings lifecycle. | Author the game shell and exercise its keyboard, focus, visibility, and reduced-motion controls in the exported artifact. [Source](#standard-game-shell-and-player-lifecycle). |
+| Doctor reachability finding | A required target lies outside the real movement or route envelope. | Change authored geometry or movement tuning, then rerun the shipped-integrator reachability check rather than trusting a screenshot. [Source](#project-doctor-and-verification). |
+| Narrative reachability error | No authored ending is structurally reachable from the entry page. | Repair the page and edge graph until at least one ending is actually reachable. [Source](#author-executable-gameplay-systems). |
+| Replay firstDivergence | Deterministic state diverged from a pinned fixture at one exact tick. | Treat that tick as a regression. If the behavior is intentional, rerecord with the same ID, higher revision, and a non-empty reviewed reason. [Source](#iteration-ledger-and-safe-restore). |
+| Acceptance missing or spec-only | Promised behavior lacks executable proof. | Author the executable test or record the required deterministic fixture before making the behavior claim. [Source](#project-doctor-and-verification). |
+| Completion harness inconclusive | Bounded search neither proved nor disproved completability. | Report inconclusive, then deliberately adjust the design or search bounds. Never relabel it as a pass. [Source](#project-doctor-and-verification). |
+| No acceptable search candidate | The declared targets are unsatisfiable inside the searched design space. | Deliberately revise the targets or design. Do not cherry-pick a candidate that failed the hard gate. [Source](#search-valid-game-structures-before-spending-provider-tokens). |
+| provider.context.blocked | The scoped provider context exceeded its budget before model launch. | Narrow the task, map set, or conditions without removing authored truth. The failed preflight used zero provider tokens. [Source](#provider-context-budget-and-bounded-passes). |
+| Claude result lacks structured_output | The CLI response failed LoopLab's schema contract. | Reject the pass without mutation. Free-form text is not an equivalent result. [Source](#provider-connection-preflight). |
+| Privacy preflight blocked | The outbound payload or artifact contains a flagged value or incomplete scan. | Repair locally from the stable codes and sanitized paths, then rerun. Never send the raw finding to another provider. [Source](#mandatory-preflight). |
+| Consent absent for observation or critique | The required per-job consent was not granted for the exact data. | Request consent or continue without that evidence path. Never substitute another submission route. [Source](#grounded-ai-visual-critique-requires-per-job-consent). |
+| verification.automatic.failed or stale evidence | Browser evidence is missing or bound to an older source digest. | Recollect evidence against the current source. The candidate remains unverified until the new evidence passes. [Source](#project-doctor-and-verification). |
+| Exact-artifact release verification failed | The shipped bytes violate a production requirement. | Repair the authoring source, export a new artifact, and verify the new exact bytes. Never hand-patch exported HTML. [Source](#exported-game-runtime-contract). |
+| Companion health protocol mismatch | The running companion predates the current manifest and validators. | Restart through LoopLab's managed launcher; do not let an old companion judge current work. [Source](#discover-and-connect). |
+| Mutation rejected for missing session token | The caller lacks the current x-looplab-session-token. | Read the ignored local session descriptor and set the header without printing or persisting the token. [Source](#discover-and-connect). |
+<!-- LOOPLAB_AGENT_GUIDE_RECOVERY_END -->
 
 ## Completion response
 

@@ -10,7 +10,7 @@ import {
   suggestCollisionGeometry,
 } from "../lib/looplab-collision-geometry.mjs";
 import { analyzeProject } from "../lib/looplab-doctor.mjs";
-import { captureReplayState, LOOPLAB_REPLAY_COLLISION_HASH_VERSION, LOOPLAB_REPLAY_ACTOR_HASH_VERSION, LOOPLAB_REPLAY_MOTION_CARRY_HASH_VERSION } from "../lib/looplab-replay.mjs";
+import { captureReplayState, LOOPLAB_REPLAY_COLLISION_HASH_VERSION, LOOPLAB_REPLAY_ACTOR_HASH_VERSION, LOOPLAB_REPLAY_HASH_VERSION } from "../lib/looplab-replay.mjs";
 import { createRuntimeModel } from "../lib/looplab-runtime-model.mjs";
 
 const clone = (value) => structuredClone(value);
@@ -152,12 +152,12 @@ test("headless commands, Doctor, manifest, and one-file export expose collision 
   const manifest = getAgentManifest();
   assert.ok(manifest.commands.includes("set_collision_geometry"));
   assert.equal(manifest.authoredCollisionGeometry.schemaVersion, LOOPLAB_COLLISION_GEOMETRY_SCHEMA);
-  assert.equal(manifest.deterministicReplay.currentHashVersion, LOOPLAB_REPLAY_MOTION_CARRY_HASH_VERSION);
+  assert.equal(manifest.deterministicReplay.currentHashVersion, LOOPLAB_REPLAY_HASH_VERSION);
 
   const html = buildStandaloneHtml(set.project);
   assert.match(html, /groundChainId/);
   assert.match(html, /get_collision_geometry/);
-  assert.match(html, /\[1,2,3,4,5,6,7,8,9,10\]/);
+  assert.match(html, /\[1,2,3,4,5,6,7,8,9,10,11,12,13,14\]/);
 
   const removed = applyAgentCommand(set.project, { op: "remove_collision_geometry", mapId: source.activeMapId });
   assert.equal(removed.changed, true);

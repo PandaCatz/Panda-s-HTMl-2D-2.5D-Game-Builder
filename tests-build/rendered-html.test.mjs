@@ -80,6 +80,11 @@ test("server-renders the Looplab game workshop", async () => {
   assert.match(html, /id="looplab-agent-recipe"/);
   assert.match(html, /Agent playbook/);
   assert.match(html, /Read-only proven operating recipes/);
+  assert.match(html, /id="looplab-agent-guide-navigation"/);
+  assert.match(html, /id="looplab-agent-guide-query"/);
+  assert.match(html, /id="looplab-agent-guide-category"/);
+  assert.match(html, /Agent guide navigator/);
+  assert.match(html, /Source-bound rules and failure recovery without loading the full guide/);
   assert.match(html, /id="looplab-agent-context-pack"/);
   assert.match(html, /id="looplab-agent-context-view"/);
   assert.match(html, /Agent context pack/);
@@ -256,14 +261,15 @@ test("keeps the create-preview-export loop in the product source", async () => {
 });
 
 test("ships responsive and accessible editor controls", async () => {
-  const [page, css, manifestSource] = await Promise.all([
+  const [page, exchangePanel, css, manifestSource] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/community-exchange-panel.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
     readFile(new URL("../public/agent-manifest.json", import.meta.url), "utf8"),
   ]);
   const manifest = JSON.parse(manifestSource);
 
-  assert.equal(manifest.protocolVersion, "1.101.0");
+  assert.equal(manifest.protocolVersion, "1.112.0");
   assert.equal(manifest.agentOperatingModel.headlessFirst, true);
   assert.match(manifest.agentOperatingModel.primarySurface, /canonical product surface/);
   assert.match(manifest.agentOperatingModel.humanUiRole, /secondary inspection/);
@@ -283,6 +289,11 @@ test("ships responsive and accessible editor controls", async () => {
   assert.equal(manifest.mechanicalRepair.previewCommand, "auto_repair");
   assert.equal(manifest.mechanicalRepair.convergenceCommand, "converge");
   assert.equal(manifest.mechanicalRepair.providerFree, true);
+  assert.equal(manifest.communityExchange.schemaVersion, "looplab-community-exchange/v1");
+  assert.deepEqual(manifest.communityExchange.commands, ["list_community_exchanges", "get_community_exchange_report", "preview_tiled_import", "apply_tiled_import", "preview_aseprite_import", "apply_aseprite_import", "export_community_exchange"]);
+  assert.match(manifest.communityExchange.policy.collisionAuthority, /preserved byte-for-byte/i);
+  assert.match(manifest.communityExchange.workflow, /both Doctor profiles.*expectedSourceDigest.*expectedPreviewDigest/i);
+  assert.equal(manifest.communityExchange.headlessSuperset, true);
   assert.equal(manifest.builderBenchmark.schemaVersion, "looplab-builder-benchmark-suite/v1");
   assert.equal(manifest.builderBenchmark.taskCount, 4);
   assert.equal(manifest.builderBenchmark.providerFreeEvaluation, true);
@@ -320,6 +331,13 @@ test("ships responsive and accessible editor controls", async () => {
   assert.match(page, /release-only finding/);
   assert.match(page, /id="looplab-agent-plan"/);
   assert.match(page, /id="looplab-agent-change-feed"/);
+  assert.match(page, /<CommunityExchangePanel/);
+  assert.match(exchangePanel, /id="looplab-community-exchange"/);
+  assert.match(exchangePanel, /Preview Tiled import/);
+  assert.match(exchangePanel, /Preview Aseprite import/);
+  assert.match(exchangePanel, /Apply exact reviewed import/);
+  assert.match(exchangePanel, /View stale original/);
+  assert.match(exchangePanel, /Object layers and generated pixels are advisory/);
   assert.match(page, /id="looplab-agent-builder-benchmark"/);
   assert.match(page, /id="looplab-director-state"/);
   assert.match(page, /id="looplab-spatial-layout-search"/);
@@ -336,6 +354,19 @@ test("ships responsive and accessible editor controls", async () => {
   assert.match(page, /Review both in play before choosing/);
   assert.match(page, /Hard-gate evidence incomplete/);
   assert.match(page, /data-relation=/);
+  assert.equal(manifest.iterationLedger.structuralDiffSchema, "looplab-structural-iteration-diff/v1");
+  assert.match(manifest.iterationLedger.structuralDiffPolicy, /authored world space/i);
+  assert.match(page, /StructuralIterationOverlay/);
+  assert.match(page, /Stable-ID world-space evidence/);
+  assert.match(page, /change-focused world crop/);
+  assert.match(page, /Dashed · before \/ removed/);
+  assert.match(page, /Solid · after \/ added/);
+  assert.match(page, /Evidence, not a verdict/);
+  assert.match(page, /import \{ flushSync \} from "react-dom"/);
+  assert.match(page, /flushSync\(\(\) => setProject\(syncedNext\)\);\s*projectRef\.current = syncedNext;/);
+  assert.match(css, /\.iteration-structural-diff\s*\{[^}]*min-width:\s*0/s, "structural comparison must shrink inside the Director column");
+  assert.match(css, /\.structural-chain\.before\s*\{[^}]*stroke-dasharray/s, "before collision chains must remain distinguishable without color");
+  assert.match(css, /\.structural-chain\.after\s*\{/);
   assert.match(page, /Resume agent memory/);
   assert.match(page, /Local agent planner/);
   assert.match(page, /Draft source-bound plan/);
@@ -347,6 +378,11 @@ test("ships responsive and accessible editor controls", async () => {
   assert.match(css, /\.statusbar \.agent-bridge-console form \.agent-context-pack button,\s*\.statusbar \.agent-bridge-console form \.agent-change-feed button\s*\{[^}]*background: #3a3a37/s, "context and change-feed controls must override the generic lime Agent API button rule");
   assert.match(css, /\.agent-readiness-card\[data-release-blocking="true"\]/);
   assert.match(css, /\.agent-intent-plan-result/);
+  assert.match(css, /\.agent-community-exchange/);
+  assert.match(css, /\.agent-guide-navigation/);
+  assert.match(css, /\.agent-guide-results article\[data-guide-kind="recovery"\]/);
+  assert.match(css, /\.statusbar \.agent-bridge-console form \.agent-guide-actions button\s*\{[^}]*background: #3a3a37/s, "guide controls must override the generic lime Agent API button rule");
+  assert.match(css, /\.community-exchange-preview\.is-ready/);
   assert.match(css, /\.provider-parity-contract/);
   assert.match(css, /background: #e8e7e2/);
   assert.match(css, /spatial-candidate-grid/);
@@ -377,6 +413,13 @@ test("ships responsive and accessible editor controls", async () => {
   assert.equal(manifest.visualReviewStateSelector, "#looplab-visual-review-state");
   assert.equal(manifest.visualCritiqueStateSelector, "#looplab-visual-critique-state");
   assert.equal(manifest.verification.visualReviewCommand, "capture_visual_review");
+  assert.equal(manifest.verification.visualPerception.colorAccessibility.schemaVersion, "looplab-color-accessibility/v1");
+  assert.match(manifest.verification.visualPerception.colorAccessibility.claimBoundary, /never claim taste/);
+  assert.match(page, /Exact-pixel color accessibility/);
+  assert.match(page, /Machado simulations are diagnostic/);
+  assert.match(css, /\.visual-review-body\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\)[^}]*min-width:\s*0/s, "Visual QA must shrink inside the Director column instead of extending beneath the stage canvas");
+  assert.match(css, /\.visual-review-body\s*>\s*\*\s*\{[^}]*min-width:\s*0/s, "every Visual QA child must be allowed to shrink with its sidebar");
+  assert.match(css, /\.director-scroll \.visual-critique-controls\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\)/s, "provider critique controls must stack inside the Director sidebar");
   assert.equal(manifest.verification.automatedBrowserCommand, "run_post_generation_qa");
   assert.equal(manifest.verification.automaticAfterAcceptedBrowserGeneration, true);
   assert.match(manifest.verification.automaticFailurePolicy, /Preserve the accepted candidate as unverified/);
@@ -427,6 +470,14 @@ test("ships responsive and accessible editor controls", async () => {
   assert.match(manifest.agentPlaybook.registryDigest, /^sha256:[a-f0-9]{64}$/);
   assert.ok(manifest.mcpServer.resources.includes("looplab://agent-playbook"));
   assert.match(manifest.headlessResponses.agentPlaybookWorkflow, /read-only context.*never execute/i);
+  assert.equal(manifest.agentGuideNavigation.schemaVersion, "looplab-agent-guide-index/v1");
+  assert.equal(manifest.agentGuideNavigation.counts.invariants, 16);
+  assert.equal(manifest.agentGuideNavigation.counts.lifecycle, 10);
+  assert.match(manifest.agentGuideNavigation.indexDigest, /^sha256:[a-f0-9]{64}$/);
+  assert.ok(manifest.commands.includes("get_agent_guide_index"));
+  assert.ok(manifest.mcpServer.resources.includes("looplab://agent-guide-index"));
+  assert.equal(manifest.transport.agentGuideNavigationSelector, "#looplab-agent-guide-navigation");
+  assert.match(manifest.headlessResponses.agentGuideNavigationWorkflow, /orientation only/i);
   assert.equal(manifest.agentWorkLedger.schemaVersion, "looplab-agent-work-ledger/v1");
   assert.equal(manifest.agentWorkLedger.privacy.exportedHtml, false);
   assert.equal(manifest.agentWorkLedger.privacy.providerContext, false);

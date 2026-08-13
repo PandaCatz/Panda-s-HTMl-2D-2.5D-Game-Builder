@@ -15,7 +15,10 @@ import {
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from "react";
+import { flushSync } from "react-dom";
 import VisualIdentityPanel, { type VisualIdentityContract, type VisualIdentityRole } from "./visual-identity-panel";
+import PresentationAuthoringPanel from "./presentation-authoring-panel";
+import CommunityExchangePanel from "./community-exchange-panel";
 import {
   LOOPLAB_PROTOCOL_VERSION,
   applyAgentCommand,
@@ -37,6 +40,8 @@ import {
   prepareBoundedAgentFormResponse,
 } from "../lib/looplab-bounded-agent-response.mjs";
 import { validateLooplabCommandInput } from "../lib/looplab-agent-contracts.mjs";
+import { queryAgentGuideIndex } from "../lib/looplab-agent-guide-navigation.mjs";
+import { LOOPLAB_AGENT_GUIDE_INDEX } from "../lib/generated/looplab-agent-guide-index.mjs";
 import { LOOPLAB_SHARED_PROJECT_STORE_POLICY, LOOPLAB_SHARED_PROJECT_STORE_SCHEMA } from "../lib/looplab-shared-project-contract.mjs";
 import { previewSharedProjectRebase, sharedProjectRevisionDigest } from "../lib/looplab-shared-project-rebase.mjs";
 import { LOOPLAB_GAME_DIRECTOR, composeDirectedGameBrief, composeProviderGeneratedGameBrief, directedGameSummary, reconcileDirectedGameBrief } from "../lib/looplab-game-director.mjs";
@@ -50,19 +55,26 @@ import {
 import { analyzeProject, canCollectOfflineVerificationEvidence } from "../lib/looplab-doctor.mjs";
 import { buildAgentProjectContext } from "../lib/looplab-agent-context.mjs";
 import { routeGameStudioWork } from "../lib/looplab-capability-router.mjs";
+import { getCapabilityPack, getCapabilityPackRegistry, inspectCapabilityPackRefresh, listCapabilityPacks, queryCapabilityKnowledge } from "../lib/looplab-capability-packs.mjs";
 import { providerFamilyPaths, resolveProviderRoute } from "../lib/looplab-provider-routing.mjs";
 import { createRuntimeModel } from "../lib/looplab-runtime-instance.mjs";
 import { compileTileRuntimeProgram } from "../lib/looplab-tile-runtime.mjs";
 import { createPresentationRuntime } from "../lib/looplab-presentation.mjs";
+import { analyzeEmbeddedAudioBytes, inspectEmbeddedAudioResource } from "../lib/looplab-audio-resources.mjs";
 import { createReplayEvidence, createRuntimePlaytestEvidence, validateVerificationEvidence, verificationCoverageRequirements } from "../lib/looplab-verification.mjs";
 import { analyzeRuntimeJoinPixels, buildRuntimeJoinPlan } from "../lib/looplab-runtime-join.mjs";
 import { analyzeVisualPerception, isHudVisualReviewTarget, visualBoundsExtendBeyondFrame } from "../lib/looplab-visual-perception.mjs";
+import { parseCssColor } from "../lib/looplab-color-accessibility.mjs";
 import { isVisualCritiqueFresh } from "../lib/looplab-visual-critique-freshness.mjs";
 import { analyzeSpriteFrames, decodedMemoryLedger, extractPalette, packSpriteAtlas, silhouetteDriftLimitForRole, sliceAtlasFrames } from "../lib/looplab-sprite-tools.mjs";
 import { extractProjectFromHtml } from "../lib/looplab-html-project.mjs";
 import { groundAnchorOffset, listSupportSurfaces, resolveSupportContact, snapObjectToSupport, supportFootprintRect } from "../lib/looplab-support.mjs";
 import { authoredColliderForPlacement, visualBoundsForAsset } from "../lib/looplab-authored-collision.mjs";
 import { LOOPLAB_COLLISION_GEOMETRY_DEFAULT_TUNING, LOOPLAB_COLLISION_GEOMETRY_SCHEMA } from "../lib/looplab-collision-geometry.mjs";
+import {
+  LOOPLAB_ELEVATION_TRANSITIONS_SCHEMA,
+  normalizeElevationTransitions,
+} from "../lib/looplab-elevation-transitions.mjs";
 import { CC0_ASSET_CATEGORIES, CC0_ASSET_PACKS, CC0_ASSET_POLICY } from "../lib/looplab-cc0-assets.mjs";
 import { introducedDoctorErrors } from "../lib/looplab-quality.mjs";
 import { LOOPLAB_PROJECT_SCHEMA_VERSION } from "../lib/looplab-reuse-guide.mjs";
@@ -71,7 +83,9 @@ import { depthKey as spatialDepthKey, normalizeProjection, projectWorldRect, scr
 import { authoredRoutePreview, createNavigationModel, findNavigationPath, normalizeAuthoredRouteDocument, summarizeAuthoredRouteDocument } from "../lib/looplab-navigation.mjs";
 import { inspectVerbArchitecture, LOOPLAB_VERB_ARCHITECTURE_POLICY } from "../lib/looplab-verb-architecture.mjs";
 import { inspectGameplayProgram, LOOPLAB_GAMEPLAY_RULE_POLICY } from "../lib/looplab-gameplay-rules.mjs";
+import { inspectRunVariationProgram, LOOPLAB_RUN_VARIATION_POLICY } from "../lib/looplab-run-variation.mjs";
 import { inspectMotionBodies, LOOPLAB_MOTION_BODY_POLICY } from "../lib/looplab-motion-bodies.mjs";
+import { LOOPLAB_INTERACTABLE_TEMPLATE_REGISTRY } from "../lib/looplab-interactables.mjs";
 import { inspectCombatProgram, LOOPLAB_COMBAT_POLICY } from "../lib/looplab-combat.mjs";
 import { inspectActorProgram, LOOPLAB_ACTOR_POLICY } from "../lib/looplab-actors.mjs";
 import { LOOPLAB_HOSTED_STORAGE_WRAPPER_SCHEMA, normalizeSaveProgram } from "../lib/looplab-save-state.mjs";
@@ -125,7 +139,7 @@ import {
   LOOPLAB_AGENT_WORK_LEDGER_MUTATIONS,
 } from "../lib/looplab-agent-work-ledger.mjs";
 
-type ObjectKind = "player" | "platform" | "coin" | "hazard" | "decor" | "spawn" | "portal" | "goal";
+type ObjectKind = "player" | "platform" | "coin" | "hazard" | "decor" | "spawn" | "portal" | "goal" | "spring" | "ladder" | "conveyor" | "crumble-platform" | "key" | "door" | "pressure-plate" | "one-way-platform";
 type ControlMode = "platformer" | "topdown";
 type WorkspaceMode = "edit" | "play";
 type ExperienceMode = "director" | "workbench";
@@ -151,6 +165,34 @@ type ResearchFinding = { id: string; title: string; summary: string; confidence:
 type ResearchSuggestion = { id: string; title: string; rationale: string; promptAddition: string; category: string; confidence: "high" | "medium" | "low"; sourceIds: string[] };
 type ResearchReport = { id: string; query: string; preset: string; depth: ResearchDepth; engine?: ResearchEngineId; provider: AgentProvider; createdAt: string; title: string; executiveSummary: string; confidence: "high" | "medium" | "low"; findings: ResearchFinding[]; suggestions: ResearchSuggestion[]; sources: ResearchSource[]; uncertainties: string[]; reportFile?: string; markdown?: string; usage?: UsageReceipt | null };
 type ResearchEvent = { sequence?: number; type: string; message?: string; detail?: string; error?: string; sourceCount?: number; suggestionCount?: number; receipt?: UsageReceipt; usage?: UsageReceipt };
+type CapabilityPackCapabilityRef = { id: string; label: string; guidance: string; owns: string[]; chooseWhen: string[] };
+type CapabilityPackSourceRef = { licenseExpression: string; rightsBoundary: string; licenseEvidenceUri: string };
+type CapabilityPackRef = {
+  id: string;
+  revision: number;
+  label: string;
+  scope: string;
+  categories: string[];
+  decisionRules: string[];
+  capabilities: CapabilityPackCapabilityRef[];
+  contentDigest: string;
+  digest: string;
+  sources: CapabilityPackSourceRef[];
+  provenance: { claimBoundary: string };
+};
+type CapabilityPackRegistryRef = {
+  schemaVersion: string;
+  digest: string;
+  packCount: number;
+  capabilityCount: number;
+  packs: CapabilityPackRef[];
+  calibration: { valid: boolean; passedCount: number; caseCount: number };
+  policy: Record<string, unknown>;
+};
+type CapabilityPackListRef = { packs: Array<{ id: string }>; total: number };
+type CapabilityKnowledgeRef = {
+  results: Array<{ packId: string; capability: CapabilityPackCapabilityRef; decisionRules: string[] }>;
+};
 type LocalFileHandle = { kind: "file"; name: string; getFile: () => Promise<File> };
 type LocalDirectoryHandle = { kind: "directory"; name: string; values: () => AsyncIterableIterator<LocalFileHandle | LocalDirectoryHandle> };
 type DirectoryPickerWindow = Window & { showDirectoryPicker?: (options?: { mode?: "read" | "readwrite" }) => Promise<LocalDirectoryHandle> };
@@ -317,6 +359,20 @@ type ProjectResource = {
   mimeType: string;
   dataUrl: string;
   bytes: number;
+  analysis?: {
+    measurable?: boolean;
+    encodedBytes?: number;
+    decodedMemoryBytes?: number;
+    sourceDecodedMemoryBytes?: number;
+    durationSeconds?: number;
+    sampleRate?: number;
+    decodedSampleRate?: number;
+    decodedFrameCount?: number;
+    frameCount?: number;
+    channels?: number;
+    format?: string;
+    error?: string | null;
+  };
   source: AssetSourceReference;
 };
 
@@ -496,6 +552,30 @@ type GameObject = {
   hidden?: boolean;
   opacity?: number;
   runtimeState?: string;
+  interactable?: {
+    schemaVersion: string;
+    instanceId: string;
+    templateId: string;
+    templateRevision: number;
+    templateDigest: string;
+    role: string;
+    parameters: Record<string, unknown>;
+    overrides: Record<string, unknown>;
+  };
+};
+
+type InteractablePreviewView = {
+  sourceDigest: string;
+  mapId: string;
+  instanceId: string;
+  templateId: string;
+  templateDigest: string;
+  previewDigest: string;
+  applicable: boolean;
+  conflicts: { duplicateObjectIds: string[]; duplicateInstance: boolean };
+  objects: GameObject[];
+  featureContractTemplate: Record<string, unknown>;
+  fixtureTemplates: Record<string, unknown>;
 };
 
 type TraversalPath = {
@@ -537,6 +617,28 @@ type CollisionGeometry = {
   collisionOwner: "authored-map";
   tuning: typeof LOOPLAB_COLLISION_GEOMETRY_DEFAULT_TUNING;
   chains: CollisionGeometryChain[];
+};
+
+type ElevationTransitionPoint = { id: string; x: number; y: number; z: number };
+type ElevationTransition = {
+  id: string;
+  name: string;
+  enabled: boolean;
+  kind: "ramp" | "stairs";
+  width: number;
+  entryRadius: number;
+  entryZTolerance: number;
+  oneWay: boolean;
+  fromLayerId?: string;
+  toLayerId?: string;
+  navigationLinkId?: string;
+  collisionChainId?: string;
+  points: ElevationTransitionPoint[];
+};
+type ElevationTransitions = {
+  schemaVersion: string;
+  supportOwner: "authored-map";
+  transitions: ElevationTransition[];
 };
 
 type TilePaletteEntry = {
@@ -588,6 +690,22 @@ type TileProgram = {
   collisionLayers: TileCollisionLayer[];
 };
 
+type WorldStreamSocket = { id: string; tag: string; edge: "left" | "right" | "top" | "bottom"; x: number; y: number; z: number; span: number };
+type WorldStream = {
+  schemaVersion: "looplab-world-stream/v1" | string;
+  owner: "authored-map";
+  enabled: boolean;
+  mode: "finite" | "seeded";
+  axis: "horizontal" | "vertical";
+  seed: string;
+  startTemplateId: string;
+  horizon: number;
+  sequence: string[];
+  budgets: { retainBehind: number; prefetchAhead: number; maxResidentChunks: number; maxResidentTileCells: number; maxResidentCollisionCells: number; maxDecodedRgbaBytes: number; cullPadding: number };
+  tolerances: { crossAxis: number; z: number; span: number };
+  templates: Array<{ id: string; name: string; mapId: string; weight: number; entry: WorldStreamSocket | null; exit: WorldStreamSocket | null }>;
+};
+
 type GameMap = {
   id: string;
   name: string;
@@ -602,7 +720,9 @@ type GameMap = {
   objects: GameObject[];
   traversalPaths?: TraversalPath[];
   collisionGeometry?: CollisionGeometry;
+  elevationTransitions?: ElevationTransitions;
   tileProgram?: TileProgram;
+  worldStream?: WorldStream;
   clearanceZones?: Array<{ id: string; routeId?: string; routeName?: string; phase?: string; x: number; y: number; width: number; height: number; zMin?: number; zMax?: number }>;
   hudSafeAreas?: Array<{ id: string; name: string; x: number; y: number; width: number; height: number }>;
   maxInteractionGap?: number;
@@ -685,6 +805,67 @@ const ITERATION_RELATION_LABELS: Record<IterationTechnicalRelation, string> = {
   "insufficient-evidence": "Comparable evidence is incomplete",
 };
 
+type StructuralOverlayBounds = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  zMin?: number;
+  zMax?: number;
+};
+
+type StructuralOverlayRecord = {
+  id: string;
+  label?: string;
+  bounds?: StructuralOverlayBounds;
+  placement?: { x: number; y: number; z: number; supportZ: number; width: number; height: number };
+  points?: Array<{ id: string; x: number; y: number }>;
+};
+
+type StructuralOverlayChange = {
+  id: string;
+  change: "added" | "removed" | "modified";
+  changeKinds: string[];
+  before: StructuralOverlayRecord | null;
+  after: StructuralOverlayRecord | null;
+};
+
+type StructuralMapDiff = {
+  mapId: string;
+  label: string;
+  status: "added" | "removed" | "modified" | "unchanged";
+  changeKinds: string[];
+  dimensions: { first: { width: number; height: number } | null; second: { width: number; height: number } | null };
+  detailCount: number;
+  retainedDetailCount: number;
+  omittedDetailCount: number;
+  objectChanges: StructuralOverlayChange[];
+  colliderChanges: StructuralOverlayChange[];
+  chainChanges: StructuralOverlayChange[];
+  tileColliderChanges: StructuralOverlayChange[];
+};
+
+type StructuralIterationDiff = {
+  schemaVersion: "looplab-structural-iteration-diff/v1" | string;
+  digest: string;
+  first: { iterationId: string | null; sourceDigest: string | null };
+  second: { iterationId: string | null; sourceDigest: string | null };
+  changed: boolean;
+  summary: {
+    maps: { changed: number; added: number; removed: number; resized: number; projectionChanged: number };
+    objects: { added: number; removed: number; modified: number; moved: number; resized: number; supportChanged: number; anchorChanged: number };
+    objectColliders: { added: number; removed: number; modified: number };
+    collisionChains: { added: number; removed: number; modified: number };
+    tileColliders: { added: number; removed: number; modified: number };
+  };
+  detailCount: number;
+  maximumDetailChanges: number;
+  truncated: boolean;
+  warnings: string[];
+  maps: StructuralMapDiff[];
+  policy: { identity: string; sourceBinding: string; collisionAuthority: string; coordinateSpace: string; detailBound: string; mutation: string; judgment: string };
+};
+
 type IterationComparison = {
   schemaVersion: "looplab-candidate-decision/v1" | string;
   digest: string;
@@ -717,6 +898,7 @@ type IterationComparison = {
     second: { score: number; errorCount: number; warningCount: number; digest: string; sourceDigest: string; profile: string };
   };
   counts: { first: { maps: number; objects: number; assets: number }; second: { maps: number; objects: number; assets: number } };
+  structuralDiff?: StructuralIterationDiff;
 };
 
 type Browser2DFramework = "standalone" | "canvas" | "phaser" | "pixi" | "melon";
@@ -733,7 +915,9 @@ type GameProject = {
   objects: GameObject[];
   traversalPaths?: TraversalPath[];
   collisionGeometry?: CollisionGeometry;
+  elevationTransitions?: ElevationTransitions;
   tileProgram?: TileProgram;
+  worldStream?: WorldStream;
   clearanceZones?: GameMap["clearanceZones"];
   hudSafeAreas?: GameMap["hudSafeAreas"];
   maxInteractionGap?: number;
@@ -778,6 +962,9 @@ type GameProject = {
       changeReason?: string;
       tickRate?: number;
       seed?: number;
+      runSeed?: string;
+      utcDay?: string;
+      hashVersion?: number;
       tickCount: number;
       startMapId?: string;
       startSpawnId?: string;
@@ -816,6 +1003,7 @@ type GameProject = {
   iterationArchive?: { version: 1; lineageId: string; snapshots: Array<{ id: string; sourceDigest: string; createdAt: string; project: Record<string, unknown> }>; assetBlobs: Record<string, string> };
   designBrief?: DirectedBrief;
   gameplayProgram?: Record<string, unknown>;
+  runVariationProgram?: Record<string, unknown>;
   combatProgram?: Record<string, unknown>;
   actorProgram?: Record<string, unknown>;
   narrativeContract?: Record<string, unknown>;
@@ -1049,6 +1237,7 @@ type RuntimeState = {
   gameplayRevision?: number;
   variables?: Record<string, number | boolean | string>;
   completedRuleIds?: string[];
+  deterministicState?: { activeInputCodes?: string[]; activeActionIds?: string[]; overlapContactIds?: string[]; activeChoicePageId?: string | null; pendingChoiceId?: string | null };
   player?: { id?: string; x: number; y: number; z: number; vx?: number; vy?: number; grounded?: boolean } | null;
   won: boolean;
 };
@@ -1058,7 +1247,31 @@ type RuntimeChoiceState = {
   title: string;
   body: string;
   modal: boolean;
+  lineId: string | null;
+  speakerId: string | null;
+  speakerName: string | null;
+  portraitAssetId: string | null;
+  portraitSide: "left" | "right";
+  revealMode: "instant" | "typewriter";
+  charactersPerSecond: number;
+  ariaLabel: string;
   choices: Array<{ id: string; label: string; actionId: string; visible: boolean; enabled: boolean }>;
+};
+
+type RuntimeQuestState = {
+  revision: number;
+  quests: Array<{
+    id: string;
+    title: string;
+    description: string;
+    giverId: string | null;
+    giverName: string | null;
+    statusVariableId: string;
+    statusValue: number;
+    status: "inactive" | "active" | "completed" | "failed" | "invalid";
+    visible: boolean;
+    objectives: Array<{ id: string; label: string; visible: boolean; completed: boolean; progressVariableId: string | null; progress: number | null; target: number | null }>;
+  }>;
 };
 
 type RuntimeHudBinding = { id: string; text: string; ariaLabel: string; region: "primary" | "secondary" | "ticker" };
@@ -1101,6 +1314,10 @@ type RuntimeSlice = {
 type RuntimeEngine = {
   update: (dt: number) => RuntimeEvent[];
   reset: () => void;
+  startRun: (options: { seed: string }) => Record<string, unknown>;
+  startDailyChallenge: (options: { utcDay: string }) => Record<string, unknown>;
+  getRunVariationState: () => Record<string, unknown>;
+  getGhostStates: () => Array<{ id: string; label: string; mapId: string; x: number; y: number; z: number; facingX: number; color: string; opacity: number; presentationOnly: true }>;
   loadMap: (mapId: string, spawnId?: string | null) => boolean;
   setInput: (code: string, pressed: boolean) => void;
   drainEvents: () => RuntimeEvent[];
@@ -1112,6 +1329,7 @@ type RuntimeEngine = {
   getNavigation: () => NavigationModel;
   getGameplayState: () => { revision: number; variables: Record<string, number | boolean | string>; completedRuleIds: string[]; completedMapRuleIds: string[] };
   getChoiceState: () => RuntimeChoiceState | null;
+  getQuestState: () => RuntimeQuestState;
   getHudState: () => RuntimeHudBinding[];
   chooseChoice: (choiceId: string) => boolean;
   renderEntries: () => Array<{ object: RuntimeObject; slice: RuntimeSlice | null; depth: number }>;
@@ -1124,6 +1342,26 @@ type PreviewTransition = {
 
 type AgentCommand = { op?: string; [key: string]: unknown };
 type AgentRunResult = Record<string, unknown>;
+type AgentGuideCategory = "all" | "section" | "invariant" | "lifecycle" | "recovery";
+type AgentGuideEntryRef = {
+  kind: Exclude<AgentGuideCategory, "all">;
+  id: string;
+  title: string;
+  summary: string;
+  statement?: string;
+  recovery?: string;
+  anchor: string;
+  href: string;
+  source: { startLine: number | null; endLine: number | null };
+};
+type AgentGuideQueryRef = {
+  sourceDigest: string;
+  indexDigest: string;
+  totalMatches: number;
+  returned: number;
+  truncated: boolean;
+  entries: AgentGuideEntryRef[];
+};
 type AgentRecipeRef = {
   id: string;
   title: string;
@@ -1308,6 +1546,43 @@ type TuningSearchResultRef = {
   providerUsage: { provider: "none"; totalTokens: 0; rateEquivalentUsd: 0 };
   limitations: string[];
   searchDigest: string;
+};
+type BotCohortCoverageRef = {
+  authoredCount: number;
+  observedCount: number;
+  ratio: number | null;
+  observedIds: string[];
+  unobservedIds: string[];
+};
+type BotCohortReportRef = {
+  schemaVersion: "looplab-bot-cohort-report/v1";
+  sourceDigest: string;
+  status: "attention" | "observations-available";
+  reportDigest: string;
+  summary: {
+    runCount: number;
+    executedTicks: number;
+    simulatedSeconds: number;
+    completedRunCount: number;
+    meaningfulEventCount: number;
+    meaningfulEventsPerSimulatedMinute: number;
+    advisoryFindingCount: number;
+  };
+  coverage: {
+    maps: BotCohortCoverageRef;
+    routeMaps: BotCohortCoverageRef;
+    actions: BotCohortCoverageRef;
+    verbs: BotCohortCoverageRef;
+    combinations: BotCohortCoverageRef;
+    rules: BotCohortCoverageRef;
+    choices: BotCohortCoverageRef;
+    traversalPaths: BotCohortCoverageRef;
+    portals: BotCohortCoverageRef;
+  };
+  findings: Array<{ code: string; severity: "advisory"; title: string; evidence: Record<string, unknown>; suggestion: string; confidence: string }>;
+  runs: Array<{ id: string; label: string; policy: string; completed: boolean; executedTicks: number; actionIds: string[]; visitedMapIds: string[]; meaningfulEvents: number; longestStationaryActiveTicks: number }>;
+  proofBoundary: { statement: string; proves: string[]; doesNotProve: string[]; nextEvidence: string[] };
+  providerUsage: { provider: "none"; totalTokens: 0; rateEquivalentUsd: 0 };
 };
 type TuningCandidatePreviewRef = { candidateId: string; receipt: AgentBatchPreviewRef };
 type GameFoundationCandidateRef = {
@@ -1628,12 +1903,35 @@ type VisualReviewAnnotation = {
   severity: "error" | "warning" | "info";
   label: string;
   detail: string;
-  source: "semantic" | "pixel-diff";
+  source: "semantic" | "pixel-diff" | "color-accessibility";
   sourceEvidenceIds: string[];
   affectedIds: string[];
   bounds: { x: number; y: number; width: number; height: number; xRatio: number; yRatio: number; widthRatio: number; heightRatio: number };
   metrics: Record<string, unknown>;
   cropDataUrl?: string;
+};
+type ColorAccessibilityReceipt = {
+  schemaVersion: "looplab-color-accessibility/v1";
+  captureId: string;
+  sourceDigest: string;
+  frame: { width: number; height: number };
+  status: "measured" | "review-required";
+  summary: { targetCount: number; measuredCount: number; unobservedCount: number; unmeasuredCount: number; issueCount: number; contrast: number; cvd: number; colorOnly: number };
+  targets: Array<{
+    id: string;
+    label: string;
+    kind: "text" | "essential-non-text" | "gameplay-cue" | "semantic-pair";
+    source: "computed-style-over-captured-pixels" | "captured-gameplay-color" | "authored-color-pair";
+    status: "measured" | "unobserved-authored-color" | "unmeasured";
+    reason: string | null;
+    colors: { foreground?: string | null; background?: string | null; authoredForeground?: string | null; authoredBackground?: string | null };
+    observation: { sampleCount: number; foregroundPixelCount: number | null; foregroundPixelRatio: number | null; adjacentPixelCount: number | null };
+    contrast: { minimum?: number; p05?: number; median?: number; maximum?: number; threshold: number | null; result: "passed" | "review" | "unmeasured" };
+    cvd: null | { model: { id: string; severity: number; matrixSource: string; colorSpace: string }; normalDeltaE76: number; simulations: Array<{ type: string; foreground: string | null; background: string | null; deltaE76: number; retainedSeparation: number | null }> };
+    semantics: { essential: boolean; largeText: boolean; conveysMeaningByColor: boolean; redundantCue: string | null };
+  }>;
+  issues: Array<{ id: string; targetId: string; kind: string; severity: "warning"; label: string; detail: string; bounds: { x: number; y: number; width: number; height: number } | null; metrics: Record<string, unknown> }>;
+  policy: { advisoryOnly: true; noTasteClaim: true; noConformanceClaim: true; simulationIsNotUserTesting: true; cvdThresholdKind: string; useOfColorRequiresAuthoredSemantics: true; exactPixelRequirement: string };
 };
 type VisualPerceptionReceipt = {
   schemaVersion: "looplab-visual-perception/v1";
@@ -1641,6 +1939,7 @@ type VisualPerceptionReceipt = {
   sourceDigest: string;
   frame: { width: number; height: number };
   comparison: null | { status: "compared" | "dimension-mismatch"; sha256: string | null; width: number; height: number; metrics?: Record<string, number> };
+  colorAccessibility: ColorAccessibilityReceipt;
   annotationCount: number;
   annotations: VisualReviewAnnotation[];
   policy: { advisoryOnly: true; semanticGeometryPreferred: true; pixelDiffClaim: "changed-region-only"; imageBytesEphemeral: true };
@@ -2330,6 +2629,9 @@ const TUNING_FEEL_METRICS = [
   { id: "maximumHorizontalTravelPx", label: "Air travel", unit: "px" },
 ] as const;
 const formatTuningValue = (value: number, unit: string) => `${Number.isInteger(value) ? value : value.toFixed(1)} ${unit}`;
+const botCoverageLabel = (coverage: BotCohortCoverageRef) => coverage.authoredCount > 0
+  ? `${coverage.observedCount}/${coverage.authoredCount} · ${Math.round((coverage.ratio ?? 0) * 100)}%`
+  : "Not authored";
 
 function SpatialLayoutMiniMap({ preview, label }: { preview: SpatialLayoutPreviewRef; label: string }) {
   const width = Math.max(1, Number(preview.width) || 1);
@@ -2659,6 +2961,78 @@ const makeObject = (kind: ObjectKind, x: number, y: number): GameObject => {
       solid: false,
       collider: { enabled: true, offsetX: 4, offsetY: 4, width: 40, height: 68, trigger: true, oneWay: false },
     },
+    spring: {
+      name: "Spring",
+      kind,
+      width: 64,
+      height: 18,
+      color: "#3c3f46",
+      solid: false,
+      collider: { enabled: true, offsetX: 0, offsetY: 0, width: 64, height: 18, trigger: true, oneWay: false },
+    },
+    ladder: {
+      name: "Ladder",
+      kind,
+      width: 32,
+      height: 192,
+      color: "#5a5d64",
+      solid: false,
+      collider: { enabled: true, offsetX: 0, offsetY: 0, width: 32, height: 192, trigger: true, oneWay: false },
+    },
+    conveyor: {
+      name: "Conveyor",
+      kind,
+      width: 160,
+      height: 24,
+      color: "#34373d",
+      solid: true,
+      collider: { enabled: true, offsetX: 0, offsetY: 0, width: 160, height: 24, trigger: false, oneWay: true },
+    },
+    "crumble-platform": {
+      name: "Crumble platform",
+      kind,
+      width: 128,
+      height: 24,
+      color: "#55545a",
+      solid: true,
+      collider: { enabled: true, offsetX: 0, offsetY: 0, width: 128, height: 24, trigger: false, oneWay: true },
+    },
+    key: {
+      name: "Key",
+      kind,
+      width: 28,
+      height: 28,
+      color: "#d4ad45",
+      solid: false,
+      collider: { enabled: true, offsetX: 0, offsetY: 0, width: 28, height: 28, trigger: true, oneWay: false },
+    },
+    door: {
+      name: "Door",
+      kind,
+      width: 48,
+      height: 112,
+      color: "#36383d",
+      solid: true,
+      collider: { enabled: true, offsetX: 0, offsetY: 0, width: 48, height: 112, trigger: false, oneWay: false },
+    },
+    "pressure-plate": {
+      name: "Pressure plate",
+      kind,
+      width: 56,
+      height: 12,
+      color: "#696b70",
+      solid: false,
+      collider: { enabled: true, offsetX: 0, offsetY: 0, width: 56, height: 12, trigger: true, oneWay: false },
+    },
+    "one-way-platform": {
+      name: "One-way platform",
+      kind,
+      width: 160,
+      height: 20,
+      color: "#3f4248",
+      solid: true,
+      collider: { enabled: true, offsetX: 0, offsetY: 0, width: 160, height: 20, trigger: false, oneWay: true },
+    },
   };
 
   const object = { id: uid(), x, y, z: 0, supportZ: 0, anchorMode: "ground" as const, collisionOwner: "authored-map" as const, ...presets[kind] };
@@ -2743,7 +3117,9 @@ const mapFromProject = (project: GameProject, id: string, name: string): GameMap
     objects: project.objects,
     traversalPaths: project.traversalPaths ?? existing?.traversalPaths ?? [],
     collisionGeometry: project.collisionGeometry ?? existing?.collisionGeometry,
+    elevationTransitions: project.elevationTransitions ?? existing?.elevationTransitions,
     tileProgram: project.tileProgram ?? existing?.tileProgram,
+    worldStream: project.worldStream ?? existing?.worldStream,
     clearanceZones: project.clearanceZones ?? existing?.clearanceZones,
     hudSafeAreas: project.hudSafeAreas ?? existing?.hudSafeAreas,
     maxInteractionGap: project.maxInteractionGap ?? existing?.maxInteractionGap,
@@ -2794,7 +3170,9 @@ const activateMap = (project: GameProject, mapId: string): GameProject => {
     objects: target.objects,
     traversalPaths: target.traversalPaths ?? [],
     collisionGeometry: target.collisionGeometry,
+    elevationTransitions: target.elevationTransitions,
     tileProgram: target.tileProgram,
+    worldStream: target.worldStream,
     clearanceZones: target.clearanceZones,
     hudSafeAreas: target.hudSafeAreas,
     maxInteractionGap: target.maxInteractionGap,
@@ -2811,6 +3189,14 @@ const objectMeta: Record<ObjectKind, { label: string; glyph: string; description
   spawn: { label: "Spawn", glyph: "◎", description: "Player reset position" },
   portal: { label: "Portal", glyph: "↗", description: "Links to another map and spawn" },
   goal: { label: "Goal", glyph: "⚑", description: "Completes the current game" },
+  spring: { label: "Spring", glyph: "↥", description: "Authored swept impulse trigger" },
+  ladder: { label: "Ladder", glyph: "H", description: "Explicit gravity-replacing climb controller" },
+  conveyor: { label: "Conveyor", glyph: "⇢", description: "Exact-support moving belt" },
+  "crumble-platform": { label: "Crumble platform", glyph: "▧", description: "Tick-timed break and reset surface" },
+  key: { label: "Key", glyph: "◆", description: "Logical-ID inventory pickup" },
+  door: { label: "Door / gate", glyph: "▮", description: "Authored solid logical gate" },
+  "pressure-plate": { label: "Pressure plate", glyph: "▱", description: "Swept sensor bound to one exact gate" },
+  "one-way-platform": { label: "One-way platform", glyph: "━", description: "Top-only support with target-specific drop-through" },
 };
 
 const collisionBox = (object: GameObject) => {
@@ -3035,13 +3421,17 @@ async function importInstalledPackAsset(index: AssetPackIndex, asset: InstalledP
   const dataUrl = await blobToDataUrl(blob);
   const source = sourceReferenceForPackAsset(index, asset);
   if (asset.kind !== "image") {
+    const analysis = asset.kind === "audio"
+      ? analyzeEmbeddedAudioBytes(new Uint8Array(await blob.arrayBuffer()), asset.mimeType)
+      : null;
     const resource: ProjectResource = {
       id: `resource-${uid()}`,
       name: asset.name,
       kind: asset.kind === "source" ? "document" : asset.kind,
       mimeType: asset.mimeType,
       dataUrl,
-      bytes: asset.bytes,
+      bytes: blob.size,
+      ...(analysis ? { analysis } : {}),
       source,
     };
     return { resource, asset: null };
@@ -3168,9 +3558,121 @@ function PreviewInputButton({
   );
 }
 
+const STRUCTURAL_CHANGE_MARKERS = { added: "+", removed: "−", modified: "M" } as const;
+
+function structuralRecordBounds(record: StructuralOverlayRecord | null) {
+  if (!record) return null;
+  if (record.bounds) return record.bounds;
+  if (record.placement) return {
+    x: record.placement.x,
+    y: record.placement.y,
+    width: record.placement.width,
+    height: record.placement.height,
+  };
+  return null;
+}
+
+function StructuralIterationOverlay({ diff }: { diff: StructuralIterationDiff }) {
+  const changedMaps = diff.maps.filter((map) => map.status !== "unchanged");
+  const structuralTotal = diff.summary.objects.added + diff.summary.objects.removed + diff.summary.objects.modified
+    + diff.summary.objectColliders.added + diff.summary.objectColliders.removed + diff.summary.objectColliders.modified
+    + diff.summary.collisionChains.added + diff.summary.collisionChains.removed + diff.summary.collisionChains.modified
+    + diff.summary.tileColliders.added + diff.summary.tileColliders.removed + diff.summary.tileColliders.modified;
+
+  return (
+    <details className="iteration-structural-diff">
+      <summary><span><i aria-hidden="true" /> Authored structural changes</span><small>{diff.summary.maps.changed} map{diff.summary.maps.changed === 1 ? "" : "s"} · {structuralTotal} bounded change{structuralTotal === 1 ? "" : "s"}</small></summary>
+      <div className="iteration-structural-diff-body">
+        <header>
+          <div><span className="eyebrow">Stable-ID world-space evidence</span><strong>See what moved, appeared, disappeared, or changed collision.</strong></div>
+          <code>{diff.digest.slice(0, 18)}…</code>
+        </header>
+        <div className="structural-diff-metrics" aria-label="Structural comparison totals">
+          <span><small>Maps</small><b>{diff.summary.maps.changed}</b><em>{diff.summary.maps.added} + / {diff.summary.maps.removed} −</em></span>
+          <span><small>Objects</small><b>{diff.summary.objects.modified}</b><em>{diff.summary.objects.added} + / {diff.summary.objects.removed} −</em></span>
+          <span><small>Object collision</small><b>{diff.summary.objectColliders.modified}</b><em>{diff.summary.objectColliders.added} + / {diff.summary.objectColliders.removed} −</em></span>
+          <span><small>Authored chains</small><b>{diff.summary.collisionChains.modified}</b><em>{diff.summary.collisionChains.added} + / {diff.summary.collisionChains.removed} −</em></span>
+          <span><small>Tile collision</small><b>{diff.summary.tileColliders.modified}</b><em>{diff.summary.tileColliders.added} + / {diff.summary.tileColliders.removed} −</em></span>
+        </div>
+        {diff.truncated && <p className="structural-diff-warning"><strong>Detail is bounded.</strong> Aggregate totals are complete; this view retains at most {diff.maximumDetailChanges} deterministic records and explicitly marks omitted records per map.</p>}
+        {diff.warnings.map((warning) => <p className="structural-diff-warning" key={warning}><strong>Source ambiguity.</strong> {warning}</p>)}
+        {changedMaps.length === 0 ? <p className="structural-diff-empty">No authored map, object, or collision structure changed between these exact source snapshots.</p> : <div className="structural-diff-maps">
+          {changedMaps.map((map) => {
+            const rectangleChanges = [
+              ...map.objectChanges.map((change) => ({ category: "object", change })),
+              ...map.colliderChanges.map((change) => ({ category: "object-collider", change })),
+              ...map.tileColliderChanges.map((change) => ({ category: "tile-collider", change })),
+            ];
+            const allRecords = [...rectangleChanges.flatMap(({ change }) => [change.before, change.after]), ...map.chainChanges.flatMap((change) => [change.before, change.after])].filter((record): record is StructuralOverlayRecord => Boolean(record));
+            const bounds = allRecords.map(structuralRecordBounds).filter((value): value is StructuralOverlayBounds => Boolean(value));
+            const points = allRecords.flatMap((record) => record.points ?? []);
+            const baseWidth = Math.max(map.dimensions.first?.width ?? 0, map.dimensions.second?.width ?? 0, 1);
+            const baseHeight = Math.max(map.dimensions.first?.height ?? 0, map.dimensions.second?.height ?? 0, 1);
+            const hasGeometry = bounds.length > 0 || points.length > 0;
+            const geometryMinX = hasGeometry ? Math.min(...bounds.map((value) => value.x), ...points.map((point) => point.x)) : 0;
+            const geometryMinY = hasGeometry ? Math.min(...bounds.map((value) => value.y), ...points.map((point) => point.y)) : 0;
+            const geometryMaxX = hasGeometry ? Math.max(...bounds.map((value) => value.x + value.width), ...points.map((point) => point.x)) : baseWidth;
+            const geometryMaxY = hasGeometry ? Math.max(...bounds.map((value) => value.y + value.height), ...points.map((point) => point.y)) : baseHeight;
+            const contextPadding = hasGeometry ? Math.max(24, Math.max(geometryMaxX - geometryMinX, geometryMaxY - geometryMinY) * 0.18) : 0;
+            const minX = hasGeometry ? (geometryMinX < 0 ? geometryMinX - contextPadding : Math.max(0, geometryMinX - contextPadding)) : 0;
+            const minY = hasGeometry ? (geometryMinY < 0 ? geometryMinY - contextPadding : Math.max(0, geometryMinY - contextPadding)) : 0;
+            const maxX = hasGeometry ? (geometryMaxX > baseWidth ? geometryMaxX + contextPadding : Math.min(baseWidth, geometryMaxX + contextPadding)) : baseWidth;
+            const maxY = hasGeometry ? (geometryMaxY > baseHeight ? geometryMaxY + contextPadding : Math.min(baseHeight, geometryMaxY + contextPadding)) : baseHeight;
+            const padding = Math.max(2, Math.min(Math.max(1, maxX - minX), Math.max(1, maxY - minY)) * 0.025);
+            const viewWidth = Math.max(1, maxX - minX + padding * 2);
+            const viewHeight = Math.max(1, maxY - minY + padding * 2);
+            const markerSize = Math.max(5, Math.min(viewWidth, viewHeight) * 0.035);
+            const detailChanges = [
+              ...map.objectChanges.map((change) => ({ category: "object", change })),
+              ...map.colliderChanges.map((change) => ({ category: "object collider", change })),
+              ...map.chainChanges.map((change) => ({ category: "authored collision chain", change })),
+              ...map.tileColliderChanges.map((change) => ({ category: "tile collider", change })),
+            ];
+            return <article className="structural-map-diff" key={map.mapId}>
+              <header><div><strong>{map.label}</strong><small>{map.mapId} · {map.status}{map.changeKinds.length ? ` · ${map.changeKinds.join(", ")}` : ""}</small><small>{map.dimensions.first?.width ?? 0}×{map.dimensions.first?.height ?? 0} → {map.dimensions.second?.width ?? 0}×{map.dimensions.second?.height ?? 0}{hasGeometry ? " · change-focused world crop" : " · full authored map"}</small></div><span>{map.retainedDetailCount}/{map.detailCount} shown</span></header>
+              <div className="structural-overlay-frame">
+                <svg aria-hidden="true" viewBox={`${minX - padding} ${minY - padding} ${viewWidth} ${viewHeight}`} preserveAspectRatio="xMidYMid meet">
+                  <rect className="structural-map-bound first" x="0" y="0" width={Math.max(0, map.dimensions.first?.width ?? 0)} height={Math.max(0, map.dimensions.first?.height ?? 0)} vectorEffect="non-scaling-stroke" />
+                  <rect className="structural-map-bound second" x="0" y="0" width={Math.max(0, map.dimensions.second?.width ?? 0)} height={Math.max(0, map.dimensions.second?.height ?? 0)} vectorEffect="non-scaling-stroke" />
+                  {rectangleChanges.map(({ category, change }) => {
+                    const before = structuralRecordBounds(change.before);
+                    const after = structuralRecordBounds(change.after);
+                    const markerBounds = after ?? before;
+                    return <g key={`${category}:${change.id}`}>
+                      {before && <rect className={`structural-shape ${category} before ${change.change}`} x={before.x} y={before.y} width={Math.max(0.01, before.width)} height={Math.max(0.01, before.height)} vectorEffect="non-scaling-stroke" />}
+                      {after && <rect className={`structural-shape ${category} after ${change.change}`} x={after.x} y={after.y} width={Math.max(0.01, after.width)} height={Math.max(0.01, after.height)} vectorEffect="non-scaling-stroke" />}
+                      {change.change === "modified" && before && after && (before.x !== after.x || before.y !== after.y) && <line className="structural-move-connector" x1={before.x + before.width / 2} y1={before.y + before.height / 2} x2={after.x + after.width / 2} y2={after.y + after.height / 2} vectorEffect="non-scaling-stroke" />}
+                      {markerBounds && <text className={`structural-change-marker ${change.change}`} x={markerBounds.x + markerBounds.width / 2} y={markerBounds.y + markerBounds.height / 2} fontSize={markerSize}>{category === "object-collider" || category === "tile-collider" ? "C" : STRUCTURAL_CHANGE_MARKERS[change.change]}</text>}
+                    </g>;
+                  })}
+                  {map.chainChanges.map((change) => {
+                    const before = change.before?.points ?? [];
+                    const after = change.after?.points ?? [];
+                    const marker = after[0] ?? before[0];
+                    return <g key={`chain:${change.id}`}>
+                      {before.length > 1 && <polyline className={`structural-chain before ${change.change}`} points={before.map((point) => `${point.x},${point.y}`).join(" ")} vectorEffect="non-scaling-stroke" />}
+                      {after.length > 1 && <polyline className={`structural-chain after ${change.change}`} points={after.map((point) => `${point.x},${point.y}`).join(" ")} vectorEffect="non-scaling-stroke" />}
+                      {marker && <text className={`structural-change-marker ${change.change}`} x={marker.x} y={marker.y} fontSize={markerSize}>C</text>}
+                    </g>;
+                  })}
+                </svg>
+              </div>
+              <div className="structural-overlay-legend" aria-label="Structural overlay legend"><span><i className="before" />Dashed · before / removed</span><span><i className="after" />Solid · after / added</span><span><b>+</b> added</span><span><b>−</b> removed</span><span><b>M</b> modified object</span><span><b>C</b> collision truth</span></div>
+              <ul className="structural-change-list">{detailChanges.map(({ category, change }) => <li key={`${category}:${change.id}`}><b>{category.includes("collider") || category.includes("collision chain") ? "C" : STRUCTURAL_CHANGE_MARKERS[change.change]}</b><span><strong>{change.after?.label ?? change.before?.label ?? change.id}</strong><small>{category} · {change.changeKinds.join(", ")}</small></span></li>)}</ul>
+              {map.omittedDetailCount > 0 && <p className="structural-diff-warning">{map.omittedDetailCount} additional record{map.omittedDetailCount === 1 ? " is" : "s are"} counted but omitted from this bounded view.</p>}
+            </article>;
+          })}
+        </div>}
+        <p className="structural-diff-policy"><strong>Evidence, not a verdict.</strong> Stable authored IDs establish identity. World-space geometry is never inferred from art or pixels. This view cannot mutate, restore, rank, or choose either iteration.</p>
+      </div>
+    </details>
+  );
+}
+
 const commandMacroRegistry = listCommandMacros();
 const agentPlaybookRegistry = listAgentRecipes({ status: "all", limit: 50 });
 const builderBenchmarkRegistry = listBuilderBenchmarks({ limit: 24 }) as BuilderBenchmarkRegistryRef;
+const capabilityPackRegistry = getCapabilityPackRegistry() as CapabilityPackRegistryRef;
 
 function defaultCommandMacroParameters(project: GameProject, macroId: string) {
   const maps = project.maps?.length ? project.maps : [{
@@ -3277,6 +3779,7 @@ export default function Home() {
   const [selectedPathId, setSelectedPathId] = useState<string | null>(null);
   const [selectedPathPointIndex, setSelectedPathPointIndex] = useState<number | null>(null);
   const [selectedCollisionChainId, setSelectedCollisionChainId] = useState<string | null>(null);
+  const [selectedElevationTransitionId, setSelectedElevationTransitionId] = useState<string | null>(null);
   const [collisionChainDraft, setCollisionChainDraft] = useState<CollisionChainDraft | null>(null);
   const [collisionChainRole, setCollisionChainRole] = useState<CollisionGeometryChain["role"]>("auto");
   const [collisionChainOneWay, setCollisionChainOneWay] = useState(false);
@@ -3287,6 +3790,9 @@ export default function Home() {
   const [selectedTileId, setSelectedTileId] = useState("");
   const [selectedTerrainId, setSelectedTerrainId] = useState("");
   const [selectedTileCollisionProfileId, setSelectedTileCollisionProfileId] = useState("");
+  const [worldStreamMode, setWorldStreamMode] = useState<"finite" | "seeded">("finite");
+  const [worldStreamAxis, setWorldStreamAxis] = useState<"horizontal" | "vertical">("horizontal");
+  const [worldStreamHorizon, setWorldStreamHorizon] = useState(64);
   const [editorElevation, setEditorElevation] = useState(0);
   const [selectedNavigationNodeId, setSelectedNavigationNodeId] = useState<string | null>(null);
   const [selectedAuthoredRouteActorId, setSelectedAuthoredRouteActorId] = useState<string | null>(null);
@@ -3355,6 +3861,8 @@ export default function Home() {
     won: false,
   }));
   const [runtimeChoiceState, setRuntimeChoiceState] = useState<RuntimeChoiceState | null>(null);
+  const [runtimeQuestState, setRuntimeQuestState] = useState<RuntimeQuestState>({ revision: 0, quests: [] });
+  const [runtimeDialogueReveal, setRuntimeDialogueReveal] = useState<{ choiceKey: string; visibleCharacters: number } | null>(null);
   const [runtimeHudState, setRuntimeHudState] = useState<RuntimeHudBinding[]>([]);
   const [previewTransition, setPreviewTransition] = useState<PreviewTransition | null>(null);
   const [assetRenderTick, setAssetRenderTick] = useState(0);
@@ -3436,7 +3944,7 @@ export default function Home() {
   const [visualReviewRunning, setVisualReviewRunning] = useState(false);
   const [showVisualReview, setShowVisualReview] = useState(false);
   const [visualReview, setVisualReview] = useState<VisualReviewReport | null>(null);
-  const [visualCritiqueProvider, setVisualCritiqueProvider] = useState<AgentProvider>("openai");
+  const [visualCritiqueProvider, setVisualCritiqueProvider] = useState<AgentProvider>("claude");
   const [visualCritiqueConsent, setVisualCritiqueConsent] = useState(false);
   const [visualCritiqueRunning, setVisualCritiqueRunning] = useState(false);
   const [visualCritiqueJob, setVisualCritiqueJob] = useState<VisualCritiqueJobDescriptor | null>(null);
@@ -3450,6 +3958,13 @@ export default function Home() {
   const [agentCommandText, setAgentCommandText] = useState('{"op":"get_project"}');
   const [agentCommandResult, setAgentCommandResult] = useState('{"ok":true,"ready":true}');
   const [agentCommandRunning, setAgentCommandRunning] = useState(false);
+  const [agentGuideQuery, setAgentGuideQuery] = useState("");
+  const [agentGuideCategory, setAgentGuideCategory] = useState<AgentGuideCategory>("all");
+  const [agentCapabilityQuery, setAgentCapabilityQuery] = useState("");
+  const [agentCapabilityPackId, setAgentCapabilityPackId] = useState(capabilityPackRegistry.packs[0]?.id ?? "architecture-delivery");
+  const [agentCapabilityRefreshText, setAgentCapabilityRefreshText] = useState("");
+  const [agentCapabilityRefreshResult, setAgentCapabilityRefreshResult] = useState<ReturnType<typeof inspectCapabilityPackRefresh> | null>(null);
+  const [agentCapabilityRefreshError, setAgentCapabilityRefreshError] = useState("");
   const [agentContextView, setAgentContextView] = useState<"campaign" | "map">("campaign");
   const [agentContextMapId, setAgentContextMapId] = useState(() => project.activeMapId ?? "map-main");
   const [agentRecipeQuery, setAgentRecipeQuery] = useState("");
@@ -3482,13 +3997,26 @@ export default function Home() {
   const [agentPlanIntent, setAgentPlanIntent] = useState("Improve the selected 2D game without weakening collision, replay, or one-file export.");
   const [agentIntentPlan, setAgentIntentPlan] = useState<AgentIntentPlanRef | null>(null);
   const [tuningContractDraft, setTuningContractDraft] = useState(() => project.tuningContract ? JSON.stringify(project.tuningContract, null, 2) : "");
+  const [gameplayProgramDraft, setGameplayProgramDraft] = useState(() => project.gameplayProgram ? JSON.stringify(project.gameplayProgram, null, 2) : "");
+  const [runVariationProgramDraft, setRunVariationProgramDraft] = useState(() => project.runVariationProgram ? JSON.stringify(project.runVariationProgram, null, 2) : "");
+  const [runVariationSeed, setRunVariationSeed] = useState("standard");
+  const [runVariationDay, setRunVariationDay] = useState("");
+  const [runGhostReplayId, setRunGhostReplayId] = useState(() => project.replay?.cases?.[0]?.id ?? "");
+  const [runGhostPreview, setRunGhostPreview] = useState<{ sourceDigest: string; previewDigest: string; ghost: Record<string, unknown> } | null>(null);
   const [combatProgramDraft, setCombatProgramDraft] = useState(() => project.combatProgram ? JSON.stringify(project.combatProgram, null, 2) : "");
   const [motionBodyDraftEdit, setMotionBodyDraftEdit] = useState<{ objectId: string | null; source: string; value: string }>({ objectId: null, source: "", value: "" });
+  const [interactableTemplateId, setInteractableTemplateId] = useState("spring");
+  const [interactableInstanceId, setInteractableInstanceId] = useState("spring-1");
+  const [interactableAnchor, setInteractableAnchor] = useState({ x: 160, y: 400, z: 0 });
+  const [interactableParametersDraft, setInteractableParametersDraft] = useState("{}");
+  const [interactablePreview, setInteractablePreview] = useState<InteractablePreviewView | null>(null);
   const [actorProgramDraft, setActorProgramDraft] = useState(() => project.actorProgram ? JSON.stringify(project.actorProgram, null, 2) : "");
   const [presentationProgramDraft, setPresentationProgramDraft] = useState(() => project.presentationProgram ? JSON.stringify(project.presentationProgram, null, 2) : "");
   const [gameShellDraft, setGameShellDraft] = useState(() => project.gameShell ? JSON.stringify(project.gameShell, null, 2) : "");
   const [tuningSearchResult, setTuningSearchResult] = useState<TuningSearchResultRef | null>(null);
   const [tuningSearchRunning, setTuningSearchRunning] = useState(false);
+  const [botCohortReport, setBotCohortReport] = useState<BotCohortReportRef | null>(null);
+  const [botCohortRunning, setBotCohortRunning] = useState(false);
   const [selectedTuningCandidateId, setSelectedTuningCandidateId] = useState<string | null>(null);
   const [tuningCandidatePreview, setTuningCandidatePreview] = useState<TuningCandidatePreviewRef | null>(null);
   const [foundationSearchResult, setFoundationSearchResult] = useState<GameFoundationSearchResultRef | null>(null);
@@ -3503,6 +4031,9 @@ export default function Home() {
   const [historyState, setHistoryState] = useState({ canUndo: false, canRedo: false });
   const [collected, setCollected] = useState(0);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const previewChoiceTitleRef = useRef<HTMLHeadingElement>(null);
+  const previewChoicePreviousFocusRef = useRef<HTMLElement | null>(null);
+  const previewChoiceWasOpenRef = useRef(false);
   const stageViewportRef = useRef<HTMLDivElement>(null);
   const canvasWrapRef = useRef<HTMLDivElement>(null);
   const playHudRef = useRef<HTMLDivElement>(null);
@@ -3607,6 +4138,7 @@ export default function Home() {
     [activeMap?.id, activeMap?.name, project],
   );
   const activeTileProgram = activeMapSnapshot.tileProgram ?? null;
+  const activeWorldStream = activeMapSnapshot.worldStream ?? null;
   const editorTileRuntime = useMemo(
     () => compileTileRuntimeProgram(activeTileProgram, activeMapSnapshot) as TileRuntime,
     [activeMapSnapshot, activeTileProgram],
@@ -3627,6 +4159,13 @@ export default function Home() {
     : activeTileProgram?.collisionProfiles[0]?.id ?? "";
   const activeCollisionGeometry = activeMapSnapshot.collisionGeometry ?? null;
   const selectedCollisionChain = activeCollisionGeometry?.chains.find((chain) => chain.id === selectedCollisionChainId) ?? null;
+  const activeElevationTransitions = activeMapSnapshot.elevationTransitions
+    ? normalizeElevationTransitions(activeMapSnapshot.elevationTransitions) as ElevationTransitions
+    : { schemaVersion: LOOPLAB_ELEVATION_TRANSITIONS_SCHEMA, supportOwner: "authored-map" as const, transitions: [] };
+  const selectedElevationTransition = activeElevationTransitions.transitions.find((transition) => transition.id === selectedElevationTransitionId) ?? null;
+  const selectedNavigationLinkTransition = selectedNavigationLink
+    ? activeElevationTransitions.transitions.find((transition) => transition.navigationLinkId === selectedNavigationLink.id) ?? null
+    : null;
   const supportSurfaces = useMemo(() => listSupportSurfaces(activeMapSnapshot, selectedId) as SupportSurface[], [activeMapSnapshot, selectedId]);
   const selectedSupport = useMemo(
     () => selected ? resolveSupportContact(activeMapSnapshot, selected, project.assets ?? [], { projection: project.projection }) : null,
@@ -3650,19 +4189,62 @@ export default function Home() {
   const currentSaveProgram = project.saveProgram ?? null;
   const tuningInspection = doctorReport.tuningReport as TuningContractInspectionRef;
   const spatialLayoutInspection = doctorReport.spatialLayoutReport as SpatialLayoutInspectionRef;
+  const gameplayProgramInspection = doctorReport.gameplayProgram as { present: boolean; errors: string[]; warnings: string[]; metrics: { variableCount: number; ruleCount: number; dialoguePageCount?: number; questCount?: number; questObjectiveCount?: number } };
+  const runVariationInspection = doctorReport.runVariationReport as { present: boolean; valid: boolean; shipReady: boolean; status: string; errors: string[]; warnings: string[]; issues: Array<{ severity: string; code: string; message: string }>; metrics: { poolCount: number; variantCount: number; assignmentCount: number; ghostCount: number; ghostFrameCount: number; acceptanceTestCount: number; coveredSeedCount: number }; programDigest?: string | null; proofBoundary?: string };
   const combatInspection = doctorReport.combatReport as { present: boolean; enabled: boolean; valid: boolean; teamCount: number; actorCount: number; emitterCount: number; poolCapacity: number; errors: string[]; warnings: string[]; issues: Array<{ severity: string; code: string; message: string }> };
   const motionBodyInspection = doctorReport.motionBodyReport as { present: boolean; bodyCount: number; enabledBodyCount: number; valid: boolean; errors: string[]; warnings: string[]; issues: Array<{ severity: string; code: string; message: string; objectId?: string }> };
   const selectedMotionBodyIssues = motionBodyInspection.issues.filter((issue) => issue.objectId === selected?.id);
   const actorInspection = doctorReport.actorReport as { present: boolean; enabled: boolean; valid: boolean; actorCount: number; patrolCount: number; perceptionCount: number; cutsceneCount: number; errors: string[]; warnings: string[]; issues: Array<{ severity: string; code: string; message: string }> };
-  const presentationInspection = doctorReport.presentationReport as { present: boolean; status: string; errors: string[]; warnings: string[]; issues: Array<{ severity: string; code: string; message: string }>; metrics?: { audioCueCount: number; motionCueCount: number; effectCount: number; mappedEventCount: number; maximumVoices?: number; maximumParticles?: number } };
+  const presentationInspection = doctorReport.presentationReport as { present: boolean; status: string; errors: string[]; warnings: string[]; issues: Array<{ severity: string; code: string; message: string }>; metrics?: { audioCueCount: number; motionCueCount: number; effectCount: number; mappedEventCount: number; maximumVoices?: number; maximumParticles?: number; referencedAudioResourceCount?: number; encodedAudioBytes?: number; decodedAudioBytes?: number; cameraZoneCount?: number; animationMachineCount?: number; animationStateCount?: number; animationTransitionCount?: number; effectPluginCount?: number; assetRequirementCount?: number } };
+  const embeddedAudioInspections = useMemo(() => new Map((project.resources ?? [])
+    .filter((resource) => resource.kind === "audio")
+    .map((resource) => [resource.id, inspectEmbeddedAudioResource(resource)])), [project.resources]);
   const gameShellInspection = doctorReport.gameShellReport as { present: boolean; valid: boolean; shipReady: boolean; status: string; errors: string[]; warnings: string[]; issues: Array<{ severity: string; code: string; message: string }>; metrics?: { stateCount: number; settingsControlCount: number; terminalCount: number }; proofBoundary?: string };
   const privacyInspection = doctorReport.privacyReport as { schemaVersion: string; status: "clear" | "review-required" | "blocked"; sourceDigest: string | null; digest: string; findingCount: number; errorCount: number; warningCount: number; issues: Array<{ severity: string; code: string; kind: string; path: string; message: string; action: string }>; metrics: { visitedValues: number; scannedStrings: number; scannedCharacters: number; skippedOpaquePayloads: number; truncatedStrings: number; cycleCount: number }; proofBoundary: string };
   const tuningFeel = tuningInspection.feel;
+  const dialogueChoiceId = runtimeChoiceState?.id ?? null;
+  const dialogueBody = runtimeChoiceState?.body ?? "";
+  const dialogueRevealMode = runtimeChoiceState?.revealMode ?? "instant";
+  const dialogueCharactersPerSecond = runtimeChoiceState?.charactersPerSecond ?? 30;
+  const dialogueChoiceKey = dialogueChoiceId ? JSON.stringify([dialogueChoiceId, dialogueBody, dialogueRevealMode, dialogueCharactersPerSecond]) : "";
+  useEffect(() => {
+    const reducedMotion = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    if (!dialogueChoiceId || dialogueRevealMode !== "typewriter" || reducedMotion) {
+      const resetTimer = window.setTimeout(() => setRuntimeDialogueReveal(null), 0);
+      return () => window.clearTimeout(resetTimer);
+    }
+    const speed = Math.max(5, Math.min(120, Number(dialogueCharactersPerSecond || 30)));
+    let visible = 0;
+    const resetTimer = window.setTimeout(() => setRuntimeDialogueReveal({ choiceKey: dialogueChoiceKey, visibleCharacters: 0 }), 0);
+    const timer = window.setInterval(() => {
+      visible = Math.min(dialogueBody.length, visible + Math.max(1, Math.ceil(speed / 20)));
+      setRuntimeDialogueReveal({ choiceKey: dialogueChoiceKey, visibleCharacters: visible });
+      if (visible >= dialogueBody.length) window.clearInterval(timer);
+    }, 50);
+    return () => {
+      window.clearTimeout(resetTimer);
+      window.clearInterval(timer);
+    };
+  }, [dialogueBody, dialogueCharactersPerSecond, dialogueChoiceId, dialogueChoiceKey, dialogueRevealMode]);
+  useEffect(() => {
+    if (dialogueChoiceId) {
+      if (!previewChoiceWasOpenRef.current) previewChoicePreviousFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+      previewChoiceWasOpenRef.current = true;
+      queueMicrotask(() => previewChoiceTitleRef.current?.focus());
+      return;
+    }
+    if (!previewChoiceWasOpenRef.current) return;
+    previewChoiceWasOpenRef.current = false;
+    const target = previewChoicePreviousFocusRef.current?.isConnected ? previewChoicePreviousFocusRef.current : canvasRef.current;
+    previewChoicePreviousFocusRef.current = null;
+    queueMicrotask(() => target?.focus());
+  }, [dialogueChoiceId]);
   useEffect(() => {
     presentationRuntimeRef.current?.destroy();
     const controller = createPresentationRuntime(project.presentationProgram, {
       host: globalThis,
       document,
+      resources: project.resources ?? [],
       getPoint: (event: RuntimeEvent, target: string) => {
         const snapshot = projectRef.current;
         const engine = runtimeEngineRef.current;
@@ -3676,14 +4258,66 @@ export default function Home() {
         const placement = objectScreenPlacement(object, projection, snapshot.assets ?? []);
         return { x: placement.x + object.width / 2, y: placement.y + object.height, objectId: object.id };
       },
+      getSnapshot: () => {
+        const snapshot = projectRef.current;
+        const engine = runtimeEngineRef.current;
+        const state = engine?.getState();
+        const objects = engine?.getObjects() ?? snapshot.objects;
+        const width = Number(state?.width ?? snapshot.width);
+        const height = Number(state?.height ?? snapshot.height);
+        const projection = normalizeProjection(state?.projection ?? snapshot.projection, state ?? snapshot) as ProjectionContract;
+        const projectedObjects = objects.map((object) => {
+          const placement = objectScreenPlacement(object, projection, snapshot.assets ?? []);
+          return { ...object, screenX: placement.x + object.width / 2, screenY: placement.y + object.height };
+        });
+        const screenBounds = projection.type === "dimetric-2:1"
+          ? (() => {
+              const points = [
+                worldToScreen({ x: 0, y: 0, z: 0 }, projection),
+                worldToScreen({ x: width, y: 0, z: 0 }, projection),
+                worldToScreen({ x: width, y: height, z: 0 }, projection),
+                worldToScreen({ x: 0, y: height, z: 0 }, projection),
+              ];
+              const xs = points.map((point) => point.x);
+              const ys = points.map((point) => point.y);
+              return { x: Math.min(...xs), y: Math.min(...ys), width: Math.max(...xs) - Math.min(...xs), height: Math.max(...ys) - Math.min(...ys) };
+            })()
+          : { x: 0, y: 0, width, height };
+        return { mapId: state?.activeMapId ?? snapshot.activeMapId, width, height, objects: projectedObjects, activeActionIds: state?.deterministicState?.activeActionIds ?? [], screenBounds };
+      },
+      projectPoint: (point: { x?: number; y?: number; z?: number }) => {
+        const snapshot = projectRef.current;
+        const state = runtimeEngineRef.current?.getState();
+        const projection = normalizeProjection(state?.projection ?? snapshot.projection, state ?? snapshot) as ProjectionContract;
+        return projection.type === "dimetric-2:1" ? worldToScreen({ x: Number(point.x ?? 0), y: Number(point.y ?? 0), z: Number(point.z ?? 0) }, projection) : { x: Number(point.x ?? 0), y: Number(point.y ?? 0) };
+      },
+      getAssetFrame: (assetId: string, requestedFrame: number) => {
+        const asset = projectRef.current.assets?.find((candidate) => candidate.id === assetId);
+        if (!asset) return null;
+        let cached = assetImageCacheRef.current.get(asset.id);
+        if (!cached || cached.source !== asset.dataUrl) {
+          const image = new Image();
+          cached = { source: asset.dataUrl, image };
+          assetImageCacheRef.current.set(asset.id, cached);
+          image.onload = () => setAssetRenderTick((tick) => tick + 1);
+          image.src = asset.dataUrl;
+        }
+        if (!cached.image.complete || !cached.image.naturalWidth) return null;
+        const frame = Math.max(0, Math.min(asset.frames - 1, Number(requestedFrame || 0)));
+        return { image: cached.image, sx: (frame % asset.columns) * asset.frameWidth, sy: Math.floor(frame / asset.columns) * asset.frameHeight, sw: asset.frameWidth, sh: asset.frameHeight };
+      },
     });
     presentationRuntimeRef.current = controller;
     return () => {
       controller.destroy();
       if (presentationRuntimeRef.current === controller) presentationRuntimeRef.current = null;
     };
-  }, [project.presentationProgram]);
+  }, [project.presentationProgram, project.resources]);
   const visibleAgentRecipes = useMemo(() => listAgentRecipes({ status: "all", limit: 50, query: agentRecipeQuery }).recipes as AgentRecipeRef[], [agentRecipeQuery]);
+  const agentGuideResults = useMemo(() => queryAgentGuideIndex(LOOPLAB_AGENT_GUIDE_INDEX, { query: agentGuideQuery, category: agentGuideCategory, limit: 12 }) as AgentGuideQueryRef, [agentGuideCategory, agentGuideQuery]);
+  const agentCapabilityPackList = useMemo(() => listCapabilityPacks({ query: agentCapabilityQuery, limit: 40 }) as CapabilityPackListRef, [agentCapabilityQuery]);
+  const agentCapabilityKnowledge = useMemo(() => queryCapabilityKnowledge({ query: agentCapabilityQuery, limit: 8 }) as CapabilityKnowledgeRef, [agentCapabilityQuery]);
+  const selectedAgentCapabilityPack = useMemo(() => getCapabilityPack(agentCapabilityPackId).pack as CapabilityPackRef, [agentCapabilityPackId]);
   const visibleAgentRecipeId = visibleAgentRecipes.some((recipe) => recipe.id === agentRecipeId) ? agentRecipeId : visibleAgentRecipes[0]?.id ?? agentRecipeId;
   const selectedAgentRecipe = useMemo(() => getAgentRecipe(visibleAgentRecipeId).recipe as AgentRecipeRef, [visibleAgentRecipeId]);
   const agentWorkLedgerView = useMemo(() => getAgentWorkLedger(project, { query: agentWorkQuery, status: agentWorkStatus, limit: 50, eventLimit: 6 }) as AgentWorkLedgerView, [agentWorkQuery, agentWorkStatus, project]);
@@ -3791,6 +4425,7 @@ export default function Home() {
     ];
   }, [projectLibrary, sharedProjectCatalog]);
   const tuningSearchFresh = doctorReportFresh && tuningSearchResult?.sourceDigest === doctorReport.sourceDigest;
+  const botCohortFresh = doctorReportFresh && botCohortReport?.sourceDigest === doctorReport.sourceDigest;
   const selectedTuningCandidate = tuningSearchResult?.candidates.find((candidate) => candidate.id === selectedTuningCandidateId) ?? null;
   const tuningPreviewFresh = Boolean(tuningCandidatePreview && tuningSearchFresh && tuningCandidatePreview.receipt.sourceDigest === doctorReport.sourceDigest);
   const isProtectedTuningVariation = activeProjectLibraryEntry?.origin === "variation" && Boolean(activeProjectLibraryEntry.parentLibraryId);
@@ -4207,6 +4842,7 @@ export default function Home() {
         runtimeProfile: currentProject.runtimeProfile,
         doctor: { profile: currentDoctor.profile, score: currentDoctor.score, errorCount: currentDoctor.errorCount, warningCount: currentDoctor.warningCount, sourceDigest: currentDoctor.sourceDigest, nextActions: currentDoctor.nextActions },
         gameplayProgram: { policy: LOOPLAB_GAMEPLAY_RULE_POLICY, inspection: inspectGameplayProgram(currentProject) },
+        runVariationProgram: { policy: LOOPLAB_RUN_VARIATION_POLICY, inspection: inspectRunVariationProgram(currentProject, currentProject.runVariationProgram, { strict: currentProject.doctorProfile === "production", sourceDigest: currentDoctor.sourceDigest }) },
         motionBodies: { policy: LOOPLAB_MOTION_BODY_POLICY, inspection: inspectMotionBodies(currentProject, { strict: true }) },
         combatProgram: { policy: LOOPLAB_COMBAT_POLICY, inspection: inspectCombatProgram(currentProject) },
         actorProgram: { policy: LOOPLAB_ACTOR_POLICY, inspection: inspectActorProgram(currentProject) },
@@ -4463,10 +5099,17 @@ export default function Home() {
     historyRef.current = [...historyRef.current.slice(-(HISTORY_LIMIT - 1)), cloneProject(previous)];
     futureRef.current = [];
     projectRef.current = syncedNext;
-    setProject(syncedNext);
+    // A headless caller can issue its next command immediately after this
+    // promise resolves. Publish the React state before returning so an older
+    // passive render cannot temporarily replace projectRef with stale map data.
+    flushSync(() => setProject(syncedNext));
+    projectRef.current = syncedNext;
     syncDirectedBriefControls(syncedNext.designBrief);
     setTuningContractDraft(syncedNext.tuningContract ? JSON.stringify(syncedNext.tuningContract, null, 2) : "");
     setSpatialLayoutContractDraft(syncedNext.spatialLayoutContract ? JSON.stringify(syncedNext.spatialLayoutContract, null, 2) : "");
+    setGameplayProgramDraft(syncedNext.gameplayProgram ? JSON.stringify(syncedNext.gameplayProgram, null, 2) : "");
+    setRunVariationProgramDraft(syncedNext.runVariationProgram ? JSON.stringify(syncedNext.runVariationProgram, null, 2) : "");
+    setRunGhostPreview(null);
     setCombatProgramDraft(syncedNext.combatProgram ? JSON.stringify(syncedNext.combatProgram, null, 2) : "");
     setActorProgramDraft(syncedNext.actorProgram ? JSON.stringify(syncedNext.actorProgram, null, 2) : "");
     setPresentationProgramDraft(syncedNext.presentationProgram ? JSON.stringify(syncedNext.presentationProgram, null, 2) : "");
@@ -4534,6 +5177,9 @@ export default function Home() {
     syncDirectedBriefControls(next.designBrief);
     setTuningContractDraft(next.tuningContract ? JSON.stringify(next.tuningContract, null, 2) : "");
     setSpatialLayoutContractDraft(next.spatialLayoutContract ? JSON.stringify(next.spatialLayoutContract, null, 2) : "");
+    setGameplayProgramDraft(next.gameplayProgram ? JSON.stringify(next.gameplayProgram, null, 2) : "");
+    setRunVariationProgramDraft(next.runVariationProgram ? JSON.stringify(next.runVariationProgram, null, 2) : "");
+    setRunGhostPreview(null);
     setCombatProgramDraft(next.combatProgram ? JSON.stringify(next.combatProgram, null, 2) : "");
     setActorProgramDraft(next.actorProgram ? JSON.stringify(next.actorProgram, null, 2) : "");
     setPresentationProgramDraft(next.presentationProgram ? JSON.stringify(next.presentationProgram, null, 2) : "");
@@ -4986,6 +5632,61 @@ export default function Home() {
     }
   }, [activeTileProgram, commit, project, showToast]);
 
+  const initializeWorldStream = useCallback(() => {
+    try {
+      const base = syncActiveMap(project);
+      if ((base.maps?.length ?? 0) < 2) throw new Error("Create at least two authored maps before composing a continuous world.");
+      const suggestion = applyAgentCommand(base, {
+        op: "suggest_world_stream",
+        mapId: base.activeMapId,
+        mode: worldStreamMode,
+        axis: worldStreamAxis,
+        seed: `world-${String(base.name ?? "looplab").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "looplab"}`,
+        horizon: worldStreamMode === "seeded" ? Math.max(2, Math.min(4096, Math.trunc(worldStreamHorizon))) : Math.max(2, base.maps?.length ?? 2),
+        tag: "main-route",
+        z: editorElevation,
+        span: Math.max(1, Number(base.grid ?? 32) * 2),
+      }).result as { available: boolean; program?: WorldStream; reasons?: string[] };
+      if (!suggestion.available || !suggestion.program) throw new Error(suggestion.reasons?.join(" ") || "The authored maps are not compatible continuous-world templates.");
+      const outcome = applyAgentCommand(base, { op: "set_world_stream", mapId: base.activeMapId, program: suggestion.program });
+      const result = outcome.result as { report?: { plannedInstanceCount?: number; seamCount?: number }; worldStreamDigest?: string };
+      commit(outcome.project as GameProject, `${worldStreamMode === "seeded" ? "Seeded" : "Finite"} continuous world created`);
+      appendConsole("world.stream.created", `Continuous world stored on ${base.activeMapId}`, `${result.report?.plannedInstanceCount ?? suggestion.program.sequence.length} planned chunks · ${result.report?.seamCount ?? 0} authored seams · ${result.worldStreamDigest ?? "digest pending"}`, "good");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "The continuous world could not be created";
+      appendConsole("world.stream.failed", message, "Map geometry, projection, player ownership, tile programs, sockets, and resident budgets remain authored truth.", "bad");
+      showToast(message);
+    }
+  }, [appendConsole, commit, editorElevation, project, showToast, worldStreamAxis, worldStreamHorizon, worldStreamMode]);
+
+  const inspectWorldStreamPlan = useCallback(() => {
+    try {
+      if (!activeWorldStream) throw new Error("The active map does not own a continuous-world route.");
+      const plan = applyAgentCommand(syncActiveMap(project), { op: "get_world_stream_plan", mapId: project.activeMapId, ...(activeWorldStream.mode === "seeded" ? { count: activeWorldStream.horizon } : {}) }).result as { instances?: unknown[]; seams?: unknown[]; routeDigest?: string; contradiction?: { message?: string } | null };
+      if (plan.contradiction) throw new Error(plan.contradiction.message || "The deterministic route contains a contradiction.");
+      const message = `${plan.instances?.length ?? 0} deterministic chunks · ${plan.seams?.length ?? 0} seams`;
+      appendConsole("world.stream.planned", message, `${plan.routeDigest ?? "No route digest"}. Visual continuity still requires first-draw and unique-pixel browser review.`, "good");
+      showToast(message);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "The continuous-world plan could not be inspected";
+      appendConsole("world.stream.plan.failed", message, undefined, "bad");
+      showToast(message);
+    }
+  }, [activeWorldStream, appendConsole, project, showToast]);
+
+  const removeWorldStream = useCallback(() => {
+    if (!activeWorldStream || !window.confirm("Remove continuous composition from this host map? Source maps, tiles, objects, and assets will remain unchanged.")) return;
+    try {
+      const outcome = applyAgentCommand(syncActiveMap(project), { op: "remove_world_stream", mapId: project.activeMapId });
+      commit(outcome.project as GameProject, "Continuous-world composition removed");
+      appendConsole("world.stream.removed", `Continuous composition removed from ${project.activeMapId}`, "All authored source maps and content were preserved.", "neutral");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "The continuous world could not be removed";
+      appendConsole("world.stream.remove.failed", message, undefined, "bad");
+      showToast(message);
+    }
+  }, [activeWorldStream, appendConsole, commit, project, showToast]);
+
   const addTileLayer = useCallback((role: TileVisualLayer["role"] = "interleaved") => {
     const id = `tile-layer-${Date.now()}`;
     updateTileProgram((program) => ({ ...program, layers: [...program.layers, { id, name: `Tile layer ${program.layers.length + 1}`, role, visible: true, locked: false, opacity: 1, blendMode: "normal", supportZ: editorElevation, chunks: [], terrainChunks: [] }] }), "Tile layer added");
@@ -5115,16 +5816,140 @@ export default function Home() {
   const removeSelectedCollisionChain = useCallback(() => {
     if (!selectedCollisionChain || !activeCollisionGeometry) return;
     try {
+      let working = syncActiveMap(project);
+      const transitionProgram = working.elevationTransitions ?? working.maps?.find((map) => map.id === working.activeMapId)?.elevationTransitions;
+      if (transitionProgram?.transitions.some((transition) => transition.collisionChainId === selectedCollisionChain.id)) {
+        const transitions = transitionProgram.transitions.map((transition) => {
+          if (transition.collisionChainId !== selectedCollisionChain.id) return transition;
+          const unbound = { ...transition };
+          delete unbound.collisionChainId;
+          return unbound;
+        });
+        working = applyAgentCommand(working, { op: "set_elevation_transitions", mapId: project.activeMapId, program: normalizeElevationTransitions({ transitions }) }).project as GameProject;
+      }
       const remaining = activeCollisionGeometry.chains.filter((chain) => chain.id !== selectedCollisionChain.id);
       const outcome = remaining.length
-        ? applyAgentCommand(syncActiveMap(project), { op: "set_collision_geometry", mapId: project.activeMapId, geometry: { ...activeCollisionGeometry, chains: remaining } })
-        : applyAgentCommand(syncActiveMap(project), { op: "remove_collision_geometry", mapId: project.activeMapId });
-      commit(outcome.project as GameProject, "Authored collision chain removed");
+        ? applyAgentCommand(working, { op: "set_collision_geometry", mapId: project.activeMapId, geometry: { ...activeCollisionGeometry, chains: remaining } })
+        : applyAgentCommand(working, { op: "remove_collision_geometry", mapId: project.activeMapId });
+      commit(outcome.project as GameProject, "Authored collision chain removed; physical transition binding cleared");
       setSelectedCollisionChainId(null);
     } catch (error) {
       showToast(error instanceof Error ? error.message : "The collision chain could not be removed");
     }
   }, [activeCollisionGeometry, commit, project, selectedCollisionChain, showToast]);
+
+  const saveElevationTransitions = useCallback((transitions: ElevationTransition[], message: string, selectedId: string | null = selectedElevationTransitionId) => {
+    try {
+      const base = syncActiveMap(project);
+      const outcome = transitions.length
+        ? applyAgentCommand(base, {
+            op: "set_elevation_transitions",
+            mapId: project.activeMapId,
+            program: normalizeElevationTransitions({ transitions }),
+          })
+        : applyAgentCommand(base, { op: "remove_elevation_transitions", mapId: project.activeMapId });
+      if (outcome.changed) commit(outcome.project as GameProject, message);
+      setSelectedElevationTransitionId(selectedId && transitions.some((transition) => transition.id === selectedId) ? selectedId : null);
+      setShowPaths(true);
+      return outcome;
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "The elevation transition could not be saved");
+      return null;
+    }
+  }, [commit, project, selectedElevationTransitionId, showToast]);
+
+  const createElevationTransition = useCallback((kind: ElevationTransition["kind"]) => {
+    if (!selectedNavigationLink) {
+      showToast("Select a navigation link between two different heights first");
+      return;
+    }
+    const existing = activeElevationTransitions.transitions.find((transition) => transition.navigationLinkId === selectedNavigationLink.id);
+    if (existing) {
+      setSelectedElevationTransitionId(existing.id);
+      showToast(`${existing.name} already owns this height change`);
+      return;
+    }
+    const start = navigation.nodes.find((node) => node.id === selectedNavigationLink.a);
+    const end = navigation.nodes.find((node) => node.id === selectedNavigationLink.b);
+    if (!start || !end || Math.abs(start.z - end.z) <= 0.000001) {
+      showToast("A ramp or stair needs a navigation link whose endpoints have different Z values");
+      return;
+    }
+    const compatibleChain = activeCollisionGeometry?.chains.find((chain) => {
+      if (chain.enabled === false || !new Set(["floor", "auto"]).has(chain.role) || chain.points.length !== 2) return false;
+      const minimumZ = Math.min(start.z, end.z);
+      const maximumZ = Math.max(start.z, end.z);
+      return Math.abs(chain.points[0].x - start.x) <= 0.001
+        && Math.abs(chain.points[0].y - start.y) <= 0.001
+        && Math.abs(chain.points[1].x - end.x) <= 0.001
+        && Math.abs(chain.points[1].y - end.y) <= 0.001
+        && chain.zMin <= minimumZ + 0.001
+        && chain.zMax > maximumZ;
+    });
+    try {
+      const suggestion = applyAgentCommand(syncActiveMap(project), {
+        op: "suggest_elevation_transitions",
+        mapId: project.activeMapId,
+        navigationLinkId: selectedNavigationLink.id,
+        kind,
+        ...(compatibleChain ? { collisionChainId: compatibleChain.id } : {}),
+      }).result as { available: boolean; program?: ElevationTransitions; reasons?: string[] };
+      const transition = suggestion.program?.transitions?.[0];
+      if (!suggestion.available || !transition) throw new Error(suggestion.reasons?.join(" ") || "No valid height-changing route was found.");
+      saveElevationTransitions([...activeElevationTransitions.transitions, transition], `${kind === "stairs" ? "Stairs" : "Ramp"} created from authored route`, transition.id);
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "The elevation transition could not be created");
+    }
+  }, [activeCollisionGeometry?.chains, activeElevationTransitions.transitions, navigation.nodes, project, saveElevationTransitions, selectedNavigationLink, showToast]);
+
+  const updateElevationTransition = useCallback((id: string, changes: Partial<ElevationTransition>, message: string) => {
+    saveElevationTransitions(activeElevationTransitions.transitions.map((transition) => transition.id === id ? { ...transition, ...changes } : transition), message, id);
+  }, [activeElevationTransitions.transitions, saveElevationTransitions]);
+
+  const removeSelectedElevationTransition = useCallback(() => {
+    if (!selectedElevationTransition) return;
+    saveElevationTransitions(
+      activeElevationTransitions.transitions.filter((transition) => transition.id !== selectedElevationTransition.id),
+      `${selectedElevationTransition.name} removed`,
+      null,
+    );
+  }, [activeElevationTransitions.transitions, saveElevationTransitions, selectedElevationTransition]);
+
+  const setSelectedNavigationLinkDirection = useCallback((oneWay: boolean) => {
+    if (!selectedNavigationLink) return;
+    try {
+      let outcome = applyAgentCommand(syncActiveMap(project), { op: "update_navigation_link", id: selectedNavigationLink.id, changes: { oneWay } });
+      const linked = activeElevationTransitions.transitions.filter((transition) => transition.navigationLinkId === selectedNavigationLink.id);
+      if (linked.length) {
+        const program = normalizeElevationTransitions({
+          transitions: activeElevationTransitions.transitions.map((transition) => transition.navigationLinkId === selectedNavigationLink.id ? { ...transition, oneWay } : transition),
+        });
+        outcome = applyAgentCommand(outcome.project, { op: "set_elevation_transitions", mapId: project.activeMapId, program });
+      }
+      commit(outcome.project as GameProject, "Navigation and physical transition direction updated");
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "The navigation direction could not be updated");
+    }
+  }, [activeElevationTransitions.transitions, commit, project, selectedNavigationLink, showToast]);
+
+  const removeSelectedNavigationLink = useCallback(() => {
+    if (!selectedNavigationLink) return;
+    try {
+      let working = syncActiveMap(project);
+      const remaining = activeElevationTransitions.transitions.filter((transition) => transition.navigationLinkId !== selectedNavigationLink.id);
+      if (remaining.length !== activeElevationTransitions.transitions.length) {
+        working = (remaining.length
+          ? applyAgentCommand(working, { op: "set_elevation_transitions", mapId: project.activeMapId, program: normalizeElevationTransitions({ transitions: remaining }) })
+          : applyAgentCommand(working, { op: "remove_elevation_transitions", mapId: project.activeMapId })).project as GameProject;
+      }
+      const outcome = applyAgentCommand(working, { op: "remove_navigation_link", id: selectedNavigationLink.id });
+      commit(outcome.project as GameProject, "Navigation link and its physical transition removed");
+      setSelectedNavigationLinkId(null);
+      setSelectedElevationTransitionId(null);
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "The navigation link could not be removed");
+    }
+  }, [activeElevationTransitions.transitions, commit, project, selectedNavigationLink, showToast]);
 
   const clearNavigationTest = useCallback(() => setNavigationTest({ from: null, to: null, result: null }), []);
 
@@ -5572,6 +6397,7 @@ export default function Home() {
     setSelectedNavigationLinkId(null);
     setSelectedNavigationAreaId(null);
     setSelectedCollisionChainId(null);
+    setSelectedElevationTransitionId(null);
     setNavigationChainNodeId(null);
     setNavigationAreaDraft(null);
     setNavigationTest({ from: null, to: null, result: null });
@@ -6051,6 +6877,7 @@ export default function Home() {
         runtimeRef.current = engine.getObjects();
         setRuntimeState(next);
         setRuntimeChoiceState(engine.getChoiceState());
+        setRuntimeQuestState(engine.getQuestState());
         setRuntimeHudState(engine.getHudState());
         setCollected(next.collectedCount);
         setPreviewWon(next.won);
@@ -6158,6 +6985,47 @@ export default function Home() {
           const semanticTargets: Array<{ kind: string; severity: "error" | "warning" | "info"; label: string; detail: string; bounds: { x: number; y: number; width: number; height: number }; affectedIds?: string[]; sourceEvidenceIds?: string[]; metrics?: Record<string, unknown> }> = [];
           const frameRect = { x: 0, y: 0, width: captureCanvas.width, height: captureCanvas.height };
           const objectRects = runtimeObjects.map((object) => ({ object, bounds: toCaptureRect(runtimeObjectRect(object)) }));
+          const colorTargets: Array<{
+            id: string;
+            label: string;
+            kind: "text" | "essential-non-text" | "gameplay-cue" | "semantic-pair";
+            source: "computed-style-over-captured-pixels" | "captured-gameplay-color" | "authored-color-pair";
+            foreground: string;
+            background?: string;
+            backgroundLayers?: string[];
+            bounds: { x: number; y: number; width: number; height: number };
+            largeText?: boolean;
+            essential?: boolean;
+            conveysMeaningByColor?: boolean;
+            redundantCue?: string;
+            cvdRelevant?: boolean;
+          }> = [];
+          const gameplayColorCues: Record<string, string> = {
+            player: "player silhouette and movement",
+            hazard: "hazard geometry",
+            coin: "collectible silhouette",
+            goal: "goal silhouette",
+            portal: "portal frame",
+          };
+          for (const entry of objectRects) {
+            const foreground = String(entry.object.color ?? "").trim();
+            const redundantCue = gameplayColorCues[entry.object.kind];
+            const visible = intersectVisualRects(entry.bounds, frameRect);
+            if (!visible || !redundantCue || !/^#[0-9a-f]{6}$/i.test(foreground)) continue;
+            colorTargets.push({
+              id: `gameplay:${map.id}:${entry.object.id}`,
+              label: entry.object.name ?? entry.object.id,
+              kind: "gameplay-cue",
+              source: "captured-gameplay-color",
+              foreground,
+              background: String(map.background ?? captureState.background ?? current.background ?? "#000000"),
+              bounds: visible,
+              essential: true,
+              conveysMeaningByColor: false,
+              redundantCue,
+              cvdRelevant: true,
+            });
+          }
           for (const entry of objectRects) {
             const visible = intersectVisualRects(entry.bounds, frameRect);
             if (!visible) continue;
@@ -6180,6 +7048,47 @@ export default function Home() {
               frameRect,
             );
             if (hudOnCanvas) {
+              const hudCandidates = [...hud.querySelectorAll<HTMLElement>("strong, span, small, b, button, [role='status'], [aria-label]")]
+                .filter((element) => visibleElement(element) && String(element.textContent ?? element.getAttribute("aria-label") ?? "").trim().length > 0);
+              const hudTextElements = hudCandidates.filter((element) => !hudCandidates.some((candidate) => candidate !== element && element.contains(candidate))).slice(0, 24);
+              for (const [elementIndex, element] of hudTextElements.entries()) {
+                const elementBounds = element.getBoundingClientRect();
+                const captureBounds = intersectVisualRects({
+                  x: (elementBounds.left - bounds.left) / bounds.width * captureCanvas.width,
+                  y: (elementBounds.top - bounds.top) / bounds.height * captureCanvas.height,
+                  width: elementBounds.width / bounds.width * captureCanvas.width,
+                  height: elementBounds.height / bounds.height * captureCanvas.height,
+                }, frameRect);
+                if (!captureBounds) continue;
+                const computed = window.getComputedStyle(element);
+                const foreground = computed.color;
+                if (!parseCssColor(foreground)) continue;
+                const ancestry: HTMLElement[] = [];
+                let cursor: HTMLElement | null = element;
+                while (cursor && hud.contains(cursor)) {
+                  ancestry.push(cursor);
+                  if (cursor === hud) break;
+                  cursor = cursor.parentElement;
+                }
+                const backgroundLayers = ancestry.reverse().map((node) => window.getComputedStyle(node).backgroundColor).filter((value) => (parseCssColor(value)?.a ?? 0) > 0);
+                const fontSize = Number.parseFloat(computed.fontSize) || 0;
+                const bold = computed.fontWeight === "bold" || (Number.parseFloat(computed.fontWeight) || 0) >= 700;
+                const label = String(element.getAttribute("aria-label") ?? element.textContent ?? `HUD text ${elementIndex + 1}`).trim().replace(/\s+/g, " ").slice(0, 80);
+                colorTargets.push({
+                  id: `hud:${map.id}:${profile.id}:${element.id || elementIndex + 1}`,
+                  label,
+                  kind: "text",
+                  source: "computed-style-over-captured-pixels",
+                  foreground,
+                  backgroundLayers: backgroundLayers.length ? backgroundLayers : ["rgba(0, 0, 0, 0)"],
+                  bounds: captureBounds,
+                  largeText: fontSize >= 24 || (bold && fontSize >= 18.66),
+                  essential: true,
+                  conveysMeaningByColor: false,
+                  redundantCue: "text content",
+                  cvdRelevant: false,
+                });
+              }
               const hudOverlaps = objectRects.filter((entry) => {
                 if (!isHudVisualReviewTarget(entry.object)) return false;
                 const overlap = intersectVisualRects(entry.bounds, hudOnCanvas);
@@ -6225,7 +7134,8 @@ export default function Home() {
             baselineFrame,
             baselineSha256: priorCapture?.sha256 ?? null,
             semanticTargets,
-            options: { maximumSemanticTargets: 16, maximumRegions: 8, cellSize: 16, pixelThreshold: 36, minimumCellChangedRatio: 0.08, minimumRegionChangedPixels: 24 },
+            colorTargets,
+            options: { maximumSemanticTargets: 16, maximumRegions: 8, cellSize: 16, pixelThreshold: 36, minimumCellChangedRatio: 0.08, minimumRegionChangedPixels: 24, colorAccessibility: { maximumTargets: 48, maximumSamplesPerTarget: 4096 } },
           }) as VisualPerceptionReceipt;
           perception.annotations = perception.annotations.map((annotation, index) => index < 12 ? { ...annotation, cropDataUrl: visualAnnotationCropDataUrl(captureCanvas, annotation) } : annotation);
           const annotatedDataUrl = annotatedVisualDataUrl(captureCanvas, perception.annotations);
@@ -6258,6 +7168,12 @@ export default function Home() {
               annotationCount: perception.annotationCount,
               comparison: perception.comparison,
               kinds: [...new Set(perception.annotations.map((annotation) => annotation.kind))],
+              colorAccessibility: {
+                schemaVersion: perception.colorAccessibility.schemaVersion,
+                status: perception.colorAccessibility.status,
+                summary: perception.colorAccessibility.summary,
+                policy: perception.colorAccessibility.policy,
+              },
             },
           });
           captures.push({
@@ -6466,6 +7382,7 @@ export default function Home() {
           runtimeRef.current = previous.engine.getObjects();
           setRuntimeState(restoredState);
           setRuntimeChoiceState(previous.engine.getChoiceState());
+          setRuntimeQuestState(previous.engine.getQuestState());
           setRuntimeHudState(previous.engine.getHudState());
           setCollected(restoredState.collectedCount);
           setPreviewWon(restoredState.won);
@@ -6476,6 +7393,7 @@ export default function Home() {
       } else {
         runtimeEngineRef.current = null;
         setRuntimeChoiceState(null);
+        setRuntimeQuestState({ revision: 0, quests: [] });
         setRuntimeHudState([]);
         exitPreview();
         setMobileTab(previous.mobileTab);
@@ -6729,21 +7647,49 @@ export default function Home() {
     }
   }, [aiProvider, directedPrompt, loopEnabled, loopEvaluationProfile, loopIterations, loopStopScore, project.name, providerContextBudgetTokens, showToast]);
 
+  const removeInteractableInstance = useCallback((instanceId: string) => {
+    try {
+      const outcome = applyAgentCommand(syncActiveMap(project), {
+        op: "remove_interactable_instance",
+        mapId: project.activeMapId,
+        instanceId,
+      });
+      commit(outcome.project as GameProject, `Interactable instance ${instanceId} removed`);
+      setSelectedId(null);
+      setInteractablePreview(null);
+      setAgentCommandResult(JSON.stringify({ ok: true, changed: true, result: outcome.result, validation: outcome.validation }, null, 2));
+      appendConsole("interactable.removed", `Removed complete instance ${instanceId}`, "Every bound role was removed together; undo restores the bundle.", "neutral");
+      showToast("Complete interactable instance removed");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setAgentCommandResult(JSON.stringify({ ok: false, error: message }, null, 2));
+      showToast(message);
+    }
+  }, [appendConsole, commit, project, showToast]);
+
   const deleteSelected = useCallback(() => {
     if (!selected) return;
+    if (selected.interactable?.instanceId) {
+      removeInteractableInstance(selected.interactable.instanceId);
+      return;
+    }
     commit(
       { ...project, objects: project.objects.filter((object) => object.id !== selected.id) },
       `${selected.name} removed`,
     );
     setSelectedId(null);
-  }, [commit, project, selected]);
+  }, [commit, project, removeInteractableInstance, selected]);
 
   const duplicateSelected = useCallback(() => {
     if (!selected) return;
+    if (selected.interactable?.instanceId) {
+      showToast("Native mechanics must be copied as a complete instance from the template preview.");
+      return;
+    }
     const copy = { ...selected, id: uid(), name: `${selected.name} copy`, x: selected.x + project.grid, y: selected.y + project.grid };
     commit({ ...project, objects: [...project.objects, copy] }, "Object duplicated");
     setSelectedId(copy.id);
-  }, [commit, project, selected]);
+  }, [commit, project, selected, showToast]);
 
   useEffect(() => {
     let cancelled = false;
@@ -7094,7 +8040,8 @@ export default function Home() {
     const applyCoordinationFromAgent = (next: GameProject, message: string) => {
       const coordinated = cloneProject(next);
       projectRef.current = coordinated;
-      setProject(coordinated);
+      flushSync(() => setProject(coordinated));
+      projectRef.current = coordinated;
       showToast(message);
       const detail = { project: cloneProject(coordinated), ledger: getAgentWorkLedger(coordinated, { eventLimit: 6 }) };
       window.dispatchEvent(new CustomEvent("looplab:project-changed", { detail }));
@@ -7154,6 +8101,7 @@ export default function Home() {
       runtimeRef.current = engine.getObjects();
       setRuntimeState(next);
       setRuntimeChoiceState(engine.getChoiceState());
+      setRuntimeQuestState(engine.getQuestState());
       setRuntimeHudState(engine.getHudState());
       setCollected(next.collectedCount);
       setPreviewWon(next.won);
@@ -7375,6 +8323,7 @@ export default function Home() {
               projectContext: { name: currentProject.name, activeMapId: currentProject.activeMapId, mapIds: (currentProject.maps ?? []).map((map) => map.id), runtimeProfile: currentProject.runtimeProfile, sourceDigest: currentDoctor.sourceDigest },
               doctor: { profile: currentDoctor.profile, score: currentDoctor.score, errorCount: currentDoctor.errorCount, warningCount: currentDoctor.warningCount, nextActions: currentDoctor.nextActions },
               gameplayProgram: { policy: LOOPLAB_GAMEPLAY_RULE_POLICY, inspection: inspectGameplayProgram(currentProject) },
+              runVariationProgram: { policy: LOOPLAB_RUN_VARIATION_POLICY, inspection: inspectRunVariationProgram(currentProject, currentProject.runVariationProgram, { strict: currentProject.doctorProfile === "production", sourceDigest: currentDoctor.sourceDigest }) },
               motionBodies: { policy: LOOPLAB_MOTION_BODY_POLICY, inspection: inspectMotionBodies(currentProject, { strict: true }) },
               combatProgram: { policy: LOOPLAB_COMBAT_POLICY, inspection: inspectCombatProgram(currentProject) },
               actorProgram: { policy: LOOPLAB_ACTOR_POLICY, inspection: inspectActorProgram(currentProject) },
@@ -7520,6 +8469,44 @@ export default function Home() {
             return value;
           }
           if (command.op === "get_manifest") return { ok: true, manifest: command.compact === false ? getAgentManifest() : getCompactAgentManifest() };
+          if (command.op === "get_agent_guide_index") {
+            return {
+              ok: true,
+              index: queryAgentGuideIndex(LOOPLAB_AGENT_GUIDE_INDEX, {
+                query: typeof command.query === "string" ? command.query : undefined,
+                category: typeof command.category === "string" ? command.category : undefined,
+                limit: typeof command.limit === "number" ? command.limit : undefined,
+              }),
+            };
+          }
+          if (command.op === "list_capability_packs") {
+            return {
+              ok: true,
+              result: listCapabilityPacks({
+                query: typeof command.query === "string" ? command.query : undefined,
+                category: typeof command.category === "string" ? command.category : undefined,
+                limit: typeof command.limit === "number" ? command.limit : undefined,
+                offset: typeof command.offset === "number" ? command.offset : undefined,
+              }),
+            };
+          }
+          if (command.op === "get_capability_pack") {
+            return { ok: true, result: getCapabilityPack(typeof command.packId === "string" ? command.packId : "") };
+          }
+          if (command.op === "query_capability_knowledge") {
+            return {
+              ok: true,
+              result: queryCapabilityKnowledge({
+                query: typeof command.query === "string" ? command.query : undefined,
+                packIds: Array.isArray(command.packIds) ? command.packIds.filter((entry): entry is string => typeof entry === "string") : undefined,
+                capabilityIds: Array.isArray(command.capabilityIds) ? command.capabilityIds.filter((entry): entry is string => typeof entry === "string") : undefined,
+                limit: typeof command.limit === "number" ? command.limit : undefined,
+              }),
+            };
+          }
+          if (command.op === "inspect_capability_pack_refresh") {
+            return { ok: true, result: inspectCapabilityPackRefresh(command.candidate) };
+          }
           if (command.op === "list_projects") {
             const loadedSharedIds = new Set(projectLibraryRef.current.map((entry) => entry.sharedProjectId).filter((id): id is string => Boolean(id)));
             return {
@@ -8021,6 +9008,28 @@ export default function Home() {
             const next = publishPreviewState(engine);
             return { ok: true, state: { ...next, paused: previewPausedRef.current } };
           }
+          if (command.op === "preview_start_run" || command.op === "preview_start_daily_challenge") {
+            const engine = runtimeEngineRef.current;
+            if (!engine) throw new Error("Preview runtime is not active. Run set_mode with mode play first.");
+            if (activePlaytestRef.current) recordPlaytestReset(activePlaytestRef.current, engine.getState(), performance.now());
+            keysRef.current.forEach((code) => {
+              engine.setInput(code, false);
+              recordPreviewInputForPlaytest(code, false, "lifecycle");
+            });
+            keysRef.current.clear();
+            presentationRuntimeRef.current?.reset();
+            const run = command.op === "preview_start_daily_challenge"
+              ? engine.startDailyChallenge({ utcDay: String(command.utcDay ?? "") })
+              : engine.startRun({ seed: String(command.seed ?? "") });
+            const events = engine.drainEvents();
+            const next = publishPreviewState(engine, events);
+            return { ok: true, run, state: { ...next, paused: previewPausedRef.current }, events, ghosts: engine.getGhostStates() };
+          }
+          if (command.op === "get_preview_ghost_states") {
+            const engine = runtimeEngineRef.current;
+            if (!engine) throw new Error("Preview runtime is not active. Run set_mode with mode play first.");
+            return { ok: true, run: engine.getRunVariationState(), ghosts: engine.getGhostStates() };
+          }
           if (command.op === "preview_load_map") {
             const engine = runtimeEngineRef.current;
             if (!engine) throw new Error("Preview runtime is not active. Run set_mode with mode play first.");
@@ -8413,6 +9422,7 @@ export default function Home() {
     const next = engine.getState();
     observePlaytestRuntime(engine, events);
     const nextChoiceState = engine.getChoiceState();
+    const nextQuestState = engine.getQuestState();
     const nextHudState = engine.getHudState();
     runtimeRef.current = engine.getObjects();
     setRuntimeState((current) => (
@@ -8431,6 +9441,7 @@ export default function Home() {
         : next
     ));
     setRuntimeChoiceState((current) => JSON.stringify(current) === JSON.stringify(nextChoiceState) ? current : nextChoiceState);
+    setRuntimeQuestState((current) => JSON.stringify(current) === JSON.stringify(nextQuestState) ? current : nextQuestState);
     setRuntimeHudState((current) => JSON.stringify(current) === JSON.stringify(nextHudState) ? current : nextHudState);
     setCollected((current) => current === next.collectedCount ? current : next.collectedCount);
     setPreviewWon((current) => current === next.won ? current : next.won);
@@ -8547,7 +9558,9 @@ export default function Home() {
     if (("collected" in object && object.collected) || object.hidden) return;
     context.save();
     context.globalAlpha = Math.max(0, Math.min(1, Number(object.opacity ?? 1)));
-    const asset = object.assetId ? project.assets?.find((candidate) => candidate.id === object.assetId) : null;
+    const authoredAnimation = mode === "play" ? presentationRuntimeRef.current?.getAnimationFrame(object.id, object.assetId ?? null, object.assetFrame ?? 0) : null;
+    const renderedAssetId = authoredAnimation?.assetId ?? object.assetId;
+    const asset = renderedAssetId ? project.assets?.find((candidate) => candidate.id === renderedAssetId) : null;
     const projection = normalizeProjection(mode === "play" ? runtimeState.projection ?? activeProjection : activeProjection, mode === "play" ? runtimeState : project) as ProjectionContract;
     if (!asset && projection.type === "dimetric-2:1" && object.kind === "platform") {
       const sourceTotal = Math.max(1, Number(object.height));
@@ -8610,9 +9623,9 @@ export default function Home() {
         image.src = asset.dataUrl;
       }
       if (cached.image.complete && cached.image.naturalWidth) {
-        let requestedFrame = object.assetFrame ?? 0;
+        let requestedFrame = authoredAnimation?.frame ?? object.assetFrame ?? 0;
         if (mode === "play" && asset.frames > 1 && object.kind === "coin") requestedFrame = Math.floor(runtimeTick / 8) % asset.frames;
-        if (mode === "play" && asset.frames > 1 && object.kind === "player") {
+        if (mode === "play" && !authoredAnimation?.stateId && asset.frames > 1 && object.kind === "player") {
           const velocityX = "vx" in object ? Math.abs(Number(object.vx || 0)) : 0;
           const velocityY = "vy" in object ? Number(object.vy || 0) : 0;
           requestedFrame = runtimeState.activeTraversalPathId ? Math.min(3, asset.frames - 1)
@@ -8769,9 +9782,10 @@ export default function Home() {
     context.fillRect(0, 0, viewWidth, viewHeight);
     const activePresentation = mode === "play" ? presentationRuntimeRef.current : null;
     if (activePresentation) {
-      const offset = activePresentation.getCameraOffset();
+      const camera = activePresentation.getCameraTransform();
       context.save();
-      context.translate(offset.x, offset.y);
+      context.translate(camera.x, camera.y);
+      context.scale(camera.zoom, camera.zoom);
     }
 
     if (mode === "edit") {
@@ -8822,8 +9836,32 @@ export default function Home() {
       : objects.flatMap<{ object: GameObject | RuntimeObject; slice: RuntimeSlice | null }>((object) => object.depthSlices?.length
         ? object.depthSlices.map((slice) => ({ object, slice: slice as RuntimeSlice }))
         : [{ object, slice: null }]).map((entry) => ({ kind: "object", id: `${entry.object.id}:${entry.slice?.id ?? "whole"}`, depth: spatialDepthKey(entry.object, activeProjection) + Number(entry.slice?.depthBias ?? 0), object: entry.object, slice: entry.slice }));
+    const runtimePlayer = mode === "play" ? objects.find((object) => object.kind === "player") : null;
+    const ghostEntries: Array<{ kind: "object"; id: string; depth: number; object: GameObject | RuntimeObject; slice: RuntimeSlice | null }> = mode === "play" && runtimeEngineRef.current && runtimePlayer
+      ? runtimeEngineRef.current.getGhostStates().map((ghost) => {
+          const object = {
+            ...runtimePlayer,
+            id: `presentation-ghost:${ghost.id}`,
+            name: ghost.label,
+            x: ghost.x,
+            y: ghost.y,
+            z: ghost.z,
+            supportZ: ghost.z,
+            vx: 0,
+            vy: 0,
+            color: ghost.color,
+            opacity: ghost.opacity,
+            solid: false,
+            collected: false,
+            hidden: false,
+            collider: { ...runtimePlayer.collider, enabled: false },
+          } as RuntimeObject;
+          return { kind: "object" as const, id: object.id, depth: spatialDepthKey(object, tileProjection), object, slice: null };
+        })
+      : [];
     const interleaved: Array<{ kind: "object" | "tile"; id: string; depth: number; object?: GameObject | RuntimeObject; slice?: RuntimeSlice | null; tile?: TileRuntimeEntry }> = [
       ...objectEntries,
+      ...ghostEntries,
       ...tileRuntime.visualEntries.filter((entry) => entry.role === "interleaved").map((entry) => ({ kind: "tile" as const, id: entry.id, depth: entry.depth, tile: entry })),
     ].sort((first, second) => first.depth - second.depth || first.id.localeCompare(second.id));
     interleaved.forEach((entry) => entry.kind === "tile" ? drawTileEntry(context, entry.tile!, tileProjection) : drawObject(context, entry.object!, entry.slice ?? null));
@@ -8900,6 +9938,47 @@ export default function Home() {
         context.stroke();
         context.setLineDash([]);
         points.forEach((point) => context.fillRect(point.x - 4, point.y - 4, 8, 8));
+      }
+      for (const transition of activeElevationTransitions.transitions) {
+        if (transition.enabled === false || transition.points.length < 2) continue;
+        const points = transition.points.map(projectPoint);
+        const selectedTransition = transition.id === selectedElevationTransitionId;
+        const widthScale = isDimetric
+          ? (activeProjection.tileWidth / 2) / Math.max(1, activeProjection.worldUnitsPerTile ?? 128)
+          : 1;
+        context.save();
+        context.lineCap = "round";
+        context.lineJoin = "round";
+        context.globalAlpha = selectedTransition ? 0.3 : 0.18;
+        context.strokeStyle = selectedTransition ? "#6d4de3" : "#3f3f46";
+        context.lineWidth = Math.max(8, transition.width * widthScale);
+        context.beginPath();
+        context.moveTo(points[0].x, points[0].y);
+        points.slice(1).forEach((screenPoint) => context.lineTo(screenPoint.x, screenPoint.y));
+        context.stroke();
+        context.globalAlpha = 1;
+        context.strokeStyle = selectedTransition ? "#6d4de3" : "#3f3f46";
+        context.lineWidth = selectedTransition ? 4 : 3;
+        context.setLineDash(transition.kind === "stairs" ? [7, 5] : []);
+        context.beginPath();
+        context.moveTo(points[0].x, points[0].y);
+        points.slice(1).forEach((screenPoint) => context.lineTo(screenPoint.x, screenPoint.y));
+        context.stroke();
+        context.setLineDash([]);
+        points.forEach((screenPoint, index) => {
+          context.fillStyle = index === 0 ? "#3f3f46" : "#d5842f";
+          context.beginPath();
+          context.arc(screenPoint.x, screenPoint.y, selectedTransition ? 6 : 4, 0, Math.PI * 2);
+          context.fill();
+        });
+        context.fillStyle = "#24242a";
+        context.font = "800 9px ui-monospace, monospace";
+        context.fillText(
+          `${transition.name} · ${transition.kind.toUpperCase()} · z${transition.points[0].z}→${transition.points.at(-1)?.z ?? transition.points[0].z}`,
+          points[0].x + 9,
+          Math.max(12, points[0].y - 10),
+        );
+        context.restore();
       }
       for (const link of navigation.links) {
         if (link.layerId && !visibleLayers.has(link.layerId)) continue;
@@ -9123,7 +10202,7 @@ export default function Home() {
       context.restore();
     }
     if (activePresentation) activePresentation.drawOverlay(context, viewWidth, viewHeight);
-  }, [activeCollisionGeometry, activeMapSnapshot, activeProjection, assetRenderTick, authoredRoutePaths, collisionChainDraft, drawObject, drawTileEntry, editorTileRuntime, isDimetric, mode, navigation, navigationAreaDraft, navigationTest, project, runtimeState, runtimeTick, selected, selectedAuthoredRouteActorId, selectedCollisionChainId, selectedNavigationAreaId, selectedNavigationLinkId, selectedNavigationNodeId, selectedPathId, selectedPathPointIndex, showColliders, showPaths]);
+  }, [activeCollisionGeometry, activeElevationTransitions.transitions, activeMapSnapshot, activeProjection, assetRenderTick, authoredRoutePaths, collisionChainDraft, drawObject, drawTileEntry, editorTileRuntime, isDimetric, mode, navigation, navigationAreaDraft, navigationTest, project, runtimeState, runtimeTick, selected, selectedAuthoredRouteActorId, selectedCollisionChainId, selectedElevationTransitionId, selectedNavigationAreaId, selectedNavigationLinkId, selectedNavigationNodeId, selectedPathId, selectedPathPointIndex, showColliders, showPaths]);
 
   const pointerPosition = (event: ReactPointerEvent<HTMLCanvasElement>) => {
     const bounds = event.currentTarget.getBoundingClientRect();
@@ -9452,6 +10531,25 @@ export default function Home() {
   const parseAgentWorkList = (value: string) => [...new Set(value.split(/[\r\n,]+/).map((entry) => entry.trim()).filter(Boolean))];
   const preventAgentWorkInputSubmit = (event: ReactKeyboardEvent<HTMLInputElement>) => {
     if (event.key === "Enter") event.preventDefault();
+  };
+
+  const runCommunityExchangeCommand = async (command: AgentCommand) => {
+    setAgentCommandRunning(true);
+    try {
+      const run = agentBridgeRunRef.current;
+      if (!run) throw new Error("The agent bridge is still starting. Try again in one moment.");
+      const response = await run(command);
+      const consoleSafe = JSON.stringify(response, (key, value) => key === "sourceText" && typeof value === "string" ? `[${value.length.toLocaleString()} source characters retained in the exchange panel]` : value, 2);
+      setAgentCommandText(JSON.stringify(command, (key, value) => key === "sourceText" && typeof value === "string" ? `[${value.length.toLocaleString()} locally loaded source characters]` : value, 2));
+      setAgentCommandResult(consoleSafe);
+      return response;
+    } catch (error) {
+      const response = { ok: false, error: error instanceof Error ? error.message : String(error) };
+      setAgentCommandResult(JSON.stringify(response, null, 2));
+      return response;
+    } finally {
+      setAgentCommandRunning(false);
+    }
   };
 
   const runAgentWorkMutation = async (command: AgentCommand) => {
@@ -10018,6 +11116,239 @@ export default function Home() {
     }
   };
 
+  const previewInteractableTemplate = () => {
+    try {
+      const parameters: unknown = JSON.parse(interactableParametersDraft || "{}");
+      if (!parameters || typeof parameters !== "object" || Array.isArray(parameters)) throw new Error("Interactable overrides must be one JSON object.");
+      const outcome = applyAgentCommand(syncActiveMap(project), {
+        op: "preview_interactable_template",
+        templateId: interactableTemplateId,
+        instanceId: interactableInstanceId,
+        mapId: project.activeMapId,
+        x: interactableAnchor.x,
+        y: interactableAnchor.y,
+        z: interactableAnchor.z,
+        parameters,
+      });
+      const preview = outcome.result as InteractablePreviewView;
+      setInteractablePreview(preview);
+      setAgentCommandResult(JSON.stringify({ ok: true, changed: false, result: preview }, null, 2));
+      appendConsole("interactable.preview.ready", `${interactableTemplateId} preview ready`, `${preview.objects.length} exact authored object(s) · ${preview.applicable ? "no ID conflicts" : "resolve conflicts before apply"} · no provider tokens`, preview.applicable ? "good" : "neutral");
+      showToast(preview.applicable ? "Interactable preview ready" : "Preview has an ID conflict");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setInteractablePreview(null);
+      setAgentCommandResult(JSON.stringify({ ok: false, error: message }, null, 2));
+      showToast(message);
+    }
+  };
+
+  const applyInteractableTemplate = () => {
+    try {
+      if (!interactablePreview) throw new Error("Preview the exact interactable bundle first.");
+      const parameters: unknown = JSON.parse(interactableParametersDraft || "{}");
+      if (!parameters || typeof parameters !== "object" || Array.isArray(parameters)) throw new Error("Interactable overrides must be one JSON object.");
+      const outcome = applyAgentCommand(syncActiveMap(project), {
+        op: "apply_interactable_template",
+        templateId: interactableTemplateId,
+        instanceId: interactableInstanceId,
+        mapId: project.activeMapId,
+        x: interactableAnchor.x,
+        y: interactableAnchor.y,
+        z: interactableAnchor.z,
+        parameters,
+        expectedSourceDigest: interactablePreview.sourceDigest,
+        templateDigest: interactablePreview.templateDigest,
+        previewDigest: interactablePreview.previewDigest,
+      });
+      const result = outcome.result as { objectIds?: string[]; instanceId?: string; templateId?: string };
+      commit(outcome.project as GameProject, `${result.templateId ?? interactableTemplateId} instance ${result.instanceId ?? interactableInstanceId} added`);
+      if (result.objectIds?.[0]) setSelectedId(result.objectIds[0]);
+      setInteractablePreview(null);
+      setInteractableInstanceId(`${interactableTemplateId}-${(outcome.project as GameProject).objects.filter((object) => object.interactable?.templateId === interactableTemplateId).length + 1}`);
+      setAgentCommandResult(JSON.stringify({ ok: true, changed: true, result: outcome.result, validation: outcome.validation }, null, 2));
+      appendConsole("interactable.applied", `${result.templateId ?? interactableTemplateId} instance applied`, `${result.objectIds?.length ?? 0} object(s) share one versioned behavior, collision, anchor, and evidence contract.`, "good");
+      showToast("Interactable added · Doctor rechecked it");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setAgentCommandResult(JSON.stringify({ ok: false, error: message }, null, 2));
+      showToast(message);
+    }
+  };
+
+  const removeSelectedInteractable = () => {
+    const instanceId = selected?.interactable?.instanceId;
+    if (!instanceId) {
+      showToast("Select an object belonging to a native interactable instance first.");
+      return;
+    }
+    removeInteractableInstance(instanceId);
+  };
+
+  const prepareGameplayProgram = () => {
+    const program = project.gameplayProgram ?? {
+      version: 1,
+      variables: [],
+      rules: [],
+      choicePages: [],
+      quests: [],
+      clocks: [],
+      hudBindings: [],
+    };
+    setGameplayProgramDraft(JSON.stringify(program, null, 2));
+    setAgentCommandResult(JSON.stringify({ ok: true, changed: false, result: { program, source: project.gameplayProgram ? "saved-project" : "empty-canonical-starter" } }, null, 2));
+    appendConsole("gameplay.program.prepared", project.gameplayProgram ? "Saved gameplay source loaded into the draft" : "Empty deterministic gameplay source prepared", "Review typed variables, rules, dialogue bindings, quests, objectives, and evidence IDs before saving. No provider tokens were used.", "good");
+    showToast(project.gameplayProgram ? "Gameplay source reloaded" : "Gameplay starter ready for review");
+  };
+
+  const saveGameplayProgram = () => {
+    try {
+      const program: unknown = JSON.parse(gameplayProgramDraft);
+      if (!program || typeof program !== "object" || Array.isArray(program)) throw new Error("The gameplay program must be one JSON object.");
+      const outcome = applyAgentCommand(syncActiveMap(project), { op: "set_gameplay_program", program });
+      const result = outcome.result as { program?: Record<string, unknown>; inspection?: { metrics?: { dialoguePageCount?: number; questCount?: number; questObjectiveCount?: number } } };
+      if (!result?.program) throw new Error("The gameplay program did not pass validation.");
+      setGameplayProgramDraft(JSON.stringify(result.program, null, 2));
+      setAgentCommandResult(JSON.stringify({ ok: true, changed: true, result: outcome.result, validation: outcome.validation }, null, 2));
+      commit(outcome.project as GameProject, "Deterministic gameplay program saved");
+      appendConsole("gameplay.program.saved", "Rules, dialogue, and quests saved", `${result.inspection?.metrics?.dialoguePageCount ?? 0} speaker-bound page(s) · ${result.inspection?.metrics?.questCount ?? 0} quest(s) · ${result.inspection?.metrics?.questObjectiveCount ?? 0} objective(s). Project Doctor rechecked references and evidence.`, "good");
+      showToast("Gameplay program saved · Doctor rechecked it");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setAgentCommandResult(JSON.stringify({ ok: false, error: message }, null, 2));
+      showToast(message);
+    }
+  };
+
+  const removeGameplayProgram = () => {
+    try {
+      const outcome = applyAgentCommand(syncActiveMap(project), { op: "remove_gameplay_program" });
+      setGameplayProgramDraft("");
+      setAgentCommandResult(JSON.stringify({ ok: true, changed: outcome.changed, result: outcome.result, validation: outcome.validation }, null, 2));
+      if (outcome.changed) commit(outcome.project as GameProject, "Deterministic gameplay program removed");
+      appendConsole("gameplay.program.removed", "Deterministic gameplay source removed", "Maps, art, collision, Narrative Contract, and prior evidence remain separate. Undo restores the program.", "neutral");
+      showToast(outcome.changed ? "Gameplay program removed" : "No gameplay program was saved");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setAgentCommandResult(JSON.stringify({ ok: false, error: message }, null, 2));
+      showToast(message);
+    }
+  };
+
+  const prepareRunVariationProgram = () => {
+    try {
+      const outcome = applyAgentCommand(syncActiveMap(project), {
+        op: "suggest_run_variation_program",
+        seedNamespace: project.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "looplab-game",
+        defaultSeed: runVariationSeed.trim() || "standard",
+        dailyEnabled: true,
+      });
+      const suggestion = outcome.result as { program?: Record<string, unknown>; warning?: string };
+      if (!suggestion.program) throw new Error("Declare at least one typed gameplay variable before preparing run variation.");
+      setRunVariationProgramDraft(JSON.stringify(suggestion.program, null, 2));
+      setRunGhostPreview(null);
+      setAgentCommandResult(JSON.stringify({ ok: true, changed: false, result: suggestion }, null, 2));
+      appendConsole("run.variation.prepared", "Seeded-run starter prepared", suggestion.warning ?? "Review authored values and add two explicit seed replay fixtures before production.", "good");
+      showToast("Seeded-run starter ready for review");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setAgentCommandResult(JSON.stringify({ ok: false, error: message }, null, 2));
+      showToast(message);
+    }
+  };
+
+  const saveRunVariationProgram = () => {
+    try {
+      const program: unknown = JSON.parse(runVariationProgramDraft);
+      if (!program || typeof program !== "object" || Array.isArray(program)) throw new Error("The run-variation program must be one JSON object.");
+      const outcome = applyAgentCommand(syncActiveMap(project), { op: "set_run_variation_program", program, profile: project.doctorProfile ?? "prototype" });
+      const result = outcome.result as { program?: Record<string, unknown>; report?: { metrics?: { poolCount?: number; variantCount?: number; ghostCount?: number; coveredSeedCount?: number } } };
+      if (!result.program) throw new Error("The run-variation program did not pass validation.");
+      setRunVariationProgramDraft(JSON.stringify(result.program, null, 2));
+      setRunGhostPreview(null);
+      setAgentCommandResult(JSON.stringify({ ok: true, changed: true, result, validation: outcome.validation }, null, 2));
+      commit(outcome.project as GameProject, "Seeded runs, daily challenges, and ghosts saved");
+      appendConsole("run.variation.saved", "Run variation saved", `${result.report?.metrics?.poolCount ?? 0} pools · ${result.report?.metrics?.variantCount ?? 0} variants · ${result.report?.metrics?.ghostCount ?? 0} ghosts · ${result.report?.metrics?.coveredSeedCount ?? 0} covered seeds`, "good");
+      showToast("Run variation saved · Doctor rechecked it");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setAgentCommandResult(JSON.stringify({ ok: false, error: message }, null, 2));
+      showToast(message);
+    }
+  };
+
+  const removeRunVariationProgram = () => {
+    try {
+      const outcome = applyAgentCommand(syncActiveMap(project), { op: "remove_run_variation_program" });
+      setRunVariationProgramDraft("");
+      setRunGhostPreview(null);
+      setAgentCommandResult(JSON.stringify({ ok: true, changed: outcome.changed, result: outcome.result, validation: outcome.validation }, null, 2));
+      if (outcome.changed) commit(outcome.project as GameProject, "Seeded-run variation removed");
+      appendConsole("run.variation.removed", "Run variation removed", "Gameplay variables, maps, replay fixtures, collision, and art were preserved.", "neutral");
+      showToast(outcome.changed ? "Run variation removed" : "No run variation was saved");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setAgentCommandResult(JSON.stringify({ ok: false, error: message }, null, 2));
+      showToast(message);
+    }
+  };
+
+  const previewRunVariationSelection = (mode: "standard" | "daily") => {
+    try {
+      const command = mode === "daily"
+        ? { op: "preview_run_variation", mode, utcDay: runVariationDay, profile: project.doctorProfile ?? "prototype" }
+        : { op: "preview_run_variation", mode, seed: runVariationSeed.trim() || "standard", profile: project.doctorProfile ?? "prototype" };
+      const outcome = applyAgentCommand(syncActiveMap(project), command);
+      const result = outcome.result as { state?: { seed?: string; utcDay?: string | null; selections?: Array<{ poolId: string; variantId: string }>; selectionDigest?: string } };
+      setAgentCommandResult(JSON.stringify({ ok: true, changed: false, result }, null, 2));
+      appendConsole("run.variation.previewed", `${mode === "daily" ? result.state?.utcDay : result.state?.seed} resolved without mutation`, `${result.state?.selections?.map((entry) => `${entry.poolId}→${entry.variantId}`).join(" · ") || "No pools"} · ${result.state?.selectionDigest ?? "no digest"}`, "good");
+      showToast(`${mode === "daily" ? "Daily" : "Seed"} selection previewed`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setAgentCommandResult(JSON.stringify({ ok: false, error: message }, null, 2));
+      showToast(message);
+    }
+  };
+
+  const previewRunGhost = () => {
+    try {
+      const replayCaseId = runGhostReplayId || project.replay?.cases?.[0]?.id || "";
+      if (!replayCaseId) throw new Error("Record a passing deterministic replay before creating a ghost.");
+      const outcome = applyAgentCommand(syncActiveMap(project), { op: "preview_replay_ghost", replayCaseId });
+      const preview = outcome.result as { sourceDigest?: string; previewDigest?: string; ghost?: Record<string, unknown>; replayResult?: { tickCount?: number; finalHash?: string } };
+      if (!preview.sourceDigest || !preview.previewDigest || !preview.ghost) throw new Error("The replay ghost preview did not return its source-bound receipt.");
+      setRunGhostPreview({ sourceDigest: preview.sourceDigest, previewDigest: preview.previewDigest, ghost: preview.ghost });
+      setAgentCommandResult(JSON.stringify({ ok: true, changed: false, result: preview }, null, 2));
+      appendConsole("run.ghost.previewed", `Ghost previewed from ${replayCaseId}`, `${preview.replayResult?.tickCount ?? 0} ticks · source and trajectory digests locked · presentation only`, "good");
+      showToast("Replay ghost preview ready");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setRunGhostPreview(null);
+      setAgentCommandResult(JSON.stringify({ ok: false, error: message }, null, 2));
+      showToast(message);
+    }
+  };
+
+  const applyRunGhost = () => {
+    try {
+      if (!runGhostPreview) throw new Error("Preview the exact current replay ghost first.");
+      const replayCaseId = runGhostReplayId || project.replay?.cases?.[0]?.id || "";
+      const outcome = applyAgentCommand(syncActiveMap(project), { op: "apply_replay_ghost", replayCaseId, expectedSourceDigest: runGhostPreview.sourceDigest, expectedPreviewDigest: runGhostPreview.previewDigest });
+      const result = outcome.result as { ghost?: Record<string, unknown>; report?: { program?: Record<string, unknown> } };
+      const nextProject = outcome.project as GameProject;
+      setRunVariationProgramDraft(nextProject.runVariationProgram ? JSON.stringify(nextProject.runVariationProgram, null, 2) : "");
+      setRunGhostPreview(null);
+      setAgentCommandResult(JSON.stringify({ ok: true, changed: true, result, validation: outcome.validation }, null, 2));
+      commit(nextProject, "Passing replay added as a presentation-only ghost");
+      appendConsole("run.ghost.applied", `Replay ghost added from ${replayCaseId}`, "It is rendered from replay-derived frames and remains outside objects, collision, saves, completion, and replay hashes.", "good");
+      showToast("Replay ghost added · gameplay truth unchanged");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setAgentCommandResult(JSON.stringify({ ok: false, error: message }, null, 2));
+      showToast(message);
+    }
+  };
+
   const prepareCombatProgram = () => {
     try {
       const outcome = applyAgentCommand(syncActiveMap(project), { op: "suggest_combat_program", mapId: project.activeMapId ?? activeMap?.id });
@@ -10127,6 +11458,57 @@ export default function Home() {
       setAgentCommandResult(JSON.stringify({ ok: true, changed: false, result: suggestion }, null, 2));
       appendConsole("presentation.program.prepared", "Event-driven sound and game-feel starter prepared", "Review its cues and effects, then save it. No project state changed and no provider tokens were used.", "good");
       showToast("Presentation starter ready for review");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setAgentCommandResult(JSON.stringify({ ok: false, error: message }, null, 2));
+      showToast(message);
+    }
+  };
+
+  const insertPresentationSampleCue = (resource: ProjectResource) => {
+    try {
+      let program: Record<string, unknown>;
+      if (presentationProgramDraft.trim()) {
+        const parsed: unknown = JSON.parse(presentationProgramDraft);
+        if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("Prepare or repair the Presentation Program JSON before inserting a sample cue.");
+        program = structuredClone(parsed) as Record<string, unknown>;
+      } else {
+        const outcome = applyAgentCommand(syncActiveMap(project), { op: "suggest_presentation_program" });
+        const suggestion = outcome.result as { program?: Record<string, unknown> };
+        if (!suggestion.program) throw new Error("No presentation starter is available for this project.");
+        program = structuredClone(suggestion.program);
+      }
+      if (!program.audio || typeof program.audio !== "object" || Array.isArray(program.audio)) throw new Error("Presentation audio must be an object.");
+      const audio = program.audio as Record<string, unknown>;
+      if (!Array.isArray(audio.cues)) throw new Error("Presentation audio cues must be an array.");
+      const cues = audio.cues as Array<Record<string, unknown>>;
+      const usedIds = new Set(cues.map((cue) => typeof cue.id === "string" ? cue.id : ""));
+      const stem = resource.name.replace(/\.[^.]+$/, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 42) || "clip";
+      let cueId = `sample-${stem}`;
+      for (let suffix = 2; usedIds.has(cueId); suffix += 1) cueId = `sample-${stem}-${suffix}`;
+      const byteInspection = inspectEmbeddedAudioResource(resource);
+      const measuredDuration = Number(byteInspection.ok && "durationSeconds" in byteInspection ? byteInspection.durationSeconds : resource.analysis?.durationSeconds ?? 0) * 1_000;
+      cues.push({
+        id: cueId,
+        event: "goal.reached",
+        enabled: true,
+        kind: "sample",
+        waveform: "sine",
+        frequency: 220,
+        endFrequency: 220,
+        filterFrequency: 800,
+        durationMs: Math.max(20, Math.min(2_000, Number.isFinite(measuredDuration) && measuredDuration > 0 ? Math.round(measuredDuration) : 600)),
+        attackMs: 4,
+        releaseMs: 80,
+        volume: 0.18,
+        pitchVariationCents: 0,
+        resourceId: resource.id,
+        playbackRate: 1,
+      });
+      setPresentationProgramDraft(JSON.stringify(program, null, 2));
+      setAgentCommandResult(JSON.stringify({ ok: true, changed: false, insertedCueId: cueId, resourceId: resource.id, next: "Review the event, duration, and mix, then save the program." }, null, 2));
+      appendConsole("presentation.sample.inserted", `${resource.name} added to the draft`, `${cueId} → goal.reached · review before saving · no project state changed`, "good");
+      showToast("Sample cue inserted · review its event and mix, then save");
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       setAgentCommandResult(JSON.stringify({ ok: false, error: message }, null, 2));
@@ -10575,6 +11957,35 @@ export default function Home() {
     }
   };
 
+  const runDesignBotCohorts = async () => {
+    setBotCohortRunning(true);
+    try {
+      const run = agentBridgeRunRef.current;
+      if (!run) throw new Error("The agent bridge is still starting. Try again in one moment.");
+      await new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
+      const response = await run({ op: "run_bot_cohorts", expectedSourceDigest: doctorReport.sourceDigest, compact: true });
+      setAgentCommandResult(JSON.stringify(response, null, 2));
+      const report = response.result as BotCohortReportRef | undefined;
+      if (response.ok !== true || report?.schemaVersion !== "looplab-bot-cohort-report/v1") throw new Error(String(response.error ?? "The design behavior cohorts returned no source-bound report."));
+      setBotCohortReport(report);
+      appendConsole(
+        "design.cohorts.completed",
+        `${report.summary.runCount} deterministic behavior cohorts completed`,
+        `${report.summary.simulatedSeconds}s simulated · ${report.summary.advisoryFindingCount} design lead${report.summary.advisoryFindingCount === 1 ? "" : "s"} · ${report.summary.meaningfulEventCount} meaningful events · 0 provider tokens · $0.00`,
+        report.summary.advisoryFindingCount > 0 ? "neutral" : "good",
+      );
+      showToast(`${report.summary.runCount} behavior cohorts · ${report.summary.advisoryFindingCount} design leads · $0.00`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setBotCohortReport(null);
+      setAgentCommandResult(JSON.stringify({ ok: false, error: message }, null, 2));
+      appendConsole("design.cohorts.failed", "Behavior cohorts stopped safely", message, "bad");
+      showToast(message);
+    } finally {
+      setBotCohortRunning(false);
+    }
+  };
+
   const runBoundedTuningSearch = async () => {
     setTuningSearchRunning(true);
     setTuningCandidatePreview(null);
@@ -10858,7 +12269,12 @@ export default function Home() {
     ? gameplayProgram.variables
     : [];
   const visibleRuntimeChoiceState = isPlaying ? runtimeChoiceState : null;
+  const visibleRuntimeQuestState = isPlaying ? runtimeQuestState : { revision: 0, quests: [] };
   const visibleRuntimeHudState = isPlaying ? runtimeHudState : [];
+  const visibleDialoguePortrait = visibleRuntimeChoiceState?.portraitAssetId ? project.assets?.find((asset) => asset.id === visibleRuntimeChoiceState.portraitAssetId) ?? null : null;
+  const visibleDialogueChoiceKey = visibleRuntimeChoiceState ? JSON.stringify([visibleRuntimeChoiceState.id, visibleRuntimeChoiceState.body, visibleRuntimeChoiceState.revealMode, visibleRuntimeChoiceState.charactersPerSecond]) : "";
+  const runtimeDialogueTypewriterActive = Boolean(visibleRuntimeChoiceState?.revealMode === "typewriter" && runtimeDialogueReveal?.choiceKey === visibleDialogueChoiceKey);
+  const visibleDialogueBody = visibleRuntimeChoiceState ? runtimeDialogueTypewriterActive ? visibleRuntimeChoiceState.body.slice(0, runtimeDialogueReveal?.visibleCharacters ?? 0) : visibleRuntimeChoiceState.body : "";
   const visibleGameplayState = (gameplayProgram?.hudBindings?.length ? [] : gameplayVariables)
     .filter((variable) => variable.visible)
     .map((variable) => `${variable.label ?? variable.id}: ${String(runtimeState.variables?.[variable.id] ?? "")}`)
@@ -10924,6 +12340,20 @@ export default function Home() {
       setPlaytestReplayBusy(false);
     }
   };
+  const serializedCapabilityPackState = JSON.stringify({
+    schemaVersion: capabilityPackRegistry.schemaVersion,
+    registryDigest: capabilityPackRegistry.digest,
+    packCount: capabilityPackRegistry.packCount,
+    capabilityCount: capabilityPackRegistry.capabilityCount,
+    calibration: capabilityPackRegistry.calibration,
+    selectedPackId: selectedAgentCapabilityPack.id,
+    selectedPackDigest: selectedAgentCapabilityPack.digest,
+    query: agentCapabilityQuery,
+    matchedPackIds: agentCapabilityPackList.packs.map((pack) => pack.id),
+    matchedCapabilityIds: agentCapabilityKnowledge.results.map((entry) => entry.capability.id),
+    refreshInspection: agentCapabilityRefreshResult,
+    policy: capabilityPackRegistry.policy,
+  }).replace(/</g, "\\u003c");
   const serializedProjectState = JSON.stringify(previewProject).replace(/</g, "\\u003c");
   const serializedProjectLibraryState = JSON.stringify({
     schemaVersion: LOOPLAB_SHARED_PROJECT_STORE_SCHEMA,
@@ -11026,7 +12456,7 @@ export default function Home() {
   );
   const mapArchitectControl = (
     <details className="precision-card map-architect-card" open>
-      <summary><span>Map Architect</span><small>{isDimetric ? "2.5D dimetric" : "Orthographic"} · {navigation.nodes.length} nodes · {navigation.areas.length} areas</small></summary>
+      <summary><span>Map Architect</span><small>{isDimetric ? "2.5D dimetric" : "Orthographic"} · {navigation.nodes.length} nodes · {activeElevationTransitions.transitions.length} ramps/stairs · {navigation.areas.length} areas</small></summary>
       <div className="projection-choice" role="group" aria-label="Map projection">
         <button className={!isDimetric ? "active" : ""} onClick={() => setProjectionMode("orthographic")}><strong>Side / top view</strong><small>Direct x/y canvas</small></button>
         <button className={isDimetric ? "active" : ""} onClick={() => setProjectionMode("dimetric-2:1")}><strong>2.5D dimetric</strong><small>Exact 128×64 diamonds</small></button>
@@ -11042,7 +12472,7 @@ export default function Home() {
         <button className="wide-button secondary-wide" onClick={() => applyNavigationCommand({ op: "set_map_projection", projection: { ...activeProjection, originX: project.width / 2, originY: 92, elevationStep: 32, worldUnitsPerTile: 128 }, preserveControlMode: true }, "Dimetric camera reset")}>Reset exact 2.5D camera</button>
       </>}
 
-      <div className="map-tool-help"><strong>{mapTool === "select" ? "Select and place" : mapTool === "traversal" ? "Rail / traversal path" : mapTool === "navigation" ? "Navigation graph" : mapTool === "test-route" ? "Route test" : mapTool === "blocked-area" ? "Blocked polygon" : "Walkable polygon"}</strong><small>{mapTool === "select" ? "Drag objects; placement is inverse-projected at their current z." : mapTool === "traversal" ? "Click to add points. Drag square handles. Each point keeps its own z." : mapTool === "navigation" ? "Click to chain nodes. Click existing nodes to join or drag them." : mapTool === "test-route" ? "Click a start and destination to run deterministic A* on the active layer." : "Click polygon corners, then use Finish area in the stage toolbar."}</small></div>
+      <div className="map-tool-help"><strong>{mapTool === "select" ? "Select and place" : mapTool === "tiles" ? "Canonical tiles" : mapTool === "traversal" ? "Rail / traversal path" : mapTool === "collision-chain" ? "Authored collision chain" : mapTool === "navigation" ? "Navigation graph" : mapTool === "test-route" ? "Route test" : mapTool === "blocked-area" ? "Blocked polygon" : "Walkable polygon"}</strong><small>{mapTool === "select" ? "Drag objects; placement is inverse-projected at their current z." : mapTool === "tiles" ? "Paint explicit visual or collision cells; neither is inferred from the other." : mapTool === "traversal" ? "Click to add points. Drag square handles. Each point keeps its own z." : mapTool === "collision-chain" ? "Click floor or boundary points, then finish the chain. Use a cross-height navigation link to add its ramp/stair support contract." : mapTool === "navigation" ? "Click to chain nodes. Give endpoints different Z values, then select their link to create a physical ramp or stair." : mapTool === "test-route" ? "Click a start and destination to run deterministic A* on the active layer." : "Click polygon corners, then use Finish area in the stage toolbar."}</small></div>
 
       <div className="navigation-heading"><div><span className="eyebrow">Elevation & route layers</span><strong>{activeNavigationLayer?.name ?? "No layer yet"}</strong></div><button onClick={addNavigationLayer}>＋ Layer</button></div>
       {navigation.layers.length > 0 && <label className="field full"><span>Active authoring layer</span><select value={activeNavigationLayer?.id ?? ""} onChange={(event) => { const layer = navigation.layers.find((candidate) => candidate.id === event.target.value); applyNavigationCommand({ op: "update_map", id: project.activeMapId, changes: { navigation: { ...navigation, activeLayerId: event.target.value } } }, "Active navigation layer changed"); if (layer) setEditorElevation(layer.zMin); }}>
@@ -11092,8 +12522,39 @@ export default function Home() {
         <div className="mini-actions"><button onClick={() => setNavigationChainNodeId(selectedNavigationNode.id)}>Continue chain here</button><button className="danger" onClick={() => { applyNavigationCommand({ op: "remove_navigation_node", id: selectedNavigationNode.id }, "Navigation node removed"); setSelectedNavigationNodeId(null); setNavigationChainNodeId(null); }}>Delete node</button></div>
       </section>}
 
-      {navigation.links.length > 0 && <div className="navigation-list"><span className="eyebrow">Links</span>{navigation.links.map((link) => <button key={link.id} className={selectedNavigationLinkId === link.id ? "active" : ""} onClick={() => { setSelectedNavigationLinkId(link.id); setSelectedNavigationNodeId(null); }}><span><strong>{link.a} → {link.b}</strong><small>{link.oneWay ? "one way" : "both ways"} · cost ×{link.cost}</small></span></button>)}</div>}
-      {selectedNavigationLink && <section className="navigation-selection-card"><div className="field-grid"><label className="field"><span>Cost multiplier</span><input type="number" min="0.01" step="0.25" value={selectedNavigationLink.cost} onChange={(event) => applyNavigationCommand({ op: "update_navigation_link", id: selectedNavigationLink.id, changes: { cost: Math.max(.01, Number(event.target.value)) } }, "Navigation link cost updated")} /></label><label className="toggle-row" htmlFor="nav-link-one-way"><span>One way<small>{selectedNavigationLink.a} → {selectedNavigationLink.b}</small></span><input id="nav-link-one-way" aria-label="One-way navigation link" type="checkbox" checked={selectedNavigationLink.oneWay} onChange={(event) => applyNavigationCommand({ op: "update_navigation_link", id: selectedNavigationLink.id, changes: { oneWay: event.target.checked } }, "Navigation direction updated")} /></label></div><button className="wide-button danger" onClick={() => { applyNavigationCommand({ op: "remove_navigation_link", id: selectedNavigationLink.id }, "Navigation link removed"); setSelectedNavigationLinkId(null); }}>Remove link</button></section>}
+      {navigation.links.length > 0 && <div className="navigation-list"><span className="eyebrow">Links</span>{navigation.links.map((link) => <button key={link.id} className={selectedNavigationLinkId === link.id ? "active" : ""} onClick={() => { setSelectedNavigationLinkId(link.id); setSelectedElevationTransitionId(activeElevationTransitions.transitions.find((transition) => transition.navigationLinkId === link.id)?.id ?? null); setSelectedNavigationNodeId(null); }}><span><strong>{link.a} → {link.b}</strong><small>{link.oneWay ? "one way" : "both ways"} · cost ×{link.cost}</small></span></button>)}</div>}
+      {selectedNavigationLink && <section className="navigation-selection-card">
+        <div><span className="eyebrow">Selected link</span><strong>{selectedNavigationLink.a} → {selectedNavigationLink.b}</strong></div>
+        <div className="field-grid">
+          <label className="field"><span>Cost multiplier</span><input type="number" min="0.01" step="0.25" value={selectedNavigationLink.cost} onChange={(event) => applyNavigationCommand({ op: "update_navigation_link", id: selectedNavigationLink.id, changes: { cost: Math.max(.01, Number(event.target.value)) } }, "Navigation link cost updated")} /></label>
+          <label className="toggle-row" htmlFor="nav-link-one-way"><span>One way<small>{selectedNavigationLink.a} → {selectedNavigationLink.b}</small></span><input id="nav-link-one-way" aria-label="One-way navigation link" type="checkbox" checked={selectedNavigationLink.oneWay} onChange={(event) => setSelectedNavigationLinkDirection(event.target.checked)} /></label>
+        </div>
+        {selectedNavigationLinkTransition
+          ? <button className="wide-button secondary-wide" onClick={() => setSelectedElevationTransitionId(selectedNavigationLinkTransition.id)}>Edit physical {selectedNavigationLinkTransition.kind}</button>
+          : <div className="mini-actions"><button onClick={() => createElevationTransition("ramp")}>Create walkable ramp</button><button onClick={() => createElevationTransition("stairs")}>Create walkable stairs</button></div>}
+        <small className="precision-note">A height-changing link describes route connectivity. A ramp or stair separately owns support-Z interpolation and may bind authored floor collision.</small>
+        <button className="wide-button danger" onClick={removeSelectedNavigationLink}>Remove link</button>
+      </section>}
+
+      {activeElevationTransitions.transitions.length > 0 && <div className="navigation-list">
+        <span className="eyebrow">Walkable ramps & stairs</span>
+        {activeElevationTransitions.transitions.map((transition) => <button key={transition.id} className={selectedElevationTransitionId === transition.id ? "active" : ""} onClick={() => { setSelectedElevationTransitionId(transition.id); setSelectedNavigationLinkId(transition.navigationLinkId ?? null); setSelectedNavigationNodeId(null); setShowPaths(true); }}>
+          <span><strong>{transition.name}</strong><small>{transition.kind} · z {transition.points[0]?.z ?? 0} → {transition.points.at(-1)?.z ?? 0} · {transition.collisionChainId ? "collision bound" : "support only"}</small></span>
+        </button>)}
+      </div>}
+      {selectedElevationTransition && <section className="navigation-selection-card">
+        <div><span className="eyebrow">Physical height transition</span><strong>{selectedElevationTransition.name}</strong></div>
+        <label className="field full"><span>Name</span><input value={selectedElevationTransition.name} onChange={(event) => updateElevationTransition(selectedElevationTransition.id, { name: event.target.value || selectedElevationTransition.id }, "Elevation transition renamed")} /></label>
+        <div className="field-grid">
+          <label className="field"><span>Kind</span><select value={selectedElevationTransition.kind} onChange={(event) => updateElevationTransition(selectedElevationTransition.id, { kind: event.target.value as ElevationTransition["kind"] }, "Elevation transition kind updated")}><option value="ramp">Ramp</option><option value="stairs">Stairs</option></select></label>
+          <label className="field"><span>Walkable width</span><input type="number" min="1" max="4096" step="1" value={selectedElevationTransition.width} onChange={(event) => updateElevationTransition(selectedElevationTransition.id, { width: Math.max(1, Number(event.target.value)) }, "Elevation transition width updated")} /></label>
+          <label className="field"><span>Entry radius</span><input type="number" min="1" max="4096" step="1" value={selectedElevationTransition.entryRadius} onChange={(event) => updateElevationTransition(selectedElevationTransition.id, { entryRadius: Math.max(1, Number(event.target.value)) }, "Elevation entry radius updated")} /></label>
+          <label className="field"><span>Z tolerance</span><input type="number" min="0" max="64" step="0.1" value={selectedElevationTransition.entryZTolerance} onChange={(event) => updateElevationTransition(selectedElevationTransition.id, { entryZTolerance: Math.max(0, Number(event.target.value)) }, "Elevation entry tolerance updated")} /></label>
+        </div>
+        <label className="toggle-row" htmlFor="elevation-transition-enabled"><span>Runtime enabled<small>Disabled transitions remain authored but cannot change support height.</small></span><input id="elevation-transition-enabled" type="checkbox" checked={selectedElevationTransition.enabled} onChange={(event) => updateElevationTransition(selectedElevationTransition.id, { enabled: event.target.checked }, "Elevation transition availability updated")} /></label>
+        <div className="dimetric-contract"><span>OWNERSHIP</span><strong>Support Z: {selectedElevationTransition.id}</strong><small>Navigation: {selectedElevationTransition.navigationLinkId ?? "unbound"} · Collision: {selectedElevationTransition.collisionChainId ?? "unbound"} · Art never defines either.</small></div>
+        <button className="wide-button danger" onClick={removeSelectedElevationTransition}>Remove physical transition</button>
+      </section>}
 
       {navigation.areas.length > 0 && <div className="navigation-list"><span className="eyebrow">Walkable & blocked areas</span>{navigation.areas.map((area) => <button key={area.id} className={selectedNavigationAreaId === area.id ? "active" : ""} onClick={() => setSelectedNavigationAreaId(area.id)}><span><strong>{area.name}</strong><small>{area.kind} · {area.points.length} points · z {area.zMin}–{area.zMax}</small></span></button>)}</div>}
       {selectedNavigationArea && <div className="mini-actions"><button onClick={() => { setMapTool(selectedNavigationArea.kind === "blocked" ? "blocked-area" : "walkable-area"); setEditorElevation(selectedNavigationArea.zMin); }}>Draw another {selectedNavigationArea.kind}</button><button className="danger" onClick={() => { applyNavigationCommand({ op: "remove_navigation_area", id: selectedNavigationArea.id }, "Navigation area removed"); setSelectedNavigationAreaId(null); }}>Delete area</button></div>}
@@ -11102,9 +12563,35 @@ export default function Home() {
     </details>
   );
 
+  const selectedNativeTemplate = (LOOPLAB_INTERACTABLE_TEMPLATE_REGISTRY.templates as ReadonlyArray<{ id: string; label: string; summary: string; controlModes: ReadonlyArray<string>; parameters: Record<string, { default: unknown }> }>).find((template) => template.id === interactableTemplateId) ?? LOOPLAB_INTERACTABLE_TEMPLATE_REGISTRY.templates[0];
+  const interactableTemplateControl = (
+    <details id="looplab-interactable-templates" className="precision-card tuning-workbench" open={!selected?.interactable} data-registry-digest={LOOPLAB_INTERACTABLE_TEMPLATE_REGISTRY.digest}>
+      <summary><span>Native mechanics · reusable interactables</span><small>{doctorReport.interactableReport?.instanceCount ?? 0} instances · {LOOPLAB_INTERACTABLE_TEMPLATE_REGISTRY.templates.length} templates · replay v13</small></summary>
+      <div className="tuning-body">
+        <p className="precision-note">Place complete, versioned behavior bundles from a ground-contact anchor. Art, sensors, solid collision, logical state, and presentation stay independent. Preview binds the exact project source and template bytes before Apply can mutate the map.</p>
+        <label className="field full"><span>Mechanic template</span><select value={interactableTemplateId} onChange={(event) => { const id = event.target.value; setInteractableTemplateId(id); setInteractableInstanceId(`${id}-1`); setInteractableParametersDraft("{}"); setInteractablePreview(null); }}>
+          {(LOOPLAB_INTERACTABLE_TEMPLATE_REGISTRY.templates as ReadonlyArray<{ id: string; label: string; controlModes: ReadonlyArray<string> }>).map((template) => <option key={template.id} value={template.id} disabled={!template.controlModes.includes(stageControlMode)}>{template.label}{template.controlModes.includes(stageControlMode) ? "" : ` · ${template.controlModes.join("/")} only`}</option>)}
+        </select></label>
+        <div className="tuning-contract-status draft"><span>{selectedNativeTemplate.label}</span><small>{selectedNativeTemplate.summary}</small></div>
+        <label className="field full"><span>Stable instance ID</span><input value={interactableInstanceId} pattern="[A-Za-z0-9][A-Za-z0-9._:-]*" onChange={(event) => { setInteractableInstanceId(event.target.value); setInteractablePreview(null); }} /></label>
+        <div className="field-grid">
+          <label className="field"><span>Ground anchor X</span><input type="number" value={interactableAnchor.x} onChange={(event) => { setInteractableAnchor((value) => ({ ...value, x: Number(event.target.value) })); setInteractablePreview(null); }} /></label>
+          <label className="field"><span>Ground anchor Y</span><input type="number" value={interactableAnchor.y} onChange={(event) => { setInteractableAnchor((value) => ({ ...value, y: Number(event.target.value) })); setInteractablePreview(null); }} /></label>
+          <label className="field"><span>Support Z</span><input type="number" value={interactableAnchor.z} onChange={(event) => { setInteractableAnchor((value) => ({ ...value, z: Number(event.target.value) })); setInteractablePreview(null); }} /></label>
+        </div>
+        <label className="field full tuning-contract-editor"><span>Explicit parameter overrides · JSON</span><textarea rows={6} spellCheck={false} value={interactableParametersDraft} onChange={(event) => { setInteractableParametersDraft(event.target.value); setInteractablePreview(null); }} /></label>
+        <div className="tuning-actions"><button onClick={previewInteractableTemplate}>Preview exact bundle</button><button disabled={!interactablePreview?.applicable} onClick={applyInteractableTemplate}>Apply reviewed bundle</button>{selected?.interactable && <button className="danger" onClick={removeSelectedInteractable}>Remove selected instance</button>}</div>
+        {interactablePreview && <div className={`tuning-contract-status ${interactablePreview.applicable ? "ready" : "blocked"}`} role="status"><span>{interactablePreview.applicable ? `${interactablePreview.objects.length} objects ready` : "Preview blocked"}</span><small>{interactablePreview.applicable ? interactablePreview.objects.map((object) => `${object.interactable?.role}: ${object.id}`).join(" · ") : `Duplicate instance: ${String(interactablePreview.conflicts.duplicateInstance)} · IDs: ${interactablePreview.conflicts.duplicateObjectIds.join(", ") || "none"}`}</small></div>}
+        {interactablePreview && <details className="authored-route-editor"><summary><span>View feature and evidence starters</span><small>Review before calibrating</small></summary><pre>{JSON.stringify({ featureContract: interactablePreview.featureContractTemplate, fixtures: interactablePreview.fixtureTemplates }, null, 2)}</pre></details>}
+        <p className="precision-note">The same six commands are available to Codex, Claude, CLI, MCP, and the browser bridge: list, inspect, report, preview, apply, and remove. Project Doctor verifies every role and production requires calibrated acceptance plus replay evidence.</p>
+      </div>
+    </details>
+  );
+
   return (
     <main className={`studio-shell ${isPlaying && previewFocus ? "preview-focus-shell" : ""}`} data-preview-focus={isPlaying && previewFocus ? "true" : "false"} data-workspace={mapStudioFocused ? "map-studio" : experienceMode}>
       <script id="looplab-project-state" type="application/json" suppressHydrationWarning dangerouslySetInnerHTML={{ __html: serializedProjectState }} />
+      <script id="looplab-capability-pack-state" type="application/json" suppressHydrationWarning dangerouslySetInnerHTML={{ __html: serializedCapabilityPackState }} />
       <script id="looplab-project-library-state" type="application/json" suppressHydrationWarning dangerouslySetInnerHTML={{ __html: serializedProjectLibraryState }} />
       <script id="looplab-director-state" type="application/json" suppressHydrationWarning dangerouslySetInnerHTML={{ __html: serializedDirectorState }} />
       <script id="looplab-agent-presence-state" type="application/json" suppressHydrationWarning dangerouslySetInnerHTML={{ __html: serializedAgentPresenceState }} />
@@ -11359,12 +12846,27 @@ export default function Home() {
                       {!visualReview.verificationEligible && <p className="visual-review-warning">Visual inspection is available, but Project Doctor has {visualReview.doctorFindings.length} unresolved blocker or warning. These captures are not promotion evidence.</p>}
                       {selectedVisualCapture && <section className="visual-review-viewer">
                         <img src={showVisualAnnotations ? selectedVisualCapture.annotatedDataUrl : selectedVisualCapture.dataUrl} alt={`${showVisualAnnotations ? "Annotated" : "Clean"} ${selectedVisualCapture.mapName} render for ${selectedVisualCapture.profileName}`} />
-                        <div><strong>{selectedVisualCapture.mapName}</strong><span>{selectedVisualCapture.profileName}</span><div className="visual-review-toggle" aria-label="Capture presentation"><button aria-pressed={!showVisualAnnotations} onClick={() => setShowVisualAnnotations(false)}>Clean</button><button aria-pressed={showVisualAnnotations} onClick={() => setShowVisualAnnotations(true)} disabled={selectedVisualCapture.perception.annotationCount === 0}>Annotated ({selectedVisualCapture.perception.annotationCount})</button></div><small>Target {selectedVisualCapture.targetViewport.width}×{selectedVisualCapture.targetViewport.height} @ {selectedVisualCapture.targetViewport.devicePixelRatio}× · rendered {selectedVisualCapture.renderedBounds.width}×{selectedVisualCapture.renderedBounds.height}</small><small>Actual browser {selectedVisualCapture.actualViewport.width}×{selectedVisualCapture.actualViewport.height} @ {selectedVisualCapture.actualViewport.devicePixelRatio}×</small>{selectedVisualCapture.perception.comparison?.status === "compared" && <small>{(Number(selectedVisualCapture.perception.comparison.metrics?.changedPixelRatio ?? 0) * 100).toFixed(2)}% changed from the prior in-session capture</small>}<code>{selectedVisualCapture.sha256.slice(0, 31)}…</code></div>
+                        <div><strong>{selectedVisualCapture.mapName}</strong><span>{selectedVisualCapture.profileName}</span><div className="visual-review-toggle" aria-label="Capture presentation"><button aria-pressed={!showVisualAnnotations} onClick={() => setShowVisualAnnotations(false)}>Clean</button><button aria-pressed={showVisualAnnotations} onClick={() => setShowVisualAnnotations(true)} disabled={selectedVisualCapture.perception.annotationCount === 0}>Annotated ({selectedVisualCapture.perception.annotationCount})</button></div><small>Target {selectedVisualCapture.targetViewport.width}×{selectedVisualCapture.targetViewport.height} @ {selectedVisualCapture.targetViewport.devicePixelRatio}× · rendered {selectedVisualCapture.renderedBounds.width}×{selectedVisualCapture.renderedBounds.height}</small><small>Actual browser {selectedVisualCapture.actualViewport.width}×{selectedVisualCapture.actualViewport.height} @ {selectedVisualCapture.actualViewport.devicePixelRatio}×</small>{selectedVisualCapture.perception.comparison?.status === "compared" && <small>{(Number(selectedVisualCapture.perception.comparison.metrics?.changedPixelRatio ?? 0) * 100).toFixed(2)}% changed from the prior in-session capture</small>}<small>{selectedVisualCapture.perception.colorAccessibility.summary.measuredCount}/{selectedVisualCapture.perception.colorAccessibility.summary.targetCount} color targets measured · {selectedVisualCapture.perception.colorAccessibility.summary.issueCount} review issue{selectedVisualCapture.perception.colorAccessibility.summary.issueCount === 1 ? "" : "s"}</small><code>{selectedVisualCapture.sha256.slice(0, 31)}…</code></div>
                       </section>}
+                      {selectedVisualCapture && <details className={`color-accessibility-review ${selectedVisualCapture.perception.colorAccessibility.status === "review-required" ? "needs-review" : "measured"}`}>
+                        <summary><span><i aria-hidden="true" /> Exact-pixel color accessibility</span><small>{selectedVisualCapture.perception.colorAccessibility.summary.measuredCount} measured · {selectedVisualCapture.perception.colorAccessibility.summary.unobservedCount} authored color{selectedVisualCapture.perception.colorAccessibility.summary.unobservedCount === 1 ? "" : "s"} unobserved</small></summary>
+                        <div className="color-accessibility-body">
+                          <div className="color-accessibility-metrics" aria-label="Color accessibility result counts">
+                            <span><small>Contrast</small><strong>{selectedVisualCapture.perception.colorAccessibility.summary.contrast}</strong></span>
+                            <span><small>CVD separation</small><strong>{selectedVisualCapture.perception.colorAccessibility.summary.cvd}</strong></span>
+                            <span><small>Color-only cues</small><strong>{selectedVisualCapture.perception.colorAccessibility.summary.colorOnly}</strong></span>
+                            <span><small>Unmeasured</small><strong>{selectedVisualCapture.perception.colorAccessibility.summary.unmeasuredCount}</strong></span>
+                          </div>
+                          {selectedVisualCapture.perception.colorAccessibility.issues.length > 0
+                            ? <div className="color-accessibility-issues">{selectedVisualCapture.perception.colorAccessibility.issues.map((issue) => <article key={issue.id}><span>Review</span><strong>{issue.label}</strong><p>{issue.detail}</p></article>)}</div>
+                            : <p className="color-accessibility-clear">No measured color-review issue was found in this exact capture. This is not a conformance claim.</p>}
+                          <p className="color-accessibility-policy">HUD styles are composited over the pixels beneath translucent regions. Authored gameplay colors are judged only when observed inside their bounded capture. Machado simulations are diagnostic—not user testing, diagnosis, taste, or WCAG/legal conformance.</p>
+                        </div>
+                      </details>}
                       {selectedVisualCapture && selectedVisualCapture.perception.annotations.length > 0 && <section className="visual-annotation-review" aria-label="Pre-annotated visual review targets">
                         <header><div><span className="eyebrow">Pre-annotated perception</span><strong>Exact regions first; judgment stays with the reviewer</strong></div><small>Number + label + line style; color is never the only signal.</small></header>
                         <div className="visual-annotation-layout">
-                          <div className="visual-annotation-list">{selectedVisualCapture.perception.annotations.map((annotation) => <button key={annotation.id} className={`${annotation.severity} ${selectedVisualAnnotation?.id === annotation.id ? "selected" : ""}`} aria-pressed={selectedVisualAnnotation?.id === annotation.id} onClick={() => { setSelectedVisualAnnotationId(annotation.id); setShowVisualAnnotations(true); }}><b>{annotation.number}</b><span><strong>{annotation.label}</strong><small>{annotation.severity} · {annotation.kind.replaceAll("-", " ")} · {annotation.source === "pixel-diff" ? "pixel change" : "known geometry"}</small></span></button>)}</div>
+                          <div className="visual-annotation-list">{selectedVisualCapture.perception.annotations.map((annotation) => <button key={annotation.id} className={`${annotation.severity} ${selectedVisualAnnotation?.id === annotation.id ? "selected" : ""}`} aria-pressed={selectedVisualAnnotation?.id === annotation.id} onClick={() => { setSelectedVisualAnnotationId(annotation.id); setShowVisualAnnotations(true); }}><b>{annotation.number}</b><span><strong>{annotation.label}</strong><small>{annotation.severity} · {annotation.kind.replaceAll("-", " ")} · {annotation.source === "pixel-diff" ? "pixel change" : annotation.source === "color-accessibility" ? "measured color" : "known geometry"}</small></span></button>)}</div>
                           {selectedVisualAnnotation && <article className={`visual-annotation-detail ${selectedVisualAnnotation.severity}`}>{selectedVisualAnnotation.cropDataUrl && <img src={selectedVisualAnnotation.cropDataUrl} alt={`Cropped review target ${selectedVisualAnnotation.number}: ${selectedVisualAnnotation.label}`} />}<div><span>Target {selectedVisualAnnotation.number} · {selectedVisualAnnotation.severity}</span><strong>{selectedVisualAnnotation.label}</strong><p>{selectedVisualAnnotation.detail}</p>{selectedVisualAnnotation.affectedIds.length > 0 && <code>{selectedVisualAnnotation.affectedIds.join(", ")}</code>}</div></article>}
                         </div>
                       </section>}
@@ -11377,11 +12879,11 @@ export default function Home() {
                       </section>}
                       <section className={"visual-critique-panel " + (visualCritiqueFresh ? "is-fresh" : visualCritique ? "is-stale" : "")} aria-label="AI visual critique">
                         <header>
-                          <div><span className="eyebrow">Optional grounded judgment</span><strong>AI visual critique</strong><small>Exact current captures in, source-bound observations out.</small></div>
+                          <div><span className="eyebrow">Optional grounded judgment</span><strong>AI visual critique</strong><small>Exact current captures in, source-bound observations out. Claude Opus 5 is the default; Sonnet requires matched evidence that it is better.</small></div>
                           {visualCritiqueJob && <code>{visualCritiqueJob.jobId.slice(0, 18)}…</code>}
                         </header>
                         <div className="visual-critique-controls">
-                          <label htmlFor="visual-critique-provider"><span>Provider</span><select id="visual-critique-provider" aria-label="Visual critique provider" value={visualCritiqueProvider} onChange={(event) => setVisualCritiqueProvider(event.target.value as AgentProvider)} disabled={visualCritiqueRunning}><option value="openai">OpenAI API</option><option value="anthropic">Anthropic API</option><option value="codex">Codex CLI</option><option value="claude">Claude Code CLI</option></select></label>
+                          <label htmlFor="visual-critique-provider"><span>Provider</span><select id="visual-critique-provider" aria-label="Visual critique provider" value={visualCritiqueProvider} onChange={(event) => setVisualCritiqueProvider(event.target.value as AgentProvider)} disabled={visualCritiqueRunning}><option value="claude">Claude Code CLI · Opus 5</option><option value="anthropic">Anthropic API · Opus 5</option><option value="codex">Codex CLI</option><option value="openai">OpenAI API</option></select></label>
                           <label className="visual-critique-consent" htmlFor="visual-critique-consent"><input id="visual-critique-consent" aria-label="Consent to send the current visual review captures once" type="checkbox" checked={visualCritiqueConsent} onChange={(event) => setVisualCritiqueConsent(event.target.checked)} disabled={visualCritiqueRunning || !visualReviewFresh} /><span><strong>Send these exact captures once</strong><small>Up to eight clean frames are submitted only for this job. Temporary local files are deleted after it ends.</small></span></label>
                           {visualCritiqueRunning
                             ? <button type="button" className="visual-critique-cancel" onClick={() => void cancelVisualCritique().catch((error) => showToast(error instanceof Error ? error.message : "Visual critique could not be cancelled"))}>Cancel critique</button>
@@ -11427,6 +12929,7 @@ export default function Home() {
                           <span><small>Objects</small><b>{iterationComparison.counts.first.objects} → {iterationComparison.counts.second.objects}</b><em>{iterationComparison.delta.objects > 0 ? "+" : ""}{iterationComparison.delta.objects}</em></span>
                           <span><small>Assets</small><b>{iterationComparison.counts.first.assets} → {iterationComparison.counts.second.assets}</b><em>{iterationComparison.delta.assets > 0 ? "+" : ""}{iterationComparison.delta.assets}</em></span>
                         </div>
+                        {iterationComparison.structuralDiff && <StructuralIterationOverlay diff={iterationComparison.structuralDiff} />}
                         <div className="iteration-gate-comparison" aria-label="Candidate hard-gate status">
                           <span className={!iterationComparison.evidence.first.complete ? "unknown" : iterationComparison.hardGates.first.passed ? "passed" : "blocked"}><b>{iterationComparison.first.id}</b><small>{!iterationComparison.evidence.first.complete ? "Hard-gate evidence incomplete" : iterationComparison.hardGates.first.passed ? "Hard gates pass" : `${iterationComparison.hardGates.first.failures.length} failed hard gate(s)`}</small></span>
                           <span className={!iterationComparison.evidence.second.complete ? "unknown" : iterationComparison.hardGates.second.passed ? "passed" : "blocked"}><b>{iterationComparison.second.id}</b><small>{!iterationComparison.evidence.second.complete ? "Hard-gate evidence incomplete" : iterationComparison.hardGates.second.passed ? "Hard gates pass" : `${iterationComparison.hardGates.second.failures.length} failed hard gate(s)`}</small></span>
@@ -11553,7 +13056,7 @@ export default function Home() {
               {!isPlaying && navigationAreaDraft && <button className="active" onClick={finishNavigationArea}>Finish area · {navigationAreaDraft.points.length}</button>}
               {!isPlaying && collisionChainDraft && <button className="active" onClick={finishCollisionChain}>Finish collision · {collisionChainDraft.points.length}</button>}
               {!isPlaying && mapTool === "test-route" && (navigationTest.from || navigationTest.to) && <button onClick={clearNavigationTest}>Clear test</button>}
-              {!isPlaying && <button className={showPaths ? "active" : ""} onClick={() => setShowPaths((value) => !value)} title="Show traversal, navigation, elevation layers, and areas">Map data {(project.traversalPaths?.length ?? 0) + navigation.nodes.length + (activeCollisionGeometry?.chains.length ?? 0)}</button>}
+              {!isPlaying && <button className={showPaths ? "active" : ""} onClick={() => setShowPaths((value) => !value)} title="Show traversal, navigation, physical elevation transitions, collision chains, and areas">Map data {(project.traversalPaths?.length ?? 0) + navigation.nodes.length + (activeCollisionGeometry?.chains.length ?? 0) + activeElevationTransitions.transitions.length}</button>}
               <button onClick={() => setShowAssetLab(true)} title="Generate tiles and sprites">Assets</button>
               <button className={captureMode ? "active" : ""} onClick={() => { setCaptureMode((value) => !value); setMode("edit"); setCaptureRegion(null); }} title="Drag an area so AI can find it later">Capture area</button>
               <select className="viewport-picker" aria-label="Viewport safety preset" value={activeDeviceProfile.id} onChange={(event) => setViewportPreset(event.target.value)}>{deviceProfiles.map((profile) => <option key={profile.id} value={profile.id}>{profile.name ?? profile.id} · {profile.width}×{profile.height}{Number(profile.dpr ?? 1) > 1 ? ` @${profile.dpr}×` : ""}</option>)}</select>
@@ -11567,13 +13070,25 @@ export default function Home() {
 
           <div className="map-tabs-bar" role="tablist" aria-label="Project maps">
             <div className="map-tabs-scroll">
-              {maps.map((map, index) => <button key={map.id} role="tab" aria-selected={stageMapId === map.id} title={`${map.name} · ${map.projection?.type === "dimetric-2:1" ? "2.5D dimetric" : "orthographic"} · ${map.objects.length} objects · ${map.traversalPaths?.length ?? 0} traversal paths · ${map.navigation?.nodes?.length ?? 0} navigation nodes · ${map.collisionGeometry?.chains.length ?? 0} collision chains`} onClick={() => isPlaying ? loadPreviewMap(map.id) : switchMap(map.id)}><span>{index + 1}</span>{map.name}<small>{map.projection?.type === "dimetric-2:1" ? "2.5D" : "2D"} · {map.objects.length}/{(map.traversalPaths?.length ?? 0) + (map.navigation?.nodes?.length ?? 0) + (map.collisionGeometry?.chains.length ?? 0)}</small></button>)}
+              {maps.map((map, index) => <button key={map.id} role="tab" aria-selected={stageMapId === map.id} title={`${map.name} · ${map.projection?.type === "dimetric-2:1" ? "2.5D dimetric" : "orthographic"} · ${map.objects.length} objects · ${map.traversalPaths?.length ?? 0} traversal paths · ${map.navigation?.nodes?.length ?? 0} navigation nodes · ${map.elevationTransitions?.transitions.length ?? 0} ramps/stairs · ${map.collisionGeometry?.chains.length ?? 0} collision chains${map.worldStream ? ` · ${map.worldStream.mode} continuous-world host` : ""}`} onClick={() => isPlaying ? loadPreviewMap(map.id) : switchMap(map.id)}><span>{index + 1}</span>{map.name}<small>{map.projection?.type === "dimetric-2:1" ? "2.5D" : "2D"} · {map.worldStream ? "WORLD · " : ""}{map.objects.length}/{(map.traversalPaths?.length ?? 0) + (map.navigation?.nodes?.length ?? 0) + (map.elevationTransitions?.transitions.length ?? 0) + (map.collisionGeometry?.chains.length ?? 0)}</small></button>)}
             </div>
             <button className="add-map-tab" onClick={createMap} disabled={isPlaying} title={isPlaying ? "Return to Edit to create a map" : "Create and link another map"} aria-label="Add map tab">＋</button>
           </div>
 
           {mapStudioFocused && !isPlaying && <div className="map-studio-toolbar" aria-label="Map Studio authoring tools">
-            <div className="map-studio-identity"><span>MAP STUDIO</span><strong>{isDimetric ? "2.5D world" : "2D world"}</strong><small>{editorTileRuntime.counts.visualEntries} tiles · {editorTileRuntime.counts.collisionCells} tile colliders · {navigation.nodes.length} nodes · {activeCollisionGeometry?.chains.length ?? 0} chains</small></div>
+            <div className="map-studio-identity"><span>MAP STUDIO</span><strong>{isDimetric ? "2.5D world" : "2D world"}</strong><small>{editorTileRuntime.counts.visualEntries} tiles · {editorTileRuntime.counts.collisionCells} tile colliders · {navigation.nodes.length} nodes · {activeElevationTransitions.transitions.length} ramps/stairs · {activeCollisionGeometry?.chains.length ?? 0} chains{activeWorldStream ? ` · ${activeWorldStream.templates.length} stream templates` : ""}</small></div>
+            <div className="map-studio-world-tools" data-active={activeWorldStream ? "true" : "false"} title={activeWorldStream ? activeWorldStream.templates.map((template) => `${template.id} → ${template.mapId}`).join(" · ") : "Compose compatible authored maps into a deterministic continuous 2D/2.5D route"}>
+              {activeWorldStream ? <>
+                <span><b>WORLD</b>{activeWorldStream.mode} · {activeWorldStream.axis} · {activeWorldStream.mode === "finite" ? activeWorldStream.sequence.length : activeWorldStream.horizon} chunks</span>
+                <button onClick={inspectWorldStreamPlan}>View plan</button>
+                <button className="danger" onClick={removeWorldStream}>Remove</button>
+              </> : <>
+                <label><span>World</span><select aria-label="Continuous world mode" value={worldStreamMode} onChange={(event) => setWorldStreamMode(event.target.value as "finite" | "seeded")}><option value="finite">Finite route</option><option value="seeded">Seeded route</option></select></label>
+                <label><span>Axis</span><select aria-label="Continuous world axis" value={worldStreamAxis} onChange={(event) => setWorldStreamAxis(event.target.value as "horizontal" | "vertical")}><option value="horizontal">Horizontal</option><option value="vertical">Vertical</option></select></label>
+                {worldStreamMode === "seeded" && <label><span>Horizon</span><input aria-label="Continuous world horizon" type="number" min="2" max="4096" value={worldStreamHorizon} onChange={(event) => setWorldStreamHorizon(Number(event.target.value))} /></label>}
+                <button className="map-studio-new" disabled={maps.length < 2} onClick={initializeWorldStream}>Compose maps</button>
+              </>}
+            </div>
             <div className="map-studio-group projection-tools" role="group" aria-label="Projection">
               <button className={!isDimetric ? "active" : ""} onClick={() => setProjectionMode("orthographic")}>2D</button>
               <button className={isDimetric ? "active" : ""} onClick={() => setProjectionMode("dimetric-2:1")}>2.5D · 128×64</button>
@@ -11648,12 +13163,25 @@ export default function Home() {
                   {(["primary", "secondary", "ticker"] as const).map((region) => <div key={region} data-hud-region={region}>{visibleRuntimeHudState.filter((binding) => binding.region === region).map((binding) => <span key={binding.id} aria-label={binding.ariaLabel}>{binding.text}</span>)}</div>)}
                 </div>
               )}
+              {visibleRuntimeQuestState.quests.length > 0 && (
+                <aside className="preview-quest-journal" aria-label="Quest journal" aria-live="polite" aria-atomic="true">
+                  <h2>Quest journal</h2>
+                  {visibleRuntimeQuestState.quests.map((quest) => <section key={quest.id} data-quest-id={quest.id}><strong><span>{quest.title}</span><small>{quest.status}</small></strong>{quest.description && <p>{quest.description}</p>}{quest.objectives.length > 0 && <ul>{quest.objectives.map((objective) => <li key={objective.id} data-objective-id={objective.id} data-complete={objective.completed}>{objective.label}{objective.progress === null ? "" : ` ${objective.progress} / ${objective.target}`}</li>)}</ul>}</section>)}
+                </aside>
+              )}
               {visibleRuntimeChoiceState && (
-                <section className="preview-choice-layer" role="dialog" aria-modal={visibleRuntimeChoiceState.modal} aria-labelledby="preview-choice-title" aria-describedby="preview-choice-body">
+                <section className="preview-choice-layer" role="dialog" aria-modal={visibleRuntimeChoiceState.modal} aria-label={visibleRuntimeChoiceState.ariaLabel} aria-labelledby="preview-choice-title" aria-describedby="preview-choice-body" data-line-id={visibleRuntimeChoiceState.lineId ?? undefined} data-speaker-id={visibleRuntimeChoiceState.speakerId ?? undefined}>
                   <div className="preview-choice-card">
-                    <h2 id="preview-choice-title">{visibleRuntimeChoiceState.title}</h2>
-                    <p id="preview-choice-body">{visibleRuntimeChoiceState.body}</p>
-                    <div>
+                    <div className={`preview-choice-dialogue-grid portrait-${visibleDialoguePortrait ? visibleRuntimeChoiceState.portraitSide : "none"}`}>
+                      {visibleDialoguePortrait && <img src={visibleDialoguePortrait.dataUrl} alt="" aria-hidden="true" />}
+                      <div className="preview-choice-dialogue-copy">
+                        {visibleRuntimeChoiceState.speakerName && <p className="preview-choice-speaker">{visibleRuntimeChoiceState.speakerName}</p>}
+                        <h2 ref={previewChoiceTitleRef} id="preview-choice-title" tabIndex={-1}>{visibleRuntimeChoiceState.title}</h2>
+                        <p id="preview-choice-body" className={runtimeDialogueTypewriterActive ? "visually-hidden" : undefined} aria-live="polite" aria-atomic="true">{visibleRuntimeChoiceState.body}</p>
+                        {runtimeDialogueTypewriterActive && <p className="preview-choice-body-visual" aria-hidden="true">{visibleDialogueBody}</p>}
+                      </div>
+                    </div>
+                    <div className="preview-choice-options">
                       {visibleRuntimeChoiceState.choices.map((choice) => <button key={choice.id} type="button" disabled={!choice.enabled} data-choice-id={choice.id} data-action-id={choice.actionId} onClick={() => { const engine = runtimeEngineRef.current; if (engine?.chooseChoice(choice.id)) { syncRuntimeSnapshot(engine); setRuntimeTick((tick) => tick + 1); } }}>{choice.label}</button>)}
                     </div>
                   </div>
@@ -11835,6 +13363,7 @@ export default function Home() {
           </div>
 
           <div className="inspector-scroll-area">
+          {interactableTemplateControl}
           {selected ? (
             <div className="inspector-content">
               {mapArchitectControl}
@@ -11916,10 +13445,21 @@ export default function Home() {
                 <strong>{objectMeta[selected.kind].label}</strong>
                 <p>{objectMeta[selected.kind].description}. This behavior is included automatically in preview and exported HTML.</p>
               </div>
-              <div className="inspector-actions">
-                <button onClick={duplicateSelected}>Duplicate</button>
-                <button className="danger" onClick={deleteSelected}>Delete</button>
-              </div>
+              {selected.interactable?.instanceId ? (
+                <section className="support-contact-card status-attached" aria-label="Native interactable instance integrity">
+                  <div>
+                    <span className="eyebrow">Native mechanic instance</span>
+                    <strong>{selected.interactable.instanceId}</strong>
+                    <small>Every authored role shares one behavior and evidence contract. Individual roles cannot be duplicated or deleted.</small>
+                  </div>
+                  <button className="wide-button danger" onClick={removeSelectedInteractable}>Remove complete {selected.interactable.instanceId} instance</button>
+                </section>
+              ) : (
+                <div className="inspector-actions">
+                  <button onClick={duplicateSelected}>Duplicate</button>
+                  <button className="danger" onClick={deleteSelected}>Delete</button>
+                </div>
+              )}
             </div>
           ) : (
             <div className="inspector-content">
@@ -12005,6 +13545,59 @@ export default function Home() {
                   </section>}
                 </div>
               </details>
+              <details id="looplab-gameplay-program" className="precision-card tuning-workbench" open aria-label="Deterministic dialogue, quest, and gameplay rule authoring" data-source-digest={doctorReport.sourceDigest}>
+                <summary><span>Gameplay · dialogue, quests & rules</span><small>One state store · deterministic evidence · accessible presentation</small></summary>
+                <div className="tuning-body">
+                  <p className="precision-note">Edit the exact gameplay source used by preview, acceptance, replay, saves, headless control, and the one-file export. Dialogue may bind Narrative Contract lines and speakers plus embedded portraits. Quests derive entirely from typed variables and rules—never a second story state store.</p>
+                  <div className={`tuning-contract-status ${gameplayProgramInspection.errors.length ? "blocked" : gameplayProgramInspection.present ? "ready" : "draft"}`}>
+                    <span>{gameplayProgramInspection.present ? gameplayProgramInspection.errors.length ? "Gameplay program blocked" : "Gameplay program valid" : "No gameplay program saved"}</span>
+                    <small>{gameplayProgramInspection.present ? `${gameplayProgramInspection.metrics.variableCount} variables · ${gameplayProgramInspection.metrics.ruleCount} rules · ${gameplayProgramInspection.metrics.dialoguePageCount ?? 0} dialogue pages · ${gameplayProgramInspection.metrics.questCount ?? 0} quests · ${gameplayProgramInspection.metrics.questObjectiveCount ?? 0} objectives` : "Prepare an empty canonical document or paste the exact program authored by an AI agent."}</small>
+                  </div>
+                  <label className="field full tuning-contract-editor"><span>Gameplay Program · JSON</span><textarea aria-label="Gameplay Program JSON" rows={18} spellCheck={false} placeholder="Prepare a canonical starter or paste the gameplayProgram object used by set_gameplay_program." value={gameplayProgramDraft} onChange={(event) => setGameplayProgramDraft(event.target.value)} /></label>
+                  {(gameplayProgramInspection.errors.length > 0 || gameplayProgramInspection.warnings.length > 0) && <div className="tuning-findings" role="status">
+                    {gameplayProgramInspection.errors.slice(0, 6).map((message) => <small key={`error-${message}`}>ERROR · {message}</small>)}
+                    {gameplayProgramInspection.warnings.slice(0, Math.max(0, 8 - gameplayProgramInspection.errors.length)).map((message) => <small key={`warning-${message}`}>WARNING · {message}</small>)}
+                  </div>}
+                  <div className="tuning-actions">
+                    <button onClick={prepareGameplayProgram}>{gameplayProgramInspection.present ? "Reload saved source" : "Prepare empty source"}</button>
+                    <button disabled={!gameplayProgramDraft.trim()} onClick={saveGameplayProgram}>Save gameplay</button>
+                    {gameplayProgramInspection.present && <button className="danger" onClick={removeGameplayProgram}>Remove</button>}
+                  </div>
+                  <p className="precision-note">Claude, Codex, CLI, MCP, and this mouse panel share <code>get_gameplay_program</code> and <code>set_gameplay_program</code>. Exported games expose the derived journal through <code>getQuestState()</code> / <code>get_quest_state</code>. Typewriter reveal is visual only, reduced motion is instant, full readable text is atomic, and dialogue never auto-advances in v1.</p>
+                </div>
+              </details>
+              <details id="looplab-run-variation" className="precision-card tuning-workbench" open aria-label="Seeded runs, daily challenges, and replay ghost authoring" data-source-digest={doctorReport.sourceDigest} data-program-digest={runVariationInspection.programDigest ?? ""}>
+                <summary><span>Runs · seeds, dailies &amp; ghosts</span><small>Stable SHA-256 selection · tick-zero codes · presentation-only ghosts</small></summary>
+                <div className="tuning-body">
+                  <p className="precision-note">Author replayable run variety without hidden randomness. Each pool owns distinct typed gameplay variables; one explicit seed or UTC day resolves every choice before tick zero. LR1 shares that starting identity, while LL1 remains a full mid-run save.</p>
+                  <div className={`tuning-contract-status ${runVariationInspection.errors.length ? "blocked" : runVariationInspection.present ? "ready" : "draft"}`}>
+                    <span>{runVariationInspection.present ? runVariationInspection.valid ? runVariationInspection.shipReady ? "Run variation ship-ready" : "Run variation needs seed evidence" : "Run variation blocked" : "No run variation saved"}</span>
+                    <small>{runVariationInspection.present ? `${runVariationInspection.metrics.poolCount} pools · ${runVariationInspection.metrics.variantCount} variants · ${runVariationInspection.metrics.assignmentCount} assignments · ${runVariationInspection.metrics.ghostCount} ghosts · ${runVariationInspection.metrics.coveredSeedCount} covered seeds` : "Prepare a starter from declared gameplay variables, then tune its authored values and replay evidence."}</small>
+                  </div>
+                  <label className="field full tuning-contract-editor"><span>Run Variation Program · JSON</span><textarea aria-label="Run Variation Program JSON" rows={17} spellCheck={false} placeholder="Prepare a provider-free starter or paste a strict looplab-run-variation-program/v1 document." value={runVariationProgramDraft} onChange={(event) => setRunVariationProgramDraft(event.target.value)} /></label>
+                  {runVariationInspection.issues.length > 0 && <div className="tuning-findings" role="status">{runVariationInspection.issues.slice(0, 8).map((issue) => <small key={`${issue.code}-${issue.message}`}>{issue.severity.toUpperCase()} · {issue.message}</small>)}</div>}
+                  <div className="tuning-actions">
+                    <button onClick={prepareRunVariationProgram}>{runVariationInspection.present ? "Prepare another starter" : "Prepare run starter"}</button>
+                    <button disabled={!runVariationProgramDraft.trim()} onClick={saveRunVariationProgram}>Save run program</button>
+                    {runVariationInspection.present && <button className="danger" onClick={removeRunVariationProgram}>Remove</button>}
+                  </div>
+                  <div className="field-grid">
+                    <label className="field"><span>Seed to inspect</span><input aria-label="Run variation seed" type="text" maxLength={128} value={runVariationSeed} onChange={(event) => setRunVariationSeed(event.target.value)} /></label>
+                    <label className="field"><span>Daily UTC day</span><input aria-label="Daily challenge UTC day" type="date" value={runVariationDay} onChange={(event) => setRunVariationDay(event.target.value)} /></label>
+                  </div>
+                  <div className="tuning-actions">
+                    <button disabled={!runVariationInspection.present || !runVariationInspection.valid || !runVariationSeed.trim()} onClick={() => previewRunVariationSelection("standard")}>Preview seed</button>
+                    <button disabled={!runVariationInspection.present || !runVariationInspection.valid || !runVariationDay} onClick={() => previewRunVariationSelection("daily")}>Preview daily</button>
+                  </div>
+                  <label className="field full"><span>Passing replay for ghost</span><select aria-label="Replay ghost source" value={runGhostReplayId || project.replay?.cases?.[0]?.id || ""} onChange={(event) => { setRunGhostReplayId(event.target.value); setRunGhostPreview(null); }}><option value="">Choose a replay</option>{(project.replay?.cases ?? []).map((replayCase) => <option key={replayCase.id} value={replayCase.id}>{replayCase.name ?? replayCase.id}</option>)}</select></label>
+                  {runGhostPreview && <div className="tuning-preview-receipt ready"><strong>Exact ghost trajectory previewed</strong><small>{String(runGhostPreview.ghost.label ?? runGhostPreview.ghost.id ?? "Ghost")} · source and preview digests locked · no collision or gameplay authority</small></div>}
+                  <div className="tuning-actions">
+                    <button disabled={!(runGhostReplayId || project.replay?.cases?.[0]?.id)} onClick={previewRunGhost}>Preview replay ghost</button>
+                    <button className="variation" disabled={!runGhostPreview} onClick={applyRunGhost}>Apply exact ghost</button>
+                  </div>
+                  <p className="precision-note">Claude, Codex, CLI, MCP, and this panel share <code>get_run_variation_report</code>, <code>preview_run_variation</code>, <code>set_run_variation_program</code>, and source-bound ghost commands. Structural determinism does not prove balance, fairness, fun, or visual quality; those still require matched replay coverage and playtests.</p>
+                </div>
+              </details>
               <details id="looplab-combat-program" className="precision-card tuning-workbench" open aria-label="Deterministic health and projectile authoring" data-source-digest={doctorReport.sourceDigest}>
                 <summary><span>Combat · health & projectiles</span><small>Fixed tick · bounded pools · authored collision</small></summary>
                 <div className="tuning-body">
@@ -12044,19 +13637,36 @@ export default function Home() {
               <details id="looplab-presentation-program" className="precision-card tuning-workbench" open aria-label="Authored sound and game-feel presentation" data-source-digest={doctorReport.sourceDigest}>
                 <summary><span>Sound & game-feel events</span><small>Renderer-neutral · reduced-motion safe · replay isolated</small></summary>
                 <div className="tuning-body">
-                  <p className="precision-note">Map stable runtime events to procedural sound, particles, shake, flash, and squash. These effects follow gameplay truth; they never become collision, completion, or replay state.</p>
+                  <p className="precision-note">Map stable runtime events to procedural sound or selected embedded samples, plus particles, shake, flash, and squash. These effects follow gameplay truth; they never become collision, completion, or replay state.</p>
                   <div className={`tuning-contract-status ${presentationInspection.errors.length ? "blocked" : presentationInspection.present ? "ready" : "draft"}`}>
                     <span>{presentationInspection.present ? `Program ${presentationInspection.status}` : "No presentation program saved"}</span>
-                    <small>{presentationInspection.metrics ? `${presentationInspection.metrics.audioCueCount} audio cues · ${presentationInspection.metrics.motionCueCount} motion cues · ${presentationInspection.metrics.effectCount} effects · ${presentationInspection.metrics.mappedEventCount} mapped events` : "Prepare an event-aware starter, then edit the exact bounded JSON if desired."}</small>
+                    <small>{presentationInspection.metrics ? `${presentationInspection.metrics.audioCueCount} audio cues · ${presentationInspection.metrics.motionCueCount} motion cues · ${presentationInspection.metrics.effectCount} inline effects · ${presentationInspection.metrics.cameraZoneCount ?? 0} camera zones · ${presentationInspection.metrics.animationMachineCount ?? 0} animation machines / ${presentationInspection.metrics.animationStateCount ?? 0} states · ${presentationInspection.metrics.effectPluginCount ?? 0} effect plugins · ${presentationInspection.metrics.mappedEventCount} mapped events${presentationInspection.metrics.referencedAudioResourceCount ? ` · ${presentationInspection.metrics.referencedAudioResourceCount} samples · ${formatBytes(presentationInspection.metrics.encodedAudioBytes ?? 0)} encoded / ${formatBytes(presentationInspection.metrics.decodedAudioBytes ?? 0)} decoded` : ""}` : "Prepare an event-aware starter, then edit the exact bounded JSON if desired."}</small>
                   </div>
-                  <label className="field full tuning-contract-editor"><span>Presentation Program · JSON</span><textarea aria-label="Presentation Program JSON" rows={13} spellCheck={false} placeholder="Prepare a provider-free starter or paste a versioned presentation program." value={presentationProgramDraft} onChange={(event) => setPresentationProgramDraft(event.target.value)} /></label>
+                  {(project.resources ?? []).some((resource) => resource.kind === "audio") && <div className="tuning-findings" aria-label="Embedded audio resources">
+                    <strong>Embedded audio resources</strong>
+                    {(project.resources ?? []).filter((resource) => resource.kind === "audio").slice(0, 8).map((resource) => {
+                      const inspection = embeddedAudioInspections.get(resource.id);
+                      const encodedBytes = inspection && "encodedBytes" in inspection ? Number(inspection.encodedBytes) : resource.bytes;
+                      const decodedMemoryBytes = inspection && "decodedMemoryBytes" in inspection ? Number(inspection.decodedMemoryBytes) : null;
+                      const decodedSampleRate = inspection && "decodedSampleRate" in inspection ? Number(inspection.decodedSampleRate) : null;
+                      const exactDecodedCost = inspection?.ok === true && decodedMemoryBytes != null && decodedSampleRate != null;
+                      return <div key={resource.id} className={`tuning-contract-status ${inspection?.ok ? "ready" : "blocked"}`}>
+                        <span>{resource.name}<small>{resource.id} · {formatBytes(encodedBytes)} encoded{exactDecodedCost ? ` · ${formatBytes(decodedMemoryBytes ?? 0)} decoded @ ${Math.round((decodedSampleRate ?? 0) / 1_000)} kHz` : ` · ${inspection?.error ?? "decoded cost unavailable"}`}</small></span>
+                        <audio controls preload="metadata" src={resource.dataUrl}>Audio preview is unavailable in this browser.</audio>
+                        <button type="button" disabled={!inspection?.ok} onClick={() => insertPresentationSampleCue(resource)}>Insert sample cue</button>
+                      </div>;
+                    })}
+                    {(project.resources ?? []).filter((resource) => resource.kind === "audio").length > 8 && <small>Showing the first 8 embedded sounds. Use the Asset Library or headless resource list for the rest.</small>}
+                  </div>}
+                  <PresentationAuthoringPanel draft={presentationProgramDraft} maps={maps} assets={(project.assets ?? []).map((asset) => ({ id: asset.id, name: asset.name, type: asset.type, frames: asset.frames }))} onDraftChange={setPresentationProgramDraft} />
+                  <details className="tuning-contract-editor"><summary>Advanced · exact Presentation Program JSON</summary><label className="field full"><span>Presentation Program · JSON</span><textarea aria-label="Presentation Program JSON" rows={13} spellCheck={false} placeholder="Prepare a provider-free starter or paste a versioned presentation program." value={presentationProgramDraft} onChange={(event) => setPresentationProgramDraft(event.target.value)} /></label></details>
                   {presentationInspection.issues.length > 0 && <div className="tuning-findings" role="status">{presentationInspection.issues.slice(0, 6).map((issue) => <small key={`${issue.code}-${issue.message}`}>{issue.severity.toUpperCase()} · {issue.message}</small>)}</div>}
                   <div className="tuning-actions">
                     <button onClick={preparePresentationProgram}>{presentationInspection.present ? "Prepare another starter" : "Prepare event-aware starter"}</button>
                     <button disabled={!presentationProgramDraft.trim()} onClick={savePresentationProgram}>Save program</button>
                     {presentationInspection.present && <button className="danger" onClick={removePresentationProgram}>Remove</button>}
                   </div>
-                  <p className="precision-note">Preview with sound on and off, then test reduced motion. Project Doctor validates structure and lifecycle; it does not claim the result sounds or feels good.</p>
+                  <p className="precision-note">Structured controls and headless commands edit the same canonical draft. Sample insertion also edits only that draft. Save runs Project Doctor across map-bound camera zones, animation interruption and sprite frames, plugin assets, reduced-motion variants, event IDs, and audio budgets; it does not claim the result sounds, looks, or feels good.</p>
                 </div>
               </details>
               <details id="looplab-game-shell" className="precision-card tuning-workbench" open aria-label="Standard game shell authoring" data-source-digest={doctorReport.sourceDigest} data-shell-status={gameShellInspection.status}>
@@ -12075,6 +13685,35 @@ export default function Home() {
                     {gameShellInspection.present && <button className="danger" onClick={removeGameShell}>Remove</button>}
                   </div>
                   <p className="precision-note">Claude and Codex use <code>get_game_shell</code>, <code>suggest_game_shell</code>, <code>set_game_shell</code>, and <code>get_game_shell_report</code> directly. Exported games expose the same lifecycle through <code>get_game_shell_state</code>, <code>start_game</code>, <code>pause</code>, <code>resume</code>, <code>restart</code>, and settings commands.</p>
+                </div>
+              </details>
+              <details id="looplab-design-cohorts" className="precision-card bot-cohort-workbench" open aria-label="Deterministic design behavior cohorts" data-source-digest={doctorReport.sourceDigest} data-report-digest={botCohortReport?.reportDigest ?? ""} data-report-fresh={botCohortFresh ? "true" : "false"}>
+                <summary><span>Design behavior cohorts</span><small>Dead mechanics · route use · combinations · trivial-strategy leads</small></summary>
+                <div className="bot-cohort-body">
+                  <p className="precision-note">Run bounded synthetic players through the canonical game runtime. LoopLab reports what they actually exercised so the AI can revise teaching, recurring decisions, combinations, routes, pacing, and feedback. Bots are diagnostic probes—not judges of fun.</p>
+                  <button className="wide-button bot-cohort-run" disabled={botCohortRunning} onClick={() => void runDesignBotCohorts()}>{botCohortRunning ? "Running deterministic cohorts…" : botCohortReport ? "Run fresh behavior cohorts" : "Run behavior cohorts"}</button>
+                  {botCohortReport && <section className="bot-cohort-report" aria-label="Design behavior cohort report">
+                    <header><span><strong>{botCohortReport.summary.runCount} runs · {botCohortReport.summary.simulatedSeconds}s</strong><small>{botCohortReport.summary.completedRunCount} completion{botCohortReport.summary.completedRunCount === 1 ? "" : "s"} · {botCohortReport.summary.meaningfulEventsPerSimulatedMinute} meaningful events/minute</small></span><b>0 tokens · $0.00</b></header>
+                    {!botCohortFresh && <p className="bot-cohort-stale">The project changed. This report is preserved for comparison but no longer describes the selected source; run it again.</p>}
+                    <div className="bot-cohort-metrics" aria-label="Observed design coverage">
+                      {[
+                        { label: "Natural route maps", coverage: botCohortReport.coverage.routeMaps },
+                        { label: "Live actions", coverage: botCohortReport.coverage.actions },
+                        { label: "Authored verbs", coverage: botCohortReport.coverage.verbs },
+                        { label: "Verb combinations", coverage: botCohortReport.coverage.combinations },
+                        { label: "Gameplay rules", coverage: botCohortReport.coverage.rules },
+                        { label: "Traversal paths", coverage: botCohortReport.coverage.traversalPaths },
+                      ].map((metric) => <div key={metric.label}><span>{metric.label}</span><strong>{botCoverageLabel(metric.coverage)}</strong></div>)}
+                    </div>
+                    {botCohortReport.findings.length > 0 ? <div className="bot-cohort-findings" role="status">
+                      <strong>{botCohortReport.findings.length} evidence-backed design lead{botCohortReport.findings.length === 1 ? "" : "s"}</strong>
+                      {botCohortReport.findings.slice(0, 8).map((finding) => <article key={finding.code}><span>{finding.title}</span><small>{finding.suggestion}</small><code>{finding.code}</code></article>)}
+                    </div> : <div className="bot-cohort-clear"><strong>No cohort gap crossed the current advisory thresholds.</strong><small>This does not mean the game is good; compare candidates and play it.</small></div>}
+                    <p className="bot-cohort-boundary"><strong>{botCohortReport.proofBoundary.statement}</strong> It does not prove {botCohortReport.proofBoundary.doesNotProve.join(", ")}.</p>
+                    <details className="bot-cohort-run-details"><summary><span>Inspect run traces</span><small>{botCohortReport.runs.length} deterministic policies · exact maps, actions, events, and completion</small></summary><div className="bot-cohort-runs" aria-label="Cohort run summaries">
+                      {botCohortReport.runs.map((run) => <span key={run.id}><strong>{run.label}</strong><small>{run.visitedMapIds.join(" → ") || "no map"} · {run.actionIds.length} actions · {run.meaningfulEvents} events{run.completed ? " · completed" : ""}</small></span>)}
+                    </div></details>
+                  </section>}
                 </div>
               </details>
               <details id="looplab-bounded-tuning" className="precision-card tuning-workbench" open aria-label="Bounded gameplay tuning" data-source-digest={doctorReport.sourceDigest} data-search-digest={tuningSearchResult?.searchDigest ?? ""} data-search-fresh={tuningSearchFresh ? "true" : "false"}>
@@ -12195,6 +13834,95 @@ export default function Home() {
           <summary>Agent API</summary>
           <form id="looplab-agent-form" onSubmit={runAgentConsoleCommand} data-response-schema="looplab-bounded-agent-response/v1" data-response-limit={LOOPLAB_AGENT_FORM_RESPONSE_LIMIT_CHARACTERS}>
             <div><strong>Headless command bridge</strong><small>JSON in · verified result out</small></div>
+            <CommunityExchangePanel
+              maps={maps.map((map) => ({ id: map.id, name: map.name }))}
+              assets={(project.assets ?? []).map((asset) => ({ id: asset.id, name: asset.name, width: asset.width, height: asset.height, frames: asset.frames }))}
+              activeMapId={project.activeMapId ?? maps[0]?.id ?? "map-main"}
+              sourceDigest={doctorReport.sourceDigest}
+              disabled={agentCommandRunning}
+              onRun={runCommunityExchangeCommand}
+            />
+            <nav id="looplab-agent-guide-navigation" className="agent-guide-navigation" aria-labelledby="agent-guide-navigation-heading" data-index-digest={agentGuideResults.indexDigest} data-guide-source-digest={agentGuideResults.sourceDigest}>
+              <header><div><strong id="agent-guide-navigation-heading">Agent guide navigator</strong><small>Source-bound rules and failure recovery without loading the full guide</small></div><span>{agentGuideResults.totalMatches} match{agentGuideResults.totalMatches === 1 ? "" : "es"}</span></header>
+              <div className="agent-guide-controls">
+                <label htmlFor="looplab-agent-guide-query">Find a rule, failure, command, or workflow</label>
+                <input id="looplab-agent-guide-query" type="search" value={agentGuideQuery} onChange={(event) => setAgentGuideQuery(event.target.value)} maxLength={240} placeholder="stale source, collision, release, privacy…" />
+                <label htmlFor="looplab-agent-guide-category">Kind</label>
+                <select id="looplab-agent-guide-category" value={agentGuideCategory} onChange={(event) => setAgentGuideCategory(event.target.value as AgentGuideCategory)}>
+                  <option value="all">All navigation</option>
+                  <option value="invariant">Invariants</option>
+                  <option value="lifecycle">Standard pass</option>
+                  <option value="recovery">Failure recovery</option>
+                  <option value="section">Guide sections</option>
+                </select>
+              </div>
+              <div className="agent-guide-results" aria-live="polite">
+                {agentGuideResults.entries.map((entry) => <article key={`${entry.kind}:${entry.id}`} data-guide-kind={entry.kind} data-guide-anchor={entry.anchor}>
+                  <header><span>{entry.kind}</span><a href={entry.href} target="_blank" rel="noreferrer">{entry.title} ↗</a></header>
+                  <p>{entry.statement ?? entry.summary}</p>
+                  {entry.recovery && <b>{entry.recovery}</b>}
+                  <small>{entry.source.startLine == null ? "Canonical section" : `Guide lines ${entry.source.startLine}–${entry.source.endLine}`} · #{entry.anchor}</small>
+                </article>)}
+                {!agentGuideResults.entries.length && <div className="agent-guide-empty" role="status">No indexed guide entry matches this query. Clear the filter or open the complete guide.</div>}
+              </div>
+              <div className="agent-guide-actions"><a href="/AI_AGENT_GUIDE.md" target="_blank" rel="noreferrer">Open complete guide ↗</a><button type="button" onClick={() => setAgentCommandText(JSON.stringify({ op: "get_agent_guide_index", query: agentGuideQuery, category: agentGuideCategory, limit: 24 }, null, 2))}>Load headless query</button></div>
+              <small>Orientation only. The full guide remains authoritative; omitted entries never grant permission, and this navigator cannot execute, mutate, or verify anything.</small>
+            </nav>
+            <section id="looplab-capability-pack-browser" className="agent-guide-navigation capability-pack-browser" aria-labelledby="looplab-capability-pack-heading" data-registry-digest={capabilityPackRegistry.digest} data-selected-pack={selectedAgentCapabilityPack.id} data-calibration-valid={capabilityPackRegistry.calibration.valid ? "true" : "false"}>
+              <header><div><strong id="looplab-capability-pack-heading">Native capability packs</strong><small>Decision knowledge LoopLab can use without asking an external agent to load a skill</small></div><span>{capabilityPackRegistry.capabilityCount} capabilities</span></header>
+              <div className="agent-guide-controls">
+                <label htmlFor="looplab-capability-query">Search a problem or capability</label>
+                <input id="looplab-capability-query" type="search" value={agentCapabilityQuery} onChange={(event) => setAgentCapabilityQuery(event.target.value)} maxLength={600} placeholder="renderer choice, collision, sprites, browser QA…" />
+                <label htmlFor="looplab-capability-pack-select">Inspect pack</label>
+                <select id="looplab-capability-pack-select" value={selectedAgentCapabilityPack.id} onChange={(event) => setAgentCapabilityPackId(event.target.value)}>
+                  {capabilityPackRegistry.packs.map((pack) => <option key={pack.id} value={pack.id}>{pack.label} · {pack.capabilities.length}</option>)}
+                </select>
+              </div>
+              <article className="agent-recipe-card" data-pack-id={selectedAgentCapabilityPack.id} data-pack-digest={selectedAgentCapabilityPack.digest}>
+                <div><b>{selectedAgentCapabilityPack.label}</b><span>r{selectedAgentCapabilityPack.revision} · {selectedAgentCapabilityPack.capabilities.length} capabilities</span></div>
+                <p>{selectedAgentCapabilityPack.scope}</p>
+                <small>{selectedAgentCapabilityPack.categories.join(" · ")} · source {selectedAgentCapabilityPack.contentDigest.slice(0, 22)}…</small>
+                <details>
+                  <summary>View decisions, ownership, provenance, and calibration</summary>
+                  <strong>Pack decisions</strong>
+                  <ul>{selectedAgentCapabilityPack.decisionRules.map((rule) => <li key={rule}>{rule}</li>)}</ul>
+                  <strong>Capabilities</strong>
+                  <ol>{selectedAgentCapabilityPack.capabilities.map((capability) => <li key={capability.id}><b>{capability.label}</b><span>{capability.guidance}</span><small>Choose when: {capability.chooseWhen.join(" · ")}</small><code>{capability.id}</code></li>)}</ol>
+                  <strong>Source and rights metadata</strong>
+                  <p>{selectedAgentCapabilityPack.sources[0]?.licenseExpression} · {selectedAgentCapabilityPack.sources[0]?.rightsBoundary}</p>
+                  <a href={selectedAgentCapabilityPack.sources[0]?.licenseEvidenceUri} target="_blank" rel="noreferrer">Open source evidence ↗</a>
+                  <small>{selectedAgentCapabilityPack.provenance.claimBoundary}</small>
+                  <code>{selectedAgentCapabilityPack.digest}</code>
+                </details>
+              </article>
+              <div className="agent-guide-results" aria-live="polite">
+                {agentCapabilityKnowledge.results.map((entry) => <article key={`${entry.packId}:${entry.capability.id}`} data-capability-id={entry.capability.id} data-pack-id={entry.packId}>
+                  <header><span>{entry.packId}</span><b>{entry.capability.label}</b></header>
+                  <p>{entry.capability.guidance}</p>
+                  <small>{entry.capability.owns.join(" · ")}</small>
+                </article>)}
+                {!agentCapabilityKnowledge.results.length && <div className="agent-guide-empty" role="status">No native decision knowledge matches this search. Clear the filter or use the headless query with exact capability IDs.</div>}
+              </div>
+              <div className="agent-guide-actions"><a href="/capability-packs.json" target="_blank" rel="noreferrer">Open complete registry ↗</a><button type="button" onClick={() => setAgentCommandText(JSON.stringify({ op: "query_capability_knowledge", query: agentCapabilityQuery, limit: 12 }, null, 2))}>Load search command</button><button type="button" onClick={() => setAgentCommandText(JSON.stringify({ op: "get_capability_pack", packId: selectedAgentCapabilityPack.id }, null, 2))}>Load pack command</button></div>
+              <details className="capability-refresh-inspector">
+                <summary>Inspect a proposed pack refresh</summary>
+                <label htmlFor="looplab-capability-refresh-candidate">Complete candidate pack JSON</label>
+                <textarea id="looplab-capability-refresh-candidate" value={agentCapabilityRefreshText} onChange={(event) => { setAgentCapabilityRefreshText(event.target.value); setAgentCapabilityRefreshResult(null); setAgentCapabilityRefreshError(""); }} placeholder="Paste looplab-capability-pack/v1 JSON. Nothing is downloaded or installed." spellCheck={false} />
+                <button type="button" disabled={!agentCapabilityRefreshText.trim()} onClick={() => {
+                  try {
+                    const candidate = JSON.parse(agentCapabilityRefreshText);
+                    setAgentCapabilityRefreshResult(inspectCapabilityPackRefresh(candidate));
+                    setAgentCapabilityRefreshError("");
+                  } catch (error) {
+                    setAgentCapabilityRefreshResult(null);
+                    setAgentCapabilityRefreshError(error instanceof Error ? error.message : "Candidate JSON is invalid.");
+                  }
+                }}>Inspect only</button>
+                {agentCapabilityRefreshError && <p role="alert">{agentCapabilityRefreshError}</p>}
+                {agentCapabilityRefreshResult && <pre aria-live="polite">{JSON.stringify(agentCapabilityRefreshResult, null, 2)}</pre>}
+              </details>
+              <small>{capabilityPackRegistry.calibration.passedCount}/{capabilityPackRegistry.calibration.caseCount} deterministic router calibrations pass. Packs are read-only orientation: no execution, download, project mutation, collision ownership, evidence authority, or automatic creative winner.</small>
+            </section>
             <section id="looplab-agent-context-pack" className="agent-context-pack" aria-labelledby="agent-context-heading" data-source-digest={agentProjectContext.sourceDigest} data-context-view={agentProjectContext.view} data-context-fresh={doctorReportFresh ? "true" : "false"}>
               <header><div><strong id="agent-context-heading">Agent context pack</strong><small>{agentContextView === "map" ? "Exact selected-map truth without unrelated map documents" : "Campaign truth without the embedded payload"}</small></div><span>{agentProjectContext.measurements.roughTokenEstimate.toLocaleString()} est. tokens</span></header>
               <div className="agent-context-controls">
@@ -12697,7 +14425,7 @@ export default function Home() {
             <div className={`doctor-narrative-proof narrative-${doctorReport.narrativeReport.status}`}>
               <div><span><b>Narrative Report</b><small>Narrative Designer structure + Narrator/Dialogue Writer delivery, checked against runtime IDs and current evidence.</small></span><strong>{doctorReport.narrativeReport.status.replaceAll("-", " ")}</strong></div>
               {doctorReport.narrativeReport.present ? <>
-                <div className="doctor-narrative-metrics"><span><b>{doctorReport.narrativeReport.metrics.requiredBeatCount}</b> required beats</span><span><b>{doctorReport.narrativeReport.metrics.reachablePageCount}/{doctorReport.narrativeReport.metrics.pageCount}</b> reachable pages</span><span><b>{doctorReport.narrativeReport.metrics.reachableEndingCount}/{doctorReport.narrativeReport.metrics.endingCount}</b> reachable endings</span><span><b>{doctorReport.narrativeReport.metrics.trapCycleCount}</b> trap cycles</span></div>
+                <div className="doctor-narrative-metrics"><span><b>{doctorReport.narrativeReport.metrics.requiredBeatCount}</b> required beats</span><span><b>{doctorReport.narrativeReport.metrics.reachablePageCount}/{doctorReport.narrativeReport.metrics.pageCount}</b> reachable pages</span><span><b>{doctorReport.narrativeReport.metrics.reachableEndingCount}/{doctorReport.narrativeReport.metrics.endingCount}</b> reachable endings</span><span><b>{doctorReport.gameplayProgram.metrics.dialoguePageCount ?? 0}</b> speaker-bound pages</span><span><b>{doctorReport.gameplayProgram.metrics.questCount ?? 0}</b> quests</span><span><b>{doctorReport.gameplayProgram.metrics.questObjectiveCount ?? 0}</b> objectives</span><span><b>{doctorReport.narrativeReport.metrics.trapCycleCount}</b> trap cycles</span></div>
                 {doctorReport.narrativeReport.shortestEndingPaths.length > 0 && <div className="doctor-narrative-paths"><b>Shortest verified structure</b>{doctorReport.narrativeReport.shortestEndingPaths.map((entry: { endingId: string; path: Array<{ id: string }> }) => <small key={entry.endingId}><strong>{entry.endingId}</strong> · {entry.path.map((step: { id: string }) => step.id).join(" → ")}</small>)}</div>}
                 <p>{doctorReport.narrativeReport.proofBoundary}</p>
               </> : <p>{doctorReport.narrativeReport.required ? "Story content is required for this candidate, but no Narrative Contract has been authored yet." : "No material story contract is active. Mechanics-only projects are not penalized."}</p>}

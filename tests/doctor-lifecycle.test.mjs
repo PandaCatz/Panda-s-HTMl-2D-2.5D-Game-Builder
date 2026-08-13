@@ -281,6 +281,12 @@ test("iteration ledger receipts are source-bound, comparable, and safely restora
   assert.equal(comparison.automaticWinner, null);
   assert.equal(Object.hasOwn(comparison, "winner"), false);
   assert.ok(comparison.evidence.missing.some((item) => item.includes("loop evaluation receipt")));
+  assert.equal(comparison.structuralDiff.schemaVersion, "looplab-structural-iteration-diff/v1");
+  assert.equal(comparison.structuralDiff.first.sourceDigest, comparison.doctor.first.sourceDigest);
+  assert.equal(comparison.structuralDiff.second.sourceDigest, comparison.doctor.second.sourceDigest);
+  assert.equal(comparison.structuralDiff.summary.objects.moved, 1);
+  assert.equal(comparison.structuralDiff.maps[0].objectChanges.find((entry) => entry.id === "coin-1")?.before.bounds.x, 500);
+  assert.equal(comparison.structuralDiff.maps[0].objectChanges.find((entry) => entry.id === "coin-1")?.after.bounds.x, 620);
 
   const restored = applyAgentCommand(project, { op: "restore_iteration", id: "layout-a", restoreAsId: "layout-a-restored" }).project;
   assert.equal(restored.iteration.id, "layout-a-restored");

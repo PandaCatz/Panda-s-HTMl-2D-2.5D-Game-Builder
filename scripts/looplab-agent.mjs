@@ -23,12 +23,15 @@ import { encodePng } from "../lib/png-node.mjs";
 import { authoredColliderForPlacement, visualBoundsForAsset } from "../lib/looplab-authored-collision.mjs";
 import { analyzeProject, doctorSourceDigest } from "../lib/looplab-doctor.mjs";
 import { routeGameStudioWork } from "../lib/looplab-capability-router.mjs";
+import { getCapabilityPack, inspectCapabilityPackRefresh, listCapabilityPacks, queryCapabilityKnowledge } from "../lib/looplab-capability-packs.mjs";
 import { listInstalledAssetPacks, listInstalledPackAssets, loadInstalledPackAssets } from "../lib/looplab-asset-library-node.mjs";
 import { auditStandaloneHtml } from "../lib/looplab-single-file-audit.mjs";
 import { composeDirectedGameBrief, directedGameSummary } from "../lib/looplab-game-director.mjs";
 import { companionSessionHeaders, defaultCompanionSessionFile, readCompanionSession } from "../lib/looplab-companion-session.mjs";
 import { runPlatformHarness } from "../lib/looplab-platform-harness.mjs";
 import { getAgentRecipe, listAgentRecipes } from "../lib/looplab-agent-playbook.mjs";
+import { queryAgentGuideIndex } from "../lib/looplab-agent-guide-navigation.mjs";
+import { LOOPLAB_AGENT_GUIDE_INDEX } from "../lib/generated/looplab-agent-guide-index.mjs";
 import { validateReleaseVerification } from "../lib/looplab-release-verification.mjs";
 import { runExactReleaseVerification } from "../lib/looplab-release-verification-runner.mjs";
 import { compareBuilderBenchmarkRuns, listBuilderBenchmarks } from "../lib/looplab-builder-benchmark.mjs";
@@ -77,6 +80,11 @@ function usage() {
     argumentForwarding: npmArgumentForwardingGuidance(npmArgumentRecovery),
     usage: {
       manifest: "npm run agent -- manifest",
+      guide: "npm run agent -- guide [query] [--category=all|section|invariant|lifecycle|recovery] [--limit=24]",
+      capabilities: "npm run agent -- capabilities [query] [--category=runtime] [--limit=20]",
+      capability: "npm run agent -- capability <pack-id>",
+      capabilityQuery: "npm run agent -- capability-query <question> [--pack=id,id] [--capability=id,id] [--limit=12]",
+      capabilityRefresh: "npm run agent -- capability-refresh <candidate-pack.json>",
       playbook: "npm run agent -- playbook [query] [--tag=collision] [--issue-code=code] [--status=active|deprecated|all] [--limit=20]",
       recipe: "npm run agent -- recipe <recipe-id>",
       macros: "npm run agent -- macros",
@@ -96,6 +104,7 @@ function usage() {
       work: "npm run agent -- work <project.loop.json> [query] [--status=open|in-progress|blocked|landed|rejected|all] [--kind=bug|feature|research|documentation|coordination|all] [--owner=codex] [--limit=50]",
       validate: "npm run agent -- validate <project.loop.json>",
       completion: "npm run agent -- completion <project.loop.json> [prototype|production]",
+      botCohorts: "npm run agent -- bot-cohorts <project.loop.json> --source-digest=source-... [--ticks-per-run=720] [--max-runs=24] [--seeds=1,2,3] [--maps=map-a,map-b] [--no-completion-witness]",
       doctor: "npm run agent -- doctor <project.loop.json> [prototype|production]",
       privacy: "npm run agent -- privacy <project.loop.json> [prototype|production]",
       acceptancePlan: "npm run agent -- acceptance-plan <project.loop.json>",
@@ -262,6 +271,46 @@ async function main() {
     const argument = args.find((entry) => entry.startsWith(`--${name}=`));
     return argument ? argument.slice(name.length + 3) : fallback;
   };
+
+  if (operation === "guide" || operation === "agent-guide") {
+    const query = args.filter((argument) => !argument.startsWith("--")).join(" ");
+    print({ ok: true, operation, index: queryAgentGuideIndex(LOOPLAB_AGENT_GUIDE_INDEX, {
+      query,
+      category: optionValue("category", "all"),
+      limit: Number(optionValue("limit", 24)),
+    }) });
+    return;
+  }
+
+  if (operation === "capabilities" || operation === "capability-packs") {
+    const query = args.filter((argument) => !argument.startsWith("--")).join(" ");
+    print({ ok: true, operation, result: listCapabilityPacks({ query, category: optionValue("category"), limit: Number(optionValue("limit", 20)), offset: Number(optionValue("offset", 0)) }) });
+    return;
+  }
+
+  if (operation === "capability") {
+    const packId = args.find((argument) => !argument.startsWith("--"));
+    if (!packId) throw new Error("capability requires an exact capability-pack ID from npm run agent -- capabilities.");
+    print({ ok: true, operation, result: getCapabilityPack(packId) });
+    return;
+  }
+
+  if (operation === "capability-query" || operation === "capability-search") {
+    const query = args.filter((argument) => !argument.startsWith("--")).join(" ");
+    const packIds = String(optionValue("pack", "")).split(",").map((entry) => entry.trim()).filter(Boolean);
+    const capabilityIds = String(optionValue("capability", "")).split(",").map((entry) => entry.trim()).filter(Boolean);
+    print({ ok: true, operation, result: queryCapabilityKnowledge({ query, packIds, capabilityIds, limit: Number(optionValue("limit", 12)) }) });
+    return;
+  }
+
+  if (operation === "capability-refresh") {
+    const candidatePathArgument = args.find((argument) => !argument.startsWith("--"));
+    if (!candidatePathArgument) throw new Error("capability-refresh requires a complete candidate-pack JSON file.");
+    const candidatePath = resolve(candidatePathArgument);
+    const candidate = JSON.parse(await readFile(candidatePath, "utf8"));
+    print({ ok: true, operation, candidatePath, result: inspectCapabilityPackRefresh(candidate) });
+    return;
+  }
 
   if (operation === "projects" || operation === "list-projects") {
     const value = await listSharedProjects({ workspaceRoot: projectDirectory, companionUrl: COMPANION_URL, sessionFile: COMPANION_SESSION_FILE });
@@ -702,12 +751,55 @@ async function main() {
       process.exitCode = 2;
       return;
     }
-    const verified = applyCollectedVerificationEvidence(outcome.project, outcome.verificationEvidence.evidenceRefs);
+    let verified;
+    try {
+      verified = applyCollectedVerificationEvidence(outcome.project, outcome.verificationEvidence.evidenceRefs);
+    } catch (error) {
+      const doctor = analyzeProject(outcome.project, { profile: "production" });
+      print({
+        ok: false,
+        operation,
+        stage: "candidate-verification",
+        projectPath,
+        outputPath,
+        receiptPath,
+        captureDirectory,
+        sourceDigest: outcome.sourceDigest,
+        error: error instanceof Error ? error.message : String(error),
+        doctor: { profile: doctor.profile, score: doctor.score, errorCount: doctor.errorCount, warningCount: doctor.warningCount, issues: doctor.issues.map(({ severity, code, message, action }) => ({ severity, code, message, action: action ?? null })) },
+        exactArtifactEvidence: { status: outcome.verificationEvidence.status, evidenceCount: outcome.verificationEvidence.evidenceRefs.length, captureCount: outcome.verificationEvidence.captures.length, validation: outcome.verificationEvidence.validation },
+        usage: outcome.verificationEvidence.usage,
+        writesApplied: false,
+      });
+      process.exitCode = 2;
+      return;
+    }
     let finalProject = verified.project;
     let promotion = null;
     if (args.includes("--promote")) {
-      promotion = promoteVerifiedIteration(finalProject);
-      finalProject = promotion.project;
+      try {
+        promotion = promoteVerifiedIteration(finalProject);
+        finalProject = promotion.project;
+      } catch (error) {
+        const doctor = analyzeProject(finalProject, { profile: "production" });
+        print({
+          ok: false,
+          operation,
+          stage: "candidate-promotion",
+          projectPath,
+          outputPath,
+          receiptPath,
+          captureDirectory,
+          sourceDigest: outcome.sourceDigest,
+          error: error instanceof Error ? error.message : String(error),
+          doctor: { profile: doctor.profile, score: doctor.score, errorCount: doctor.errorCount, warningCount: doctor.warningCount, issues: doctor.issues.map(({ severity, code, message, action }) => ({ severity, code, message, action: action ?? null })) },
+          exactArtifactEvidence: { status: outcome.verificationEvidence.status, evidenceCount: outcome.verificationEvidence.evidenceRefs.length, captureCount: outcome.verificationEvidence.captures.length, validation: outcome.verificationEvidence.validation },
+          usage: outcome.verificationEvidence.usage,
+          writesApplied: false,
+        });
+        process.exitCode = 2;
+        return;
+      }
     }
     const currentProjectBytes = await readFile(projectPath);
     const currentProjectSha256 = createHash("sha256").update(currentProjectBytes).digest("hex");
@@ -880,6 +972,31 @@ async function main() {
     const outcome = applyAgentCommand(project, { op: "get_completion_report", profile });
     print({ ok: outcome.result?.passed === true, operation, path: projectPath, profile, completion: outcome.result });
     if (outcome.result?.passed !== true) process.exitCode = 2;
+    return;
+  }
+
+  if (operation === "bot-cohorts") {
+    const expectedSourceDigest = String(optionValue("source-digest", "")).trim();
+    if (!expectedSourceDigest) throw new Error("bot-cohorts requires --source-digest from the exact Project Doctor report inspected before simulation.");
+    const numericOption = (name) => optionValue(name) === undefined ? undefined : Number(optionValue(name));
+    const listOption = (name) => String(optionValue(name, "")).split(",").map((entry) => entry.trim()).filter(Boolean);
+    const seedValues = listOption("seeds").map(Number);
+    const mapIds = listOption("maps");
+    const command = {
+      op: "run_bot_cohorts",
+      expectedSourceDigest,
+      ...(numericOption("ticks-per-run") === undefined ? {} : { ticksPerRun: numericOption("ticks-per-run") }),
+      ...(numericOption("idle-ticks") === undefined ? {} : { idleTicks: numericOption("idle-ticks") }),
+      ...(numericOption("action-hold-ticks") === undefined ? {} : { actionHoldTicks: numericOption("action-hold-ticks") }),
+      ...(numericOption("decision-ticks") === undefined ? {} : { decisionTicks: numericOption("decision-ticks") }),
+      ...(numericOption("cell-size") === undefined ? {} : { spatialCellSize: numericOption("cell-size") }),
+      ...(numericOption("max-runs") === undefined ? {} : { maxRuns: numericOption("max-runs") }),
+      ...(seedValues.length ? { seeds: seedValues } : {}),
+      ...(mapIds.length ? { mapIds } : {}),
+      includeCompletionWitness: !args.includes("--no-completion-witness"),
+    };
+    const outcome = applyAgentCommand(project, command);
+    print({ ok: true, operation, path: projectPath, report: outcome.result });
     return;
   }
 

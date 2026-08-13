@@ -21,7 +21,7 @@ import {
   validateReleaseVerification,
 } from "../lib/looplab-release-verification.mjs";
 import { prepareExactVerificationSubject, runExactReleaseVerification } from "../lib/looplab-release-verification-runner.mjs";
-import { buildExactArtifactEvidencePlan } from "../lib/looplab-exact-artifact-evidence.mjs";
+import { buildExactArtifactEvidencePlan, preparePersistentVerificationEvidence } from "../lib/looplab-exact-artifact-evidence.mjs";
 import {
   LOOPLAB_PLATFORM_HARNESS_CSP,
   LOOPLAB_PLATFORM_HARNESS_SCHEMA,
@@ -69,7 +69,7 @@ function passingPlatformReceipt(html, sourceDigest) {
       browser: { name: "chromium", version: "fixture-1", launchTarget: "fixture" },
       viewport: { width: 1_280, height: 800 },
     },
-    runtimeVersion: "2.28.0",
+    runtimeVersion: "2.35.0",
     checks: getReleaseVerificationPolicy().requiredChecks.map((check) => ({ id: check.id, status: check.allowedStatuses[0], detail: `${check.id} passed.` })),
     findings: [],
     visualEvidence: {
@@ -159,6 +159,23 @@ function editorEvidence(project) {
     ...runtimeJoins,
   ];
 }
+
+test("persistent exact-artifact evidence cannot retain absolute local capture paths", () => {
+  const windowsCapture = ["Z:", "looplab-captures", "map-a.png"].join("\\");
+  const windowsJoinCapture = ["Y:", "looplab-captures", "join-target.png"].join("\\");
+  const posixJoinCapture = ["", "looplab-captures", "join-source.png"].join("/");
+  const portable = preparePersistentVerificationEvidence([
+    { type: "screenshot", capturePath: windowsCapture, detail: "Current frame" },
+    { type: "runtime-join", capturePaths: { source: posixJoinCapture, target: windowsJoinCapture } },
+  ]);
+  assert.equal(portable[0].capturePath, "map-a.png");
+  assert.deepEqual(portable[1].capturePaths, { source: "join-source.png", target: "join-target.png" });
+  assert.doesNotMatch(JSON.stringify(portable), /(?:[A-Za-z]:[\\/]|\\\\|\/(?:tmp|home|Users)\/)/);
+  assert.throws(
+    () => preparePersistentVerificationEvidence([{ type: "screenshot", detail: windowsCapture }]),
+    /absolute local path outside a declared path field/,
+  );
+});
 
 test("headless exact-artifact receipts cover the same map/profile contract as editor receipts", () => {
   const project = productionCandidate();

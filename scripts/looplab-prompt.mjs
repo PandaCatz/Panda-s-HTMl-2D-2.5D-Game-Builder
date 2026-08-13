@@ -4,12 +4,13 @@ import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { LOOPLAB_PROVIDER_PROMPT_MAX_CHARACTERS, promptMaterialSimilarity, validateProviderPromptDraft } from "../lib/looplab-game-director.mjs";
 import { buildAnthropicMessagesRequest, requireAnthropicStructuredResult } from "../lib/looplab-anthropic-api.mjs";
-import { buildClaudeCliArgs, inspectClaudeCliOutput, requireClaudeCliStructuredResult } from "../lib/looplab-claude-cli.mjs";
+import { buildClaudeCliInvocation, inspectClaudeCliOutput, requireClaudeCliStructuredResult } from "../lib/looplab-claude-cli.mjs";
 import { buildOpenAiResponsesRequest, requireOpenAiStructuredResult } from "../lib/looplab-openai-request.mjs";
 import { requestProviderJson } from "../lib/looplab-provider-http.mjs";
 import { assertProviderPayloadPrivacy } from "../lib/looplab-project-privacy.mjs";
 import { parseProviderJson, runProviderProcess } from "../lib/looplab-provider-process.mjs";
-import { attachUsageReceipt, createUsageReceipt, readCodexConfiguredModel, usageFromCliOutput, usageReceiptSummary } from "../lib/looplab-provider-usage.mjs";
+import { buildCodexCliInvocation, createProviderModelSelectionReceipt } from "../lib/looplab-provider-model-policy.mjs";
+import { attachUsageReceipt, createUsageReceipt, usageFromCliOutput, usageReceiptSummary } from "../lib/looplab-provider-usage.mjs";
 
 const argv = process.argv.slice(2);
 const PROMPT_TIMEOUT_MS = Number(process.env.LOOPLAB_PROMPT_TIMEOUT_MS ?? process.env.LOOPLAB_PROVIDER_TIMEOUT_MS ?? 0);
@@ -138,36 +139,37 @@ async function invokeProvider(provider, input, schemaPath, responsePath, respons
     }
   }
   if (provider === "codex") {
-    const result = await runProcess("codex", ["exec", "--json", "--skip-git-repo-check", "--ephemeral", "--output-schema", schemaPath, "-o", responsePath, DIRECTOR_PROMPT], serializedInput, dirname(responsePath));
+    const invocation = buildCodexCliInvocation(["exec", "--json", "--skip-git-repo-check", "--ephemeral", "--output-schema", schemaPath, "-o", responsePath, DIRECTOR_PROMPT], { purpose: "prompt-draft" });
+    const result = await runProcess("codex", invocation.args, serializedInput, dirname(responsePath));
     const responseText = await readFile(responsePath, "utf8").catch(() => result.stdout);
     const measured = usageFromCliOutput(result.stdout, result.stderr);
-    const model = measured.model ?? process.env.LOOPLAB_CODEX_MODEL ?? await readCodexConfiguredModel() ?? "codex-cli";
-    return { value: parseAgentJson(responseText), model, receipt: createUsageReceipt({ provider, model, usage: measured.usage, source: "codex-cli-jsonl", authMethod: PROVIDER_AUTH_METHOD }) };
+    const model = measured.model ?? invocation.modelPolicy.model;
+    return { value: parseAgentJson(responseText), model, receipt: createUsageReceipt({ provider, model, usage: measured.usage, source: "codex-cli-jsonl", authMethod: PROVIDER_AUTH_METHOD, modelSelection: createProviderModelSelectionReceipt(invocation.modelPolicy, { providerReportedModel: measured.model }) }) };
   }
   if (provider === "claude") {
+    const invocation = buildClaudeCliInvocation({
+      prompt: DIRECTOR_PROMPT,
+      schema: PROMPT_SCHEMA,
+      maxTurns: 2,
+      tools: [],
+      purpose: "prompt-draft",
+      maxBudgetUsd: process.env.LOOPLAB_CLAUDE_MAX_BUDGET_USD,
+    });
     try {
-      const result = await runProcess("claude", buildClaudeCliArgs({
-        prompt: DIRECTOR_PROMPT,
-        schema: PROMPT_SCHEMA,
-        maxTurns: 2,
-        tools: [],
-        model: process.env.LOOPLAB_CLAUDE_MODEL,
-        effort: process.env.LOOPLAB_CLAUDE_EFFORT,
-        maxBudgetUsd: process.env.LOOPLAB_CLAUDE_MAX_BUDGET_USD,
-      }), serializedInput, dirname(responsePath));
+      const result = await runProcess("claude", invocation.args, serializedInput, dirname(responsePath));
       const structured = requireClaudeCliStructuredResult(result.stdout);
       const measured = usageFromCliOutput(result.stdout, result.stderr);
-      const model = structured.model ?? measured.model ?? process.env.LOOPLAB_CLAUDE_MODEL ?? "claude-code-cli";
+      const model = structured.model ?? measured.model ?? invocation.modelPolicy.model;
       return {
         value: structured.structuredOutput,
         model,
-        receipt: createUsageReceipt({ provider, model, usage: structured.usage ?? measured.usage, source: "claude-code-cli-stream-json", providerReportedUsd: structured.providerReportedUsd, authMethod: PROVIDER_AUTH_METHOD }),
+        receipt: createUsageReceipt({ provider, model, usage: structured.usage ?? measured.usage, source: "claude-code-cli-stream-json", providerReportedUsd: structured.providerReportedUsd, authMethod: PROVIDER_AUTH_METHOD, modelSelection: createProviderModelSelectionReceipt(invocation.modelPolicy, { providerReportedModel: structured.model ?? measured.model }) }),
       };
     } catch (error) {
       const telemetry = error?.claudeTelemetry ?? inspectClaudeCliOutput(error?.processResult?.stdout);
       const measured = usageFromCliOutput(error?.processResult?.stdout, error?.processResult?.stderr);
-      const model = telemetry.model ?? measured.model ?? process.env.LOOPLAB_CLAUDE_MODEL ?? "claude-code-cli";
-      if (error && typeof error === "object") error.usageReceipt = createUsageReceipt({ provider, model, usage: telemetry.usage ?? measured.usage, source: "claude-code-cli-stream-json", providerReportedUsd: telemetry.providerReportedUsd, authMethod: PROVIDER_AUTH_METHOD });
+      const model = telemetry.model ?? measured.model ?? invocation.modelPolicy.model;
+      if (error && typeof error === "object") error.usageReceipt = createUsageReceipt({ provider, model, usage: telemetry.usage ?? measured.usage, source: "claude-code-cli-stream-json", providerReportedUsd: telemetry.providerReportedUsd, authMethod: PROVIDER_AUTH_METHOD, modelSelection: createProviderModelSelectionReceipt(invocation.modelPolicy, { providerReportedModel: telemetry.model ?? measured.model }) });
       throw error;
     }
   }

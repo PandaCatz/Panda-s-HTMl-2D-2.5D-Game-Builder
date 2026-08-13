@@ -18,9 +18,165 @@ import {
   suggestPresentationProgram,
 } from "../lib/looplab-presentation.mjs";
 import { createRuntimeModel } from "../lib/looplab-runtime-model.mjs";
+import { LOOPLAB_AUDIO_DECODE_SAMPLE_RATE, analyzeEmbeddedAudioBytes, inspectEmbeddedAudioResource } from "../lib/looplab-audio-resources.mjs";
 
 function platformer() {
   return structuredClone(createTemplate("platformer"));
+}
+
+function tinyWaveResource(id = "audio-confirm") {
+  const frameCount = 8;
+  const channels = 1;
+  const sampleRate = 8_000;
+  const bitsPerSample = 16;
+  const dataBytes = frameCount * channels * bitsPerSample / 8;
+  const bytes = Buffer.alloc(44 + dataBytes);
+  bytes.write("RIFF", 0, "ascii");
+  bytes.writeUInt32LE(36 + dataBytes, 4);
+  bytes.write("WAVEfmt ", 8, "ascii");
+  bytes.writeUInt32LE(16, 16);
+  bytes.writeUInt16LE(1, 20);
+  bytes.writeUInt16LE(channels, 22);
+  bytes.writeUInt32LE(sampleRate, 24);
+  bytes.writeUInt32LE(sampleRate * channels * bitsPerSample / 8, 28);
+  bytes.writeUInt16LE(channels * bitsPerSample / 8, 32);
+  bytes.writeUInt16LE(bitsPerSample, 34);
+  bytes.write("data", 36, "ascii");
+  bytes.writeUInt32LE(dataBytes, 40);
+  return {
+    id,
+    name: `${id}.wav`,
+    kind: "audio",
+    mimeType: "audio/wav",
+    dataUrl: `data:audio/wav;base64,${bytes.toString("base64")}`,
+    bytes: bytes.length,
+    _bytes: bytes,
+  };
+}
+
+function sampleProgram(resourceId = "audio-confirm") {
+  return {
+    version: 1,
+    status: "approved",
+    enabled: true,
+    reducedMotion: "respect",
+    audio: {
+      enabled: true,
+      masterVolume: 0.5,
+      maxVoices: 4,
+      debounceMs: 0,
+      cues: [{
+        id: "confirm-sample",
+        event: "choice.selected",
+        enabled: true,
+        kind: "sample",
+        waveform: "sine",
+        frequency: 220,
+        endFrequency: 220,
+        filterFrequency: 800,
+        durationMs: 250,
+        attackMs: 4,
+        releaseMs: 40,
+        volume: 0.2,
+        pitchVariationCents: 0,
+        resourceId,
+        playbackRate: 1,
+      }],
+    },
+    motion: { enabled: false, maxParticles: 0, cues: [] },
+  };
+}
+
+function spriteAsset(id = "hero-strip", frames = 6) {
+  return {
+    id,
+    name: "Hero strip",
+    type: "sprite",
+    dataUrl: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M/wHwAF/gL+X1zGkwAAAABJRU5ErkJggg==",
+    width: frames,
+    height: 1,
+    frameWidth: 1,
+    frameHeight: 1,
+    frames,
+    columns: frames,
+    anchorX: 0.5,
+    anchorY: 1,
+    anchorMode: "ground",
+    collisionPolicy: "authored-only",
+    generator: { kind: "test" },
+  };
+}
+
+function authoredPresentationProgram(mapId = "map-main", assetId = "hero-strip") {
+  const follow = (zoom, overrides = {}) => ({
+    mode: "follow",
+    centerX: 0,
+    centerY: 0,
+    offsetX: 0,
+    offsetY: 0,
+    zoom,
+    lerpX: 1,
+    lerpY: 1,
+    deadzoneWidth: 0,
+    deadzoneHeight: 0,
+    transitionMs: 0,
+    clampToMap: true,
+    ...overrides,
+  });
+  return {
+    version: 1,
+    status: "approved",
+    enabled: true,
+    reducedMotion: "respect",
+    audio: { enabled: false, masterVolume: 0, maxVoices: 1, debounceMs: 0, cues: [] },
+    motion: {
+      enabled: true,
+      maxParticles: 16,
+      cues: [{
+        id: "land-effect",
+        event: "player.landed",
+        enabled: true,
+        target: "event-object",
+        effects: [{ type: "plugin", pluginId: "impact-sprite" }],
+      }],
+    },
+    camera: {
+      enabled: true,
+      subject: { type: "object-kind", id: "player" },
+      defaultBehavior: follow(1),
+      zones: [
+        { id: "broad", mapId, enabled: true, priority: 4, x: 0, y: 0, width: 960, height: 540, behavior: follow(1.4), reducedMotionBehavior: follow(1) },
+        { id: "compact", mapId, enabled: true, priority: 4, x: 80, y: 300, width: 200, height: 180, behavior: follow(2), reducedMotionBehavior: follow(1.25) },
+      ],
+    },
+    animation: {
+      enabled: true,
+      machines: [{
+        id: "hero-motion",
+        enabled: true,
+        target: { type: "object-kind", id: "player" },
+        initialState: "idle",
+        states: [
+          { id: "idle", assetId, frames: [0], fps: 8, loop: true, interruptMode: "immediate", reducedMotionFrame: 0 },
+          { id: "attack", assetId, frames: [1, 2], fps: 10, loop: false, interruptMode: "frame-end", reducedMotionFrame: 1 },
+          { id: "run", assetId, frames: [3, 4, 5], fps: 12, loop: true, interruptMode: "immediate", reducedMotionFrame: 4 },
+        ],
+        transitions: [
+          { id: "land-attack", from: "idle", to: "attack", trigger: "event", event: "player.landed", priority: 10, queue: true },
+          { id: "attack-settle", from: "attack", to: "idle", trigger: "stopped", priority: 1, queue: true },
+          { id: "begin-run", from: "idle", to: "run", trigger: "moving", priority: 5, queue: true },
+          { id: "stop-run", from: "run", to: "idle", trigger: "stopped", priority: 5, queue: true },
+        ],
+      }],
+    },
+    effectPlugins: [{
+      id: "impact-sprite",
+      enabled: true,
+      effects: [{ type: "particles", count: 1, color: "#ddd", secondaryColor: "#888", speed: 0, spread: 0, direction: 0, lifetimeMs: 200, size: 4, gravity: 0, assetId, frame: 5 }],
+      reducedMotion: { mode: "replace", effects: [{ type: "flash", color: "#ddd", opacity: 0.08, durationMs: 80 }] },
+      assetRequirements: [{ assetId, minimumFrames: 6, purpose: "impact particle" }],
+    }],
+  };
 }
 
 test("provider-free presentation suggestions are bounded, source-aware, and explicit about judgment", () => {
@@ -84,7 +240,7 @@ test("manifest and public project schema make presentation authoring discoverabl
   const manifest = getAgentManifest();
   const projectSchema = JSON.parse(readFileSync(new URL("../public/project-schema.json", import.meta.url), "utf8"));
 
-  assert.equal(manifest.protocolVersion, "1.101.0");
+  assert.equal(manifest.protocolVersion, "1.112.0");
   assert.deepEqual(manifest.presentationRules.schemas, {
     program: LOOPLAB_PRESENTATION_PROGRAM_SCHEMA,
     report: LOOPLAB_PRESENTATION_REPORT_SCHEMA,
@@ -98,7 +254,17 @@ test("manifest and public project schema make presentation authoring discoverabl
   assert.equal(projectSchema.properties.qualityContracts.properties.presentationProgramRequired.type, "boolean");
   assert.equal(projectSchema.$defs.presentationProgram.additionalProperties, false);
   assert.equal(projectSchema.$defs.presentationAudioCue.additionalProperties, false);
+  assert.ok(projectSchema.$defs.presentationAudioCue.properties.kind.enum.includes("sample"));
+  assert.equal(projectSchema.properties.resources.items.$ref, "#/$defs/embeddedResource");
   assert.equal(projectSchema.$defs.presentationMotionCue.properties.effects.maxItems, 6);
+  assert.equal(projectSchema.$defs.presentationProgram.properties.camera.$ref, "#/$defs/presentationCamera");
+  assert.equal(projectSchema.$defs.presentationProgram.properties.animation.$ref, "#/$defs/presentationAnimation");
+  assert.equal(projectSchema.$defs.presentationProgram.properties.effectPlugins.items.$ref, "#/$defs/presentationEffectPlugin");
+  assert.equal(projectSchema.$defs.presentationCameraZone.properties.reducedMotionBehavior.$ref, "#/$defs/presentationCameraBehavior");
+  assert.ok(projectSchema.$defs.presentationMotionCue.properties.effects.items.oneOf.some((entry) => entry.$ref === "#/$defs/presentationPluginEffect"));
+  assert.equal(manifest.presentationRules.embeddedAudio.cueKind, "sample");
+  assert.equal(manifest.presentationRules.embeddedAudio.resourceCollection, "project.resources");
+  assert.equal(manifest.presentationRules.embeddedAudio.limits.maximumDecodedBytes, 32 * 1024 * 1024);
 });
 
 test("presentation programs reject unknown structure before normalization can hide it", () => {
@@ -160,6 +326,7 @@ test("the presentation controller isolates unavailable and hostile Web Audio imp
     constructor() {
       this.state = "suspended";
       this.currentTime = 0;
+      this.sampleRate = LOOPLAB_AUDIO_DECODE_SAMPLE_RATE;
     }
     async resume() {
       this.state = "running";
@@ -231,6 +398,105 @@ test("the standard shell can override presentation volume and reduced motion wit
   assert.equal(restored.simulationIndependent, true);
 });
 
+test("camera zones resolve deterministically and switch to their explicit reduced-motion behavior", () => {
+  const program = authoredPresentationProgram();
+  const object = { id: "player", kind: "player", x: 110, y: 378, z: 0, width: 44, height: 58, vx: 0, vy: 0, grounded: true };
+  const snapshot = { mapId: "map-main", width: 960, height: 540, objects: [object], activeActionIds: [], screenBounds: { x: 0, y: 0, width: 960, height: 540 } };
+  const runtime = createPresentationRuntime(program, {
+    host: {},
+    width: 320,
+    height: 180,
+    getSnapshot: () => snapshot,
+    projectPoint: (point) => ({ x: point.x, y: point.y }),
+  });
+
+  runtime.update(16);
+  assert.equal(runtime.getStatus().camera.activeZoneId, "compact", "equal-priority overlaps must choose the smaller authored zone");
+  assert.equal(runtime.getCameraTransform().zoom, 2);
+  runtime.setReducedMotion(true);
+  runtime.update(16);
+  assert.equal(runtime.getCameraTransform().zoneId, "compact");
+  assert.equal(runtime.getCameraTransform().zoom, 1.25);
+
+  const dominant = structuredClone(program);
+  dominant.camera.zones.push({ ...dominant.camera.zones[0], id: "dominant", priority: 5, behavior: { ...dominant.camera.zones[0].behavior, zoom: 1.75 } });
+  const dominantRuntime = createPresentationRuntime(dominant, { host: {}, width: 320, height: 180, getSnapshot: () => snapshot, projectPoint: (point) => point });
+  dominantRuntime.update(16);
+  assert.equal(dominantRuntime.getStatus().camera.activeZoneId, "dominant", "priority must win before area or ID tie-breaks");
+});
+
+test("animation machines queue interruption boundaries and expose stable reduced-motion frames", () => {
+  const program = authoredPresentationProgram();
+  const player = { id: "player", kind: "player", x: 110, y: 378, z: 0, width: 44, height: 58, vx: 0, vy: 0, grounded: true };
+  const snapshot = { mapId: "map-main", width: 960, height: 540, objects: [player], activeActionIds: [], screenBounds: { x: 0, y: 0, width: 960, height: 540 } };
+  const runtime = createPresentationRuntime(program, { host: {}, getSnapshot: () => snapshot, projectPoint: (point) => point });
+
+  runtime.handleEvents([{ type: "player.landed", objectId: "player" }]);
+  runtime.update(1);
+  assert.equal(runtime.getAnimationFrame("player", null, 0).stateId, "attack");
+  runtime.update(10);
+  assert.equal(runtime.getStatus().animation.activeStates[0].pendingTransitionId, "attack-settle");
+  runtime.update(90);
+  assert.equal(runtime.getAnimationFrame("player", null, 0).stateId, "idle");
+
+  player.vx = 100;
+  runtime.update(1);
+  assert.equal(runtime.getAnimationFrame("player", null, 0).stateId, "run");
+  runtime.setReducedMotion(true);
+  assert.equal(runtime.getAnimationFrame("player", null, 0).frame, 4);
+  assert.equal(runtime.getStatus().animation.rejectedTransitionCount, 0);
+});
+
+test("effect plugins use declared sprite frames and replace motion under reduced-motion preference", () => {
+  const program = authoredPresentationProgram();
+  const player = { id: "player", kind: "player", x: 10, y: 20, width: 12, height: 18, vx: 0, vy: 0, grounded: true };
+  const snapshot = { mapId: "map-main", width: 960, height: 540, objects: [player], activeActionIds: [], screenBounds: { x: 0, y: 0, width: 960, height: 540 } };
+  const requestedFrames = [];
+  let spriteDraws = 0;
+  const runtime = createPresentationRuntime(program, {
+    host: {},
+    getSnapshot: () => snapshot,
+    getPoint: () => ({ x: 20, y: 30, objectId: "player" }),
+    getAssetFrame: (assetId, frame) => { requestedFrames.push([assetId, frame]); return { image: { width: 1, height: 1 }, sx: 0, sy: 0, sw: 1, sh: 1 }; },
+  });
+
+  runtime.handleEvents([{ type: "player.landed", objectId: "player" }]);
+  assert.equal(runtime.getStatus().motion.activeParticles, 1);
+  runtime.drawWorld({ save() {}, restore() {}, drawImage() { spriteDraws += 1; }, fillRect() {}, globalAlpha: 1, fillStyle: "" });
+  assert.deepEqual(requestedFrames, [["hero-strip", 5]]);
+  assert.equal(spriteDraws, 1);
+
+  runtime.setReducedMotion(true);
+  runtime.handleEvents([{ type: "player.landed", objectId: "player" }]);
+  const status = runtime.getStatus();
+  assert.equal(status.motion.activeParticles, 0);
+  assert.equal(status.motion.flashActive, true);
+  assert.equal(status.effectPlugins.triggeredCount, 2);
+});
+
+test("Project Doctor gates missing animation sprites, frame budgets, plugin assets, and arbitrary plugin code", () => {
+  const project = platformer();
+  project.assets = [spriteAsset()];
+  project.presentationProgram = authoredPresentationProgram(project.maps[0].id);
+  const valid = inspectPresentationProgram(project);
+  assert.deepEqual(valid.errors, []);
+  assert.deepEqual({ camera: valid.metrics.cameraZoneCount, machines: valid.metrics.animationMachineCount, states: valid.metrics.animationStateCount, transitions: valid.metrics.animationTransitionCount, plugins: valid.metrics.effectPluginCount, requirements: valid.metrics.assetRequirementCount }, { camera: 2, machines: 1, states: 3, transitions: 4, plugins: 1, requirements: 1 });
+
+  const invalid = structuredClone(project.presentationProgram);
+  invalid.animation.machines[0].states[0].assetId = "missing-strip";
+  invalid.effectPlugins[0].assetRequirements[0].minimumFrames = 7;
+  invalid.effectPlugins[0].run = "globalThis.fetch('https://example.invalid')";
+  const report = inspectPresentationProgram(project, invalid);
+  assert.ok(report.issues.some((issue) => issue.code === "presentation-animation-asset-missing"));
+  assert.ok(report.issues.some((issue) => issue.code === "presentation-effect-plugin-asset-frames"));
+  assert.ok(report.issues.some((issue) => issue.code === "presentation-field-unknown" && /\.run$/.test(issue.path)));
+
+  const wrongType = structuredClone(project);
+  wrongType.assets[0].type = "tileset";
+  const wrongTypeReport = inspectPresentationProgram(wrongType);
+  assert.ok(wrongTypeReport.issues.some((issue) => issue.code === "presentation-animation-asset-type"));
+});
+
 test("presentation stays outside deterministic simulation and is literally embedded in one-file exports", () => {
   const withPresentation = platformer();
   const withoutPresentation = structuredClone(withPresentation);
@@ -255,4 +521,126 @@ test("presentation stays outside deterministic simulation and is literally embed
   assert.ok(html.includes('"presentationProgram"'));
   assert.match(html, /get_presentation_status/);
   assert.match(html, /set_audio_muted/);
+  assert.match(html, /getCameraTransform/);
+  assert.match(html, /getAnimationFrame/);
+  assert.match(html, /getSnapshot:presentationSnapshot/);
+});
+
+test("sample cues bind only exact embedded audio resources and report encoded plus decoded cost", () => {
+  const project = platformer();
+  const resource = tinyWaveResource();
+  project.resources = [{ ...resource, _bytes: undefined }];
+  project.presentationProgram = sampleProgram(resource.id);
+
+  const byteAnalysis = analyzeEmbeddedAudioBytes(resource._bytes, resource.mimeType);
+  assert.deepEqual({
+    format: byteAnalysis.format,
+    channels: byteAnalysis.channels,
+    sampleRate: byteAnalysis.sampleRate,
+    frameCount: byteAnalysis.frameCount,
+    sourceDecodedMemoryBytes: byteAnalysis.sourceDecodedMemoryBytes,
+    decodedSampleRate: byteAnalysis.decodedSampleRate,
+    decodedFrameCount: byteAnalysis.decodedFrameCount,
+    decodedMemoryBytes: byteAnalysis.decodedMemoryBytes,
+  }, {
+    format: "wav-pcm",
+    channels: 1,
+    sampleRate: 8_000,
+    frameCount: 8,
+    sourceDecodedMemoryBytes: 32,
+    decodedSampleRate: LOOPLAB_AUDIO_DECODE_SAMPLE_RATE,
+    decodedFrameCount: 48,
+    decodedMemoryBytes: 192,
+  });
+  assert.equal(inspectEmbeddedAudioResource(project.resources[0]).ok, true);
+
+  const report = inspectPresentationProgram(project);
+  assert.deepEqual(report.errors, []);
+  assert.equal(report.metrics.referencedAudioResourceCount, 1);
+  assert.equal(report.metrics.encodedAudioBytes, resource.bytes);
+  assert.equal(report.metrics.decodedAudioBytes, 192);
+  assert.equal(report.audioResources.valid, true);
+
+  const exportProject = platformer();
+  exportProject.resources = [{ ...resource, _bytes: undefined }];
+  exportProject.presentationProgram.audio.cues.push(sampleProgram(resource.id).audio.cues[0]);
+  const html = buildStandaloneHtml(exportProject);
+  assert.ok(html.includes(resource.id));
+  assert.ok(html.includes("resources:project.resources||[]"));
+  assert.ok(html.includes("decodeAudioData"));
+});
+
+test("sample cues are Doctor-blocked when an embedded resource is missing or not audio", () => {
+  const missing = platformer();
+  missing.presentationProgram = sampleProgram("audio-missing");
+  const missingReport = inspectPresentationProgram(missing);
+  assert.ok(missingReport.errors.some((message) => /not embedded/i.test(message)));
+  assert.throws(() => applyAgentCommand(missing, { op: "set_presentation_program", program: missing.presentationProgram }), /not embedded/i);
+
+  const wrongKind = platformer();
+  const resource = tinyWaveResource();
+  wrongKind.resources = [{ ...resource, kind: "document", _bytes: undefined }];
+  wrongKind.presentationProgram = sampleProgram(resource.id);
+  const wrongKindDoctor = analyzeProject(wrongKind);
+  assert.ok(wrongKindDoctor.issues.some((issue) => issue.code === "presentation-audio-resource-invalid"));
+});
+
+test("embedded samples decode lazily after unlock and resource failures stay isolated from gameplay", async () => {
+  const resource = tinyWaveResource();
+  const started = [];
+  const contextOptions = [];
+  const audioParam = () => ({ setValueAtTime() {}, cancelScheduledValues() {}, exponentialRampToValueAtTime() {} });
+  class SampleAudioContext {
+    constructor(options) {
+      contextOptions.push(options);
+      this.state = "suspended";
+      this.currentTime = 0;
+      this.destination = {};
+      this.sampleRate = options.sampleRate;
+    }
+    createGain() { return { gain: audioParam(), connect() {} }; }
+    createDynamicsCompressor() { return { threshold: audioParam(), knee: audioParam(), ratio: audioParam(), attack: audioParam(), release: audioParam(), connect() {} }; }
+    createBufferSource() {
+      return { playbackRate: audioParam(), detune: audioParam(), connect() {}, start() { started.push("sample"); }, stop() {} };
+    }
+    decodeAudioData() { return Promise.resolve({ duration: 0.001, length: 48, numberOfChannels: 1 }); }
+    async resume() { this.state = "running"; }
+    async suspend() { this.state = "suspended"; }
+    close() {}
+  }
+  const runtime = createPresentationRuntime(sampleProgram(resource.id), {
+    host: { AudioContext: SampleAudioContext, atob: globalThis.atob },
+    resources: [{ ...resource, _bytes: undefined }],
+    performance: { now: () => 100 },
+  });
+  runtime.handleEvents([{ type: "choice.selected" }]);
+  assert.equal(runtime.getStatus().audio.pendingEvents, 1);
+  await runtime.unlock();
+  await new Promise((resolve) => setImmediate(resolve));
+  const status = runtime.getStatus();
+  assert.equal(status.audio.state, "running");
+  assert.equal(status.audio.decodeSampleRate, LOOPLAB_AUDIO_DECODE_SAMPLE_RATE);
+  assert.equal(status.audio.decodedResourceCount, 1);
+  assert.equal(status.audio.decodedBytes, 192);
+  assert.equal(status.audio.triggeredCueCount, 1);
+  assert.deepEqual(contextOptions[0], { latencyHint: "interactive", sampleRate: LOOPLAB_AUDIO_DECODE_SAMPLE_RATE });
+  assert.deepEqual(started, ["sample"]);
+
+  class RejectingDecodeContext extends SampleAudioContext {
+    decodeAudioData() { return Promise.reject(new Error("hostile decode")); }
+  }
+  const hostile = createPresentationRuntime(sampleProgram(resource.id), {
+    host: { AudioContext: RejectingDecodeContext, atob: globalThis.atob },
+    resources: [{ ...resource, _bytes: undefined }],
+    performance: { now: () => 100 },
+  });
+  hostile.handleEvents([{ type: "choice.selected" }]);
+  await hostile.unlock();
+  await new Promise((resolve) => setImmediate(resolve));
+  const hostileStatus = hostile.getStatus();
+  assert.equal(hostileStatus.audio.state, "running");
+  assert.match(hostileStatus.audio.resourceErrors[resource.id], /hostile decode/i);
+  assert.equal(hostileStatus.audio.triggeredCueCount, 0);
+  assert.equal(hostileStatus.handledEventCount, 1);
+  assert.equal(hostileStatus.simulationIndependent, true);
 });
