@@ -10,6 +10,7 @@ import { createRuntimeModel } from "../lib/looplab-runtime-model.mjs";
 import { readGamepadInputCodes } from "../lib/looplab-gamepad.mjs";
 import { canonicalReplaySerialize, LOOPLAB_REPLAY_HASH_VERSION, LOOPLAB_REPLAY_MOTION_HASH_VERSION, replayStateDigest, runReplaySuite } from "../lib/looplab-replay.mjs";
 import { DEFAULT_DIMETRIC_PROJECTION } from "../lib/looplab-spatial.mjs";
+import { normalizeWorldStream } from "../lib/looplab-world-stream.mjs";
 
 function object(kind, id, changes = {}) {
   const presets = {
@@ -40,6 +41,27 @@ function linkedProject() {
   ];
   const maps = [map("map-a", mapAObjects), map("map-b", mapBObjects)];
   return { name: "Runtime Contract", width: 200, height: 120, background: "#e8e0ca", gravity: 0, grid: 10, controlMode: "topdown", objects: mapAObjects, assets: [], maps, activeMapId: "map-a" };
+}
+
+function continuousWorldProject() {
+  const mapAObjects = [object("player", "player-a", { x: 10, y: 48 }), object("decor", "decor-a", { x: 80, y: 30 })];
+  const mapBObjects = [object("decor", "decor-b", { x: 80, y: 30 })];
+  const maps = [map("map-a", mapAObjects), map("map-b", mapBObjects)];
+  const program = normalizeWorldStream({
+    mode: "finite",
+    axis: "horizontal",
+    seed: "exported-world",
+    startTemplateId: "a",
+    horizon: 2,
+    sequence: ["a", "b"],
+    templates: [
+      { id: "a", name: "Atrium chunk", mapId: "map-a", weight: 1, entry: { id: "entry", tag: "route", edge: "left", x: 0, y: 60, z: 0, span: 40 }, exit: { id: "exit", tag: "route", edge: "right", x: 200, y: 60, z: 0, span: 40 } },
+      { id: "b", name: "Roof chunk", mapId: "map-b", weight: 1, entry: { id: "entry", tag: "route", edge: "left", x: 0, y: 60, z: 0, span: 40 }, exit: { id: "exit", tag: "route", edge: "right", x: 200, y: 60, z: 0, span: 40 } },
+    ],
+    budgets: { retainBehind: 1, prefetchAhead: 1, maxResidentChunks: 3, maxResidentTileCells: 64, maxResidentCollisionCells: 64, maxDecodedRgbaBytes: 4096, cullPadding: 16 },
+  });
+  maps[0].worldStream = program;
+  return { name: "Continuous World Contract", width: 200, height: 120, background: "#e8e0ca", gravity: 0, grid: 10, controlMode: "topdown", objects: mapAObjects, assets: [], maps, activeMapId: "map-a", worldStream: program };
 }
 
 function executeStandaloneRuntime(html) {
@@ -152,6 +174,12 @@ test("the exact exported dependency prelude remains import-free and covers every
   assert.doesNotThrow(() => dimetricRuntime.renderEntries());
   assert.deepEqual(isolated.worldToScreen({ x: 0, y: 0, z: 0 }, isolated.DEFAULT_DIMETRIC_PROJECTION), { x: 480, y: 96 });
 
+  const continuousRuntime = isolated.createRuntimeModel(continuousWorldProject());
+  const continuousPlayer = continuousRuntime.getObjects().find((entry) => entry.kind === "player");
+  continuousPlayer.x = 250;
+  continuousRuntime.update(0);
+  assert.equal(continuousRuntime.getState().worldStream.currentOrdinal, 1, "the exact string-inlined compiler must rotate the resident window");
+
   const buttons = Array.from({ length: 16 }, () => ({ pressed: false, value: 0 }));
   buttons[0] = { pressed: true, value: 1 };
   assert.ok(isolated.readGamepadInputCodes([{ buttons, axes: [0, 0] }]).includes("GamepadButton0"));
@@ -159,7 +187,22 @@ test("the exact exported dependency prelude remains import-free and covers every
   const html = buildStandaloneHtml(linkedProject());
   assert.ok(html.includes(prelude), "the export must embed the exact dependency prelude exercised by the isolation test");
   assert.ok(html.includes(`const createRuntimeModelFactory=${createRuntimeModel.toString()};`), "the export must embed the audited factory literally");
-  assert.ok(html.includes("const createRuntimeModel=(project)=>createRuntimeModelFactory(project,{compileTileRuntimeProgram});"), "the export must inject the audited tile compiler into the runtime factory");
+  assert.ok(html.includes("const compileWorldStreamRuntime="), "the export must embed the audited deterministic world-stream compiler");
+  assert.ok(html.includes("const createRuntimeModel=(project)=>createRuntimeModelFactory(project,{compileTileRuntimeProgram,compileWorldStreamRuntime});"), "the export must inject the audited tile and world-stream compilers into the runtime factory");
+});
+
+test("the one-file browser runtime crosses a continuous-world seam without fetch or player replacement", () => {
+  const project = continuousWorldProject();
+  const runtime = executeStandaloneRuntime(buildStandaloneHtml(project));
+  const playerId = runtime.getState().player.id;
+  runtime.setInput("move-right", true);
+  for (let index = 0; index < 24; index += 1) runtime.step(50);
+  runtime.setInput("move-right", false);
+  const state = JSON.parse(JSON.stringify(runtime.getState()));
+  assert.equal(state.worldStream.currentOrdinal, 1);
+  assert.equal(state.player.id, playerId, "the live player identity must survive chunk residency changes");
+  assert.deepEqual(state.worldStream.residentRange, { start: 0, end: 1 });
+  assert.equal(runtime.getWorldStreamState().routeDigest, state.worldStream.routeDigest);
 });
 
 test("the built artifact replay and acceptance runners stay identical to the canonical Node runners", () => {
@@ -328,7 +371,7 @@ test("exports the tested runtime model, linked maps, mobile-only touch controls,
   project.release = { externalRequests: [], debugMarkers: [] };
   project.assets = [{ id: "embedded-pixel", name: "Embedded pixel", type: "sprite", dataUrl: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M/wHwAF/gL+X1zGkwAAAABJRU5ErkJggg==", width: 1, height: 1, frameWidth: 1, frameHeight: 1, frames: 1, columns: 1, anchorX: 0.5, anchorY: 1, anchorMode: "ground", collisionPolicy: "authored-only", generator: { kind: "test" } }];
   const html = buildStandaloneHtml(project);
-  assert.match(html, /const runtimeApi=\{version:'2\.31\.0',getSourceDigest/);
+  assert.match(html, /const runtimeApi=\{version:'2\.32\.0',getSourceDigest/);
   assert.match(html, /Object\.isExtensible\(window\)/);
   assert.match(html, /id="looplab-runtime-bridge"/);
   assert.match(html, /id="looplab-runtime-form"/);
@@ -469,7 +512,7 @@ test("manifest declares the generated game as one offline-playable HTML file", a
   assert.equal(manifest.exportedRuntime.offlinePlayable, true);
   assert.deepEqual(manifest.exportedRuntime.externalDependencies, []);
   assert.ok(manifest.exportedRuntime.embeds.includes("selected-assets-as-data-urls"));
-  assert.equal(manifest.exportedRuntime.version, "2.31.0");
+  assert.equal(manifest.exportedRuntime.version, "2.32.0");
   assert.ok(manifest.exportedRuntime.embeds.includes("keyboard-gamepad-and-touch-controls"));
   assert.ok(manifest.exportedRuntime.embeds.includes("deterministic-replay-fixtures"));
   assert.ok(manifest.exportedRuntime.embeds.includes("deterministic-acceptance-fixtures"));

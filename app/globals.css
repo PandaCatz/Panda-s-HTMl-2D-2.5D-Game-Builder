@@ -2708,6 +2708,45 @@ kbd {
 .map-studio-exchange { margin-left: auto; }
 .map-studio-exchange .map-studio-new { background: #333338; color: #fff; }
 
+.map-studio-world-tools {
+  display: flex;
+  flex: 0 0 auto;
+  min-height: 30px;
+  align-items: center;
+  gap: 5px;
+  border-left: 1px solid #9c9c9a;
+  padding-left: 8px;
+}
+
+.map-studio-world-tools > span {
+  display: grid;
+  min-width: 132px;
+  gap: 2px;
+  color: #4f4f54;
+  font: 750 7px/1.15 var(--mono);
+  white-space: nowrap;
+}
+
+.map-studio-world-tools > span b { color: #242429; font-size: 6px; letter-spacing: .12em; }
+.map-studio-world-tools label { display: grid; flex: 0 0 auto; gap: 2px; color: #56565a; font: 800 6px/1 var(--mono); text-transform: uppercase; }
+.map-studio-world-tools select,
+.map-studio-world-tools input,
+.map-studio-world-tools button {
+  height: 28px;
+  max-width: 132px;
+  border: 1px solid #79797d;
+  background: #f3f3f1;
+  color: #29292d;
+  padding: 0 7px;
+  font: 800 7px/1 var(--mono);
+}
+.map-studio-world-tools input { width: 60px; }
+.map-studio-world-tools button { cursor: pointer; white-space: nowrap; }
+.map-studio-world-tools button:disabled { cursor: not-allowed; opacity: .48; }
+.map-studio-world-tools .map-studio-new { background: #333338; color: #fff; }
+.map-studio-world-tools .danger { border-color: #89595d; color: #7f2b32; }
+.map-studio-world-tools[data-active="true"] { border-left-color: #4a4a4f; }
+
 .map-studio-tile-tools {
   display: flex;
   flex: 0 0 auto;

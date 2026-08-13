@@ -240,7 +240,7 @@ test("manifest and public project schema make presentation authoring discoverabl
   const manifest = getAgentManifest();
   const projectSchema = JSON.parse(readFileSync(new URL("../public/project-schema.json", import.meta.url), "utf8"));
 
-  assert.equal(manifest.protocolVersion, "1.105.0");
+  assert.equal(manifest.protocolVersion, "1.106.0");
   assert.deepEqual(manifest.presentationRules.schemas, {
     program: LOOPLAB_PRESENTATION_PROGRAM_SCHEMA,
     report: LOOPLAB_PRESENTATION_REPORT_SCHEMA,

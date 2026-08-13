@@ -11,7 +11,7 @@ import {
   sampleElevationTransition,
   suggestElevationTransitions,
 } from "../lib/looplab-elevation-transitions.mjs";
-import { captureReplayState, LOOPLAB_REPLAY_ELEVATION_HASH_VERSION, LOOPLAB_REPLAY_MOTION_CARRY_HASH_VERSION } from "../lib/looplab-replay.mjs";
+import { captureReplayState, LOOPLAB_REPLAY_ELEVATION_HASH_VERSION, LOOPLAB_REPLAY_HASH_VERSION, LOOPLAB_REPLAY_MOTION_CARRY_HASH_VERSION } from "../lib/looplab-replay.mjs";
 import { createRuntimeModel } from "../lib/looplab-runtime-model.mjs";
 import { buildAgentProjectContext } from "../lib/looplab-agent-context.mjs";
 import { compactProviderProject } from "../lib/looplab-provider-context.mjs";
@@ -365,13 +365,13 @@ test("headless commands, Doctor, manifest, and one-file export expose authored e
   const manifest = getAgentManifest();
   assert.ok(manifest.commands.includes("set_elevation_transitions"));
   assert.equal(manifest.authoredElevationTransitions.schemaVersion, LOOPLAB_ELEVATION_TRANSITIONS_SCHEMA);
-  assert.equal(manifest.deterministicReplay.currentHashVersion, LOOPLAB_REPLAY_ELEVATION_HASH_VERSION);
+  assert.equal(manifest.deterministicReplay.currentHashVersion, LOOPLAB_REPLAY_HASH_VERSION);
 
   const html = buildStandaloneHtml(set.project);
   assert.match(html, /getElevationTransitions/);
   assert.match(html, /get_elevation_transitions/);
   assert.match(html, /elevationTransitionId/);
-  assert.match(html, /\[1,2,3,4,5,6,7,8,9,10,11\]/);
+  assert.match(html, /\[1,2,3,4,5,6,7,8,9,10,11,12\]/);
 
   const removed = applyAgentCommand(set.project, { op: "remove_elevation_transitions", mapId: active.id });
   assert.equal(removed.changed, true);

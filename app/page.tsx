@@ -632,6 +632,22 @@ type TileProgram = {
   collisionLayers: TileCollisionLayer[];
 };
 
+type WorldStreamSocket = { id: string; tag: string; edge: "left" | "right" | "top" | "bottom"; x: number; y: number; z: number; span: number };
+type WorldStream = {
+  schemaVersion: "looplab-world-stream/v1" | string;
+  owner: "authored-map";
+  enabled: boolean;
+  mode: "finite" | "seeded";
+  axis: "horizontal" | "vertical";
+  seed: string;
+  startTemplateId: string;
+  horizon: number;
+  sequence: string[];
+  budgets: { retainBehind: number; prefetchAhead: number; maxResidentChunks: number; maxResidentTileCells: number; maxResidentCollisionCells: number; maxDecodedRgbaBytes: number; cullPadding: number };
+  tolerances: { crossAxis: number; z: number; span: number };
+  templates: Array<{ id: string; name: string; mapId: string; weight: number; entry: WorldStreamSocket | null; exit: WorldStreamSocket | null }>;
+};
+
 type GameMap = {
   id: string;
   name: string;
@@ -648,6 +664,7 @@ type GameMap = {
   collisionGeometry?: CollisionGeometry;
   elevationTransitions?: ElevationTransitions;
   tileProgram?: TileProgram;
+  worldStream?: WorldStream;
   clearanceZones?: Array<{ id: string; routeId?: string; routeName?: string; phase?: string; x: number; y: number; width: number; height: number; zMin?: number; zMax?: number }>;
   hudSafeAreas?: Array<{ id: string; name: string; x: number; y: number; width: number; height: number }>;
   maxInteractionGap?: number;
@@ -842,6 +859,7 @@ type GameProject = {
   collisionGeometry?: CollisionGeometry;
   elevationTransitions?: ElevationTransitions;
   tileProgram?: TileProgram;
+  worldStream?: WorldStream;
   clearanceZones?: GameMap["clearanceZones"];
   hudSafeAreas?: GameMap["hudSafeAreas"];
   maxInteractionGap?: number;
@@ -2918,6 +2936,7 @@ const mapFromProject = (project: GameProject, id: string, name: string): GameMap
     collisionGeometry: project.collisionGeometry ?? existing?.collisionGeometry,
     elevationTransitions: project.elevationTransitions ?? existing?.elevationTransitions,
     tileProgram: project.tileProgram ?? existing?.tileProgram,
+    worldStream: project.worldStream ?? existing?.worldStream,
     clearanceZones: project.clearanceZones ?? existing?.clearanceZones,
     hudSafeAreas: project.hudSafeAreas ?? existing?.hudSafeAreas,
     maxInteractionGap: project.maxInteractionGap ?? existing?.maxInteractionGap,
@@ -2970,6 +2989,7 @@ const activateMap = (project: GameProject, mapId: string): GameProject => {
     collisionGeometry: target.collisionGeometry,
     elevationTransitions: target.elevationTransitions,
     tileProgram: target.tileProgram,
+    worldStream: target.worldStream,
     clearanceZones: target.clearanceZones,
     hudSafeAreas: target.hudSafeAreas,
     maxInteractionGap: target.maxInteractionGap,
@@ -3578,6 +3598,9 @@ export default function Home() {
   const [selectedTileId, setSelectedTileId] = useState("");
   const [selectedTerrainId, setSelectedTerrainId] = useState("");
   const [selectedTileCollisionProfileId, setSelectedTileCollisionProfileId] = useState("");
+  const [worldStreamMode, setWorldStreamMode] = useState<"finite" | "seeded">("finite");
+  const [worldStreamAxis, setWorldStreamAxis] = useState<"horizontal" | "vertical">("horizontal");
+  const [worldStreamHorizon, setWorldStreamHorizon] = useState(64);
   const [editorElevation, setEditorElevation] = useState(0);
   const [selectedNavigationNodeId, setSelectedNavigationNodeId] = useState<string | null>(null);
   const [selectedAuthoredRouteActorId, setSelectedAuthoredRouteActorId] = useState<string | null>(null);
@@ -3900,6 +3923,7 @@ export default function Home() {
     [activeMap?.id, activeMap?.name, project],
   );
   const activeTileProgram = activeMapSnapshot.tileProgram ?? null;
+  const activeWorldStream = activeMapSnapshot.worldStream ?? null;
   const editorTileRuntime = useMemo(
     () => compileTileRuntimeProgram(activeTileProgram, activeMapSnapshot) as TileRuntime,
     [activeMapSnapshot, activeTileProgram],
@@ -5342,6 +5366,61 @@ export default function Home() {
       showToast(error instanceof Error ? error.message : "The tile program could not be updated");
     }
   }, [activeTileProgram, commit, project, showToast]);
+
+  const initializeWorldStream = useCallback(() => {
+    try {
+      const base = syncActiveMap(project);
+      if ((base.maps?.length ?? 0) < 2) throw new Error("Create at least two authored maps before composing a continuous world.");
+      const suggestion = applyAgentCommand(base, {
+        op: "suggest_world_stream",
+        mapId: base.activeMapId,
+        mode: worldStreamMode,
+        axis: worldStreamAxis,
+        seed: `world-${String(base.name ?? "looplab").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "looplab"}`,
+        horizon: worldStreamMode === "seeded" ? Math.max(2, Math.min(4096, Math.trunc(worldStreamHorizon))) : Math.max(2, base.maps?.length ?? 2),
+        tag: "main-route",
+        z: editorElevation,
+        span: Math.max(1, Number(base.grid ?? 32) * 2),
+      }).result as { available: boolean; program?: WorldStream; reasons?: string[] };
+      if (!suggestion.available || !suggestion.program) throw new Error(suggestion.reasons?.join(" ") || "The authored maps are not compatible continuous-world templates.");
+      const outcome = applyAgentCommand(base, { op: "set_world_stream", mapId: base.activeMapId, program: suggestion.program });
+      const result = outcome.result as { report?: { plannedInstanceCount?: number; seamCount?: number }; worldStreamDigest?: string };
+      commit(outcome.project as GameProject, `${worldStreamMode === "seeded" ? "Seeded" : "Finite"} continuous world created`);
+      appendConsole("world.stream.created", `Continuous world stored on ${base.activeMapId}`, `${result.report?.plannedInstanceCount ?? suggestion.program.sequence.length} planned chunks · ${result.report?.seamCount ?? 0} authored seams · ${result.worldStreamDigest ?? "digest pending"}`, "good");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "The continuous world could not be created";
+      appendConsole("world.stream.failed", message, "Map geometry, projection, player ownership, tile programs, sockets, and resident budgets remain authored truth.", "bad");
+      showToast(message);
+    }
+  }, [appendConsole, commit, editorElevation, project, showToast, worldStreamAxis, worldStreamHorizon, worldStreamMode]);
+
+  const inspectWorldStreamPlan = useCallback(() => {
+    try {
+      if (!activeWorldStream) throw new Error("The active map does not own a continuous-world route.");
+      const plan = applyAgentCommand(syncActiveMap(project), { op: "get_world_stream_plan", mapId: project.activeMapId, ...(activeWorldStream.mode === "seeded" ? { count: activeWorldStream.horizon } : {}) }).result as { instances?: unknown[]; seams?: unknown[]; routeDigest?: string; contradiction?: { message?: string } | null };
+      if (plan.contradiction) throw new Error(plan.contradiction.message || "The deterministic route contains a contradiction.");
+      const message = `${plan.instances?.length ?? 0} deterministic chunks · ${plan.seams?.length ?? 0} seams`;
+      appendConsole("world.stream.planned", message, `${plan.routeDigest ?? "No route digest"}. Visual continuity still requires first-draw and unique-pixel browser review.`, "good");
+      showToast(message);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "The continuous-world plan could not be inspected";
+      appendConsole("world.stream.plan.failed", message, undefined, "bad");
+      showToast(message);
+    }
+  }, [activeWorldStream, appendConsole, project, showToast]);
+
+  const removeWorldStream = useCallback(() => {
+    if (!activeWorldStream || !window.confirm("Remove continuous composition from this host map? Source maps, tiles, objects, and assets will remain unchanged.")) return;
+    try {
+      const outcome = applyAgentCommand(syncActiveMap(project), { op: "remove_world_stream", mapId: project.activeMapId });
+      commit(outcome.project as GameProject, "Continuous-world composition removed");
+      appendConsole("world.stream.removed", `Continuous composition removed from ${project.activeMapId}`, "All authored source maps and content were preserved.", "neutral");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "The continuous world could not be removed";
+      appendConsole("world.stream.remove.failed", message, undefined, "bad");
+      showToast(message);
+    }
+  }, [activeWorldStream, appendConsole, commit, project, showToast]);
 
   const addTileLayer = useCallback((role: TileVisualLayer["role"] = "interleaved") => {
     const id = `tile-layer-${Date.now()}`;
@@ -12310,13 +12389,25 @@ export default function Home() {
 
           <div className="map-tabs-bar" role="tablist" aria-label="Project maps">
             <div className="map-tabs-scroll">
-              {maps.map((map, index) => <button key={map.id} role="tab" aria-selected={stageMapId === map.id} title={`${map.name} · ${map.projection?.type === "dimetric-2:1" ? "2.5D dimetric" : "orthographic"} · ${map.objects.length} objects · ${map.traversalPaths?.length ?? 0} traversal paths · ${map.navigation?.nodes?.length ?? 0} navigation nodes · ${map.elevationTransitions?.transitions.length ?? 0} ramps/stairs · ${map.collisionGeometry?.chains.length ?? 0} collision chains`} onClick={() => isPlaying ? loadPreviewMap(map.id) : switchMap(map.id)}><span>{index + 1}</span>{map.name}<small>{map.projection?.type === "dimetric-2:1" ? "2.5D" : "2D"} · {map.objects.length}/{(map.traversalPaths?.length ?? 0) + (map.navigation?.nodes?.length ?? 0) + (map.elevationTransitions?.transitions.length ?? 0) + (map.collisionGeometry?.chains.length ?? 0)}</small></button>)}
+              {maps.map((map, index) => <button key={map.id} role="tab" aria-selected={stageMapId === map.id} title={`${map.name} · ${map.projection?.type === "dimetric-2:1" ? "2.5D dimetric" : "orthographic"} · ${map.objects.length} objects · ${map.traversalPaths?.length ?? 0} traversal paths · ${map.navigation?.nodes?.length ?? 0} navigation nodes · ${map.elevationTransitions?.transitions.length ?? 0} ramps/stairs · ${map.collisionGeometry?.chains.length ?? 0} collision chains${map.worldStream ? ` · ${map.worldStream.mode} continuous-world host` : ""}`} onClick={() => isPlaying ? loadPreviewMap(map.id) : switchMap(map.id)}><span>{index + 1}</span>{map.name}<small>{map.projection?.type === "dimetric-2:1" ? "2.5D" : "2D"} · {map.worldStream ? "WORLD · " : ""}{map.objects.length}/{(map.traversalPaths?.length ?? 0) + (map.navigation?.nodes?.length ?? 0) + (map.elevationTransitions?.transitions.length ?? 0) + (map.collisionGeometry?.chains.length ?? 0)}</small></button>)}
             </div>
             <button className="add-map-tab" onClick={createMap} disabled={isPlaying} title={isPlaying ? "Return to Edit to create a map" : "Create and link another map"} aria-label="Add map tab">＋</button>
           </div>
 
           {mapStudioFocused && !isPlaying && <div className="map-studio-toolbar" aria-label="Map Studio authoring tools">
-            <div className="map-studio-identity"><span>MAP STUDIO</span><strong>{isDimetric ? "2.5D world" : "2D world"}</strong><small>{editorTileRuntime.counts.visualEntries} tiles · {editorTileRuntime.counts.collisionCells} tile colliders · {navigation.nodes.length} nodes · {activeElevationTransitions.transitions.length} ramps/stairs · {activeCollisionGeometry?.chains.length ?? 0} chains</small></div>
+            <div className="map-studio-identity"><span>MAP STUDIO</span><strong>{isDimetric ? "2.5D world" : "2D world"}</strong><small>{editorTileRuntime.counts.visualEntries} tiles · {editorTileRuntime.counts.collisionCells} tile colliders · {navigation.nodes.length} nodes · {activeElevationTransitions.transitions.length} ramps/stairs · {activeCollisionGeometry?.chains.length ?? 0} chains{activeWorldStream ? ` · ${activeWorldStream.templates.length} stream templates` : ""}</small></div>
+            <div className="map-studio-world-tools" data-active={activeWorldStream ? "true" : "false"} title={activeWorldStream ? activeWorldStream.templates.map((template) => `${template.id} → ${template.mapId}`).join(" · ") : "Compose compatible authored maps into a deterministic continuous 2D/2.5D route"}>
+              {activeWorldStream ? <>
+                <span><b>WORLD</b>{activeWorldStream.mode} · {activeWorldStream.axis} · {activeWorldStream.mode === "finite" ? activeWorldStream.sequence.length : activeWorldStream.horizon} chunks</span>
+                <button onClick={inspectWorldStreamPlan}>View plan</button>
+                <button className="danger" onClick={removeWorldStream}>Remove</button>
+              </> : <>
+                <label><span>World</span><select aria-label="Continuous world mode" value={worldStreamMode} onChange={(event) => setWorldStreamMode(event.target.value as "finite" | "seeded")}><option value="finite">Finite route</option><option value="seeded">Seeded route</option></select></label>
+                <label><span>Axis</span><select aria-label="Continuous world axis" value={worldStreamAxis} onChange={(event) => setWorldStreamAxis(event.target.value as "horizontal" | "vertical")}><option value="horizontal">Horizontal</option><option value="vertical">Vertical</option></select></label>
+                {worldStreamMode === "seeded" && <label><span>Horizon</span><input aria-label="Continuous world horizon" type="number" min="2" max="4096" value={worldStreamHorizon} onChange={(event) => setWorldStreamHorizon(Number(event.target.value))} /></label>}
+                <button className="map-studio-new" disabled={maps.length < 2} onClick={initializeWorldStream}>Compose maps</button>
+              </>}
+            </div>
             <div className="map-studio-group projection-tools" role="group" aria-label="Projection">
               <button className={!isDimetric ? "active" : ""} onClick={() => setProjectionMode("orthographic")}>2D</button>
               <button className={isDimetric ? "active" : ""} onClick={() => setProjectionMode("dimetric-2:1")}>2.5D · 128×64</button>

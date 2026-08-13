@@ -1,6 +1,6 @@
 {
   "name": "Looplab Headless Agent API",
-  "protocolVersion": "1.105.0",
+  "protocolVersion": "1.106.0",
   "agentOperatingModel": {
     "purpose": "LoopLab is an AI capability amplifier and structured game-authoring workstation, not a form the agent is confined to.",
     "headlessFirst": true,
@@ -4030,7 +4030,7 @@
       "harnessSchemaVersion": "looplab-platform-harness/v1",
       "harnessRunner": "playwright-core",
       "harnessRunnerVersion": 2,
-      "runtimeVersion": "2.31.0",
+      "runtimeVersion": "2.32.0",
       "environment": {
         "sandbox": [
           "allow-scripts"
@@ -4170,7 +4170,7 @@
       ],
       "unexpectedCheckPolicy": "reject",
       "visualCaptureRequired": true,
-      "digest": "sha256:c1a3d1741aa0132113d5ca2c7b1c1e6c417bdb776a7e247bc0d241c0f199c25f"
+      "digest": "sha256:072787d94fbbd2d3cf912bb0092cf2873c448c31bfa9d2dcde67308c86108b00"
     },
     "inspectCommand": "get_release_verification",
     "browserCommand": "verify_release",
@@ -4255,7 +4255,7 @@
       "run_replay_suite",
       "remove_replay_case"
     ],
-    "currentHashVersion": 11,
+    "currentHashVersion": 12,
     "legacyHashVersion": 1,
     "supportedHashVersions": [
       1,
@@ -4268,7 +4268,8 @@
       8,
       9,
       10,
-      11
+      11,
+      12
     ],
     "minimumTickRate": 20,
     "digestAlgorithms": {
@@ -4286,16 +4287,17 @@
         8,
         9,
         10,
-        11
+        11,
+        12
       ],
-      "currentVersion": 11,
+      "currentVersion": 12,
       "current": "SHA-256"
     },
     "digestFormats": {
       "legacy": "replay-<8 lowercase hex>",
       "current": "replay-sha256-<64 lowercase hex>"
     },
-    "hashVersionPolicy": "Fixtures without hashVersion retain the original v1 FNV-1a projection; versions 1 through 10 remain byte-compatible. Every new or explicitly rerecorded fixture writes v11 SHA-256 with active elevation-transition identity, progress, and support Z in addition to the v10 motion-body and v9 authored segment-ground state. Runtime-state additions must add a new projection instead of silently invalidating accepted evidence.",
+    "hashVersionPolicy": "Fixtures without hashVersion retain the original v1 FNV-1a projection; versions 1 through 11 remain byte-compatible. Every new or explicitly rerecorded fixture writes v12 SHA-256 with deterministic world-stream route, resident-window, and chunk identity in addition to the v11 elevation, v10 motion-body, and v9 authored segment-ground state. Visual loading, first-draw timing, camera, and asset readiness remain excluded. Runtime-state additions must add a new projection instead of silently invalidating accepted evidence.",
     "inputContract": "Semantic input transitions are sampled by zero-based simulation tick and deterministically expose pressed, held, and released action phases; checkpoints bind the state after one-based ticks.",
     "hashContract": "Canonical nested simulation-only snapshots include action/contact state that can affect the next tick and exclude artwork, camera, animation playback, audio, particles, and wall-clock state.",
     "divergencePolicy": "Every recorded checkpoint is compared in tick order and reports the first mismatching tick.",
@@ -4688,6 +4690,57 @@
     "editWorkflow": "Read a bounded region, preview an exact map-owned patch, review deterministic visual/collision changes plus both Doctor profiles, then apply only with unchanged source, tile-program, and patch digests.",
     "collisionBoundary": "Visual tiles, generated pixels, filenames, and autotile variants never imply collision. Separate authored collision layers and profiles remain the sole tile-collision owner.",
     "rendererBoundary": "Canvas, Phaser, Pixi, and melonJS render the same sparse chunk source and exact autotile resolution. Renderers may cache or cull but cannot mutate source, choose variants, or invent collision."
+  },
+  "authoredContinuousWorlds": {
+    "schemaVersion": "looplab-world-stream/v1",
+    "reportSchemaVersion": "looplab-world-stream-report/v1",
+    "planSchemaVersion": "looplab-world-stream-plan/v1",
+    "runtimeSchemaVersion": "looplab-world-stream-runtime/v1",
+    "seamSchemaVersion": "looplab-world-stream-seam/v1",
+    "commands": [
+      "get_world_stream",
+      "get_world_stream_report",
+      "get_world_stream_plan",
+      "suggest_world_stream",
+      "set_world_stream",
+      "remove_world_stream"
+    ],
+    "runtimeMethods": [
+      "getWorldStreamState",
+      "markWorldStreamDraw"
+    ],
+    "runtimeCommands": [
+      "get_world_stream_state",
+      "mark_world_stream_draw"
+    ],
+    "limits": {
+      "maximumTemplates": 128,
+      "maximumFiniteSequence": 4096,
+      "maximumHorizon": 4096,
+      "maximumResidentChunks": 16,
+      "maximumResidentTileCells": 262144,
+      "maximumResidentCollisionCells": 131072,
+      "maximumDecodedRgbaBytes": 1073741824,
+      "maximumCullPadding": 4096,
+      "maximumCoordinateMagnitude": 1048576,
+      "maximumSocketSpan": 65536,
+      "maximumSeedLength": 128
+    },
+    "policy": {
+      "sourceField": "map.worldStream",
+      "ownership": "Authored map chunks, sockets, budgets, and deterministic selection own world composition. Tiles, sprites, screenshots, and renderer objects never invent adjacency.",
+      "scope": "Version 1 is a finite or seeded horizontal/vertical route. It does not claim arbitrary branching, rotation, scaling, network streaming, or a 3D world.",
+      "deterministicSelection": "Compatible candidates are stable-ID sorted and selected by canonical SHA-256 over seed, ordinal, prior template, and prior socket. Math.random and array order are never gameplay truth.",
+      "residency": "Resident chunks and camera-visible entries are separate budgets. Single-file streaming activates embedded source only and performs no runtime fetch.",
+      "assetMemory": "Decoded RGBA bytes are counted once per unique embedded asset referenced by the resident window, never once per repeated chunk instance.",
+      "collision": "Authored object and tile collision remain independent from art. A socket aligns map coordinates but never creates a collider from pixels.",
+      "evidence": "A valid plan proves deterministic geometry only. Captured first-draw and unique-pixel seam evidence remain required before claiming a visually seamless release.",
+      "judgmentBoundary": "Project Doctor can prove schema, compatibility, deterministic planning, budgets, and unsupported-system rejection. It cannot prove pacing, route quality, visual composition, or fun."
+    },
+    "selectionFormula": "Compatible templates are stable-ID sorted, then selected by canonical SHA-256 over seed, ordinal, prior template ID, and prior exit-socket ID. Array order and Math.random never affect the route.",
+    "compositionBoundary": "Version 1 composes finite or seeded horizontal/vertical embedded 2D map chunks by exact authored edge sockets. It does not claim arbitrary branching, rotation, scaling, network streaming, or 3D.",
+    "memoryBoundary": "Resident decoded RGBA cost is counted once per unique embedded asset, while tile and collision work are counted per resident chunk instance.",
+    "evidenceBoundary": "Project Doctor proves source shape, deterministic planning, socket compatibility, supported systems, and budgets. Captured first-draw and unique-pixel seam evidence are still required before claiming visual continuity."
   },
   "executableAcceptance": {
     "schemaVersion": "looplab-acceptance-result/v1",
@@ -5184,7 +5237,7 @@
     }
   },
   "exportedRuntime": {
-    "version": "2.31.0",
+    "version": "2.32.0",
     "packaging": "single-self-contained-html",
     "uploadFiles": 1,
     "offlinePlayable": true,
@@ -5308,6 +5361,10 @@
       "getTraversalPaths",
       "getCollisionGeometry",
       "getElevationTransitions",
+      "getTileProgram",
+      "getTileRuntime",
+      "getWorldStreamState",
+      "markWorldStreamDraw",
       "getMotionBodyStates",
       "getActorStates",
       "getCombatState",
@@ -5356,6 +5413,8 @@
       "get_elevation_transitions",
       "get_tile_program",
       "get_tile_runtime",
+      "get_world_stream_state",
+      "mark_world_stream_draw",
       "get_motion_body_states",
       "get_actor_states",
       "get_combat_state",
@@ -5517,6 +5576,12 @@
     "update_map",
     "switch_map",
     "remove_map",
+    "get_world_stream",
+    "get_world_stream_report",
+    "get_world_stream_plan",
+    "suggest_world_stream",
+    "set_world_stream",
+    "remove_world_stream",
     "add_reference",
     "find_reference",
     "remove_reference",
@@ -5759,6 +5824,12 @@
       "update_map",
       "switch_map",
       "remove_map",
+      "get_world_stream",
+      "get_world_stream_report",
+      "get_world_stream_plan",
+      "suggest_world_stream",
+      "set_world_stream",
+      "remove_world_stream",
       "add_reference",
       "find_reference",
       "remove_reference",
@@ -5983,6 +6054,12 @@
       "update_map",
       "switch_map",
       "remove_map",
+      "get_world_stream",
+      "get_world_stream_report",
+      "get_world_stream_plan",
+      "suggest_world_stream",
+      "set_world_stream",
+      "remove_world_stream",
       "add_reference",
       "find_reference",
       "remove_reference",
@@ -17638,6 +17715,695 @@
           "required": [
             "id"
           ],
+          "additionalProperties": false
+        },
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": true,
+          "idempotentHint": false,
+          "openWorldHint": false
+        }
+      },
+      {
+        "op": "get_world_stream",
+        "title": "Get World Stream",
+        "description": "Inspect one map-owned deterministic continuous-world source, exact digest, bounded plan, resident budgets, and explicit judgment boundaries.",
+        "surfaces": [
+          "core",
+          "browser-session"
+        ],
+        "mutatesProject": false,
+        "mutatesBuilderState": false,
+        "requiresSourceDigestInMcp": false,
+        "coordinationOnly": false,
+        "schemaPrecision": "declared",
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "expectedSourceDigest": {
+              "type": "string",
+              "description": "Project Doctor sourceDigest inspected immediately before this command.",
+              "minLength": 1
+            },
+            "expectedLedgerDigest": {
+              "type": "string",
+              "description": "Shared work-ledger digest inspected immediately before this coordination mutation.",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            },
+            "compact": {
+              "type": "boolean",
+              "description": "Return a compact result without repeating the complete embedded project when the transport supports it."
+            },
+            "mapId": {
+              "type": "string",
+              "description": "Stable authored ID.",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+            },
+            "strict": {
+              "type": "boolean",
+              "description": "Include release-facing seam-evidence warnings."
+            }
+          },
+          "additionalProperties": false
+        },
+        "annotations": {
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      },
+      {
+        "op": "get_world_stream_report",
+        "title": "Get World Stream Report",
+        "description": "Validate exact chunk sockets, deterministic route composition, v1 system restrictions, unique decoded-memory cost, and release-facing seam-evidence requirements.",
+        "surfaces": [
+          "core",
+          "browser-session"
+        ],
+        "mutatesProject": false,
+        "mutatesBuilderState": false,
+        "requiresSourceDigestInMcp": false,
+        "coordinationOnly": false,
+        "schemaPrecision": "declared",
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "expectedSourceDigest": {
+              "type": "string",
+              "description": "Project Doctor sourceDigest inspected immediately before this command.",
+              "minLength": 1
+            },
+            "expectedLedgerDigest": {
+              "type": "string",
+              "description": "Shared work-ledger digest inspected immediately before this coordination mutation.",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            },
+            "compact": {
+              "type": "boolean",
+              "description": "Return a compact result without repeating the complete embedded project when the transport supports it."
+            },
+            "mapId": {
+              "type": "string",
+              "description": "Stable authored ID.",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+            },
+            "strict": {
+              "type": "boolean",
+              "description": "Include release-facing seam-evidence warnings."
+            }
+          },
+          "additionalProperties": false
+        },
+        "annotations": {
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      },
+      {
+        "op": "get_world_stream_plan",
+        "title": "Get World Stream Plan",
+        "description": "Materialize a bounded deterministic finite or seeded chunk plan without mutating source, fetching assets, or claiming that geometry is visually seamless.",
+        "surfaces": [
+          "core",
+          "browser-session"
+        ],
+        "mutatesProject": false,
+        "mutatesBuilderState": false,
+        "requiresSourceDigestInMcp": false,
+        "coordinationOnly": false,
+        "schemaPrecision": "declared",
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "expectedSourceDigest": {
+              "type": "string",
+              "description": "Project Doctor sourceDigest inspected immediately before this command.",
+              "minLength": 1
+            },
+            "expectedLedgerDigest": {
+              "type": "string",
+              "description": "Shared work-ledger digest inspected immediately before this coordination mutation.",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            },
+            "compact": {
+              "type": "boolean",
+              "description": "Return a compact result without repeating the complete embedded project when the transport supports it."
+            },
+            "mapId": {
+              "type": "string",
+              "description": "Stable authored ID.",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+            },
+            "count": {
+              "type": "integer",
+              "description": "Bounded seeded planning horizon override.",
+              "minimum": 1,
+              "maximum": 4096
+            }
+          },
+          "additionalProperties": false
+        },
+        "annotations": {
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      },
+      {
+        "op": "suggest_world_stream",
+        "title": "Suggest World Stream",
+        "description": "Prepare an editable provider-free route from compatible authored maps. It assigns explicit edge sockets but never infers joins, collision, pacing, or visual continuity from pixels.",
+        "surfaces": [
+          "core",
+          "browser-session"
+        ],
+        "mutatesProject": false,
+        "mutatesBuilderState": false,
+        "requiresSourceDigestInMcp": false,
+        "coordinationOnly": false,
+        "schemaPrecision": "declared",
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "expectedSourceDigest": {
+              "type": "string",
+              "description": "Project Doctor sourceDigest inspected immediately before this command.",
+              "minLength": 1
+            },
+            "expectedLedgerDigest": {
+              "type": "string",
+              "description": "Shared work-ledger digest inspected immediately before this coordination mutation.",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            },
+            "compact": {
+              "type": "boolean",
+              "description": "Return a compact result without repeating the complete embedded project when the transport supports it."
+            },
+            "mapId": {
+              "type": "string",
+              "description": "Stable authored ID.",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+            },
+            "mode": {
+              "type": "string",
+              "enum": [
+                "finite",
+                "seeded"
+              ],
+              "description": "Suggested route mode."
+            },
+            "axis": {
+              "type": "string",
+              "enum": [
+                "horizontal",
+                "vertical"
+              ],
+              "description": "Suggested composition axis."
+            },
+            "seed": {
+              "type": "string",
+              "description": "Stable deterministic seed.",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "horizon": {
+              "type": "integer",
+              "description": "Maximum planned chunk count.",
+              "minimum": 2,
+              "maximum": 4096
+            },
+            "tag": {
+              "type": "string",
+              "description": "Exact compatibility tag assigned to suggested sockets.",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "z": {
+              "type": "number",
+              "description": "Exact support elevation assigned to suggested sockets.",
+              "minimum": -1048576,
+              "maximum": 1048576
+            },
+            "span": {
+              "type": "number",
+              "description": "Suggested readable socket span.",
+              "exclusiveMinimum": 0,
+              "maximum": 65536
+            },
+            "budgets": {
+              "type": "object",
+              "description": "Optional bounded resident budgets; normalized and inspected before storage.",
+              "additionalProperties": true
+            },
+            "tolerances": {
+              "type": "object",
+              "description": "Optional socket tolerances; normalized and inspected before storage.",
+              "additionalProperties": true
+            }
+          },
+          "additionalProperties": false
+        },
+        "annotations": {
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      },
+      {
+        "op": "set_world_stream",
+        "title": "Set World Stream",
+        "description": "Store one strict map-owned deterministic chunk route after exact schema, map, socket, system, and budget validation.",
+        "surfaces": [
+          "core",
+          "browser-session"
+        ],
+        "mutatesProject": true,
+        "mutatesBuilderState": false,
+        "requiresSourceDigestInMcp": true,
+        "coordinationOnly": false,
+        "schemaPrecision": "declared",
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "expectedSourceDigest": {
+              "type": "string",
+              "description": "Project Doctor sourceDigest inspected immediately before this command.",
+              "minLength": 1
+            },
+            "expectedLedgerDigest": {
+              "type": "string",
+              "description": "Shared work-ledger digest inspected immediately before this coordination mutation.",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            },
+            "compact": {
+              "type": "boolean",
+              "description": "Return a compact result without repeating the complete embedded project when the transport supports it."
+            },
+            "mapId": {
+              "type": "string",
+              "description": "Stable authored ID.",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+            },
+            "program": {
+              "type": "object",
+              "description": "Strict map-owned deterministic continuous-world route. It composes embedded 2D chunks by exact authored sockets and never infers collision or adjacency from pixels.",
+              "properties": {
+                "schemaVersion": {
+                  "const": "looplab-world-stream/v1"
+                },
+                "owner": {
+                  "const": "authored-map"
+                },
+                "enabled": {
+                  "type": "boolean",
+                  "description": "Whether runtime composition is active."
+                },
+                "mode": {
+                  "type": "string",
+                  "enum": [
+                    "finite",
+                    "seeded"
+                  ],
+                  "description": "Exact finite sequence or deterministic seeded weighted route."
+                },
+                "axis": {
+                  "type": "string",
+                  "enum": [
+                    "horizontal",
+                    "vertical"
+                  ],
+                  "description": "Version-1 route composition axis."
+                },
+                "seed": {
+                  "type": "string",
+                  "description": "Stable deterministic route seed.",
+                  "minLength": 1,
+                  "maxLength": 128
+                },
+                "startTemplateId": {
+                  "type": "string",
+                  "description": "Stable authored ID.",
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+                },
+                "horizon": {
+                  "type": "integer",
+                  "description": "Maximum generated chunk count.",
+                  "minimum": 2,
+                  "maximum": 4096
+                },
+                "sequence": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "description": "Stable authored ID.",
+                    "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+                  },
+                  "description": "Finite ordered template IDs; empty for seeded mode.",
+                  "maxItems": 4096
+                },
+                "budgets": {
+                  "type": "object",
+                  "properties": {
+                    "retainBehind": {
+                      "type": "integer",
+                      "description": "Resident chunks retained behind the player.",
+                      "minimum": 0,
+                      "maximum": 15
+                    },
+                    "prefetchAhead": {
+                      "type": "integer",
+                      "description": "Resident chunks prepared ahead of the player.",
+                      "minimum": 0,
+                      "maximum": 15
+                    },
+                    "maxResidentChunks": {
+                      "type": "integer",
+                      "description": "Hard resident chunk limit.",
+                      "minimum": 1,
+                      "maximum": 16
+                    },
+                    "maxResidentTileCells": {
+                      "type": "integer",
+                      "description": "Hard resident rendered-cell limit.",
+                      "minimum": 1,
+                      "maximum": 262144
+                    },
+                    "maxResidentCollisionCells": {
+                      "type": "integer",
+                      "description": "Hard resident collision-cell limit.",
+                      "minimum": 1,
+                      "maximum": 131072
+                    },
+                    "maxDecodedRgbaBytes": {
+                      "type": "integer",
+                      "description": "Hard unique decoded RGBA memory limit.",
+                      "minimum": 1,
+                      "maximum": 1073741824
+                    },
+                    "cullPadding": {
+                      "type": "number",
+                      "description": "Camera culling padding in world units.",
+                      "minimum": 0,
+                      "maximum": 4096
+                    }
+                  },
+                  "required": [
+                    "retainBehind",
+                    "prefetchAhead",
+                    "maxResidentChunks",
+                    "maxResidentTileCells",
+                    "maxResidentCollisionCells",
+                    "maxDecodedRgbaBytes",
+                    "cullPadding"
+                  ],
+                  "additionalProperties": false
+                },
+                "tolerances": {
+                  "type": "object",
+                  "properties": {
+                    "crossAxis": {
+                      "type": "number",
+                      "description": "Maximum socket cross-axis difference.",
+                      "minimum": 0,
+                      "maximum": 64
+                    },
+                    "z": {
+                      "type": "number",
+                      "description": "Maximum socket support-elevation difference.",
+                      "minimum": 0,
+                      "maximum": 64
+                    },
+                    "span": {
+                      "type": "number",
+                      "description": "Maximum socket-span difference.",
+                      "minimum": 0,
+                      "maximum": 64
+                    }
+                  },
+                  "required": [
+                    "crossAxis",
+                    "z",
+                    "span"
+                  ],
+                  "additionalProperties": false
+                },
+                "templates": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "description": "Stable authored ID.",
+                        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+                      },
+                      "name": {
+                        "type": "string",
+                        "description": "Human-readable authored chunk name.",
+                        "minLength": 1,
+                        "maxLength": 240
+                      },
+                      "mapId": {
+                        "type": "string",
+                        "description": "Stable authored ID.",
+                        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+                      },
+                      "weight": {
+                        "type": "number",
+                        "description": "Deterministic seeded-selection weight.",
+                        "exclusiveMinimum": 0,
+                        "maximum": 1000000
+                      },
+                      "entry": {
+                        "anyOf": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "description": "Stable authored ID.",
+                                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+                              },
+                              "tag": {
+                                "type": "string",
+                                "description": "Exact authored route compatibility tag.",
+                                "minLength": 1,
+                                "maxLength": 128
+                              },
+                              "edge": {
+                                "type": "string",
+                                "enum": [
+                                  "left",
+                                  "right",
+                                  "top",
+                                  "bottom"
+                                ],
+                                "description": "Exact map boundary owned by this socket."
+                              },
+                              "x": {
+                                "type": "number",
+                                "description": "Authored map-space socket x.",
+                                "minimum": -1048576,
+                                "maximum": 1048576
+                              },
+                              "y": {
+                                "type": "number",
+                                "description": "Authored map-space socket y.",
+                                "minimum": -1048576,
+                                "maximum": 1048576
+                              },
+                              "z": {
+                                "type": "number",
+                                "description": "Independent authored support elevation.",
+                                "minimum": -1048576,
+                                "maximum": 1048576
+                              },
+                              "span": {
+                                "type": "number",
+                                "description": "Readable authored crossing span.",
+                                "exclusiveMinimum": 0,
+                                "maximum": 65536
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "tag",
+                              "edge",
+                              "x",
+                              "y",
+                              "z",
+                              "span"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "exit": {
+                        "anyOf": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "description": "Stable authored ID.",
+                                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+                              },
+                              "tag": {
+                                "type": "string",
+                                "description": "Exact authored route compatibility tag.",
+                                "minLength": 1,
+                                "maxLength": 128
+                              },
+                              "edge": {
+                                "type": "string",
+                                "enum": [
+                                  "left",
+                                  "right",
+                                  "top",
+                                  "bottom"
+                                ],
+                                "description": "Exact map boundary owned by this socket."
+                              },
+                              "x": {
+                                "type": "number",
+                                "description": "Authored map-space socket x.",
+                                "minimum": -1048576,
+                                "maximum": 1048576
+                              },
+                              "y": {
+                                "type": "number",
+                                "description": "Authored map-space socket y.",
+                                "minimum": -1048576,
+                                "maximum": 1048576
+                              },
+                              "z": {
+                                "type": "number",
+                                "description": "Independent authored support elevation.",
+                                "minimum": -1048576,
+                                "maximum": 1048576
+                              },
+                              "span": {
+                                "type": "number",
+                                "description": "Readable authored crossing span.",
+                                "exclusiveMinimum": 0,
+                                "maximum": 65536
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "tag",
+                              "edge",
+                              "x",
+                              "y",
+                              "z",
+                              "span"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "name",
+                      "mapId",
+                      "weight",
+                      "entry",
+                      "exit"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "description": "Stable authored chunk templates.",
+                  "minItems": 2,
+                  "maxItems": 128
+                }
+              },
+              "required": [
+                "schemaVersion",
+                "owner",
+                "enabled",
+                "mode",
+                "axis",
+                "seed",
+                "startTemplateId",
+                "horizon",
+                "sequence",
+                "budgets",
+                "tolerances",
+                "templates"
+              ],
+              "additionalProperties": false
+            },
+            "strict": {
+              "type": "boolean",
+              "description": "Return release-facing seam-evidence warnings after storage."
+            }
+          },
+          "required": [
+            "program"
+          ],
+          "additionalProperties": false
+        },
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": true,
+          "idempotentHint": false,
+          "openWorldHint": false
+        }
+      },
+      {
+        "op": "remove_world_stream",
+        "title": "Remove World Stream",
+        "description": "Remove continuous chunk composition from one host map without deleting any source maps, tiles, objects, or assets.",
+        "surfaces": [
+          "core",
+          "browser-session"
+        ],
+        "mutatesProject": true,
+        "mutatesBuilderState": false,
+        "requiresSourceDigestInMcp": true,
+        "coordinationOnly": false,
+        "schemaPrecision": "declared",
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "expectedSourceDigest": {
+              "type": "string",
+              "description": "Project Doctor sourceDigest inspected immediately before this command.",
+              "minLength": 1
+            },
+            "expectedLedgerDigest": {
+              "type": "string",
+              "description": "Shared work-ledger digest inspected immediately before this coordination mutation.",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            },
+            "compact": {
+              "type": "boolean",
+              "description": "Return a compact result without repeating the complete embedded project when the transport supports it."
+            },
+            "mapId": {
+              "type": "string",
+              "description": "Stable authored ID.",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+            }
+          },
           "additionalProperties": false
         },
         "annotations": {
@@ -31915,8 +32681,8 @@
   },
   "companion": {
     "baseUrl": "http://127.0.0.1:4317",
-    "expectedCompanionVersion": "1.36.0",
-    "expectedProtocolVersion": "1.105.0",
+    "expectedCompanionVersion": "1.37.0",
+    "expectedProtocolVersion": "1.106.0",
     "providers": "/providers",
     "promptDrafts": "/prompt-drafts",
     "agentPresence": "/agent-presence",

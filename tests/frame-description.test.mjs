@@ -122,7 +122,7 @@ test("describe_frame is a strict shared read-only command and the real CLI retur
   assert.equal(validateLooplabCommandInput({ op: "describe_frame", maximumEntries: LOOPLAB_FRAME_DESCRIPTION_LIMITS.maximumEntries + 1 }).valid, false);
   assert.equal(LOOPLAB_CORE_COMMANDS.includes("describe_frame"), true);
   assert.equal(LOOPLAB_BROWSER_SESSION_COMMANDS.includes("describe_frame"), true);
-  assert.equal(LOOPLAB_PROTOCOL_VERSION, "1.105.0");
+  assert.equal(LOOPLAB_PROTOCOL_VERSION, "1.106.0");
 
   const manifest = getAgentManifest();
   assert.equal(manifest.semanticFrameDescription.command, "describe_frame");
