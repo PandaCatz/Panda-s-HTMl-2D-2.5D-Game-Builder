@@ -5,12 +5,13 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { buildAnthropicMessagesRequest, requireAnthropicStructuredResult } from "../lib/looplab-anthropic-api.mjs";
-import { buildClaudeCliArgs, inspectClaudeCliOutput, requireClaudeCliStructuredResult } from "../lib/looplab-claude-cli.mjs";
+import { buildClaudeCliInvocation, inspectClaudeCliOutput, requireClaudeCliStructuredResult } from "../lib/looplab-claude-cli.mjs";
 import { buildOpenAiResponsesRequest, requireOpenAiStructuredResult } from "../lib/looplab-openai-request.mjs";
 import { requestProviderJson } from "../lib/looplab-provider-http.mjs";
 import { assertProviderPayloadPrivacy } from "../lib/looplab-project-privacy.mjs";
 import { parseProviderJson, runProviderProcess } from "../lib/looplab-provider-process.mjs";
-import { attachUsageReceipt, createUsageReceipt, readCodexConfiguredModel, usageFromCliOutput, usageReceiptSummary } from "../lib/looplab-provider-usage.mjs";
+import { buildCodexCliInvocation, createProviderModelSelectionReceipt, resolveAnthropicVisualModelPolicy } from "../lib/looplab-provider-model-policy.mjs";
+import { attachUsageReceipt, createUsageReceipt, usageFromCliOutput, usageReceiptSummary } from "../lib/looplab-provider-usage.mjs";
 import {
   decodeVisualCritiqueCaptureDataUrl,
   normalizeVisualCritiqueProviderOutput,
@@ -20,11 +21,22 @@ import {
 
 const args = process.argv.slice(2);
 const PROVIDER_AUTH_METHOD = process.env.LOOPLAB_PROVIDER_AUTH_METHOD || null;
+const MODEL_BENCHMARK_PATH = process.env.LOOPLAB_VISUAL_CRITIQUE_MODEL_BENCHMARK || null;
 const option = (name, fallback = null) => {
   const index = args.indexOf(name);
   return index >= 0 && args[index + 1] !== undefined ? args[index + 1] : fallback;
 };
 const emit = (type, detail = {}) => process.stdout.write(`${JSON.stringify({ type, ...detail })}\n`);
+
+async function loadModelBenchmarkReceipt() {
+  if (!MODEL_BENCHMARK_PATH) return null;
+  const benchmarkPath = resolve(MODEL_BENCHMARK_PATH);
+  try {
+    return JSON.parse(await readFile(benchmarkPath, "utf8"));
+  } catch (error) {
+    throw new Error(`LOOPLAB_VISUAL_CRITIQUE_MODEL_BENCHMARK could not be read as JSON at ${benchmarkPath}: ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
 
 const SYSTEM_PROMPT = `You are LoopLab Visual Critic, an evidence-grounded reviewer of exact 2D and sprite-based 2.5D HTML game captures.
 
@@ -68,7 +80,7 @@ async function materializeCaptureFiles(request, directory) {
   return files;
 }
 
-async function invokeProvider({ provider, request, schema, schemaPath, responseFile, responsePath, cwd }) {
+async function invokeProvider({ provider, request, schema, schemaPath, responseFile, responsePath, cwd, modelBenchmarkReceipt }) {
   if (provider === "file") {
     if (!responsePath) throw new Error("The file visual-critique provider requires --response.");
     return { output: JSON.parse(await readFile(resolve(responsePath), "utf8")), model: "fixture", receipt: createUsageReceipt({ provider: "file", model: "fixture", usage: { input_tokens: 0, output_tokens: 0, total_tokens: 0 }, source: "fixture" }) };
@@ -102,7 +114,8 @@ async function invokeProvider({ provider, request, schema, schemaPath, responseF
   if (provider === "anthropic") {
     const apiKey = process.env.ANTHROPIC_API_KEY;
     if (!apiKey) throw new Error("ANTHROPIC_API_KEY is not configured for visual critique.");
-    const model = process.env.LOOPLAB_ANTHROPIC_VISION_MODEL ?? process.env.LOOPLAB_ANTHROPIC_MODEL ?? "claude-sonnet-4-5";
+    const modelPolicy = resolveAnthropicVisualModelPolicy({ sonnetEvidenceReceipt: modelBenchmarkReceipt });
+    const model = modelPolicy.model;
     try {
       const { value } = await requestProviderJson({
         provider: "Anthropic",
@@ -111,12 +124,12 @@ async function invokeProvider({ provider, request, schema, schemaPath, responseF
         body: buildAnthropicMessagesRequest({ model, maxTokens: 10_000, system: SYSTEM_PROMPT, userInput: providerImageContent(request, "anthropic"), schema }),
         onRetry: (detail) => emit("provider.http.retrying", detail),
       });
-      const receipt = createUsageReceipt({ provider, model: value.model ?? model, usage: value.usage, source: "anthropic-messages-api", authMethod: PROVIDER_AUTH_METHOD });
+      const receipt = createUsageReceipt({ provider, model: value.model ?? model, usage: value.usage, source: "anthropic-messages-api", authMethod: PROVIDER_AUTH_METHOD, modelSelection: createProviderModelSelectionReceipt(modelPolicy, { providerReportedModel: value.model }) });
       try { return { output: requireAnthropicStructuredResult(value, "visual critique"), model: value.model ?? model, receipt }; }
       catch (error) { throw attachUsageReceipt(error, receipt); }
     } catch (error) {
       const value = error?.providerResponse ?? error?.responseBody;
-      if (value?.usage && !error?.usageReceipt) throw attachUsageReceipt(error, createUsageReceipt({ provider, model: value.model ?? model, usage: value.usage, source: "anthropic-messages-api", authMethod: PROVIDER_AUTH_METHOD }));
+      if (value?.usage && !error?.usageReceipt) throw attachUsageReceipt(error, createUsageReceipt({ provider, model: value.model ?? model, usage: value.usage, source: "anthropic-messages-api", authMethod: PROVIDER_AUTH_METHOD, modelSelection: createProviderModelSelectionReceipt(modelPolicy, { providerReportedModel: value.model }) }));
       throw error;
     }
   }
@@ -127,35 +140,37 @@ async function invokeProvider({ provider, request, schema, schemaPath, responseF
   assertProviderPayloadPrivacy({ prompt }, { label: "visual-critique CLI payload", sourceDigest: request.sourceDigest });
   if (provider === "codex") {
     const imageArgs = captureFiles.flatMap((entry) => ["-i", entry.file]);
+    const invocation = buildCodexCliInvocation(["exec", "--json", "--skip-git-repo-check", "--ephemeral", "--sandbox", "read-only", "--output-schema", schemaPath, "-o", responseFile, ...imageArgs, prompt], { purpose: "visual-critique" });
     const result = await runProviderProcess({
       command: "codex",
-      args: ["exec", "--json", "--skip-git-repo-check", "--ephemeral", "--sandbox", "read-only", "--output-schema", schemaPath, "-o", responseFile, ...imageArgs, prompt],
+      args: invocation.args,
       cwd,
       timeoutLabel: "visual critique",
     });
     const responseText = await readFile(responseFile, "utf8").catch(() => result.stdout);
     const measured = usageFromCliOutput(result.stdout, result.stderr);
-    const model = measured.model ?? process.env.LOOPLAB_CODEX_MODEL ?? await readCodexConfiguredModel() ?? "codex-cli";
-    return { output: parseProviderJson(responseText, { emptyMessage: "Codex returned no visual critique.", invalidMessage: "Codex returned invalid visual-critique JSON." }), model, receipt: createUsageReceipt({ provider, model, usage: measured.usage, source: "codex-cli-jsonl", authMethod: PROVIDER_AUTH_METHOD }) };
+    const model = measured.model ?? invocation.modelPolicy.model;
+    return { output: parseProviderJson(responseText, { emptyMessage: "Codex returned no visual critique.", invalidMessage: "Codex returned invalid visual-critique JSON." }), model, receipt: createUsageReceipt({ provider, model, usage: measured.usage, source: "codex-cli-jsonl", authMethod: PROVIDER_AUTH_METHOD, modelSelection: createProviderModelSelectionReceipt(invocation.modelPolicy, { providerReportedModel: measured.model }) }) };
   }
   if (provider === "claude") {
+    const invocation = buildClaudeCliInvocation({ prompt, schema, maxTurns: 4, tools: ["Read"], purpose: "visual-critique", maxBudgetUsd: process.env.LOOPLAB_CLAUDE_MAX_BUDGET_USD, sonnetEvidenceReceipt: modelBenchmarkReceipt });
     try {
       const result = await runProviderProcess({
         command: "claude",
-        args: buildClaudeCliArgs({ prompt, schema, maxTurns: 4, tools: ["Read"], model: process.env.LOOPLAB_CLAUDE_VISION_MODEL ?? process.env.LOOPLAB_CLAUDE_MODEL, effort: process.env.LOOPLAB_CLAUDE_EFFORT, maxBudgetUsd: process.env.LOOPLAB_CLAUDE_MAX_BUDGET_USD }),
+        args: invocation.args,
         input: providerContext,
         cwd,
         timeoutLabel: "visual critique",
       });
       const structured = requireClaudeCliStructuredResult(result.stdout);
       const measured = usageFromCliOutput(result.stdout, result.stderr);
-      const model = structured.model ?? measured.model ?? process.env.LOOPLAB_CLAUDE_VISION_MODEL ?? process.env.LOOPLAB_CLAUDE_MODEL ?? "claude-code-cli";
-      return { output: structured.structuredOutput, model, receipt: createUsageReceipt({ provider, model, usage: structured.usage ?? measured.usage, source: "claude-code-cli-stream-json", providerReportedUsd: structured.providerReportedUsd, authMethod: PROVIDER_AUTH_METHOD }) };
+      const model = structured.model ?? measured.model ?? invocation.modelPolicy.model;
+      return { output: structured.structuredOutput, model, receipt: createUsageReceipt({ provider, model, usage: structured.usage ?? measured.usage, source: "claude-code-cli-stream-json", providerReportedUsd: structured.providerReportedUsd, authMethod: PROVIDER_AUTH_METHOD, modelSelection: createProviderModelSelectionReceipt(invocation.modelPolicy, { providerReportedModel: structured.model ?? measured.model }) }) };
     } catch (error) {
       const telemetry = error?.claudeTelemetry ?? inspectClaudeCliOutput(error?.processResult?.stdout);
       const measured = usageFromCliOutput(error?.processResult?.stdout, error?.processResult?.stderr);
-      const model = telemetry.model ?? measured.model ?? process.env.LOOPLAB_CLAUDE_VISION_MODEL ?? process.env.LOOPLAB_CLAUDE_MODEL ?? "claude-code-cli";
-      if (error && typeof error === "object") error.usageReceipt = createUsageReceipt({ provider, model, usage: telemetry.usage ?? measured.usage, source: "claude-code-cli-stream-json", providerReportedUsd: telemetry.providerReportedUsd, authMethod: PROVIDER_AUTH_METHOD });
+      const model = telemetry.model ?? measured.model ?? invocation.modelPolicy.model;
+      if (error && typeof error === "object") error.usageReceipt = createUsageReceipt({ provider, model, usage: telemetry.usage ?? measured.usage, source: "claude-code-cli-stream-json", providerReportedUsd: telemetry.providerReportedUsd, authMethod: PROVIDER_AUTH_METHOD, modelSelection: createProviderModelSelectionReceipt(invocation.modelPolicy, { providerReportedModel: telemetry.model ?? measured.model }) });
       throw error;
     }
   }
@@ -171,6 +186,7 @@ async function main() {
   const schemaPath = resolve(dirname(fileURLToPath(import.meta.url)), "..", "agent", "visual-critique-schema.json");
   const schema = JSON.parse(await readFile(schemaPath, "utf8"));
   const request = normalizeVisualCritiqueRequest(JSON.parse(await readFile(inputPath, "utf8")));
+  const modelBenchmarkReceipt = provider === "claude" || provider === "anthropic" ? await loadModelBenchmarkReceipt() : null;
   const privacyPreflight = provider === "file" ? null : assertProviderPayloadPrivacy({ instructions: SYSTEM_PROMPT, context: visualCritiqueProviderContext(request) }, {
     label: "visual-critique provider payload",
     sourceDigest: request.sourceDigest,
@@ -178,7 +194,7 @@ async function main() {
   if (privacyPreflight) emit("visual-critique.privacy.checked", { sourceDigest: request.sourceDigest, reportDigest: privacyPreflight.digest, status: privacyPreflight.status, findingCount: privacyPreflight.findingCount });
   emit("visual-critique.started", { provider, sourceDigest: request.sourceDigest, captureSetDigest: request.captureSetDigest, captureCount: request.captures.length, message: `Submitting ${request.captures.length} consented capture(s) for grounded visual critique` });
   const responseFile = join(dirname(outputPath), "provider-visual-critique-response.json");
-  const invoked = await invokeProvider({ provider, request, schema, schemaPath, responseFile, responsePath, cwd: dirname(inputPath) });
+  const invoked = await invokeProvider({ provider, request, schema, schemaPath, responseFile, responsePath, cwd: dirname(inputPath), modelBenchmarkReceipt });
   emit("visual-critique.validating", { message: "Validating capture references, dimensions, authority boundaries, and byte-free result" });
   const result = normalizeVisualCritiqueProviderOutput(invoked.output, { request, provider, model: invoked.model, usage: invoked.receipt });
   await writeFile(outputPath, `${JSON.stringify(result, null, 2)}\n`, "utf8");

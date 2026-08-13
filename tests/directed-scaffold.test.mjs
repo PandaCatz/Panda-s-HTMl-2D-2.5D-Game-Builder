@@ -58,7 +58,7 @@ test("Kinetic City is a headless, connected, contract-complete starter", () => {
   for (const map of project.maps) for (const path of map.traversalPaths ?? []) assert.ok(project.acceptanceTests.some((acceptance) => acceptance.id === path.acceptanceTestId));
 
   const manifest = getAgentManifest();
-  assert.equal(manifest.protocolVersion, "1.101.0");
+  assert.equal(manifest.protocolVersion, "1.103.0");
   assert.ok(manifest.templates.includes("kinetic"));
   assert.ok(manifest.commands.includes("load_template"));
 });

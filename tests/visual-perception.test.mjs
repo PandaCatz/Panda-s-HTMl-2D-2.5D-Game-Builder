@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { analyzeVisualPerception, isHudVisualReviewTarget, LOOPLAB_VISUAL_PERCEPTION_SCHEMA_VERSION, normalizeVisualBounds, visualBoundsExtendBeyondFrame } from "../lib/looplab-visual-perception.mjs";
+import { LOOPLAB_COLOR_ACCESSIBILITY_SCHEMA_VERSION } from "../lib/looplab-color-accessibility.mjs";
 import { getLooplabCommandContract } from "../lib/looplab-agent-contracts.mjs";
 import { getAgentManifest } from "../lib/looplab-agent-core.mjs";
 
@@ -102,6 +103,21 @@ test("HUD review respects authored overlap exceptions and excludes non-landmark 
   assert.equal(isHudVisualReviewTarget({ id: "rail", kind: "decor", role: "rail" }), true);
 });
 
+test("visual perception carries exact color receipts and bounded color issues into annotations", () => {
+  const result = analyzeVisualPerception({
+    captureId: "color-review",
+    sourceDigest: "digest-color",
+    frame: frame(12, 12, (x, y) => x >= 3 && x < 9 && y >= 3 && y < 9 ? [80, 80, 80, 255] : [90, 90, 90, 255]),
+    colorTargets: [{ id: "player", label: "Player", kind: "gameplay-cue", source: "captured-gameplay-color", foreground: "#505050", background: "#5a5a5a", bounds: { x: 3, y: 3, width: 6, height: 6 }, essential: true, redundantCue: "silhouette" }],
+  });
+  assert.equal(result.colorAccessibility.schemaVersion, LOOPLAB_COLOR_ACCESSIBILITY_SCHEMA_VERSION);
+  assert.equal(result.colorAccessibility.summary.contrast, 1);
+  assert.equal(result.annotations.length, 1);
+  assert.equal(result.annotations[0].source, "color-accessibility");
+  assert.equal(result.annotations[0].kind, "color-contrast");
+  assert.deepEqual(result.annotations[0].bounds, { x: 3, y: 3, width: 6, height: 6, xRatio: 0.25, yRatio: 0.25, widthRatio: 0.5, heightRatio: 0.5 });
+});
+
 test("the published browser contracts expose truthful, opt-in visual payload controls", () => {
   const capture = getLooplabCommandContract("capture_visual_review");
   assert.equal(capture.inputSchema.additionalProperties, false);
@@ -115,8 +131,10 @@ test("the published browser contracts expose truthful, opt-in visual payload con
   assert.equal(select.inputSchema.properties.includeAnnotatedImage.type, "boolean");
 
   const manifest = getAgentManifest();
-  assert.equal(manifest.protocolVersion, "1.101.0");
+  assert.equal(manifest.protocolVersion, "1.103.0");
   assert.equal(manifest.verification.visualPerception.schemaVersion, LOOPLAB_VISUAL_PERCEPTION_SCHEMA_VERSION);
+  assert.equal(manifest.verification.visualPerception.colorAccessibility.schemaVersion, LOOPLAB_COLOR_ACCESSIBILITY_SCHEMA_VERSION);
   assert.match(manifest.verification.visualPerception.claimBoundary, /only identifies changed regions/);
+  assert.match(manifest.verification.visualPerception.colorAccessibility.claimBoundary, /never claim taste/);
   assert.match(manifest.verification.visualPerception.visualOnlyPolicy, /collect_verification_evidence remains strict/);
 });

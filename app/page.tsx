@@ -15,6 +15,7 @@ import {
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from "react";
+import { flushSync } from "react-dom";
 import VisualIdentityPanel, { type VisualIdentityContract, type VisualIdentityRole } from "./visual-identity-panel";
 import {
   LOOPLAB_PROTOCOL_VERSION,
@@ -54,9 +55,11 @@ import { providerFamilyPaths, resolveProviderRoute } from "../lib/looplab-provid
 import { createRuntimeModel } from "../lib/looplab-runtime-instance.mjs";
 import { compileTileRuntimeProgram } from "../lib/looplab-tile-runtime.mjs";
 import { createPresentationRuntime } from "../lib/looplab-presentation.mjs";
+import { analyzeEmbeddedAudioBytes, inspectEmbeddedAudioResource } from "../lib/looplab-audio-resources.mjs";
 import { createReplayEvidence, createRuntimePlaytestEvidence, validateVerificationEvidence, verificationCoverageRequirements } from "../lib/looplab-verification.mjs";
 import { analyzeRuntimeJoinPixels, buildRuntimeJoinPlan } from "../lib/looplab-runtime-join.mjs";
 import { analyzeVisualPerception, isHudVisualReviewTarget, visualBoundsExtendBeyondFrame } from "../lib/looplab-visual-perception.mjs";
+import { parseCssColor } from "../lib/looplab-color-accessibility.mjs";
 import { isVisualCritiqueFresh } from "../lib/looplab-visual-critique-freshness.mjs";
 import { analyzeSpriteFrames, decodedMemoryLedger, extractPalette, packSpriteAtlas, silhouetteDriftLimitForRole, sliceAtlasFrames } from "../lib/looplab-sprite-tools.mjs";
 import { extractProjectFromHtml } from "../lib/looplab-html-project.mjs";
@@ -317,6 +320,20 @@ type ProjectResource = {
   mimeType: string;
   dataUrl: string;
   bytes: number;
+  analysis?: {
+    measurable?: boolean;
+    encodedBytes?: number;
+    decodedMemoryBytes?: number;
+    sourceDecodedMemoryBytes?: number;
+    durationSeconds?: number;
+    sampleRate?: number;
+    decodedSampleRate?: number;
+    decodedFrameCount?: number;
+    frameCount?: number;
+    channels?: number;
+    format?: string;
+    error?: string | null;
+  };
   source: AssetSourceReference;
 };
 
@@ -685,6 +702,67 @@ const ITERATION_RELATION_LABELS: Record<IterationTechnicalRelation, string> = {
   "insufficient-evidence": "Comparable evidence is incomplete",
 };
 
+type StructuralOverlayBounds = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  zMin?: number;
+  zMax?: number;
+};
+
+type StructuralOverlayRecord = {
+  id: string;
+  label?: string;
+  bounds?: StructuralOverlayBounds;
+  placement?: { x: number; y: number; z: number; supportZ: number; width: number; height: number };
+  points?: Array<{ id: string; x: number; y: number }>;
+};
+
+type StructuralOverlayChange = {
+  id: string;
+  change: "added" | "removed" | "modified";
+  changeKinds: string[];
+  before: StructuralOverlayRecord | null;
+  after: StructuralOverlayRecord | null;
+};
+
+type StructuralMapDiff = {
+  mapId: string;
+  label: string;
+  status: "added" | "removed" | "modified" | "unchanged";
+  changeKinds: string[];
+  dimensions: { first: { width: number; height: number } | null; second: { width: number; height: number } | null };
+  detailCount: number;
+  retainedDetailCount: number;
+  omittedDetailCount: number;
+  objectChanges: StructuralOverlayChange[];
+  colliderChanges: StructuralOverlayChange[];
+  chainChanges: StructuralOverlayChange[];
+  tileColliderChanges: StructuralOverlayChange[];
+};
+
+type StructuralIterationDiff = {
+  schemaVersion: "looplab-structural-iteration-diff/v1" | string;
+  digest: string;
+  first: { iterationId: string | null; sourceDigest: string | null };
+  second: { iterationId: string | null; sourceDigest: string | null };
+  changed: boolean;
+  summary: {
+    maps: { changed: number; added: number; removed: number; resized: number; projectionChanged: number };
+    objects: { added: number; removed: number; modified: number; moved: number; resized: number; supportChanged: number; anchorChanged: number };
+    objectColliders: { added: number; removed: number; modified: number };
+    collisionChains: { added: number; removed: number; modified: number };
+    tileColliders: { added: number; removed: number; modified: number };
+  };
+  detailCount: number;
+  maximumDetailChanges: number;
+  truncated: boolean;
+  warnings: string[];
+  maps: StructuralMapDiff[];
+  policy: { identity: string; sourceBinding: string; collisionAuthority: string; coordinateSpace: string; detailBound: string; mutation: string; judgment: string };
+};
+
 type IterationComparison = {
   schemaVersion: "looplab-candidate-decision/v1" | string;
   digest: string;
@@ -717,6 +795,7 @@ type IterationComparison = {
     second: { score: number; errorCount: number; warningCount: number; digest: string; sourceDigest: string; profile: string };
   };
   counts: { first: { maps: number; objects: number; assets: number }; second: { maps: number; objects: number; assets: number } };
+  structuralDiff?: StructuralIterationDiff;
 };
 
 type Browser2DFramework = "standalone" | "canvas" | "phaser" | "pixi" | "melon";
@@ -1309,6 +1388,43 @@ type TuningSearchResultRef = {
   limitations: string[];
   searchDigest: string;
 };
+type BotCohortCoverageRef = {
+  authoredCount: number;
+  observedCount: number;
+  ratio: number | null;
+  observedIds: string[];
+  unobservedIds: string[];
+};
+type BotCohortReportRef = {
+  schemaVersion: "looplab-bot-cohort-report/v1";
+  sourceDigest: string;
+  status: "attention" | "observations-available";
+  reportDigest: string;
+  summary: {
+    runCount: number;
+    executedTicks: number;
+    simulatedSeconds: number;
+    completedRunCount: number;
+    meaningfulEventCount: number;
+    meaningfulEventsPerSimulatedMinute: number;
+    advisoryFindingCount: number;
+  };
+  coverage: {
+    maps: BotCohortCoverageRef;
+    routeMaps: BotCohortCoverageRef;
+    actions: BotCohortCoverageRef;
+    verbs: BotCohortCoverageRef;
+    combinations: BotCohortCoverageRef;
+    rules: BotCohortCoverageRef;
+    choices: BotCohortCoverageRef;
+    traversalPaths: BotCohortCoverageRef;
+    portals: BotCohortCoverageRef;
+  };
+  findings: Array<{ code: string; severity: "advisory"; title: string; evidence: Record<string, unknown>; suggestion: string; confidence: string }>;
+  runs: Array<{ id: string; label: string; policy: string; completed: boolean; executedTicks: number; actionIds: string[]; visitedMapIds: string[]; meaningfulEvents: number; longestStationaryActiveTicks: number }>;
+  proofBoundary: { statement: string; proves: string[]; doesNotProve: string[]; nextEvidence: string[] };
+  providerUsage: { provider: "none"; totalTokens: 0; rateEquivalentUsd: 0 };
+};
 type TuningCandidatePreviewRef = { candidateId: string; receipt: AgentBatchPreviewRef };
 type GameFoundationCandidateRef = {
   id: "platformer" | "topdown" | "systems" | "dimetric" | "kinetic";
@@ -1628,12 +1744,35 @@ type VisualReviewAnnotation = {
   severity: "error" | "warning" | "info";
   label: string;
   detail: string;
-  source: "semantic" | "pixel-diff";
+  source: "semantic" | "pixel-diff" | "color-accessibility";
   sourceEvidenceIds: string[];
   affectedIds: string[];
   bounds: { x: number; y: number; width: number; height: number; xRatio: number; yRatio: number; widthRatio: number; heightRatio: number };
   metrics: Record<string, unknown>;
   cropDataUrl?: string;
+};
+type ColorAccessibilityReceipt = {
+  schemaVersion: "looplab-color-accessibility/v1";
+  captureId: string;
+  sourceDigest: string;
+  frame: { width: number; height: number };
+  status: "measured" | "review-required";
+  summary: { targetCount: number; measuredCount: number; unobservedCount: number; unmeasuredCount: number; issueCount: number; contrast: number; cvd: number; colorOnly: number };
+  targets: Array<{
+    id: string;
+    label: string;
+    kind: "text" | "essential-non-text" | "gameplay-cue" | "semantic-pair";
+    source: "computed-style-over-captured-pixels" | "captured-gameplay-color" | "authored-color-pair";
+    status: "measured" | "unobserved-authored-color" | "unmeasured";
+    reason: string | null;
+    colors: { foreground?: string | null; background?: string | null; authoredForeground?: string | null; authoredBackground?: string | null };
+    observation: { sampleCount: number; foregroundPixelCount: number | null; foregroundPixelRatio: number | null; adjacentPixelCount: number | null };
+    contrast: { minimum?: number; p05?: number; median?: number; maximum?: number; threshold: number | null; result: "passed" | "review" | "unmeasured" };
+    cvd: null | { model: { id: string; severity: number; matrixSource: string; colorSpace: string }; normalDeltaE76: number; simulations: Array<{ type: string; foreground: string | null; background: string | null; deltaE76: number; retainedSeparation: number | null }> };
+    semantics: { essential: boolean; largeText: boolean; conveysMeaningByColor: boolean; redundantCue: string | null };
+  }>;
+  issues: Array<{ id: string; targetId: string; kind: string; severity: "warning"; label: string; detail: string; bounds: { x: number; y: number; width: number; height: number } | null; metrics: Record<string, unknown> }>;
+  policy: { advisoryOnly: true; noTasteClaim: true; noConformanceClaim: true; simulationIsNotUserTesting: true; cvdThresholdKind: string; useOfColorRequiresAuthoredSemantics: true; exactPixelRequirement: string };
 };
 type VisualPerceptionReceipt = {
   schemaVersion: "looplab-visual-perception/v1";
@@ -1641,6 +1780,7 @@ type VisualPerceptionReceipt = {
   sourceDigest: string;
   frame: { width: number; height: number };
   comparison: null | { status: "compared" | "dimension-mismatch"; sha256: string | null; width: number; height: number; metrics?: Record<string, number> };
+  colorAccessibility: ColorAccessibilityReceipt;
   annotationCount: number;
   annotations: VisualReviewAnnotation[];
   policy: { advisoryOnly: true; semanticGeometryPreferred: true; pixelDiffClaim: "changed-region-only"; imageBytesEphemeral: true };
@@ -2330,6 +2470,9 @@ const TUNING_FEEL_METRICS = [
   { id: "maximumHorizontalTravelPx", label: "Air travel", unit: "px" },
 ] as const;
 const formatTuningValue = (value: number, unit: string) => `${Number.isInteger(value) ? value : value.toFixed(1)} ${unit}`;
+const botCoverageLabel = (coverage: BotCohortCoverageRef) => coverage.authoredCount > 0
+  ? `${coverage.observedCount}/${coverage.authoredCount} · ${Math.round((coverage.ratio ?? 0) * 100)}%`
+  : "Not authored";
 
 function SpatialLayoutMiniMap({ preview, label }: { preview: SpatialLayoutPreviewRef; label: string }) {
   const width = Math.max(1, Number(preview.width) || 1);
@@ -3035,13 +3178,17 @@ async function importInstalledPackAsset(index: AssetPackIndex, asset: InstalledP
   const dataUrl = await blobToDataUrl(blob);
   const source = sourceReferenceForPackAsset(index, asset);
   if (asset.kind !== "image") {
+    const analysis = asset.kind === "audio"
+      ? analyzeEmbeddedAudioBytes(new Uint8Array(await blob.arrayBuffer()), asset.mimeType)
+      : null;
     const resource: ProjectResource = {
       id: `resource-${uid()}`,
       name: asset.name,
       kind: asset.kind === "source" ? "document" : asset.kind,
       mimeType: asset.mimeType,
       dataUrl,
-      bytes: asset.bytes,
+      bytes: blob.size,
+      ...(analysis ? { analysis } : {}),
       source,
     };
     return { resource, asset: null };
@@ -3165,6 +3312,117 @@ function PreviewInputButton({
     >
       {children}
     </button>
+  );
+}
+
+const STRUCTURAL_CHANGE_MARKERS = { added: "+", removed: "−", modified: "M" } as const;
+
+function structuralRecordBounds(record: StructuralOverlayRecord | null) {
+  if (!record) return null;
+  if (record.bounds) return record.bounds;
+  if (record.placement) return {
+    x: record.placement.x,
+    y: record.placement.y,
+    width: record.placement.width,
+    height: record.placement.height,
+  };
+  return null;
+}
+
+function StructuralIterationOverlay({ diff }: { diff: StructuralIterationDiff }) {
+  const changedMaps = diff.maps.filter((map) => map.status !== "unchanged");
+  const structuralTotal = diff.summary.objects.added + diff.summary.objects.removed + diff.summary.objects.modified
+    + diff.summary.objectColliders.added + diff.summary.objectColliders.removed + diff.summary.objectColliders.modified
+    + diff.summary.collisionChains.added + diff.summary.collisionChains.removed + diff.summary.collisionChains.modified
+    + diff.summary.tileColliders.added + diff.summary.tileColliders.removed + diff.summary.tileColliders.modified;
+
+  return (
+    <details className="iteration-structural-diff">
+      <summary><span><i aria-hidden="true" /> Authored structural changes</span><small>{diff.summary.maps.changed} map{diff.summary.maps.changed === 1 ? "" : "s"} · {structuralTotal} bounded change{structuralTotal === 1 ? "" : "s"}</small></summary>
+      <div className="iteration-structural-diff-body">
+        <header>
+          <div><span className="eyebrow">Stable-ID world-space evidence</span><strong>See what moved, appeared, disappeared, or changed collision.</strong></div>
+          <code>{diff.digest.slice(0, 18)}…</code>
+        </header>
+        <div className="structural-diff-metrics" aria-label="Structural comparison totals">
+          <span><small>Maps</small><b>{diff.summary.maps.changed}</b><em>{diff.summary.maps.added} + / {diff.summary.maps.removed} −</em></span>
+          <span><small>Objects</small><b>{diff.summary.objects.modified}</b><em>{diff.summary.objects.added} + / {diff.summary.objects.removed} −</em></span>
+          <span><small>Object collision</small><b>{diff.summary.objectColliders.modified}</b><em>{diff.summary.objectColliders.added} + / {diff.summary.objectColliders.removed} −</em></span>
+          <span><small>Authored chains</small><b>{diff.summary.collisionChains.modified}</b><em>{diff.summary.collisionChains.added} + / {diff.summary.collisionChains.removed} −</em></span>
+          <span><small>Tile collision</small><b>{diff.summary.tileColliders.modified}</b><em>{diff.summary.tileColliders.added} + / {diff.summary.tileColliders.removed} −</em></span>
+        </div>
+        {diff.truncated && <p className="structural-diff-warning"><strong>Detail is bounded.</strong> Aggregate totals are complete; this view retains at most {diff.maximumDetailChanges} deterministic records and explicitly marks omitted records per map.</p>}
+        {diff.warnings.map((warning) => <p className="structural-diff-warning" key={warning}><strong>Source ambiguity.</strong> {warning}</p>)}
+        {changedMaps.length === 0 ? <p className="structural-diff-empty">No authored map, object, or collision structure changed between these exact source snapshots.</p> : <div className="structural-diff-maps">
+          {changedMaps.map((map) => {
+            const rectangleChanges = [
+              ...map.objectChanges.map((change) => ({ category: "object", change })),
+              ...map.colliderChanges.map((change) => ({ category: "object-collider", change })),
+              ...map.tileColliderChanges.map((change) => ({ category: "tile-collider", change })),
+            ];
+            const allRecords = [...rectangleChanges.flatMap(({ change }) => [change.before, change.after]), ...map.chainChanges.flatMap((change) => [change.before, change.after])].filter((record): record is StructuralOverlayRecord => Boolean(record));
+            const bounds = allRecords.map(structuralRecordBounds).filter((value): value is StructuralOverlayBounds => Boolean(value));
+            const points = allRecords.flatMap((record) => record.points ?? []);
+            const baseWidth = Math.max(map.dimensions.first?.width ?? 0, map.dimensions.second?.width ?? 0, 1);
+            const baseHeight = Math.max(map.dimensions.first?.height ?? 0, map.dimensions.second?.height ?? 0, 1);
+            const hasGeometry = bounds.length > 0 || points.length > 0;
+            const geometryMinX = hasGeometry ? Math.min(...bounds.map((value) => value.x), ...points.map((point) => point.x)) : 0;
+            const geometryMinY = hasGeometry ? Math.min(...bounds.map((value) => value.y), ...points.map((point) => point.y)) : 0;
+            const geometryMaxX = hasGeometry ? Math.max(...bounds.map((value) => value.x + value.width), ...points.map((point) => point.x)) : baseWidth;
+            const geometryMaxY = hasGeometry ? Math.max(...bounds.map((value) => value.y + value.height), ...points.map((point) => point.y)) : baseHeight;
+            const contextPadding = hasGeometry ? Math.max(24, Math.max(geometryMaxX - geometryMinX, geometryMaxY - geometryMinY) * 0.18) : 0;
+            const minX = hasGeometry ? (geometryMinX < 0 ? geometryMinX - contextPadding : Math.max(0, geometryMinX - contextPadding)) : 0;
+            const minY = hasGeometry ? (geometryMinY < 0 ? geometryMinY - contextPadding : Math.max(0, geometryMinY - contextPadding)) : 0;
+            const maxX = hasGeometry ? (geometryMaxX > baseWidth ? geometryMaxX + contextPadding : Math.min(baseWidth, geometryMaxX + contextPadding)) : baseWidth;
+            const maxY = hasGeometry ? (geometryMaxY > baseHeight ? geometryMaxY + contextPadding : Math.min(baseHeight, geometryMaxY + contextPadding)) : baseHeight;
+            const padding = Math.max(2, Math.min(Math.max(1, maxX - minX), Math.max(1, maxY - minY)) * 0.025);
+            const viewWidth = Math.max(1, maxX - minX + padding * 2);
+            const viewHeight = Math.max(1, maxY - minY + padding * 2);
+            const markerSize = Math.max(5, Math.min(viewWidth, viewHeight) * 0.035);
+            const detailChanges = [
+              ...map.objectChanges.map((change) => ({ category: "object", change })),
+              ...map.colliderChanges.map((change) => ({ category: "object collider", change })),
+              ...map.chainChanges.map((change) => ({ category: "authored collision chain", change })),
+              ...map.tileColliderChanges.map((change) => ({ category: "tile collider", change })),
+            ];
+            return <article className="structural-map-diff" key={map.mapId}>
+              <header><div><strong>{map.label}</strong><small>{map.mapId} · {map.status}{map.changeKinds.length ? ` · ${map.changeKinds.join(", ")}` : ""}</small><small>{map.dimensions.first?.width ?? 0}×{map.dimensions.first?.height ?? 0} → {map.dimensions.second?.width ?? 0}×{map.dimensions.second?.height ?? 0}{hasGeometry ? " · change-focused world crop" : " · full authored map"}</small></div><span>{map.retainedDetailCount}/{map.detailCount} shown</span></header>
+              <div className="structural-overlay-frame">
+                <svg aria-hidden="true" viewBox={`${minX - padding} ${minY - padding} ${viewWidth} ${viewHeight}`} preserveAspectRatio="xMidYMid meet">
+                  <rect className="structural-map-bound first" x="0" y="0" width={Math.max(0, map.dimensions.first?.width ?? 0)} height={Math.max(0, map.dimensions.first?.height ?? 0)} vectorEffect="non-scaling-stroke" />
+                  <rect className="structural-map-bound second" x="0" y="0" width={Math.max(0, map.dimensions.second?.width ?? 0)} height={Math.max(0, map.dimensions.second?.height ?? 0)} vectorEffect="non-scaling-stroke" />
+                  {rectangleChanges.map(({ category, change }) => {
+                    const before = structuralRecordBounds(change.before);
+                    const after = structuralRecordBounds(change.after);
+                    const markerBounds = after ?? before;
+                    return <g key={`${category}:${change.id}`}>
+                      {before && <rect className={`structural-shape ${category} before ${change.change}`} x={before.x} y={before.y} width={Math.max(0.01, before.width)} height={Math.max(0.01, before.height)} vectorEffect="non-scaling-stroke" />}
+                      {after && <rect className={`structural-shape ${category} after ${change.change}`} x={after.x} y={after.y} width={Math.max(0.01, after.width)} height={Math.max(0.01, after.height)} vectorEffect="non-scaling-stroke" />}
+                      {change.change === "modified" && before && after && (before.x !== after.x || before.y !== after.y) && <line className="structural-move-connector" x1={before.x + before.width / 2} y1={before.y + before.height / 2} x2={after.x + after.width / 2} y2={after.y + after.height / 2} vectorEffect="non-scaling-stroke" />}
+                      {markerBounds && <text className={`structural-change-marker ${change.change}`} x={markerBounds.x + markerBounds.width / 2} y={markerBounds.y + markerBounds.height / 2} fontSize={markerSize}>{category === "object-collider" || category === "tile-collider" ? "C" : STRUCTURAL_CHANGE_MARKERS[change.change]}</text>}
+                    </g>;
+                  })}
+                  {map.chainChanges.map((change) => {
+                    const before = change.before?.points ?? [];
+                    const after = change.after?.points ?? [];
+                    const marker = after[0] ?? before[0];
+                    return <g key={`chain:${change.id}`}>
+                      {before.length > 1 && <polyline className={`structural-chain before ${change.change}`} points={before.map((point) => `${point.x},${point.y}`).join(" ")} vectorEffect="non-scaling-stroke" />}
+                      {after.length > 1 && <polyline className={`structural-chain after ${change.change}`} points={after.map((point) => `${point.x},${point.y}`).join(" ")} vectorEffect="non-scaling-stroke" />}
+                      {marker && <text className={`structural-change-marker ${change.change}`} x={marker.x} y={marker.y} fontSize={markerSize}>C</text>}
+                    </g>;
+                  })}
+                </svg>
+              </div>
+              <div className="structural-overlay-legend" aria-label="Structural overlay legend"><span><i className="before" />Dashed · before / removed</span><span><i className="after" />Solid · after / added</span><span><b>+</b> added</span><span><b>−</b> removed</span><span><b>M</b> modified object</span><span><b>C</b> collision truth</span></div>
+              <ul className="structural-change-list">{detailChanges.map(({ category, change }) => <li key={`${category}:${change.id}`}><b>{category.includes("collider") || category.includes("collision chain") ? "C" : STRUCTURAL_CHANGE_MARKERS[change.change]}</b><span><strong>{change.after?.label ?? change.before?.label ?? change.id}</strong><small>{category} · {change.changeKinds.join(", ")}</small></span></li>)}</ul>
+              {map.omittedDetailCount > 0 && <p className="structural-diff-warning">{map.omittedDetailCount} additional record{map.omittedDetailCount === 1 ? " is" : "s are"} counted but omitted from this bounded view.</p>}
+            </article>;
+          })}
+        </div>}
+        <p className="structural-diff-policy"><strong>Evidence, not a verdict.</strong> Stable authored IDs establish identity. World-space geometry is never inferred from art or pixels. This view cannot mutate, restore, rank, or choose either iteration.</p>
+      </div>
+    </details>
   );
 }
 
@@ -3436,7 +3694,7 @@ export default function Home() {
   const [visualReviewRunning, setVisualReviewRunning] = useState(false);
   const [showVisualReview, setShowVisualReview] = useState(false);
   const [visualReview, setVisualReview] = useState<VisualReviewReport | null>(null);
-  const [visualCritiqueProvider, setVisualCritiqueProvider] = useState<AgentProvider>("openai");
+  const [visualCritiqueProvider, setVisualCritiqueProvider] = useState<AgentProvider>("claude");
   const [visualCritiqueConsent, setVisualCritiqueConsent] = useState(false);
   const [visualCritiqueRunning, setVisualCritiqueRunning] = useState(false);
   const [visualCritiqueJob, setVisualCritiqueJob] = useState<VisualCritiqueJobDescriptor | null>(null);
@@ -3489,6 +3747,8 @@ export default function Home() {
   const [gameShellDraft, setGameShellDraft] = useState(() => project.gameShell ? JSON.stringify(project.gameShell, null, 2) : "");
   const [tuningSearchResult, setTuningSearchResult] = useState<TuningSearchResultRef | null>(null);
   const [tuningSearchRunning, setTuningSearchRunning] = useState(false);
+  const [botCohortReport, setBotCohortReport] = useState<BotCohortReportRef | null>(null);
+  const [botCohortRunning, setBotCohortRunning] = useState(false);
   const [selectedTuningCandidateId, setSelectedTuningCandidateId] = useState<string | null>(null);
   const [tuningCandidatePreview, setTuningCandidatePreview] = useState<TuningCandidatePreviewRef | null>(null);
   const [foundationSearchResult, setFoundationSearchResult] = useState<GameFoundationSearchResultRef | null>(null);
@@ -3654,7 +3914,10 @@ export default function Home() {
   const motionBodyInspection = doctorReport.motionBodyReport as { present: boolean; bodyCount: number; enabledBodyCount: number; valid: boolean; errors: string[]; warnings: string[]; issues: Array<{ severity: string; code: string; message: string; objectId?: string }> };
   const selectedMotionBodyIssues = motionBodyInspection.issues.filter((issue) => issue.objectId === selected?.id);
   const actorInspection = doctorReport.actorReport as { present: boolean; enabled: boolean; valid: boolean; actorCount: number; patrolCount: number; perceptionCount: number; cutsceneCount: number; errors: string[]; warnings: string[]; issues: Array<{ severity: string; code: string; message: string }> };
-  const presentationInspection = doctorReport.presentationReport as { present: boolean; status: string; errors: string[]; warnings: string[]; issues: Array<{ severity: string; code: string; message: string }>; metrics?: { audioCueCount: number; motionCueCount: number; effectCount: number; mappedEventCount: number; maximumVoices?: number; maximumParticles?: number } };
+  const presentationInspection = doctorReport.presentationReport as { present: boolean; status: string; errors: string[]; warnings: string[]; issues: Array<{ severity: string; code: string; message: string }>; metrics?: { audioCueCount: number; motionCueCount: number; effectCount: number; mappedEventCount: number; maximumVoices?: number; maximumParticles?: number; referencedAudioResourceCount?: number; encodedAudioBytes?: number; decodedAudioBytes?: number } };
+  const embeddedAudioInspections = useMemo(() => new Map((project.resources ?? [])
+    .filter((resource) => resource.kind === "audio")
+    .map((resource) => [resource.id, inspectEmbeddedAudioResource(resource)])), [project.resources]);
   const gameShellInspection = doctorReport.gameShellReport as { present: boolean; valid: boolean; shipReady: boolean; status: string; errors: string[]; warnings: string[]; issues: Array<{ severity: string; code: string; message: string }>; metrics?: { stateCount: number; settingsControlCount: number; terminalCount: number }; proofBoundary?: string };
   const privacyInspection = doctorReport.privacyReport as { schemaVersion: string; status: "clear" | "review-required" | "blocked"; sourceDigest: string | null; digest: string; findingCount: number; errorCount: number; warningCount: number; issues: Array<{ severity: string; code: string; kind: string; path: string; message: string; action: string }>; metrics: { visitedValues: number; scannedStrings: number; scannedCharacters: number; skippedOpaquePayloads: number; truncatedStrings: number; cycleCount: number }; proofBoundary: string };
   const tuningFeel = tuningInspection.feel;
@@ -3663,6 +3926,7 @@ export default function Home() {
     const controller = createPresentationRuntime(project.presentationProgram, {
       host: globalThis,
       document,
+      resources: project.resources ?? [],
       getPoint: (event: RuntimeEvent, target: string) => {
         const snapshot = projectRef.current;
         const engine = runtimeEngineRef.current;
@@ -3682,7 +3946,7 @@ export default function Home() {
       controller.destroy();
       if (presentationRuntimeRef.current === controller) presentationRuntimeRef.current = null;
     };
-  }, [project.presentationProgram]);
+  }, [project.presentationProgram, project.resources]);
   const visibleAgentRecipes = useMemo(() => listAgentRecipes({ status: "all", limit: 50, query: agentRecipeQuery }).recipes as AgentRecipeRef[], [agentRecipeQuery]);
   const visibleAgentRecipeId = visibleAgentRecipes.some((recipe) => recipe.id === agentRecipeId) ? agentRecipeId : visibleAgentRecipes[0]?.id ?? agentRecipeId;
   const selectedAgentRecipe = useMemo(() => getAgentRecipe(visibleAgentRecipeId).recipe as AgentRecipeRef, [visibleAgentRecipeId]);
@@ -3791,6 +4055,7 @@ export default function Home() {
     ];
   }, [projectLibrary, sharedProjectCatalog]);
   const tuningSearchFresh = doctorReportFresh && tuningSearchResult?.sourceDigest === doctorReport.sourceDigest;
+  const botCohortFresh = doctorReportFresh && botCohortReport?.sourceDigest === doctorReport.sourceDigest;
   const selectedTuningCandidate = tuningSearchResult?.candidates.find((candidate) => candidate.id === selectedTuningCandidateId) ?? null;
   const tuningPreviewFresh = Boolean(tuningCandidatePreview && tuningSearchFresh && tuningCandidatePreview.receipt.sourceDigest === doctorReport.sourceDigest);
   const isProtectedTuningVariation = activeProjectLibraryEntry?.origin === "variation" && Boolean(activeProjectLibraryEntry.parentLibraryId);
@@ -4463,7 +4728,11 @@ export default function Home() {
     historyRef.current = [...historyRef.current.slice(-(HISTORY_LIMIT - 1)), cloneProject(previous)];
     futureRef.current = [];
     projectRef.current = syncedNext;
-    setProject(syncedNext);
+    // A headless caller can issue its next command immediately after this
+    // promise resolves. Publish the React state before returning so an older
+    // passive render cannot temporarily replace projectRef with stale map data.
+    flushSync(() => setProject(syncedNext));
+    projectRef.current = syncedNext;
     syncDirectedBriefControls(syncedNext.designBrief);
     setTuningContractDraft(syncedNext.tuningContract ? JSON.stringify(syncedNext.tuningContract, null, 2) : "");
     setSpatialLayoutContractDraft(syncedNext.spatialLayoutContract ? JSON.stringify(syncedNext.spatialLayoutContract, null, 2) : "");
@@ -6158,6 +6427,47 @@ export default function Home() {
           const semanticTargets: Array<{ kind: string; severity: "error" | "warning" | "info"; label: string; detail: string; bounds: { x: number; y: number; width: number; height: number }; affectedIds?: string[]; sourceEvidenceIds?: string[]; metrics?: Record<string, unknown> }> = [];
           const frameRect = { x: 0, y: 0, width: captureCanvas.width, height: captureCanvas.height };
           const objectRects = runtimeObjects.map((object) => ({ object, bounds: toCaptureRect(runtimeObjectRect(object)) }));
+          const colorTargets: Array<{
+            id: string;
+            label: string;
+            kind: "text" | "essential-non-text" | "gameplay-cue" | "semantic-pair";
+            source: "computed-style-over-captured-pixels" | "captured-gameplay-color" | "authored-color-pair";
+            foreground: string;
+            background?: string;
+            backgroundLayers?: string[];
+            bounds: { x: number; y: number; width: number; height: number };
+            largeText?: boolean;
+            essential?: boolean;
+            conveysMeaningByColor?: boolean;
+            redundantCue?: string;
+            cvdRelevant?: boolean;
+          }> = [];
+          const gameplayColorCues: Record<string, string> = {
+            player: "player silhouette and movement",
+            hazard: "hazard geometry",
+            coin: "collectible silhouette",
+            goal: "goal silhouette",
+            portal: "portal frame",
+          };
+          for (const entry of objectRects) {
+            const foreground = String(entry.object.color ?? "").trim();
+            const redundantCue = gameplayColorCues[entry.object.kind];
+            const visible = intersectVisualRects(entry.bounds, frameRect);
+            if (!visible || !redundantCue || !/^#[0-9a-f]{6}$/i.test(foreground)) continue;
+            colorTargets.push({
+              id: `gameplay:${map.id}:${entry.object.id}`,
+              label: entry.object.name ?? entry.object.id,
+              kind: "gameplay-cue",
+              source: "captured-gameplay-color",
+              foreground,
+              background: String(map.background ?? captureState.background ?? current.background ?? "#000000"),
+              bounds: visible,
+              essential: true,
+              conveysMeaningByColor: false,
+              redundantCue,
+              cvdRelevant: true,
+            });
+          }
           for (const entry of objectRects) {
             const visible = intersectVisualRects(entry.bounds, frameRect);
             if (!visible) continue;
@@ -6180,6 +6490,47 @@ export default function Home() {
               frameRect,
             );
             if (hudOnCanvas) {
+              const hudCandidates = [...hud.querySelectorAll<HTMLElement>("strong, span, small, b, button, [role='status'], [aria-label]")]
+                .filter((element) => visibleElement(element) && String(element.textContent ?? element.getAttribute("aria-label") ?? "").trim().length > 0);
+              const hudTextElements = hudCandidates.filter((element) => !hudCandidates.some((candidate) => candidate !== element && element.contains(candidate))).slice(0, 24);
+              for (const [elementIndex, element] of hudTextElements.entries()) {
+                const elementBounds = element.getBoundingClientRect();
+                const captureBounds = intersectVisualRects({
+                  x: (elementBounds.left - bounds.left) / bounds.width * captureCanvas.width,
+                  y: (elementBounds.top - bounds.top) / bounds.height * captureCanvas.height,
+                  width: elementBounds.width / bounds.width * captureCanvas.width,
+                  height: elementBounds.height / bounds.height * captureCanvas.height,
+                }, frameRect);
+                if (!captureBounds) continue;
+                const computed = window.getComputedStyle(element);
+                const foreground = computed.color;
+                if (!parseCssColor(foreground)) continue;
+                const ancestry: HTMLElement[] = [];
+                let cursor: HTMLElement | null = element;
+                while (cursor && hud.contains(cursor)) {
+                  ancestry.push(cursor);
+                  if (cursor === hud) break;
+                  cursor = cursor.parentElement;
+                }
+                const backgroundLayers = ancestry.reverse().map((node) => window.getComputedStyle(node).backgroundColor).filter((value) => (parseCssColor(value)?.a ?? 0) > 0);
+                const fontSize = Number.parseFloat(computed.fontSize) || 0;
+                const bold = computed.fontWeight === "bold" || (Number.parseFloat(computed.fontWeight) || 0) >= 700;
+                const label = String(element.getAttribute("aria-label") ?? element.textContent ?? `HUD text ${elementIndex + 1}`).trim().replace(/\s+/g, " ").slice(0, 80);
+                colorTargets.push({
+                  id: `hud:${map.id}:${profile.id}:${element.id || elementIndex + 1}`,
+                  label,
+                  kind: "text",
+                  source: "computed-style-over-captured-pixels",
+                  foreground,
+                  backgroundLayers: backgroundLayers.length ? backgroundLayers : ["rgba(0, 0, 0, 0)"],
+                  bounds: captureBounds,
+                  largeText: fontSize >= 24 || (bold && fontSize >= 18.66),
+                  essential: true,
+                  conveysMeaningByColor: false,
+                  redundantCue: "text content",
+                  cvdRelevant: false,
+                });
+              }
               const hudOverlaps = objectRects.filter((entry) => {
                 if (!isHudVisualReviewTarget(entry.object)) return false;
                 const overlap = intersectVisualRects(entry.bounds, hudOnCanvas);
@@ -6225,7 +6576,8 @@ export default function Home() {
             baselineFrame,
             baselineSha256: priorCapture?.sha256 ?? null,
             semanticTargets,
-            options: { maximumSemanticTargets: 16, maximumRegions: 8, cellSize: 16, pixelThreshold: 36, minimumCellChangedRatio: 0.08, minimumRegionChangedPixels: 24 },
+            colorTargets,
+            options: { maximumSemanticTargets: 16, maximumRegions: 8, cellSize: 16, pixelThreshold: 36, minimumCellChangedRatio: 0.08, minimumRegionChangedPixels: 24, colorAccessibility: { maximumTargets: 48, maximumSamplesPerTarget: 4096 } },
           }) as VisualPerceptionReceipt;
           perception.annotations = perception.annotations.map((annotation, index) => index < 12 ? { ...annotation, cropDataUrl: visualAnnotationCropDataUrl(captureCanvas, annotation) } : annotation);
           const annotatedDataUrl = annotatedVisualDataUrl(captureCanvas, perception.annotations);
@@ -6258,6 +6610,12 @@ export default function Home() {
               annotationCount: perception.annotationCount,
               comparison: perception.comparison,
               kinds: [...new Set(perception.annotations.map((annotation) => annotation.kind))],
+              colorAccessibility: {
+                schemaVersion: perception.colorAccessibility.schemaVersion,
+                status: perception.colorAccessibility.status,
+                summary: perception.colorAccessibility.summary,
+                policy: perception.colorAccessibility.policy,
+              },
             },
           });
           captures.push({
@@ -7094,7 +7452,8 @@ export default function Home() {
     const applyCoordinationFromAgent = (next: GameProject, message: string) => {
       const coordinated = cloneProject(next);
       projectRef.current = coordinated;
-      setProject(coordinated);
+      flushSync(() => setProject(coordinated));
+      projectRef.current = coordinated;
       showToast(message);
       const detail = { project: cloneProject(coordinated), ledger: getAgentWorkLedger(coordinated, { eventLimit: 6 }) };
       window.dispatchEvent(new CustomEvent("looplab:project-changed", { detail }));
@@ -10134,6 +10493,57 @@ export default function Home() {
     }
   };
 
+  const insertPresentationSampleCue = (resource: ProjectResource) => {
+    try {
+      let program: Record<string, unknown>;
+      if (presentationProgramDraft.trim()) {
+        const parsed: unknown = JSON.parse(presentationProgramDraft);
+        if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("Prepare or repair the Presentation Program JSON before inserting a sample cue.");
+        program = structuredClone(parsed) as Record<string, unknown>;
+      } else {
+        const outcome = applyAgentCommand(syncActiveMap(project), { op: "suggest_presentation_program" });
+        const suggestion = outcome.result as { program?: Record<string, unknown> };
+        if (!suggestion.program) throw new Error("No presentation starter is available for this project.");
+        program = structuredClone(suggestion.program);
+      }
+      if (!program.audio || typeof program.audio !== "object" || Array.isArray(program.audio)) throw new Error("Presentation audio must be an object.");
+      const audio = program.audio as Record<string, unknown>;
+      if (!Array.isArray(audio.cues)) throw new Error("Presentation audio cues must be an array.");
+      const cues = audio.cues as Array<Record<string, unknown>>;
+      const usedIds = new Set(cues.map((cue) => typeof cue.id === "string" ? cue.id : ""));
+      const stem = resource.name.replace(/\.[^.]+$/, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 42) || "clip";
+      let cueId = `sample-${stem}`;
+      for (let suffix = 2; usedIds.has(cueId); suffix += 1) cueId = `sample-${stem}-${suffix}`;
+      const byteInspection = inspectEmbeddedAudioResource(resource);
+      const measuredDuration = Number(byteInspection.ok && "durationSeconds" in byteInspection ? byteInspection.durationSeconds : resource.analysis?.durationSeconds ?? 0) * 1_000;
+      cues.push({
+        id: cueId,
+        event: "goal.reached",
+        enabled: true,
+        kind: "sample",
+        waveform: "sine",
+        frequency: 220,
+        endFrequency: 220,
+        filterFrequency: 800,
+        durationMs: Math.max(20, Math.min(2_000, Number.isFinite(measuredDuration) && measuredDuration > 0 ? Math.round(measuredDuration) : 600)),
+        attackMs: 4,
+        releaseMs: 80,
+        volume: 0.18,
+        pitchVariationCents: 0,
+        resourceId: resource.id,
+        playbackRate: 1,
+      });
+      setPresentationProgramDraft(JSON.stringify(program, null, 2));
+      setAgentCommandResult(JSON.stringify({ ok: true, changed: false, insertedCueId: cueId, resourceId: resource.id, next: "Review the event, duration, and mix, then save the program." }, null, 2));
+      appendConsole("presentation.sample.inserted", `${resource.name} added to the draft`, `${cueId} → goal.reached · review before saving · no project state changed`, "good");
+      showToast("Sample cue inserted · review its event and mix, then save");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setAgentCommandResult(JSON.stringify({ ok: false, error: message }, null, 2));
+      showToast(message);
+    }
+  };
+
   const savePresentationProgram = () => {
     try {
       const program: unknown = JSON.parse(presentationProgramDraft);
@@ -10572,6 +10982,35 @@ export default function Home() {
       showToast(message);
     } finally {
       setTuningSearchRunning(false);
+    }
+  };
+
+  const runDesignBotCohorts = async () => {
+    setBotCohortRunning(true);
+    try {
+      const run = agentBridgeRunRef.current;
+      if (!run) throw new Error("The agent bridge is still starting. Try again in one moment.");
+      await new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
+      const response = await run({ op: "run_bot_cohorts", expectedSourceDigest: doctorReport.sourceDigest, compact: true });
+      setAgentCommandResult(JSON.stringify(response, null, 2));
+      const report = response.result as BotCohortReportRef | undefined;
+      if (response.ok !== true || report?.schemaVersion !== "looplab-bot-cohort-report/v1") throw new Error(String(response.error ?? "The design behavior cohorts returned no source-bound report."));
+      setBotCohortReport(report);
+      appendConsole(
+        "design.cohorts.completed",
+        `${report.summary.runCount} deterministic behavior cohorts completed`,
+        `${report.summary.simulatedSeconds}s simulated · ${report.summary.advisoryFindingCount} design lead${report.summary.advisoryFindingCount === 1 ? "" : "s"} · ${report.summary.meaningfulEventCount} meaningful events · 0 provider tokens · $0.00`,
+        report.summary.advisoryFindingCount > 0 ? "neutral" : "good",
+      );
+      showToast(`${report.summary.runCount} behavior cohorts · ${report.summary.advisoryFindingCount} design leads · $0.00`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setBotCohortReport(null);
+      setAgentCommandResult(JSON.stringify({ ok: false, error: message }, null, 2));
+      appendConsole("design.cohorts.failed", "Behavior cohorts stopped safely", message, "bad");
+      showToast(message);
+    } finally {
+      setBotCohortRunning(false);
     }
   };
 
@@ -11359,12 +11798,27 @@ export default function Home() {
                       {!visualReview.verificationEligible && <p className="visual-review-warning">Visual inspection is available, but Project Doctor has {visualReview.doctorFindings.length} unresolved blocker or warning. These captures are not promotion evidence.</p>}
                       {selectedVisualCapture && <section className="visual-review-viewer">
                         <img src={showVisualAnnotations ? selectedVisualCapture.annotatedDataUrl : selectedVisualCapture.dataUrl} alt={`${showVisualAnnotations ? "Annotated" : "Clean"} ${selectedVisualCapture.mapName} render for ${selectedVisualCapture.profileName}`} />
-                        <div><strong>{selectedVisualCapture.mapName}</strong><span>{selectedVisualCapture.profileName}</span><div className="visual-review-toggle" aria-label="Capture presentation"><button aria-pressed={!showVisualAnnotations} onClick={() => setShowVisualAnnotations(false)}>Clean</button><button aria-pressed={showVisualAnnotations} onClick={() => setShowVisualAnnotations(true)} disabled={selectedVisualCapture.perception.annotationCount === 0}>Annotated ({selectedVisualCapture.perception.annotationCount})</button></div><small>Target {selectedVisualCapture.targetViewport.width}×{selectedVisualCapture.targetViewport.height} @ {selectedVisualCapture.targetViewport.devicePixelRatio}× · rendered {selectedVisualCapture.renderedBounds.width}×{selectedVisualCapture.renderedBounds.height}</small><small>Actual browser {selectedVisualCapture.actualViewport.width}×{selectedVisualCapture.actualViewport.height} @ {selectedVisualCapture.actualViewport.devicePixelRatio}×</small>{selectedVisualCapture.perception.comparison?.status === "compared" && <small>{(Number(selectedVisualCapture.perception.comparison.metrics?.changedPixelRatio ?? 0) * 100).toFixed(2)}% changed from the prior in-session capture</small>}<code>{selectedVisualCapture.sha256.slice(0, 31)}…</code></div>
+                        <div><strong>{selectedVisualCapture.mapName}</strong><span>{selectedVisualCapture.profileName}</span><div className="visual-review-toggle" aria-label="Capture presentation"><button aria-pressed={!showVisualAnnotations} onClick={() => setShowVisualAnnotations(false)}>Clean</button><button aria-pressed={showVisualAnnotations} onClick={() => setShowVisualAnnotations(true)} disabled={selectedVisualCapture.perception.annotationCount === 0}>Annotated ({selectedVisualCapture.perception.annotationCount})</button></div><small>Target {selectedVisualCapture.targetViewport.width}×{selectedVisualCapture.targetViewport.height} @ {selectedVisualCapture.targetViewport.devicePixelRatio}× · rendered {selectedVisualCapture.renderedBounds.width}×{selectedVisualCapture.renderedBounds.height}</small><small>Actual browser {selectedVisualCapture.actualViewport.width}×{selectedVisualCapture.actualViewport.height} @ {selectedVisualCapture.actualViewport.devicePixelRatio}×</small>{selectedVisualCapture.perception.comparison?.status === "compared" && <small>{(Number(selectedVisualCapture.perception.comparison.metrics?.changedPixelRatio ?? 0) * 100).toFixed(2)}% changed from the prior in-session capture</small>}<small>{selectedVisualCapture.perception.colorAccessibility.summary.measuredCount}/{selectedVisualCapture.perception.colorAccessibility.summary.targetCount} color targets measured · {selectedVisualCapture.perception.colorAccessibility.summary.issueCount} review issue{selectedVisualCapture.perception.colorAccessibility.summary.issueCount === 1 ? "" : "s"}</small><code>{selectedVisualCapture.sha256.slice(0, 31)}…</code></div>
                       </section>}
+                      {selectedVisualCapture && <details className={`color-accessibility-review ${selectedVisualCapture.perception.colorAccessibility.status === "review-required" ? "needs-review" : "measured"}`}>
+                        <summary><span><i aria-hidden="true" /> Exact-pixel color accessibility</span><small>{selectedVisualCapture.perception.colorAccessibility.summary.measuredCount} measured · {selectedVisualCapture.perception.colorAccessibility.summary.unobservedCount} authored color{selectedVisualCapture.perception.colorAccessibility.summary.unobservedCount === 1 ? "" : "s"} unobserved</small></summary>
+                        <div className="color-accessibility-body">
+                          <div className="color-accessibility-metrics" aria-label="Color accessibility result counts">
+                            <span><small>Contrast</small><strong>{selectedVisualCapture.perception.colorAccessibility.summary.contrast}</strong></span>
+                            <span><small>CVD separation</small><strong>{selectedVisualCapture.perception.colorAccessibility.summary.cvd}</strong></span>
+                            <span><small>Color-only cues</small><strong>{selectedVisualCapture.perception.colorAccessibility.summary.colorOnly}</strong></span>
+                            <span><small>Unmeasured</small><strong>{selectedVisualCapture.perception.colorAccessibility.summary.unmeasuredCount}</strong></span>
+                          </div>
+                          {selectedVisualCapture.perception.colorAccessibility.issues.length > 0
+                            ? <div className="color-accessibility-issues">{selectedVisualCapture.perception.colorAccessibility.issues.map((issue) => <article key={issue.id}><span>Review</span><strong>{issue.label}</strong><p>{issue.detail}</p></article>)}</div>
+                            : <p className="color-accessibility-clear">No measured color-review issue was found in this exact capture. This is not a conformance claim.</p>}
+                          <p className="color-accessibility-policy">HUD styles are composited over the pixels beneath translucent regions. Authored gameplay colors are judged only when observed inside their bounded capture. Machado simulations are diagnostic—not user testing, diagnosis, taste, or WCAG/legal conformance.</p>
+                        </div>
+                      </details>}
                       {selectedVisualCapture && selectedVisualCapture.perception.annotations.length > 0 && <section className="visual-annotation-review" aria-label="Pre-annotated visual review targets">
                         <header><div><span className="eyebrow">Pre-annotated perception</span><strong>Exact regions first; judgment stays with the reviewer</strong></div><small>Number + label + line style; color is never the only signal.</small></header>
                         <div className="visual-annotation-layout">
-                          <div className="visual-annotation-list">{selectedVisualCapture.perception.annotations.map((annotation) => <button key={annotation.id} className={`${annotation.severity} ${selectedVisualAnnotation?.id === annotation.id ? "selected" : ""}`} aria-pressed={selectedVisualAnnotation?.id === annotation.id} onClick={() => { setSelectedVisualAnnotationId(annotation.id); setShowVisualAnnotations(true); }}><b>{annotation.number}</b><span><strong>{annotation.label}</strong><small>{annotation.severity} · {annotation.kind.replaceAll("-", " ")} · {annotation.source === "pixel-diff" ? "pixel change" : "known geometry"}</small></span></button>)}</div>
+                          <div className="visual-annotation-list">{selectedVisualCapture.perception.annotations.map((annotation) => <button key={annotation.id} className={`${annotation.severity} ${selectedVisualAnnotation?.id === annotation.id ? "selected" : ""}`} aria-pressed={selectedVisualAnnotation?.id === annotation.id} onClick={() => { setSelectedVisualAnnotationId(annotation.id); setShowVisualAnnotations(true); }}><b>{annotation.number}</b><span><strong>{annotation.label}</strong><small>{annotation.severity} · {annotation.kind.replaceAll("-", " ")} · {annotation.source === "pixel-diff" ? "pixel change" : annotation.source === "color-accessibility" ? "measured color" : "known geometry"}</small></span></button>)}</div>
                           {selectedVisualAnnotation && <article className={`visual-annotation-detail ${selectedVisualAnnotation.severity}`}>{selectedVisualAnnotation.cropDataUrl && <img src={selectedVisualAnnotation.cropDataUrl} alt={`Cropped review target ${selectedVisualAnnotation.number}: ${selectedVisualAnnotation.label}`} />}<div><span>Target {selectedVisualAnnotation.number} · {selectedVisualAnnotation.severity}</span><strong>{selectedVisualAnnotation.label}</strong><p>{selectedVisualAnnotation.detail}</p>{selectedVisualAnnotation.affectedIds.length > 0 && <code>{selectedVisualAnnotation.affectedIds.join(", ")}</code>}</div></article>}
                         </div>
                       </section>}
@@ -11377,11 +11831,11 @@ export default function Home() {
                       </section>}
                       <section className={"visual-critique-panel " + (visualCritiqueFresh ? "is-fresh" : visualCritique ? "is-stale" : "")} aria-label="AI visual critique">
                         <header>
-                          <div><span className="eyebrow">Optional grounded judgment</span><strong>AI visual critique</strong><small>Exact current captures in, source-bound observations out.</small></div>
+                          <div><span className="eyebrow">Optional grounded judgment</span><strong>AI visual critique</strong><small>Exact current captures in, source-bound observations out. Claude Opus 5 is the default; Sonnet requires matched evidence that it is better.</small></div>
                           {visualCritiqueJob && <code>{visualCritiqueJob.jobId.slice(0, 18)}…</code>}
                         </header>
                         <div className="visual-critique-controls">
-                          <label htmlFor="visual-critique-provider"><span>Provider</span><select id="visual-critique-provider" aria-label="Visual critique provider" value={visualCritiqueProvider} onChange={(event) => setVisualCritiqueProvider(event.target.value as AgentProvider)} disabled={visualCritiqueRunning}><option value="openai">OpenAI API</option><option value="anthropic">Anthropic API</option><option value="codex">Codex CLI</option><option value="claude">Claude Code CLI</option></select></label>
+                          <label htmlFor="visual-critique-provider"><span>Provider</span><select id="visual-critique-provider" aria-label="Visual critique provider" value={visualCritiqueProvider} onChange={(event) => setVisualCritiqueProvider(event.target.value as AgentProvider)} disabled={visualCritiqueRunning}><option value="claude">Claude Code CLI · Opus 5</option><option value="anthropic">Anthropic API · Opus 5</option><option value="codex">Codex CLI</option><option value="openai">OpenAI API</option></select></label>
                           <label className="visual-critique-consent" htmlFor="visual-critique-consent"><input id="visual-critique-consent" aria-label="Consent to send the current visual review captures once" type="checkbox" checked={visualCritiqueConsent} onChange={(event) => setVisualCritiqueConsent(event.target.checked)} disabled={visualCritiqueRunning || !visualReviewFresh} /><span><strong>Send these exact captures once</strong><small>Up to eight clean frames are submitted only for this job. Temporary local files are deleted after it ends.</small></span></label>
                           {visualCritiqueRunning
                             ? <button type="button" className="visual-critique-cancel" onClick={() => void cancelVisualCritique().catch((error) => showToast(error instanceof Error ? error.message : "Visual critique could not be cancelled"))}>Cancel critique</button>
@@ -11427,6 +11881,7 @@ export default function Home() {
                           <span><small>Objects</small><b>{iterationComparison.counts.first.objects} → {iterationComparison.counts.second.objects}</b><em>{iterationComparison.delta.objects > 0 ? "+" : ""}{iterationComparison.delta.objects}</em></span>
                           <span><small>Assets</small><b>{iterationComparison.counts.first.assets} → {iterationComparison.counts.second.assets}</b><em>{iterationComparison.delta.assets > 0 ? "+" : ""}{iterationComparison.delta.assets}</em></span>
                         </div>
+                        {iterationComparison.structuralDiff && <StructuralIterationOverlay diff={iterationComparison.structuralDiff} />}
                         <div className="iteration-gate-comparison" aria-label="Candidate hard-gate status">
                           <span className={!iterationComparison.evidence.first.complete ? "unknown" : iterationComparison.hardGates.first.passed ? "passed" : "blocked"}><b>{iterationComparison.first.id}</b><small>{!iterationComparison.evidence.first.complete ? "Hard-gate evidence incomplete" : iterationComparison.hardGates.first.passed ? "Hard gates pass" : `${iterationComparison.hardGates.first.failures.length} failed hard gate(s)`}</small></span>
                           <span className={!iterationComparison.evidence.second.complete ? "unknown" : iterationComparison.hardGates.second.passed ? "passed" : "blocked"}><b>{iterationComparison.second.id}</b><small>{!iterationComparison.evidence.second.complete ? "Hard-gate evidence incomplete" : iterationComparison.hardGates.second.passed ? "Hard gates pass" : `${iterationComparison.hardGates.second.failures.length} failed hard gate(s)`}</small></span>
@@ -12044,11 +12499,27 @@ export default function Home() {
               <details id="looplab-presentation-program" className="precision-card tuning-workbench" open aria-label="Authored sound and game-feel presentation" data-source-digest={doctorReport.sourceDigest}>
                 <summary><span>Sound & game-feel events</span><small>Renderer-neutral · reduced-motion safe · replay isolated</small></summary>
                 <div className="tuning-body">
-                  <p className="precision-note">Map stable runtime events to procedural sound, particles, shake, flash, and squash. These effects follow gameplay truth; they never become collision, completion, or replay state.</p>
+                  <p className="precision-note">Map stable runtime events to procedural sound or selected embedded samples, plus particles, shake, flash, and squash. These effects follow gameplay truth; they never become collision, completion, or replay state.</p>
                   <div className={`tuning-contract-status ${presentationInspection.errors.length ? "blocked" : presentationInspection.present ? "ready" : "draft"}`}>
                     <span>{presentationInspection.present ? `Program ${presentationInspection.status}` : "No presentation program saved"}</span>
-                    <small>{presentationInspection.metrics ? `${presentationInspection.metrics.audioCueCount} audio cues · ${presentationInspection.metrics.motionCueCount} motion cues · ${presentationInspection.metrics.effectCount} effects · ${presentationInspection.metrics.mappedEventCount} mapped events` : "Prepare an event-aware starter, then edit the exact bounded JSON if desired."}</small>
+                    <small>{presentationInspection.metrics ? `${presentationInspection.metrics.audioCueCount} audio cues · ${presentationInspection.metrics.motionCueCount} motion cues · ${presentationInspection.metrics.effectCount} effects · ${presentationInspection.metrics.mappedEventCount} mapped events${presentationInspection.metrics.referencedAudioResourceCount ? ` · ${presentationInspection.metrics.referencedAudioResourceCount} samples · ${formatBytes(presentationInspection.metrics.encodedAudioBytes ?? 0)} encoded / ${formatBytes(presentationInspection.metrics.decodedAudioBytes ?? 0)} decoded` : ""}` : "Prepare an event-aware starter, then edit the exact bounded JSON if desired."}</small>
                   </div>
+                  {(project.resources ?? []).some((resource) => resource.kind === "audio") && <div className="tuning-findings" aria-label="Embedded audio resources">
+                    <strong>Embedded audio resources</strong>
+                    {(project.resources ?? []).filter((resource) => resource.kind === "audio").slice(0, 8).map((resource) => {
+                      const inspection = embeddedAudioInspections.get(resource.id);
+                      const encodedBytes = inspection && "encodedBytes" in inspection ? Number(inspection.encodedBytes) : resource.bytes;
+                      const decodedMemoryBytes = inspection && "decodedMemoryBytes" in inspection ? Number(inspection.decodedMemoryBytes) : null;
+                      const decodedSampleRate = inspection && "decodedSampleRate" in inspection ? Number(inspection.decodedSampleRate) : null;
+                      const exactDecodedCost = inspection?.ok === true && decodedMemoryBytes != null && decodedSampleRate != null;
+                      return <div key={resource.id} className={`tuning-contract-status ${inspection?.ok ? "ready" : "blocked"}`}>
+                        <span>{resource.name}<small>{resource.id} · {formatBytes(encodedBytes)} encoded{exactDecodedCost ? ` · ${formatBytes(decodedMemoryBytes ?? 0)} decoded @ ${Math.round((decodedSampleRate ?? 0) / 1_000)} kHz` : ` · ${inspection?.error ?? "decoded cost unavailable"}`}</small></span>
+                        <audio controls preload="metadata" src={resource.dataUrl}>Audio preview is unavailable in this browser.</audio>
+                        <button type="button" disabled={!inspection?.ok} onClick={() => insertPresentationSampleCue(resource)}>Insert sample cue</button>
+                      </div>;
+                    })}
+                    {(project.resources ?? []).filter((resource) => resource.kind === "audio").length > 8 && <small>Showing the first 8 embedded sounds. Use the Asset Library or headless resource list for the rest.</small>}
+                  </div>}
                   <label className="field full tuning-contract-editor"><span>Presentation Program · JSON</span><textarea aria-label="Presentation Program JSON" rows={13} spellCheck={false} placeholder="Prepare a provider-free starter or paste a versioned presentation program." value={presentationProgramDraft} onChange={(event) => setPresentationProgramDraft(event.target.value)} /></label>
                   {presentationInspection.issues.length > 0 && <div className="tuning-findings" role="status">{presentationInspection.issues.slice(0, 6).map((issue) => <small key={`${issue.code}-${issue.message}`}>{issue.severity.toUpperCase()} · {issue.message}</small>)}</div>}
                   <div className="tuning-actions">
@@ -12056,7 +12527,7 @@ export default function Home() {
                     <button disabled={!presentationProgramDraft.trim()} onClick={savePresentationProgram}>Save program</button>
                     {presentationInspection.present && <button className="danger" onClick={removePresentationProgram}>Remove</button>}
                   </div>
-                  <p className="precision-note">Preview with sound on and off, then test reduced motion. Project Doctor validates structure and lifecycle; it does not claim the result sounds or feels good.</p>
+                  <p className="precision-note">Sample insertion edits only the draft. Review the event, duration, and mix before Save. Project Doctor resolves every resource and checks 16 MiB encoded / 32 MiB decoded budgets; it does not claim the result sounds or feels good.</p>
                 </div>
               </details>
               <details id="looplab-game-shell" className="precision-card tuning-workbench" open aria-label="Standard game shell authoring" data-source-digest={doctorReport.sourceDigest} data-shell-status={gameShellInspection.status}>
@@ -12075,6 +12546,35 @@ export default function Home() {
                     {gameShellInspection.present && <button className="danger" onClick={removeGameShell}>Remove</button>}
                   </div>
                   <p className="precision-note">Claude and Codex use <code>get_game_shell</code>, <code>suggest_game_shell</code>, <code>set_game_shell</code>, and <code>get_game_shell_report</code> directly. Exported games expose the same lifecycle through <code>get_game_shell_state</code>, <code>start_game</code>, <code>pause</code>, <code>resume</code>, <code>restart</code>, and settings commands.</p>
+                </div>
+              </details>
+              <details id="looplab-design-cohorts" className="precision-card bot-cohort-workbench" open aria-label="Deterministic design behavior cohorts" data-source-digest={doctorReport.sourceDigest} data-report-digest={botCohortReport?.reportDigest ?? ""} data-report-fresh={botCohortFresh ? "true" : "false"}>
+                <summary><span>Design behavior cohorts</span><small>Dead mechanics · route use · combinations · trivial-strategy leads</small></summary>
+                <div className="bot-cohort-body">
+                  <p className="precision-note">Run bounded synthetic players through the canonical game runtime. LoopLab reports what they actually exercised so the AI can revise teaching, recurring decisions, combinations, routes, pacing, and feedback. Bots are diagnostic probes—not judges of fun.</p>
+                  <button className="wide-button bot-cohort-run" disabled={botCohortRunning} onClick={() => void runDesignBotCohorts()}>{botCohortRunning ? "Running deterministic cohorts…" : botCohortReport ? "Run fresh behavior cohorts" : "Run behavior cohorts"}</button>
+                  {botCohortReport && <section className="bot-cohort-report" aria-label="Design behavior cohort report">
+                    <header><span><strong>{botCohortReport.summary.runCount} runs · {botCohortReport.summary.simulatedSeconds}s</strong><small>{botCohortReport.summary.completedRunCount} completion{botCohortReport.summary.completedRunCount === 1 ? "" : "s"} · {botCohortReport.summary.meaningfulEventsPerSimulatedMinute} meaningful events/minute</small></span><b>0 tokens · $0.00</b></header>
+                    {!botCohortFresh && <p className="bot-cohort-stale">The project changed. This report is preserved for comparison but no longer describes the selected source; run it again.</p>}
+                    <div className="bot-cohort-metrics" aria-label="Observed design coverage">
+                      {[
+                        { label: "Natural route maps", coverage: botCohortReport.coverage.routeMaps },
+                        { label: "Live actions", coverage: botCohortReport.coverage.actions },
+                        { label: "Authored verbs", coverage: botCohortReport.coverage.verbs },
+                        { label: "Verb combinations", coverage: botCohortReport.coverage.combinations },
+                        { label: "Gameplay rules", coverage: botCohortReport.coverage.rules },
+                        { label: "Traversal paths", coverage: botCohortReport.coverage.traversalPaths },
+                      ].map((metric) => <div key={metric.label}><span>{metric.label}</span><strong>{botCoverageLabel(metric.coverage)}</strong></div>)}
+                    </div>
+                    {botCohortReport.findings.length > 0 ? <div className="bot-cohort-findings" role="status">
+                      <strong>{botCohortReport.findings.length} evidence-backed design lead{botCohortReport.findings.length === 1 ? "" : "s"}</strong>
+                      {botCohortReport.findings.slice(0, 8).map((finding) => <article key={finding.code}><span>{finding.title}</span><small>{finding.suggestion}</small><code>{finding.code}</code></article>)}
+                    </div> : <div className="bot-cohort-clear"><strong>No cohort gap crossed the current advisory thresholds.</strong><small>This does not mean the game is good; compare candidates and play it.</small></div>}
+                    <p className="bot-cohort-boundary"><strong>{botCohortReport.proofBoundary.statement}</strong> It does not prove {botCohortReport.proofBoundary.doesNotProve.join(", ")}.</p>
+                    <details className="bot-cohort-run-details"><summary><span>Inspect run traces</span><small>{botCohortReport.runs.length} deterministic policies · exact maps, actions, events, and completion</small></summary><div className="bot-cohort-runs" aria-label="Cohort run summaries">
+                      {botCohortReport.runs.map((run) => <span key={run.id}><strong>{run.label}</strong><small>{run.visitedMapIds.join(" → ") || "no map"} · {run.actionIds.length} actions · {run.meaningfulEvents} events{run.completed ? " · completed" : ""}</small></span>)}
+                    </div></details>
+                  </section>}
                 </div>
               </details>
               <details id="looplab-bounded-tuning" className="precision-card tuning-workbench" open aria-label="Bounded gameplay tuning" data-source-digest={doctorReport.sourceDigest} data-search-digest={tuningSearchResult?.searchDigest ?? ""} data-search-fresh={tuningSearchFresh ? "true" : "false"}>

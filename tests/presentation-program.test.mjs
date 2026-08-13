@@ -18,9 +18,73 @@ import {
   suggestPresentationProgram,
 } from "../lib/looplab-presentation.mjs";
 import { createRuntimeModel } from "../lib/looplab-runtime-model.mjs";
+import { LOOPLAB_AUDIO_DECODE_SAMPLE_RATE, analyzeEmbeddedAudioBytes, inspectEmbeddedAudioResource } from "../lib/looplab-audio-resources.mjs";
 
 function platformer() {
   return structuredClone(createTemplate("platformer"));
+}
+
+function tinyWaveResource(id = "audio-confirm") {
+  const frameCount = 8;
+  const channels = 1;
+  const sampleRate = 8_000;
+  const bitsPerSample = 16;
+  const dataBytes = frameCount * channels * bitsPerSample / 8;
+  const bytes = Buffer.alloc(44 + dataBytes);
+  bytes.write("RIFF", 0, "ascii");
+  bytes.writeUInt32LE(36 + dataBytes, 4);
+  bytes.write("WAVEfmt ", 8, "ascii");
+  bytes.writeUInt32LE(16, 16);
+  bytes.writeUInt16LE(1, 20);
+  bytes.writeUInt16LE(channels, 22);
+  bytes.writeUInt32LE(sampleRate, 24);
+  bytes.writeUInt32LE(sampleRate * channels * bitsPerSample / 8, 28);
+  bytes.writeUInt16LE(channels * bitsPerSample / 8, 32);
+  bytes.writeUInt16LE(bitsPerSample, 34);
+  bytes.write("data", 36, "ascii");
+  bytes.writeUInt32LE(dataBytes, 40);
+  return {
+    id,
+    name: `${id}.wav`,
+    kind: "audio",
+    mimeType: "audio/wav",
+    dataUrl: `data:audio/wav;base64,${bytes.toString("base64")}`,
+    bytes: bytes.length,
+    _bytes: bytes,
+  };
+}
+
+function sampleProgram(resourceId = "audio-confirm") {
+  return {
+    version: 1,
+    status: "approved",
+    enabled: true,
+    reducedMotion: "respect",
+    audio: {
+      enabled: true,
+      masterVolume: 0.5,
+      maxVoices: 4,
+      debounceMs: 0,
+      cues: [{
+        id: "confirm-sample",
+        event: "choice.selected",
+        enabled: true,
+        kind: "sample",
+        waveform: "sine",
+        frequency: 220,
+        endFrequency: 220,
+        filterFrequency: 800,
+        durationMs: 250,
+        attackMs: 4,
+        releaseMs: 40,
+        volume: 0.2,
+        pitchVariationCents: 0,
+        resourceId,
+        playbackRate: 1,
+      }],
+    },
+    motion: { enabled: false, maxParticles: 0, cues: [] },
+  };
 }
 
 test("provider-free presentation suggestions are bounded, source-aware, and explicit about judgment", () => {
@@ -84,7 +148,7 @@ test("manifest and public project schema make presentation authoring discoverabl
   const manifest = getAgentManifest();
   const projectSchema = JSON.parse(readFileSync(new URL("../public/project-schema.json", import.meta.url), "utf8"));
 
-  assert.equal(manifest.protocolVersion, "1.101.0");
+  assert.equal(manifest.protocolVersion, "1.103.0");
   assert.deepEqual(manifest.presentationRules.schemas, {
     program: LOOPLAB_PRESENTATION_PROGRAM_SCHEMA,
     report: LOOPLAB_PRESENTATION_REPORT_SCHEMA,
@@ -98,7 +162,12 @@ test("manifest and public project schema make presentation authoring discoverabl
   assert.equal(projectSchema.properties.qualityContracts.properties.presentationProgramRequired.type, "boolean");
   assert.equal(projectSchema.$defs.presentationProgram.additionalProperties, false);
   assert.equal(projectSchema.$defs.presentationAudioCue.additionalProperties, false);
+  assert.ok(projectSchema.$defs.presentationAudioCue.properties.kind.enum.includes("sample"));
+  assert.equal(projectSchema.properties.resources.items.$ref, "#/$defs/embeddedResource");
   assert.equal(projectSchema.$defs.presentationMotionCue.properties.effects.maxItems, 6);
+  assert.equal(manifest.presentationRules.embeddedAudio.cueKind, "sample");
+  assert.equal(manifest.presentationRules.embeddedAudio.resourceCollection, "project.resources");
+  assert.equal(manifest.presentationRules.embeddedAudio.limits.maximumDecodedBytes, 32 * 1024 * 1024);
 });
 
 test("presentation programs reject unknown structure before normalization can hide it", () => {
@@ -160,6 +229,7 @@ test("the presentation controller isolates unavailable and hostile Web Audio imp
     constructor() {
       this.state = "suspended";
       this.currentTime = 0;
+      this.sampleRate = LOOPLAB_AUDIO_DECODE_SAMPLE_RATE;
     }
     async resume() {
       this.state = "running";
@@ -255,4 +325,123 @@ test("presentation stays outside deterministic simulation and is literally embed
   assert.ok(html.includes('"presentationProgram"'));
   assert.match(html, /get_presentation_status/);
   assert.match(html, /set_audio_muted/);
+});
+
+test("sample cues bind only exact embedded audio resources and report encoded plus decoded cost", () => {
+  const project = platformer();
+  const resource = tinyWaveResource();
+  project.resources = [{ ...resource, _bytes: undefined }];
+  project.presentationProgram = sampleProgram(resource.id);
+
+  const byteAnalysis = analyzeEmbeddedAudioBytes(resource._bytes, resource.mimeType);
+  assert.deepEqual({
+    format: byteAnalysis.format,
+    channels: byteAnalysis.channels,
+    sampleRate: byteAnalysis.sampleRate,
+    frameCount: byteAnalysis.frameCount,
+    sourceDecodedMemoryBytes: byteAnalysis.sourceDecodedMemoryBytes,
+    decodedSampleRate: byteAnalysis.decodedSampleRate,
+    decodedFrameCount: byteAnalysis.decodedFrameCount,
+    decodedMemoryBytes: byteAnalysis.decodedMemoryBytes,
+  }, {
+    format: "wav-pcm",
+    channels: 1,
+    sampleRate: 8_000,
+    frameCount: 8,
+    sourceDecodedMemoryBytes: 32,
+    decodedSampleRate: LOOPLAB_AUDIO_DECODE_SAMPLE_RATE,
+    decodedFrameCount: 48,
+    decodedMemoryBytes: 192,
+  });
+  assert.equal(inspectEmbeddedAudioResource(project.resources[0]).ok, true);
+
+  const report = inspectPresentationProgram(project);
+  assert.deepEqual(report.errors, []);
+  assert.equal(report.metrics.referencedAudioResourceCount, 1);
+  assert.equal(report.metrics.encodedAudioBytes, resource.bytes);
+  assert.equal(report.metrics.decodedAudioBytes, 192);
+  assert.equal(report.audioResources.valid, true);
+
+  const exportProject = platformer();
+  exportProject.resources = [{ ...resource, _bytes: undefined }];
+  exportProject.presentationProgram.audio.cues.push(sampleProgram(resource.id).audio.cues[0]);
+  const html = buildStandaloneHtml(exportProject);
+  assert.ok(html.includes(resource.id));
+  assert.ok(html.includes("resources:project.resources||[]"));
+  assert.ok(html.includes("decodeAudioData"));
+});
+
+test("sample cues are Doctor-blocked when an embedded resource is missing or not audio", () => {
+  const missing = platformer();
+  missing.presentationProgram = sampleProgram("audio-missing");
+  const missingReport = inspectPresentationProgram(missing);
+  assert.ok(missingReport.errors.some((message) => /not embedded/i.test(message)));
+  assert.throws(() => applyAgentCommand(missing, { op: "set_presentation_program", program: missing.presentationProgram }), /not embedded/i);
+
+  const wrongKind = platformer();
+  const resource = tinyWaveResource();
+  wrongKind.resources = [{ ...resource, kind: "document", _bytes: undefined }];
+  wrongKind.presentationProgram = sampleProgram(resource.id);
+  const wrongKindDoctor = analyzeProject(wrongKind);
+  assert.ok(wrongKindDoctor.issues.some((issue) => issue.code === "presentation-audio-resource-invalid"));
+});
+
+test("embedded samples decode lazily after unlock and resource failures stay isolated from gameplay", async () => {
+  const resource = tinyWaveResource();
+  const started = [];
+  const contextOptions = [];
+  const audioParam = () => ({ setValueAtTime() {}, cancelScheduledValues() {}, exponentialRampToValueAtTime() {} });
+  class SampleAudioContext {
+    constructor(options) {
+      contextOptions.push(options);
+      this.state = "suspended";
+      this.currentTime = 0;
+      this.destination = {};
+      this.sampleRate = options.sampleRate;
+    }
+    createGain() { return { gain: audioParam(), connect() {} }; }
+    createDynamicsCompressor() { return { threshold: audioParam(), knee: audioParam(), ratio: audioParam(), attack: audioParam(), release: audioParam(), connect() {} }; }
+    createBufferSource() {
+      return { playbackRate: audioParam(), detune: audioParam(), connect() {}, start() { started.push("sample"); }, stop() {} };
+    }
+    decodeAudioData() { return Promise.resolve({ duration: 0.001, length: 48, numberOfChannels: 1 }); }
+    async resume() { this.state = "running"; }
+    async suspend() { this.state = "suspended"; }
+    close() {}
+  }
+  const runtime = createPresentationRuntime(sampleProgram(resource.id), {
+    host: { AudioContext: SampleAudioContext, atob: globalThis.atob },
+    resources: [{ ...resource, _bytes: undefined }],
+    performance: { now: () => 100 },
+  });
+  runtime.handleEvents([{ type: "choice.selected" }]);
+  assert.equal(runtime.getStatus().audio.pendingEvents, 1);
+  await runtime.unlock();
+  await new Promise((resolve) => setImmediate(resolve));
+  const status = runtime.getStatus();
+  assert.equal(status.audio.state, "running");
+  assert.equal(status.audio.decodeSampleRate, LOOPLAB_AUDIO_DECODE_SAMPLE_RATE);
+  assert.equal(status.audio.decodedResourceCount, 1);
+  assert.equal(status.audio.decodedBytes, 192);
+  assert.equal(status.audio.triggeredCueCount, 1);
+  assert.deepEqual(contextOptions[0], { latencyHint: "interactive", sampleRate: LOOPLAB_AUDIO_DECODE_SAMPLE_RATE });
+  assert.deepEqual(started, ["sample"]);
+
+  class RejectingDecodeContext extends SampleAudioContext {
+    decodeAudioData() { return Promise.reject(new Error("hostile decode")); }
+  }
+  const hostile = createPresentationRuntime(sampleProgram(resource.id), {
+    host: { AudioContext: RejectingDecodeContext, atob: globalThis.atob },
+    resources: [{ ...resource, _bytes: undefined }],
+    performance: { now: () => 100 },
+  });
+  hostile.handleEvents([{ type: "choice.selected" }]);
+  await hostile.unlock();
+  await new Promise((resolve) => setImmediate(resolve));
+  const hostileStatus = hostile.getStatus();
+  assert.equal(hostileStatus.audio.state, "running");
+  assert.match(hostileStatus.audio.resourceErrors[resource.id], /hostile decode/i);
+  assert.equal(hostileStatus.audio.triggeredCueCount, 0);
+  assert.equal(hostileStatus.handledEventCount, 1);
+  assert.equal(hostileStatus.simulationIndependent, true);
 });

@@ -263,7 +263,7 @@ test("ships responsive and accessible editor controls", async () => {
   ]);
   const manifest = JSON.parse(manifestSource);
 
-  assert.equal(manifest.protocolVersion, "1.101.0");
+  assert.equal(manifest.protocolVersion, "1.103.0");
   assert.equal(manifest.agentOperatingModel.headlessFirst, true);
   assert.match(manifest.agentOperatingModel.primarySurface, /canonical product surface/);
   assert.match(manifest.agentOperatingModel.humanUiRole, /secondary inspection/);
@@ -336,6 +336,19 @@ test("ships responsive and accessible editor controls", async () => {
   assert.match(page, /Review both in play before choosing/);
   assert.match(page, /Hard-gate evidence incomplete/);
   assert.match(page, /data-relation=/);
+  assert.equal(manifest.iterationLedger.structuralDiffSchema, "looplab-structural-iteration-diff/v1");
+  assert.match(manifest.iterationLedger.structuralDiffPolicy, /authored world space/i);
+  assert.match(page, /StructuralIterationOverlay/);
+  assert.match(page, /Stable-ID world-space evidence/);
+  assert.match(page, /change-focused world crop/);
+  assert.match(page, /Dashed · before \/ removed/);
+  assert.match(page, /Solid · after \/ added/);
+  assert.match(page, /Evidence, not a verdict/);
+  assert.match(page, /import \{ flushSync \} from "react-dom"/);
+  assert.match(page, /flushSync\(\(\) => setProject\(syncedNext\)\);\s*projectRef\.current = syncedNext;/);
+  assert.match(css, /\.iteration-structural-diff\s*\{[^}]*min-width:\s*0/s, "structural comparison must shrink inside the Director column");
+  assert.match(css, /\.structural-chain\.before\s*\{[^}]*stroke-dasharray/s, "before collision chains must remain distinguishable without color");
+  assert.match(css, /\.structural-chain\.after\s*\{/);
   assert.match(page, /Resume agent memory/);
   assert.match(page, /Local agent planner/);
   assert.match(page, /Draft source-bound plan/);
@@ -377,6 +390,13 @@ test("ships responsive and accessible editor controls", async () => {
   assert.equal(manifest.visualReviewStateSelector, "#looplab-visual-review-state");
   assert.equal(manifest.visualCritiqueStateSelector, "#looplab-visual-critique-state");
   assert.equal(manifest.verification.visualReviewCommand, "capture_visual_review");
+  assert.equal(manifest.verification.visualPerception.colorAccessibility.schemaVersion, "looplab-color-accessibility/v1");
+  assert.match(manifest.verification.visualPerception.colorAccessibility.claimBoundary, /never claim taste/);
+  assert.match(page, /Exact-pixel color accessibility/);
+  assert.match(page, /Machado simulations are diagnostic/);
+  assert.match(css, /\.visual-review-body\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\)[^}]*min-width:\s*0/s, "Visual QA must shrink inside the Director column instead of extending beneath the stage canvas");
+  assert.match(css, /\.visual-review-body\s*>\s*\*\s*\{[^}]*min-width:\s*0/s, "every Visual QA child must be allowed to shrink with its sidebar");
+  assert.match(css, /\.director-scroll \.visual-critique-controls\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\)/s, "provider critique controls must stack inside the Director sidebar");
   assert.equal(manifest.verification.automatedBrowserCommand, "run_post_generation_qa");
   assert.equal(manifest.verification.automaticAfterAcceptedBrowserGeneration, true);
   assert.match(manifest.verification.automaticFailurePolicy, /Preserve the accepted candidate as unverified/);

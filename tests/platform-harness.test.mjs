@@ -27,7 +27,7 @@ test("platform wrapper preserves a scripts-only opaque sandbox", () => {
   assert.ok(recorderIndex < artifactScriptIndex, "the instrumentation bootstrap must execute before artifact scripts");
   assert.deepEqual(LOOPLAB_PLATFORM_HARNESS_DEFAULTS, { frameCount: 1_200, frameMs: 16, malformedInputInterval: 8 });
   const manifest = getAgentManifest();
-  assert.equal(manifest.protocolVersion, "1.101.0");
+  assert.equal(manifest.protocolVersion, "1.103.0");
   assert.equal(manifest.platformHarness.schemaVersion, LOOPLAB_PLATFORM_HARNESS_SCHEMA);
   assert.equal(manifest.platformHarness.environment.exactFrameCount, 1_200);
   assert.equal(manifest.platformHarness.cli.operation, "platform-harness");
@@ -85,7 +85,7 @@ test("Pocket Platformer passes the real hostile-platform harness", { timeout: 90
   assert.match(receipt.artifactSha256, /^[a-f0-9]{64}$/);
   assert.deepEqual(receipt.environment.sandbox, ["allow-scripts"]);
   assert.equal(receipt.environment.opaqueOriginRequired, true);
-  assert.equal(receipt.runtimeVersion, "2.28.0");
+  assert.equal(receipt.runtimeVersion, "2.29.0");
   for (const id of ["sandbox-opaque-origin", "source-digest", "game-shell-lifecycle", "portable-save-roundtrip", "input-action-liveness", "real-keyboard-input", "blur-clears-input", "semantic-input", "audio-failure-isolated", "presentation-runtime-isolated", "no-external-requests", "no-unhandled-errors", "frame-soak", "replay-suite", "acceptance-suite", "completion-witness", "terminal-state"]) {
     assert.equal(receipt.checks.find((check) => check.id === id)?.status, "passed", `${id} should pass`);
   }

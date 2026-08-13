@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 import { createTemplate, getAgentManifest } from "../lib/looplab-agent-core.mjs";
@@ -12,6 +13,7 @@ import {
 } from "../lib/looplab-asset-library-node.mjs";
 import { routeGameStudioWork } from "../lib/looplab-capability-router.mjs";
 import { analyzeProject } from "../lib/looplab-doctor.mjs";
+import { inspectPresentationAudioResources, LOOPLAB_AUDIO_RESOURCE_LIMITS } from "../lib/looplab-audio-resources.mjs";
 
 test("installed pack manifest exposes only verified commercial-use CC0 packs", async () => {
   const manifest = await readAssetPackManifest();
@@ -79,6 +81,33 @@ test("non-image pack files embed as project resources", async () => {
   assert.equal(imported.resources.length, 1);
   assert.equal(imported.resources[0].source.assetId, record.id);
   assert.match(imported.resources[0].dataUrl, /^data:audio\//);
+  assert.equal(imported.resources[0].analysis.measurable, true);
+  assert.equal(imported.resources[0].analysis.encodedBytes, record.bytes);
+  assert.ok(imported.resources[0].analysis.durationSeconds > 0);
+  assert.ok(imported.resources[0].analysis.decodedMemoryBytes > record.bytes);
+});
+
+test("browser-session pack imports measure audio with the shared byte analyzer", async () => {
+  const page = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
+  assert.match(page, /import \{ analyzeEmbeddedAudioBytes, inspectEmbeddedAudioResource \} from "\.\.\/lib\/looplab-audio-resources\.mjs"/);
+  assert.match(page, /asset\.kind === "audio"\s*\? analyzeEmbeddedAudioBytes\(new Uint8Array\(await blob\.arrayBuffer\(\)\), asset\.mimeType\)/);
+  assert.match(page, /bytes: blob\.size,[\s\S]*?\.\.\.\(analysis \? \{ analysis \} : \{\}\)/);
+  assert.match(page, /embeddedAudioInspections = useMemo\([\s\S]*?inspectEmbeddedAudioResource\(resource\)/);
+  assert.match(page, /disabled=\{!inspection\?\.ok\}/);
+});
+
+test("decoded audio budget counts referenced PCM cost rather than compressed file size", async () => {
+  const index = await readAssetPackIndex("interface-sfx-pack-1");
+  const record = index.assets.find((asset) => asset.kind === "audio" && asset.selectable);
+  const imported = await loadInstalledPackAssets(index.pack.id, [record.id]);
+  const copies = Array.from({ length: 16 }, (_, index) => ({ ...imported.resources[0], id: `audio-budget-${index}` }));
+  const cues = copies.map((resource, index) => ({ id: `cue-${index}`, event: "choice.selected", kind: "sample", resourceId: resource.id }));
+  const report = inspectPresentationAudioResources({ resources: copies }, cues);
+
+  assert.ok(report.encodedBytes < LOOPLAB_AUDIO_RESOURCE_LIMITS.maximumEncodedBytes);
+  assert.ok(report.decodedBytes > LOOPLAB_AUDIO_RESOURCE_LIMITS.maximumDecodedBytes);
+  assert.ok(report.issues.some((issue) => issue.code === "presentation-audio-decoded-budget"));
+  assert.equal(report.valid, false);
 });
 
 test("2D routing defaults to the compact one-file Canvas path and never includes hbg-loop", () => {

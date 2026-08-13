@@ -96,6 +96,7 @@ function usage() {
       work: "npm run agent -- work <project.loop.json> [query] [--status=open|in-progress|blocked|landed|rejected|all] [--kind=bug|feature|research|documentation|coordination|all] [--owner=codex] [--limit=50]",
       validate: "npm run agent -- validate <project.loop.json>",
       completion: "npm run agent -- completion <project.loop.json> [prototype|production]",
+      botCohorts: "npm run agent -- bot-cohorts <project.loop.json> --source-digest=source-... [--ticks-per-run=720] [--max-runs=24] [--seeds=1,2,3] [--maps=map-a,map-b] [--no-completion-witness]",
       doctor: "npm run agent -- doctor <project.loop.json> [prototype|production]",
       privacy: "npm run agent -- privacy <project.loop.json> [prototype|production]",
       acceptancePlan: "npm run agent -- acceptance-plan <project.loop.json>",
@@ -702,12 +703,55 @@ async function main() {
       process.exitCode = 2;
       return;
     }
-    const verified = applyCollectedVerificationEvidence(outcome.project, outcome.verificationEvidence.evidenceRefs);
+    let verified;
+    try {
+      verified = applyCollectedVerificationEvidence(outcome.project, outcome.verificationEvidence.evidenceRefs);
+    } catch (error) {
+      const doctor = analyzeProject(outcome.project, { profile: "production" });
+      print({
+        ok: false,
+        operation,
+        stage: "candidate-verification",
+        projectPath,
+        outputPath,
+        receiptPath,
+        captureDirectory,
+        sourceDigest: outcome.sourceDigest,
+        error: error instanceof Error ? error.message : String(error),
+        doctor: { profile: doctor.profile, score: doctor.score, errorCount: doctor.errorCount, warningCount: doctor.warningCount, issues: doctor.issues.map(({ severity, code, message, action }) => ({ severity, code, message, action: action ?? null })) },
+        exactArtifactEvidence: { status: outcome.verificationEvidence.status, evidenceCount: outcome.verificationEvidence.evidenceRefs.length, captureCount: outcome.verificationEvidence.captures.length, validation: outcome.verificationEvidence.validation },
+        usage: outcome.verificationEvidence.usage,
+        writesApplied: false,
+      });
+      process.exitCode = 2;
+      return;
+    }
     let finalProject = verified.project;
     let promotion = null;
     if (args.includes("--promote")) {
-      promotion = promoteVerifiedIteration(finalProject);
-      finalProject = promotion.project;
+      try {
+        promotion = promoteVerifiedIteration(finalProject);
+        finalProject = promotion.project;
+      } catch (error) {
+        const doctor = analyzeProject(finalProject, { profile: "production" });
+        print({
+          ok: false,
+          operation,
+          stage: "candidate-promotion",
+          projectPath,
+          outputPath,
+          receiptPath,
+          captureDirectory,
+          sourceDigest: outcome.sourceDigest,
+          error: error instanceof Error ? error.message : String(error),
+          doctor: { profile: doctor.profile, score: doctor.score, errorCount: doctor.errorCount, warningCount: doctor.warningCount, issues: doctor.issues.map(({ severity, code, message, action }) => ({ severity, code, message, action: action ?? null })) },
+          exactArtifactEvidence: { status: outcome.verificationEvidence.status, evidenceCount: outcome.verificationEvidence.evidenceRefs.length, captureCount: outcome.verificationEvidence.captures.length, validation: outcome.verificationEvidence.validation },
+          usage: outcome.verificationEvidence.usage,
+          writesApplied: false,
+        });
+        process.exitCode = 2;
+        return;
+      }
     }
     const currentProjectBytes = await readFile(projectPath);
     const currentProjectSha256 = createHash("sha256").update(currentProjectBytes).digest("hex");
@@ -880,6 +924,31 @@ async function main() {
     const outcome = applyAgentCommand(project, { op: "get_completion_report", profile });
     print({ ok: outcome.result?.passed === true, operation, path: projectPath, profile, completion: outcome.result });
     if (outcome.result?.passed !== true) process.exitCode = 2;
+    return;
+  }
+
+  if (operation === "bot-cohorts") {
+    const expectedSourceDigest = String(optionValue("source-digest", "")).trim();
+    if (!expectedSourceDigest) throw new Error("bot-cohorts requires --source-digest from the exact Project Doctor report inspected before simulation.");
+    const numericOption = (name) => optionValue(name) === undefined ? undefined : Number(optionValue(name));
+    const listOption = (name) => String(optionValue(name, "")).split(",").map((entry) => entry.trim()).filter(Boolean);
+    const seedValues = listOption("seeds").map(Number);
+    const mapIds = listOption("maps");
+    const command = {
+      op: "run_bot_cohorts",
+      expectedSourceDigest,
+      ...(numericOption("ticks-per-run") === undefined ? {} : { ticksPerRun: numericOption("ticks-per-run") }),
+      ...(numericOption("idle-ticks") === undefined ? {} : { idleTicks: numericOption("idle-ticks") }),
+      ...(numericOption("action-hold-ticks") === undefined ? {} : { actionHoldTicks: numericOption("action-hold-ticks") }),
+      ...(numericOption("decision-ticks") === undefined ? {} : { decisionTicks: numericOption("decision-ticks") }),
+      ...(numericOption("cell-size") === undefined ? {} : { spatialCellSize: numericOption("cell-size") }),
+      ...(numericOption("max-runs") === undefined ? {} : { maxRuns: numericOption("max-runs") }),
+      ...(seedValues.length ? { seeds: seedValues } : {}),
+      ...(mapIds.length ? { mapIds } : {}),
+      includeCompletionWitness: !args.includes("--no-completion-witness"),
+    };
+    const outcome = applyAgentCommand(project, command);
+    print({ ok: true, operation, path: projectPath, report: outcome.result });
     return;
   }
 

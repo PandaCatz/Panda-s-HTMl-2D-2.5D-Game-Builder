@@ -9,13 +9,14 @@ import { inspectClaudeCliOutput } from "../lib/looplab-claude-cli.mjs";
 import { createClaudeIntegrationPlan, inspectClaudeIntegration } from "../lib/looplab-claude-integration.mjs";
 import {
   LOOPLAB_CLAUDE_OPERABILITY_TOOLS,
-  buildClaudeOperabilityArgs,
+  buildClaudeOperabilityInvocation,
   collectClaudeToolUseNames,
   createClaudeOperabilityMcpConfig,
   inspectClaudeOperabilityOutput,
 } from "../lib/looplab-claude-operability.mjs";
 import { runProviderProcess } from "../lib/looplab-provider-process.mjs";
 import { runProviderCommand } from "../lib/looplab-provider-status.mjs";
+import { createProviderModelSelectionReceipt } from "../lib/looplab-provider-model-policy.mjs";
 import { createUsageReceipt, usageFromCliOutput } from "../lib/looplab-provider-usage.mjs";
 import { LOOPLAB_PROTOCOL_VERSION } from "../lib/looplab-versions.mjs";
 
@@ -107,22 +108,21 @@ async function main() {
     appUrl: plan.appUrl,
   });
   await writeFile(mcpConfigPath, `${JSON.stringify(mcpConfig)}\n`, { encoding: "utf8", flag: "wx" });
-  const model = option("model", process.env.LOOPLAB_CLAUDE_MODEL ?? "haiku");
-  const maxBudgetUsd = Number(option("max-budget-usd", process.env.LOOPLAB_CLAUDE_SMOKE_MAX_BUDGET_USD ?? 0.25));
-  const args = buildClaudeOperabilityArgs({
+  const maxBudgetUsd = Number(option("max-budget-usd", process.env.LOOPLAB_CLAUDE_SMOKE_MAX_BUDGET_USD ?? 1));
+  const invocation = buildClaudeOperabilityInvocation({
     projectPath: fixture.relative,
     expectedProtocolVersion: LOOPLAB_PROTOCOL_VERSION,
     mcpConfigPath,
     maxBudgetUsd,
-    model,
-    effort: option("effort", process.env.LOOPLAB_CLAUDE_EFFORT ?? "low"),
+    model: option("model", undefined),
+    effort: option("effort", undefined),
   });
-  process.stderr.write(`${JSON.stringify({ event: "claude.smoke.submitted", purpose: "operability-only", gameCreation: false, gamesRoot, fixture: "synthetic-blank", privacyMode: "synthetic-fixture-and-public-recipe", isolatedMcp: true, advertisedToolCount: 2, model, maxBudgetUsd, timeoutMs, tools: LOOPLAB_CLAUDE_OPERABILITY_TOOLS })}\n`);
+  process.stderr.write(`${JSON.stringify({ event: "claude.smoke.submitted", purpose: "operability-only", gameCreation: false, gamesRoot, fixture: "synthetic-blank", privacyMode: "synthetic-fixture-and-public-recipe", isolatedMcp: true, advertisedToolCount: 2, model: invocation.modelPolicy.model, effort: invocation.modelPolicy.effort, maxBudgetUsd, timeoutMs, tools: LOOPLAB_CLAUDE_OPERABILITY_TOOLS })}\n`);
 
   try {
     const result = await runProviderProcess({
       command: "claude",
-      args,
+      args: invocation.args,
       cwd: fixture.directory,
       timeoutMs,
       timeoutLabel: "LoopLab MCP operability smoke",
@@ -133,7 +133,7 @@ async function main() {
     });
     const inspected = inspectClaudeOperabilityOutput(result.stdout, { expectedProtocolVersion: LOOPLAB_PROTOCOL_VERSION });
     const measured = usageFromCliOutput(result.stdout, result.stderr);
-    const receiptModel = inspected.telemetry.model ?? measured.model ?? model ?? "claude-code-cli";
+    const receiptModel = inspected.telemetry.model ?? measured.model ?? invocation.modelPolicy.model;
     const usageReceipt = createUsageReceipt({
       provider: "claude",
       model: receiptModel,
@@ -141,6 +141,7 @@ async function main() {
       source: "claude-code-cli-stream-json",
       providerReportedUsd: inspected.telemetry.providerReportedUsd,
       authMethod,
+      modelSelection: createProviderModelSelectionReceipt(invocation.modelPolicy, { providerReportedModel: inspected.telemetry.model ?? measured.model }),
     });
     process.stdout.write(`${JSON.stringify({
       ok: true,
@@ -162,7 +163,7 @@ async function main() {
   } catch (error) {
     const telemetry = error?.claudeTelemetry ?? inspectClaudeCliOutput(error?.processResult?.stdout);
     const measured = usageFromCliOutput(error?.processResult?.stdout, error?.processResult?.stderr);
-    const receiptModel = telemetry.model ?? measured.model ?? model ?? "claude-code-cli";
+    const receiptModel = telemetry.model ?? measured.model ?? invocation.modelPolicy.model;
     const usageReceipt = createUsageReceipt({
       provider: "claude",
       model: receiptModel,
@@ -170,6 +171,7 @@ async function main() {
       source: "claude-code-cli-stream-json",
       providerReportedUsd: telemetry.providerReportedUsd,
       authMethod,
+      modelSelection: createProviderModelSelectionReceipt(invocation.modelPolicy, { providerReportedModel: telemetry.model ?? measured.model }),
     });
     process.stdout.write(`${JSON.stringify({
       ok: false,

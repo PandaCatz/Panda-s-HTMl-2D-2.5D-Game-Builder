@@ -1,6 +1,6 @@
 {
   "name": "Looplab Headless Agent API",
-  "protocolVersion": "1.101.0",
+  "protocolVersion": "1.103.0",
   "agentOperatingModel": {
     "purpose": "LoopLab is an AI capability amplifier and structured game-authoring workstation, not a form the agent is confined to.",
     "headlessFirst": true,
@@ -1067,6 +1067,7 @@
     "get_acceptance_plan",
     "run_acceptance_suite",
     "get_completion_report",
+    "run_bot_cohorts",
     "run_replay_suite",
     "get_runtime_join_plan",
     "get_visual_readiness",
@@ -1366,6 +1367,138 @@
     ],
     "honestyPolicy": "A bounded search that does not find a terminal witness is inconclusive, never proof that a game is unwinnable.",
     "artifactEvidence": "The platform harness replays the source-bound semantic-action witness inside the exact exported one-file HTML and requires the exported runtime to reach runtime.won."
+  },
+  "botCohorts": {
+    "schemaVersion": "looplab-bot-cohort-report/v1",
+    "runnerVersion": 1,
+    "command": "run_bot_cohorts",
+    "cli": "npm run agent -- bot-cohorts <project.loop.json> --source-digest=source-...",
+    "limits": {
+      "tickRate": 60,
+      "minimumTicksPerRun": 60,
+      "maximumTicksPerRun": 3600,
+      "minimumRuns": 4,
+      "maximumRuns": 32,
+      "maximumMaps": 6,
+      "maximumSeeds": 8,
+      "maximumActions": 12,
+      "maximumTotalTicks": 48000
+    },
+    "policies": [
+      "start-state idle",
+      "semantic action sweep",
+      "single-action pressure",
+      "seeded exploration",
+      "known completion witness",
+      "isolated map probes"
+    ],
+    "designSignals": [
+      "route and map use",
+      "live action and verb use",
+      "verb co-exercise",
+      "rule and choice activity",
+      "traversal and portal activity",
+      "single-action completion risk",
+      "stationary active-input spans",
+      "meaningful event density"
+    ],
+    "sourceBinding": "The report is read-only and bound to the exact current Project Doctor source digest; stale expectedSourceDigest inputs fail before simulation.",
+    "designPolicy": "Use observed gaps to revise teaching, recurring decisions, combinations, routes, pacing, and feedback. Never optimize blindly for cohort coverage or let a proxy choose a creative winner.",
+    "honestyPolicy": "Synthetic policies are not human personas. They prove only the listed deterministic observations and never prove fun, taste, accessibility, fairness, aesthetic quality, preference, or unreachability.",
+    "followupEvidence": [
+      "provider-backed grounded design critique",
+      "browser playtest",
+      "human playtest observation",
+      "candidate preference comparison against the protected baseline"
+    ]
+  },
+  "designQualityProgram": {
+    "goal": "Help agents make materially better games, not merely valid HTML or higher proxy scores.",
+    "statusVocabulary": [
+      "implemented",
+      "partial",
+      "open"
+    ],
+    "stages": [
+      {
+        "id": "meaningfully-diverse-candidates",
+        "status": "partial",
+        "available": [
+          "protected variations",
+          "foundation alternatives",
+          "tuning Pareto sets",
+          "structural scaffold search",
+          "spatial quality-diversity search",
+          "source-bound candidate comparison"
+        ],
+        "open": "Generate and retain several whole-game creative candidates that differ in mechanics, relationships, flow, pacing, onboarding, feedback, progression, and art direction rather than surface wording alone."
+      },
+      {
+        "id": "multidimensional-design-comparison",
+        "status": "partial",
+        "available": [
+          "frozen cross-genre acceptance profiles",
+          "named dimension vectors",
+          "hard-gate comparison",
+          "grounded visual critique",
+          "candidate preference receipts"
+        ],
+        "open": "Unify play structure and presentation comparison without reducing creative quality to one automatic score or winner."
+      },
+      {
+        "id": "real-play-and-explicit-preference",
+        "status": "partial",
+        "available": [
+          "tick-accurate human play sessions",
+          "feedback and heatmaps",
+          "source-bound replay promotion",
+          "explicit studio preference memory",
+          "candidate preference records"
+        ],
+        "open": "Add study-level participant/session organization and richer preference evidence while keeping observations outside gameplay truth."
+      },
+      {
+        "id": "deterministic-bot-diagnostics",
+        "status": "implemented",
+        "available": [
+          "source-bound behavior cohorts",
+          "dead-content and route observations",
+          "single-action pressure",
+          "exact deterministic traces",
+          "explicit non-human proof boundary"
+        ],
+        "open": "Calibrate additional genre-neutral policies only against concrete observed failures; never use bots as a fun score."
+      },
+      {
+        "id": "matched-agent-trials",
+        "status": "partial",
+        "available": [
+          "visible cross-genre golden briefs",
+          "deterministic evaluator receipts",
+          "comparable run digests",
+          "provider usage receipts"
+        ],
+        "open": "Run counterbalanced matched trials with and without LoopLab under equal model, prompt, context, time, and token conditions, then retain the complete trial set."
+      },
+      {
+        "id": "polished-cross-genre-reference-games",
+        "status": "open",
+        "available": [
+          "technically proven cross-genre foundations"
+        ],
+        "open": "Build and maintain polished reference games across substantially different 2D and dimetric 2.5D genres instead of treating structural fixtures as quality exemplars."
+      },
+      {
+        "id": "blinded-human-preference",
+        "status": "open",
+        "available": [
+          "explicit non-blind candidate preference records"
+        ],
+        "open": "Measure whether blinded players consistently prefer LoopLab-assisted outcomes while separating identity, order, familiarity, and recruitment effects."
+      }
+    ],
+    "decisionPolicy": "Technical gates reject broken candidates. Behavioral reports expose design questions. Providers may propose and critique. Visual and human evidence decide creative preference. No single proxy automatically promotes a winner.",
+    "claimBoundary": "LoopLab may claim a capability is implemented only from code and exact proof. It may claim better game-design outcomes only from complete matched trials and blinded human preference evidence, not from internal scores or selected examples."
   },
   "platformHarness": {
     "schemaVersion": "looplab-platform-harness/v1",
@@ -1695,6 +1828,19 @@
       "set_audio_muted"
     ],
     "lifecycle": "Input is accepted before audio unlock is attempted. Blur, visibility loss, pause, mute, reset, and teardown cancel active feedback without affecting gameplay.",
+    "embeddedAudio": {
+      "cueKind": "sample",
+      "resourceField": "resourceId",
+      "resourceCollection": "project.resources",
+      "resourceReportSchema": "looplab-audio-resource-report/v1",
+      "limits": {
+        "maximumReferencedResources": 32,
+        "maximumEncodedBytes": 16777216,
+        "maximumDecodedBytes": 33554432
+      },
+      "measurement": "Referenced OGG Vorbis and PCM/float WAV resources are measured as decoded 32-bit PCM; unsupported or unresolved audio is Doctor-blocked.",
+      "runtime": "Referenced samples decode lazily only after Web Audio unlock, share the authored voice cap and envelopes, and isolate per-resource decode failures from gameplay."
+    },
     "proofBoundary": "Schema validity and event coverage do not prove that sound design, visual rhythm, intensity, or game feel are aesthetically good. Preview and human or agent judgment remain required."
   },
   "gameShellRules": {
@@ -2275,7 +2421,48 @@
       "totalTokens"
     ],
     "cliBillingPolicy": "Detected Codex and Claude subscription sessions use API-rate-equivalent dollar labels; detected API-key, access-token, Bedrock, or Vertex sessions use API billing labels.",
-    "unknownPricingPolicy": "Keep estimatedUsd null rather than inventing a model price."
+    "unknownPricingPolicy": "Keep estimatedUsd null rather than inventing a model price.",
+    "modelSelectionField": "usage.modelSelection",
+    "modelSelectionPolicy": "CLI receipts retain the requested model and effort launch settings, provider-reported resolved model when available, selection reason, and whether a silent model fallback was allowed."
+  },
+  "providerModels": {
+    "schemaVersion": "looplab-provider-model-policy/v1",
+    "codexCli": {
+      "defaultModel": "gpt-5.6-sol",
+      "defaultEffort": "max",
+      "modelSemantics": "Pin the flagship GPT-5.6 Sol model for every LoopLab Codex CLI workload unless the user explicitly configures a task-specific override.",
+      "effortSemantics": "Pass model_reasoning_effort=max on every launch by default; never inherit an unknown user-config effort."
+    },
+    "claudeCli": {
+      "defaultModel": "claude-opus-5",
+      "defaultEffort": "max",
+      "modelSemantics": "Pin Claude Opus 5 for every LoopLab Claude Code workload unless the user explicitly configures a task-specific override.",
+      "effortSemantics": "Pass --effort max on every launch by default; never inherit an unknown session effort."
+    },
+    "visualCritique": {
+      "defaultClaudeModel": "claude-opus-5",
+      "defaultAnthropicApiModel": "claude-opus-5",
+      "alternateModelFamily": "sonnet",
+      "benchmarkSchemaVersion": "looplab-visual-model-benchmark/v1",
+      "benchmarkProfile": {
+        "schemaVersion": "looplab-visual-model-benchmark-profile/v1",
+        "id": "grounded-visual-critique/v1",
+        "purpose": "visual-critique",
+        "baselineModel": "claude-opus-5",
+        "minimumMatchedTrials": 3,
+        "minimumSonnetPreferenceRate": 0.6666666666666666,
+        "minimumMeanScoreAdvantage": 1,
+        "requiredEvidence": [
+          "same exact capture set",
+          "same exact prompt and rubric",
+          "blinded pairwise preference",
+          "source-bound visual-quality scores"
+        ]
+      },
+      "benchmarkProfileDigest": "sha256:21806c8834cd79c42865e67f775a561eaf5d6162a656a896ea88b540729a9e0c",
+      "sonnetEligibility": "Sonnet is eligible only when an explicit full model ID is bound to a content-verified matched visual-critique benchmark receipt in which Sonnet beats Claude Opus 5. Cost, quota, overload, or latency alone cannot silently downgrade an Opus critique.",
+      "silentFallbackAllowed": false
+    }
   },
   "providerParity": {
     "schemaVersion": "looplab-provider-parity/v2",
@@ -2382,13 +2569,16 @@
     "setupCommand": "npm run claude:setup -- \"<games-root>\"",
     "smokeCommand": "npm run claude:smoke -- \"<games-root>\"",
     "modelPolicy": {
-      "smokeDefault": "haiku",
+      "schemaVersion": "looplab-provider-model-policy/v1",
+      "smokeDefault": "claude-opus-5",
+      "smokeEffort": "max",
       "smokePurpose": "operability-only",
       "smokeUsedForGameCreation": false,
-      "creativeCliSelection": "Use LOOPLAB_CLAUDE_MODEL when explicitly configured; otherwise inherit Claude Code's current default and record the resolved model from measured telemetry.",
-      "researchCliSelection": "Use LOOPLAB_CLAUDE_RESEARCH_MODEL, then LOOPLAB_CLAUDE_MODEL, then Claude Code's current default.",
-      "visionCliSelection": "Use LOOPLAB_CLAUDE_VISION_MODEL, then LOOPLAB_CLAUDE_MODEL, then Claude Code's current default.",
-      "directApiSelection": "Use LOOPLAB_ANTHROPIC_MODEL for prompt and game-loop work, with LOOPLAB_ANTHROPIC_VISION_MODEL as the visual-critique override."
+      "creativeCliSelection": "Default every Claude Code prompt, generation, loop, research, and smoke launch to exact Claude Opus 5 with --effort max. Explicit task-specific or generic overrides remain visible in the usage receipt.",
+      "researchCliSelection": "Use LOOPLAB_CLAUDE_RESEARCH_MODEL, then LOOPLAB_CLAUDE_MODEL, then Claude Opus 5; always pass an explicit effort, defaulting to max.",
+      "visionCliSelection": "Use Claude Opus 5 at max effort. A full Sonnet model override is rejected unless LOOPLAB_VISUAL_CRITIQUE_MODEL_BENCHMARK points to a canonical matched receipt proving that exact Sonnet model beats Opus 5.",
+      "directApiSelection": "Prompt and game-loop API selection remains configurable. Anthropic visual critique defaults to Claude Opus 5; the same content-verified matched benchmark gate controls any Sonnet override.",
+      "silentVisionDowngrade": false
     },
     "defaultScope": "user",
     "mcpProfiles": {
@@ -2402,7 +2592,7 @@
     "handoff": "claudedocs/codex-to-claude (private and gitignored when present)",
     "crossProjectSkill": "Setup atomically synchronizes the repository-owned LoopLab skill into the private user Claude skill directory and status verifies exact bytes.",
     "registrationBoundary": "User-scoped registration is private, cross-project, idempotent, and contains no provider credential. A connected MCP stdio process is not live-editor proof; status independently fetches the loopback app manifest and requires the exact current protocol.",
-    "smokeBoundary": "The executable smoke preflights the live app before provider launch, uses Haiku only for this bounded operability proof, creates a temporary synthetic blank project, and supplies Claude a strict temporary MCP config containing exactly one read-only core schema and one read-only live schema. User and project MCP catalogs are ignored; Haiku is not selected for game creation by this contract.",
+    "smokeBoundary": "The executable smoke preflights the live app before provider launch, uses the same Claude-Opus-5/max-effort policy as other Claude CLI work, creates a temporary synthetic blank project, and supplies Claude a strict temporary MCP config containing exactly one read-only core schema and one read-only live schema. User and project MCP catalogs are ignored.",
     "providerBoundary": "External Claude MCP equips the lead agent. LoopLab's schema-bound Claude provider subprocess remains nonpersistent, task-scoped, tool-limited, and MCP-free."
   },
   "localCopilot": {
@@ -3698,7 +3888,8 @@
         "known-runtime-object-geometry",
         "measured-hud-geometry",
         "object-bound-project-doctor-findings",
-        "same-session-pixel-diff"
+        "same-session-pixel-diff",
+        "exact-capture-color-measurement"
       ],
       "claimBoundary": "Semantic boxes identify exact known geometry. Pixel comparison only identifies changed regions and never claims an aesthetic, depth, or collision defect by itself.",
       "payloadFlags": [
@@ -3707,7 +3898,30 @@
         "includeCrops"
       ],
       "visualOnlyPolicy": "capture_visual_review remains available for diagnosis when Project Doctor blocks promotion evidence; collect_verification_evidence remains strict.",
-      "accessibility": "Every overlay uses a number, label, severity word, and line style in addition to color."
+      "accessibility": "Every overlay uses a number, label, severity word, and line style in addition to color.",
+      "colorAccessibility": {
+        "schemaVersion": "looplab-color-accessibility/v1",
+        "sources": [
+          "computed-hud-styles-over-exact-capture-pixels",
+          "bounded-observed-authored-gameplay-colors",
+          "authored-redundant-cue-semantics"
+        ],
+        "standards": [
+          "WCAG-2.2-1.4.1",
+          "WCAG-2.2-1.4.3",
+          "WCAG-2.2-1.4.11",
+          "Machado-Oliveira-Fernandes-2009"
+        ],
+        "outputs": [
+          "contrast-distribution",
+          "protan-deutan-tritan-simulation",
+          "CIELAB-deltaE76",
+          "observed-color-proof",
+          "redundant-cue-review"
+        ],
+        "claimBoundary": "Advisory measurements never claim taste, legal or WCAG conformance, diagnosis, or equivalence to testing with people who have color-vision deficiencies.",
+        "headlessSurface": "capture_visual_review and get_visual_review expose the same receipt shown by the mouse-driven Visual QA panel."
+      }
     },
     "verifyCommand": "verify_iteration",
     "verifyEverythingCli": {
@@ -3759,7 +3973,7 @@
       "harnessSchemaVersion": "looplab-platform-harness/v1",
       "harnessRunner": "playwright-core",
       "harnessRunnerVersion": 2,
-      "runtimeVersion": "2.28.0",
+      "runtimeVersion": "2.29.0",
       "environment": {
         "sandbox": [
           "allow-scripts"
@@ -3899,7 +4113,7 @@
       ],
       "unexpectedCheckPolicy": "reject",
       "visualCaptureRequired": true,
-      "digest": "sha256:742a0c7b4d2928392920ae7cb3f8a459d43d1e2ce0b7a7cf3a71c5e90cf1eeb3"
+      "digest": "sha256:4f0a01ceb2a98973f9238a439f117e3a1e7e1629de48b1d47c56becc07063117"
     },
     "inspectCommand": "get_release_verification",
     "browserCommand": "verify_release",
@@ -4492,6 +4706,7 @@
   "iterationLedger": {
     "schemaVersion": "looplab-iteration-ledger/v1",
     "candidateDecisionSchema": "looplab-candidate-decision/v1",
+    "structuralDiffSchema": "looplab-structural-iteration-diff/v1",
     "commands": [
       "checkpoint_iteration",
       "record_iteration_attempt",
@@ -4503,7 +4718,8 @@
     "snapshotLimit": 12,
     "sourceBinding": "Every receipt records the Project Doctor sourceDigest for the exact authored project state.",
     "restorePolicy": "Restoring never overwrites a historical snapshot; it creates a new editable child candidate with the restored iteration as parent.",
-    "selectionPolicy": "compare_iterations returns the same source-bound decision packet to the UI, CLI, MCP, Codex, and Claude. It reports hard-gate feasibility and Pareto relations without naming an automatic creative winner; changed candidates require explicit preview, play, and human-directed continuation.",
+    "selectionPolicy": "compare_iterations returns the same source-bound decision packet and stable-ID structural overlay to the UI, CLI, MCP, Codex, and Claude. It reports hard-gate feasibility and Pareto relations without naming an automatic creative winner; changed candidates require explicit preview, play, and human-directed continuation.",
+    "structuralDiffPolicy": "Object placement, object colliders, authored collision chains, and canonical tile colliders are compared independently in authored world space. Aggregate counts are complete, details are bounded and explicit about truncation, and proximity/art/pixels never establish identity or collision.",
     "storagePolicy": "Editable .loop.json projects retain bounded deduplicated snapshots; shipped one-file HTML omits the snapshot archive."
   },
   "editorPreview": {
@@ -4863,7 +5079,7 @@
     }
   },
   "exportedRuntime": {
-    "version": "2.28.0",
+    "version": "2.29.0",
     "packaging": "single-self-contained-html",
     "uploadFiles": 1,
     "offlinePlayable": true,
@@ -5104,6 +5320,7 @@
     "get_acceptance_plan",
     "run_acceptance_suite",
     "get_completion_report",
+    "run_bot_cohorts",
     "get_release_verification",
     "get_export_profile",
     "get_save_report",
@@ -5360,6 +5577,7 @@
       "get_acceptance_plan",
       "run_acceptance_suite",
       "get_completion_report",
+      "run_bot_cohorts",
       "get_release_verification",
       "get_export_profile",
       "get_save_report",
@@ -5558,6 +5776,7 @@
       "get_acceptance_plan",
       "run_acceptance_suite",
       "get_completion_report",
+      "run_bot_cohorts",
       "get_release_verification",
       "get_export_profile",
       "get_save_report",
@@ -9024,6 +9243,119 @@
               "description": "Project Doctor profile."
             }
           },
+          "additionalProperties": false
+        },
+        "annotations": {
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      },
+      {
+        "op": "run_bot_cohorts",
+        "title": "Run Bot Cohorts",
+        "description": "Run bounded deterministic behavior cohorts over the exact source to expose dead mechanics, unvisited routes, unexercised combinations, stalled input, event density, and possible trivial strategies. The read-only report never treats synthetic policies as humans or claims fun, taste, preference, fairness, accessibility, or unreachability.",
+        "surfaces": [
+          "core",
+          "browser-session"
+        ],
+        "mutatesProject": false,
+        "mutatesBuilderState": false,
+        "requiresSourceDigestInMcp": false,
+        "coordinationOnly": false,
+        "schemaPrecision": "declared",
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "expectedSourceDigest": {
+              "type": "string",
+              "description": "Project Doctor sourceDigest inspected immediately before this command.",
+              "minLength": 1
+            },
+            "expectedLedgerDigest": {
+              "type": "string",
+              "description": "Shared work-ledger digest inspected immediately before this coordination mutation.",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            },
+            "compact": {
+              "type": "boolean",
+              "description": "Return a compact result without repeating the complete embedded project when the transport supports it."
+            },
+            "tickRate": {
+              "type": "integer",
+              "description": "Canonical fixed simulation tick rate; only 60 is accepted.",
+              "minimum": 60,
+              "maximum": 60
+            },
+            "ticksPerRun": {
+              "type": "integer",
+              "description": "Maximum ticks for each ordinary cohort run.",
+              "minimum": 60,
+              "maximum": 3600
+            },
+            "idleTicks": {
+              "type": "integer",
+              "description": "Ticks used for each idle observation.",
+              "minimum": 30,
+              "maximum": 3600
+            },
+            "actionHoldTicks": {
+              "type": "integer",
+              "description": "Ticks used for continuous actions in a sweep.",
+              "minimum": 1,
+              "maximum": 600
+            },
+            "decisionTicks": {
+              "type": "integer",
+              "description": "Ticks between deterministic explorer decisions.",
+              "minimum": 5,
+              "maximum": 300
+            },
+            "spatialCellSize": {
+              "type": "integer",
+              "description": "World-unit cell size for descriptive route coverage.",
+              "minimum": 8,
+              "maximum": 256
+            },
+            "maxRuns": {
+              "type": "integer",
+              "description": "Hard cohort-run ceiling.",
+              "minimum": 4,
+              "maximum": 32
+            },
+            "seeds": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "description": "Unsigned deterministic explorer seed.",
+                "minimum": 0,
+                "maximum": 4294967295
+              },
+              "description": "Explicit deterministic explorer seeds.",
+              "maxItems": 8,
+              "uniqueItems": true
+            },
+            "mapIds": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "description": "Authored map ID.",
+                "minLength": 1
+              },
+              "description": "Maps eligible for isolated probes; natural-route coverage always starts from the authored start map.",
+              "maxItems": 6,
+              "uniqueItems": true
+            },
+            "includeCompletionWitness": {
+              "type": "boolean",
+              "description": "Include a bounded known completion witness when one is available."
+            }
+          },
+          "required": [
+            "expectedSourceDigest"
+          ],
           "additionalProperties": false
         },
         "annotations": {
@@ -17885,6 +18217,12 @@
               "description": "Exactly two iteration IDs.",
               "minItems": 2,
               "maxItems": 2
+            },
+            "maximumStructuralChanges": {
+              "type": "integer",
+              "description": "Maximum stable-ID structural change details returned; aggregate counts remain complete.",
+              "minimum": 32,
+              "maximum": 4096
             }
           },
           "required": [
@@ -30997,7 +31335,7 @@
     ]
   },
   "mcpServer": {
-    "version": "1.2.0",
+    "version": "1.3.0",
     "transport": "stdio",
     "implementation": "generated-from-commandContracts",
     "profiles": {
@@ -31015,8 +31353,8 @@
   },
   "companion": {
     "baseUrl": "http://127.0.0.1:4317",
-    "expectedCompanionVersion": "1.35.0",
-    "expectedProtocolVersion": "1.101.0",
+    "expectedCompanionVersion": "1.36.0",
+    "expectedProtocolVersion": "1.103.0",
     "providers": "/providers",
     "promptDrafts": "/prompt-drafts",
     "agentPresence": "/agent-presence",
