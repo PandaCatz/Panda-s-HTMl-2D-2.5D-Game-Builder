@@ -42,6 +42,16 @@ test("publishes a stable truthful specialist roster", () => {
   assert.equal(Object.hasOwn(manifest.exportedRuntime, "pendingEngineTargets"), false);
 });
 
+test("generated runtime wrappers stay byte-stable on Windows checkouts", async () => {
+  const attributes = await readFile(new URL("../.gitattributes", import.meta.url), "utf8");
+  assert.match(attributes, /^lib\/generated\/looplab-\*-browser-bundle\.mjs text eol=lf$/m);
+
+  for (const runtime of ["phaser", "pixi", "melon"]) {
+    const source = await readFile(new URL(`../lib/generated/looplab-${runtime}-browser-bundle.mjs`, import.meta.url), "utf8");
+    assert.doesNotMatch(source, /\r\n/, runtime);
+  }
+});
+
 test("Full game creation routes every broad 2D discipline and keeps gates independent", () => {
   const route = routeGameStudioWork(createTemplate("platformer"), { track: "creation", prompt: "Create a cohesive skating game with art, audio, touch UI, and fair collision" });
   const capabilityIds = route.route.map((step) => step.capabilityId);
