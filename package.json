@@ -35,7 +35,7 @@
   "dependencies": {
     "@modelcontextprotocol/server": "2.0.0",
     "melonjs": "17.4.0",
-    "phaser": "3.90.0",
+    "phaser": "4.2.1",
     "pixi.js": "8.19.0",
     "react": "19.2.8",
     "react-dom": "19.2.8"
