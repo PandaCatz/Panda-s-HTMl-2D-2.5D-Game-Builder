@@ -18,6 +18,7 @@ import {
 import { flushSync } from "react-dom";
 import VisualIdentityPanel, { type VisualIdentityContract, type VisualIdentityRole } from "./visual-identity-panel";
 import PresentationAuthoringPanel from "./presentation-authoring-panel";
+import CommunityExchangePanel from "./community-exchange-panel";
 import {
   LOOPLAB_PROTOCOL_VERSION,
   applyAgentCommand,
@@ -10149,6 +10150,25 @@ export default function Home() {
     if (event.key === "Enter") event.preventDefault();
   };
 
+  const runCommunityExchangeCommand = async (command: AgentCommand) => {
+    setAgentCommandRunning(true);
+    try {
+      const run = agentBridgeRunRef.current;
+      if (!run) throw new Error("The agent bridge is still starting. Try again in one moment.");
+      const response = await run(command);
+      const consoleSafe = JSON.stringify(response, (key, value) => key === "sourceText" && typeof value === "string" ? `[${value.length.toLocaleString()} source characters retained in the exchange panel]` : value, 2);
+      setAgentCommandText(JSON.stringify(command, (key, value) => key === "sourceText" && typeof value === "string" ? `[${value.length.toLocaleString()} locally loaded source characters]` : value, 2));
+      setAgentCommandResult(consoleSafe);
+      return response;
+    } catch (error) {
+      const response = { ok: false, error: error instanceof Error ? error.message : String(error) };
+      setAgentCommandResult(JSON.stringify(response, null, 2));
+      return response;
+    } finally {
+      setAgentCommandRunning(false);
+    }
+  };
+
   const runAgentWorkMutation = async (command: AgentCommand) => {
     setAgentCommandRunning(true);
     try {
@@ -13075,6 +13095,14 @@ export default function Home() {
           <summary>Agent API</summary>
           <form id="looplab-agent-form" onSubmit={runAgentConsoleCommand} data-response-schema="looplab-bounded-agent-response/v1" data-response-limit={LOOPLAB_AGENT_FORM_RESPONSE_LIMIT_CHARACTERS}>
             <div><strong>Headless command bridge</strong><small>JSON in · verified result out</small></div>
+            <CommunityExchangePanel
+              maps={maps.map((map) => ({ id: map.id, name: map.name }))}
+              assets={(project.assets ?? []).map((asset) => ({ id: asset.id, name: asset.name, width: asset.width, height: asset.height, frames: asset.frames }))}
+              activeMapId={project.activeMapId ?? maps[0]?.id ?? "map-main"}
+              sourceDigest={doctorReport.sourceDigest}
+              disabled={agentCommandRunning}
+              onRun={runCommunityExchangeCommand}
+            />
             <section id="looplab-agent-context-pack" className="agent-context-pack" aria-labelledby="agent-context-heading" data-source-digest={agentProjectContext.sourceDigest} data-context-view={agentProjectContext.view} data-context-fresh={doctorReportFresh ? "true" : "false"}>
               <header><div><strong id="agent-context-heading">Agent context pack</strong><small>{agentContextView === "map" ? "Exact selected-map truth without unrelated map documents" : "Campaign truth without the embedded payload"}</small></div><span>{agentProjectContext.measurements.roughTokenEstimate.toLocaleString()} est. tokens</span></header>
               <div className="agent-context-controls">

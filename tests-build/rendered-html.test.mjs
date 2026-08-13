@@ -256,14 +256,15 @@ test("keeps the create-preview-export loop in the product source", async () => {
 });
 
 test("ships responsive and accessible editor controls", async () => {
-  const [page, css, manifestSource] = await Promise.all([
+  const [page, exchangePanel, css, manifestSource] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/community-exchange-panel.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
     readFile(new URL("../public/agent-manifest.json", import.meta.url), "utf8"),
   ]);
   const manifest = JSON.parse(manifestSource);
 
-  assert.equal(manifest.protocolVersion, "1.106.0");
+  assert.equal(manifest.protocolVersion, "1.107.0");
   assert.equal(manifest.agentOperatingModel.headlessFirst, true);
   assert.match(manifest.agentOperatingModel.primarySurface, /canonical product surface/);
   assert.match(manifest.agentOperatingModel.humanUiRole, /secondary inspection/);
@@ -283,6 +284,11 @@ test("ships responsive and accessible editor controls", async () => {
   assert.equal(manifest.mechanicalRepair.previewCommand, "auto_repair");
   assert.equal(manifest.mechanicalRepair.convergenceCommand, "converge");
   assert.equal(manifest.mechanicalRepair.providerFree, true);
+  assert.equal(manifest.communityExchange.schemaVersion, "looplab-community-exchange/v1");
+  assert.deepEqual(manifest.communityExchange.commands, ["list_community_exchanges", "get_community_exchange_report", "preview_tiled_import", "apply_tiled_import", "preview_aseprite_import", "apply_aseprite_import", "export_community_exchange"]);
+  assert.match(manifest.communityExchange.policy.collisionAuthority, /preserved byte-for-byte/i);
+  assert.match(manifest.communityExchange.workflow, /both Doctor profiles.*expectedSourceDigest.*expectedPreviewDigest/i);
+  assert.equal(manifest.communityExchange.headlessSuperset, true);
   assert.equal(manifest.builderBenchmark.schemaVersion, "looplab-builder-benchmark-suite/v1");
   assert.equal(manifest.builderBenchmark.taskCount, 4);
   assert.equal(manifest.builderBenchmark.providerFreeEvaluation, true);
@@ -320,6 +326,13 @@ test("ships responsive and accessible editor controls", async () => {
   assert.match(page, /release-only finding/);
   assert.match(page, /id="looplab-agent-plan"/);
   assert.match(page, /id="looplab-agent-change-feed"/);
+  assert.match(page, /<CommunityExchangePanel/);
+  assert.match(exchangePanel, /id="looplab-community-exchange"/);
+  assert.match(exchangePanel, /Preview Tiled import/);
+  assert.match(exchangePanel, /Preview Aseprite import/);
+  assert.match(exchangePanel, /Apply exact reviewed import/);
+  assert.match(exchangePanel, /View stale original/);
+  assert.match(exchangePanel, /Object layers and generated pixels are advisory/);
   assert.match(page, /id="looplab-agent-builder-benchmark"/);
   assert.match(page, /id="looplab-director-state"/);
   assert.match(page, /id="looplab-spatial-layout-search"/);
@@ -360,6 +373,8 @@ test("ships responsive and accessible editor controls", async () => {
   assert.match(css, /\.statusbar \.agent-bridge-console form \.agent-context-pack button,\s*\.statusbar \.agent-bridge-console form \.agent-change-feed button\s*\{[^}]*background: #3a3a37/s, "context and change-feed controls must override the generic lime Agent API button rule");
   assert.match(css, /\.agent-readiness-card\[data-release-blocking="true"\]/);
   assert.match(css, /\.agent-intent-plan-result/);
+  assert.match(css, /\.agent-community-exchange/);
+  assert.match(css, /\.community-exchange-preview\.is-ready/);
   assert.match(css, /\.provider-parity-contract/);
   assert.match(css, /background: #e8e7e2/);
   assert.match(css, /spatial-candidate-grid/);

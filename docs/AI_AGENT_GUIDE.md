@@ -719,6 +719,23 @@ Direct visual cells, authored terrain IDs, and collision profiles occupy separat
 
 Preview every `looplab-tile-patch/v1` through `preview_tile_patch`. It clones the project, validates the projected tile program, runs current and production Doctor, and returns an apply command bound to the exact source, tile-program, and patch digests. Run only that unchanged `apply_tile_patch`; stale source, stale program, stale patch, locked layer, out-of-bounds cell, unauthorized transform, or new blocker must fail. Map Studio's Tiles tool uses these same commands for direct tile, terrain, and collision brushes. Orthographic cells match projection dimensions; dimetric artwork is exact 128×64 while logical coverage uses reversible world cells. The one-file runtime exposes `getTileProgram()` / `get_tile_program`, compiled `getTileRuntime()` / `get_tile_runtime`, and tile-owned rectangles inside `getCollisionGeometry()`.
 
+### Source-bound Tiled and Aseprite exchange
+
+Use community files as exact authoring evidence, never as direct project truth. The core, browser, CLI/MCP, Codex, Claude, and visible Agent API panel share these commands:
+
+- `list_community_exchanges` / `get_community_exchange_report`
+- `preview_tiled_import` / `apply_tiled_import`
+- `preview_aseprite_import` / `apply_aseprite_import`
+- `export_community_exchange`
+
+For Tiled JSON/TMJ or uncompressed TMX, supply the complete `sourceText`, destination `mapId`, and an explicit `assetBindings` entry for every tileset source/name/image key. Supply every referenced TSX or external tileset JSON body in `dependencies`; LoopLab never reads its path or URL. Review imported logical dimensions and projection before setting `resizeMap` or `allowProjectionChange`, and set `replaceExisting` only when the exact visual tile replacement is intended. Tiled object layers, tileset collision objects, Wang data, filenames, and pixels are advisory. Existing LoopLab collision profiles and collision layers remain the only authored gameplay geometry.
+
+For Aseprite, first embed the matching PNG atlas as a project asset. Supply the complete exported JSON, exact `assetId`, stable machine ID, and an object-ID or object-kind presentation target. The importer accepts JSON array/hash frames only when they describe an unrotated, untrimmed row-major uniform grid. Per-frame duration differences are rejected unless `allowTimingApproximation:true` is explicitly reviewed; native `.ase`/`.aseprite`, rotated frames, trim offsets, and ambiguous multi-file atlases are not guessed.
+
+Both preview commands parse and project on a clone, validate the specialized program, run current and production Doctor, and return `applyCommand` only when applicable. Execute that returned command unchanged. It binds the exact current `expectedSourceDigest`, retained source/dependency hashes, and `expectedPreviewDigest`; a stale project or changed file must be previewed again. Import source lives only under `project.authoring.communityExchange`, is omitted from gameplay source digests and standalone runtime bytes, and cannot satisfy collision, replay, acceptance, or visual-quality evidence.
+
+`export_community_exchange` returns exact originally imported text. It is `byteIdentical:true` only while the canonical target still matches the imported projection. After canonical edits, the original requires `allowStaleOriginal:true`, returns `status:"stale-original-source"`, and must not be described as current or semantics-preserving. Exchange v1 does not regenerate an edited Tiled/Aseprite document.
+
 A valid tile report proves authored references, exact signatures, collision ownership, bounds, and deterministic compilation; it does not prove a visual layer is perceptible. After material tile paint, inspect a clean browser capture at representative viewports and query the exact exported `getTileRuntime()` result. If a platform, terrain lip, or other authored object hides the painted cells, correct the visual layer/row/depth without moving collision merely to match the pixels, then invalidate and regenerate exact release evidence.
 
 For large embedded-asset projects, send `compact: true` with browser mutation commands so the result and validation return without duplicating the complete project data URLs into the response. Use `update_asset` with a stable asset `id` and a `changes` object for anchor, frame, invariant, analysis, generator, or embedded-image changes. The command preserves `collisionPolicy: "authored-only"`; visual edits never replace map collision.

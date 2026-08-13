@@ -29,6 +29,8 @@ This document is the acceptance specification for AI-authored 2D maps. The UI, h
 | Generated-file drift | Authoring revision and generated-from revision are recorded | Generated artifacts and stale builds fail validation |
 | Unproven route topology | Layered navigation nodes and weighted/one-way links support deterministic A* tests | Missing endpoints/layers, blocked links, ambiguous heights, and failed saved routes are reported |
 | Imported route drift | Path Editor v2 percentage coordinates convert once into authored map bounds | IDs, destinations, costs, direction, areas, and layers must survive import |
+| Imported map/art claiming geometry | Tiled and Aseprite enter through source-bound preview/apply | Preserve existing collision byte-for-byte; object layers, tileset collision, filenames, and pixels remain advisory |
+| False round-trip claims | Retain exact source text, SHA-256, projection digest, and target freshness | Export is byte-identical only while current; after edits it is an explicitly requested stale original, never a regenerated-current claim |
 
 ## Required spatial model
 
