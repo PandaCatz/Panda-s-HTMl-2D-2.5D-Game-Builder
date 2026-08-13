@@ -178,7 +178,7 @@ test("headless acceptance commands are read-only and return structured proof", (
 
 test("the agent manifest makes executable acceptance a required headless capability", () => {
   const manifest = getAgentManifest();
-  assert.equal(manifest.protocolVersion, "1.108.0");
+  assert.equal(manifest.protocolVersion, "1.109.0");
   assert.deepEqual(manifest.executableAcceptance.commands, ["get_acceptance_plan", "run_acceptance_suite"]);
   assert.ok(manifest.commands.includes("get_acceptance_plan"));
   assert.ok(manifest.commands.includes("run_acceptance_suite"));

@@ -25,7 +25,7 @@ const EXPECTED_IDS = [
 test("publishes a stable truthful specialist roster", () => {
   assert.deepEqual(LOOPLAB_SPECIALIST_AGENTS.map((agent) => agent.id), EXPECTED_IDS);
   const manifest = getAgentManifest();
-  assert.equal(manifest.protocolVersion, "1.108.0");
+  assert.equal(manifest.protocolVersion, "1.109.0");
   assert.equal(manifest.specialistAgents.executionMode, "single-provider-staged-review");
   assert.equal(manifest.specialistAgents.providerInvocationsPerIteration, 1);
   assert.equal(manifest.specialistAgents.independentAgentProcesses, false);

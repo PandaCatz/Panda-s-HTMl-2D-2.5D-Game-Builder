@@ -1,6 +1,6 @@
 {
   "name": "Looplab Headless Agent API",
-  "protocolVersion": "1.108.0",
+  "protocolVersion": "1.109.0",
   "agentOperatingModel": {
     "purpose": "LoopLab is an AI capability amplifier and structured game-authoring workstation, not a form the agent is confined to.",
     "headlessFirst": true,
@@ -3305,6 +3305,210 @@
     ],
     "rule": "The production plan is a native LoopLab capability. It coordinates architecture, runtime choice, DOM UI, sprite/assets, and Playwright QA without replacing existing authoring or requiring an external Codex skill at execution time."
   },
+  "capabilityPacks": {
+    "schemaVersion": "looplab-capability-pack-registry/v1",
+    "revision": 1,
+    "registryDigest": "sha256:c3961f23ce90e61ad3ef59eecddf6be2248f716529298d7763110a5444da804e",
+    "packCount": 6,
+    "capabilityCount": 28,
+    "resource": "looplab://capability-packs",
+    "publicArtifact": "/capability-packs.json",
+    "commands": [
+      "list_capability_packs",
+      "get_capability_pack",
+      "query_capability_knowledge",
+      "inspect_capability_pack_refresh"
+    ],
+    "packs": [
+      {
+        "id": "architecture-delivery",
+        "revision": 1,
+        "label": "Architecture & one-file delivery",
+        "categories": [
+          "architecture",
+          "packaging",
+          "offline"
+        ],
+        "capabilityIds": [
+          "web-game-foundations",
+          "single-file-html-games"
+        ],
+        "contentDigest": "sha256:0f761bf3e9fffd4717357caa4c69cc5383865a668e1ee8aad43b3665e66b3a67",
+        "digest": "sha256:2decaf6ff7c7a54eef2206bf1f4ca2ba66e02bcb8d648f555d2b66256be8c361",
+        "licenseExpressions": [
+          "NOASSERTION"
+        ],
+        "calibrationCaseIds": [
+          "phaser-runtime-route",
+          "dimetric-map-route",
+          "pixel-assets-route",
+          "one-file-release-route"
+        ]
+      },
+      {
+        "id": "art-presentation",
+        "revision": 1,
+        "label": "Sprites, animation & visual effects",
+        "categories": [
+          "art",
+          "sprites",
+          "animation",
+          "palette",
+          "effects"
+        ],
+        "capabilityIds": [
+          "sprite-pipeline",
+          "animation-state-editor",
+          "pixel-art-palette-pipeline",
+          "effects-plugin-system"
+        ],
+        "contentDigest": "sha256:172e9eead04ee7966bd3906dc51781443c70e445074b21d65bc01ce6ef058813",
+        "digest": "sha256:3db0596ecc0d31963fdcf73b6c1340d13c5af52a8dc83de0f9a0d38680ed6efb",
+        "licenseExpressions": [
+          "NOASSERTION"
+        ],
+        "calibrationCaseIds": [
+          "pixel-assets-route"
+        ]
+      },
+      {
+        "id": "experience-content",
+        "revision": 1,
+        "label": "Narrative, audio & interface",
+        "categories": [
+          "narrative",
+          "audio",
+          "ui",
+          "accessibility"
+        ],
+        "capabilityIds": [
+          "narrative-design",
+          "procedural-web-audio",
+          "game-ui-frontend"
+        ],
+        "contentDigest": "sha256:7bfb9d2572bee97d3cbde8a5530f7b9e8bb66709962f0b42e9f4f7ad336d8e09",
+        "digest": "sha256:c685eb4137d55bc1db1ede08f026166955b8303bf9facea5b95bf1b2ae415b32",
+        "licenseExpressions": [
+          "NOASSERTION"
+        ],
+        "calibrationCaseIds": [
+          "one-file-release-route"
+        ]
+      },
+      {
+        "id": "runtime-renderers",
+        "revision": 1,
+        "label": "2D runtimes & renderers",
+        "categories": [
+          "runtime",
+          "rendering",
+          "performance"
+        ],
+        "capabilityIds": [
+          "phaser-core",
+          "phaser-2d-game",
+          "phaser-arcade-physics",
+          "pixijs-rendering",
+          "melonjs-engine",
+          "canvas-2d-performance"
+        ],
+        "contentDigest": "sha256:f41d3510c39e712852ef063b4ea30fe6f6cfb4b3776f259e02b1bd80a468696a",
+        "digest": "sha256:51218f322f746293952bba5619c0991acdbc20390efed2bd7f109db9c947bcfd",
+        "licenseExpressions": [
+          "NOASSERTION"
+        ],
+        "calibrationCaseIds": [
+          "phaser-runtime-route",
+          "dimetric-map-route",
+          "pixel-assets-route",
+          "one-file-release-route"
+        ]
+      },
+      {
+        "id": "spatial-gameplay",
+        "revision": 1,
+        "label": "Spatial gameplay & control",
+        "categories": [
+          "gameplay",
+          "collision",
+          "maps",
+          "input",
+          "dimetric"
+        ],
+        "capabilityIds": [
+          "collision-and-response-2d",
+          "high-speed-sweep-2d",
+          "rail-path-authoring",
+          "isometric-depth-sorting",
+          "input-and-mobile-viewport",
+          "camera-strategy-library",
+          "game-feel-and-juice",
+          "deterministic-actor-systems",
+          "continuous-world-chunks"
+        ],
+        "contentDigest": "sha256:323424ebb45254fe37e506634bd83f22be3956bf245be236e990aa3d977990cf",
+        "digest": "sha256:83ff3fb4a01567985bf392b027b650e2a8a1f225dbede4f8a70d5fd7b47296b5",
+        "licenseExpressions": [
+          "NOASSERTION"
+        ],
+        "calibrationCaseIds": [
+          "phaser-runtime-route",
+          "dimetric-map-route",
+          "one-file-release-route"
+        ]
+      },
+      {
+        "id": "verification-release",
+        "revision": 1,
+        "label": "Replay, profiling & browser QA",
+        "categories": [
+          "verification",
+          "replay",
+          "performance",
+          "playtest",
+          "release"
+        ],
+        "capabilityIds": [
+          "deterministic-sim-replay",
+          "performance-profiler",
+          "verification-gates",
+          "game-playtest"
+        ],
+        "contentDigest": "sha256:6f44eeec560f0aaf25acf188f8935329ce5c961ffe3cf9542d7b91dae8d93d08",
+        "digest": "sha256:861832ce91f84b219d679fc0560937884f772b857feda20486a1f62081f70291",
+        "licenseExpressions": [
+          "NOASSERTION"
+        ],
+        "calibrationCaseIds": [
+          "phaser-runtime-route",
+          "dimetric-map-route",
+          "pixel-assets-route",
+          "one-file-release-route"
+        ]
+      }
+    ],
+    "calibration": {
+      "schemaVersion": "looplab-capability-pack-calibration/v1",
+      "valid": true,
+      "caseCount": 4,
+      "passedCount": 4,
+      "digest": "sha256:d12c140143b0895e9b1f4e503397239ce2e532a0a091f4c98b3e51136a9666f3"
+    },
+    "policy": {
+      "orientationOnly": true,
+      "executable": false,
+      "autoDownload": false,
+      "projectMutation": false,
+      "collisionAuthority": false,
+      "evidenceAuthority": false,
+      "creativeWinnerAuthority": false,
+      "refreshMode": "inspect-only",
+      "routerAuthority": "lib/looplab-capability-router.mjs",
+      "rule": "Capability packs provide bounded decision knowledge. The canonical router, authored project, Project Doctor, replay, browser evidence, and explicit human or agent judgment retain their existing authority."
+    },
+    "refreshPolicy": "Refresh inspection is read-only: lower revisions are rollback, same-revision different bytes are equivocation, and a higher revision remains uninstalled until schema, digest, provenance, license metadata, policy, and calibration review pass.",
+    "exportBoundary": "Capability packs are builder orientation data. They do not enter project JSON, provider-authored game state, runtime payloads, or one-file game exports."
+  },
   "installedSkills": {
     "excluded": [
       "hbg-loop"
@@ -3331,6 +3535,90 @@
           "offline-assets",
           "encoded-and-decoded-budgets",
           "artifact-preflight"
+        ]
+      },
+      {
+        "id": "sprite-pipeline",
+        "label": "Sprite Pipeline",
+        "owns": [
+          "full-strip-generation",
+          "identity-lock",
+          "shared-scale",
+          "ground-anchor",
+          "frame-analysis"
+        ]
+      },
+      {
+        "id": "animation-state-editor",
+        "label": "Animation State Editor",
+        "owns": [
+          "frame-slicing",
+          "feet-and-action-anchors",
+          "animation-definitions",
+          "state-transitions",
+          "interruptibility",
+          "presentation-only-frame-events"
+        ]
+      },
+      {
+        "id": "pixel-art-palette-pipeline",
+        "label": "Palette Pipeline",
+        "owns": [
+          "one-palette-across-frames",
+          "deterministic-quantization",
+          "alpha-weighted-resample",
+          "on-palette-gate",
+          "flicker-report",
+          "gameplay-color-protection"
+        ]
+      },
+      {
+        "id": "effects-plugin-system",
+        "label": "Effects Plugins",
+        "owns": [
+          "afterimage-history",
+          "parallax-planes",
+          "effect-parameters",
+          "sidecar-requirements",
+          "reduced-motion-presets",
+          "simulation-independence"
+        ]
+      },
+      {
+        "id": "narrative-design",
+        "label": "Narrative Design & Writing",
+        "owns": [
+          "story-structure",
+          "character-continuity",
+          "dialogue-and-barks",
+          "quests-and-lore",
+          "environmental-storytelling",
+          "ending-payoff",
+          "narrative-state-bindings"
+        ]
+      },
+      {
+        "id": "procedural-web-audio",
+        "label": "Procedural Web Audio",
+        "owns": [
+          "gesture-unlock",
+          "click-free-envelopes",
+          "voice-cap",
+          "master-limiter",
+          "pause-and-mute",
+          "simulation-owned-beat-grid"
+        ]
+      },
+      {
+        "id": "game-ui-frontend",
+        "label": "Game UI",
+        "owns": [
+          "hud",
+          "menus",
+          "overlays",
+          "responsive-layout",
+          "playfield-protection",
+          "accessibility"
         ]
       },
       {
@@ -3498,90 +3786,6 @@
         ]
       },
       {
-        "id": "narrative-design",
-        "label": "Narrative Design & Writing",
-        "owns": [
-          "story-structure",
-          "character-continuity",
-          "dialogue-and-barks",
-          "quests-and-lore",
-          "environmental-storytelling",
-          "ending-payoff",
-          "narrative-state-bindings"
-        ]
-      },
-      {
-        "id": "procedural-web-audio",
-        "label": "Procedural Web Audio",
-        "owns": [
-          "gesture-unlock",
-          "click-free-envelopes",
-          "voice-cap",
-          "master-limiter",
-          "pause-and-mute",
-          "simulation-owned-beat-grid"
-        ]
-      },
-      {
-        "id": "game-ui-frontend",
-        "label": "Game UI",
-        "owns": [
-          "hud",
-          "menus",
-          "overlays",
-          "responsive-layout",
-          "playfield-protection",
-          "accessibility"
-        ]
-      },
-      {
-        "id": "sprite-pipeline",
-        "label": "Sprite Pipeline",
-        "owns": [
-          "full-strip-generation",
-          "identity-lock",
-          "shared-scale",
-          "ground-anchor",
-          "frame-analysis"
-        ]
-      },
-      {
-        "id": "animation-state-editor",
-        "label": "Animation State Editor",
-        "owns": [
-          "frame-slicing",
-          "feet-and-action-anchors",
-          "animation-definitions",
-          "state-transitions",
-          "interruptibility",
-          "presentation-only-frame-events"
-        ]
-      },
-      {
-        "id": "pixel-art-palette-pipeline",
-        "label": "Palette Pipeline",
-        "owns": [
-          "one-palette-across-frames",
-          "deterministic-quantization",
-          "alpha-weighted-resample",
-          "on-palette-gate",
-          "flicker-report",
-          "gameplay-color-protection"
-        ]
-      },
-      {
-        "id": "deterministic-sim-replay",
-        "label": "Deterministic Replay",
-        "owns": [
-          "fixed-60hz-simulation",
-          "seeded-prng",
-          "state-digest",
-          "behavioral-replay-fixtures",
-          "headless-sim-driver",
-          "versioned-rerecord"
-        ]
-      },
-      {
         "id": "deterministic-actor-systems",
         "label": "Actor Systems",
         "owns": [
@@ -3606,15 +3810,15 @@
         ]
       },
       {
-        "id": "effects-plugin-system",
-        "label": "Effects Plugins",
+        "id": "deterministic-sim-replay",
+        "label": "Deterministic Replay",
         "owns": [
-          "afterimage-history",
-          "parallax-planes",
-          "effect-parameters",
-          "sidecar-requirements",
-          "reduced-motion-presets",
-          "simulation-independence"
+          "fixed-60hz-simulation",
+          "seeded-prng",
+          "state-digest",
+          "behavioral-replay-fixtures",
+          "headless-sim-driver",
+          "versioned-rerecord"
         ]
       },
       {
@@ -5480,6 +5684,10 @@
   "commands": [
     "get_manifest",
     "get_agent_guide_index",
+    "list_capability_packs",
+    "get_capability_pack",
+    "query_capability_knowledge",
+    "inspect_capability_pack_refresh",
     "load_template",
     "list_projects",
     "select_project",
@@ -5973,6 +6181,10 @@
     "browserSession": [
       "get_manifest",
       "get_agent_guide_index",
+      "list_capability_packs",
+      "get_capability_pack",
+      "query_capability_knowledge",
+      "inspect_capability_pack_refresh",
       "load_template",
       "list_projects",
       "select_project",
@@ -6260,6 +6472,10 @@
     "browserOnly": [
       "get_manifest",
       "get_agent_guide_index",
+      "list_capability_packs",
+      "get_capability_pack",
+      "query_capability_knowledge",
+      "inspect_capability_pack_refresh",
       "load_template",
       "list_projects",
       "select_project",
@@ -6562,6 +6778,241 @@
               "maximum": 50
             }
           },
+          "additionalProperties": false
+        },
+        "annotations": {
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      },
+      {
+        "op": "list_capability_packs",
+        "title": "List Capability Packs",
+        "description": "List compact built-in capability packs with content digests, provenance, license declarations, calibration coverage, and exact native capability IDs. Packs are orientation-only and never load or execute code.",
+        "surfaces": [
+          "browser-session"
+        ],
+        "mutatesProject": false,
+        "mutatesBuilderState": false,
+        "requiresSourceDigestInMcp": false,
+        "coordinationOnly": false,
+        "schemaPrecision": "declared",
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "expectedSourceDigest": {
+              "type": "string",
+              "description": "Project Doctor sourceDigest inspected immediately before this command.",
+              "minLength": 1
+            },
+            "expectedLedgerDigest": {
+              "type": "string",
+              "description": "Shared work-ledger digest inspected immediately before this coordination mutation.",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            },
+            "compact": {
+              "type": "boolean",
+              "description": "Return a compact result without repeating the complete embedded project when the transport supports it."
+            },
+            "query": {
+              "type": "string",
+              "description": "Bounded text search across pack labels, categories, decisions, and capability ownership.",
+              "maxLength": 240
+            },
+            "category": {
+              "type": "string",
+              "description": "Exact lowercase pack category.",
+              "pattern": "^[a-z0-9][a-z0-9-]*$",
+              "maxLength": 80
+            },
+            "limit": {
+              "type": "integer",
+              "description": "Maximum pack summaries.",
+              "minimum": 1,
+              "maximum": 40
+            },
+            "offset": {
+              "type": "integer",
+              "description": "Deterministic result offset.",
+              "minimum": 0,
+              "maximum": 10000
+            }
+          },
+          "additionalProperties": false
+        },
+        "annotations": {
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      },
+      {
+        "op": "get_capability_pack",
+        "title": "Get Capability Pack",
+        "description": "Read one complete deterministic capability pack, including decision knowledge, authority boundaries, source metadata, and router calibration evidence.",
+        "surfaces": [
+          "browser-session"
+        ],
+        "mutatesProject": false,
+        "mutatesBuilderState": false,
+        "requiresSourceDigestInMcp": false,
+        "coordinationOnly": false,
+        "schemaPrecision": "declared",
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "expectedSourceDigest": {
+              "type": "string",
+              "description": "Project Doctor sourceDigest inspected immediately before this command.",
+              "minLength": 1
+            },
+            "expectedLedgerDigest": {
+              "type": "string",
+              "description": "Shared work-ledger digest inspected immediately before this coordination mutation.",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            },
+            "compact": {
+              "type": "boolean",
+              "description": "Return a compact result without repeating the complete embedded project when the transport supports it."
+            },
+            "packId": {
+              "type": "string",
+              "description": "Exact built-in capability-pack ID.",
+              "pattern": "^[a-z0-9][a-z0-9-]*$",
+              "maxLength": 120
+            }
+          },
+          "required": [
+            "packId"
+          ],
+          "additionalProperties": false
+        },
+        "annotations": {
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      },
+      {
+        "op": "query_capability_knowledge",
+        "title": "Query Capability Knowledge",
+        "description": "Search bounded native capability decision knowledge without asking a provider or loading an external skill at runtime. Results remain advisory and cannot mutate or verify a game.",
+        "surfaces": [
+          "browser-session"
+        ],
+        "mutatesProject": false,
+        "mutatesBuilderState": false,
+        "requiresSourceDigestInMcp": false,
+        "coordinationOnly": false,
+        "schemaPrecision": "declared",
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "expectedSourceDigest": {
+              "type": "string",
+              "description": "Project Doctor sourceDigest inspected immediately before this command.",
+              "minLength": 1
+            },
+            "expectedLedgerDigest": {
+              "type": "string",
+              "description": "Shared work-ledger digest inspected immediately before this coordination mutation.",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            },
+            "compact": {
+              "type": "boolean",
+              "description": "Return a compact result without repeating the complete embedded project when the transport supports it."
+            },
+            "query": {
+              "type": "string",
+              "description": "Bounded intent or implementation question.",
+              "maxLength": 600
+            },
+            "packIds": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "description": "Exact capability-pack ID.",
+                "pattern": "^[a-z0-9][a-z0-9-]*$",
+                "maxLength": 120
+              },
+              "description": "Optional exact pack scope.",
+              "maxItems": 16,
+              "uniqueItems": true
+            },
+            "capabilityIds": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "description": "Exact native capability ID.",
+                "pattern": "^[a-z0-9][a-z0-9-]*$",
+                "maxLength": 120
+              },
+              "description": "Optional exact capability scope.",
+              "maxItems": 32,
+              "uniqueItems": true
+            },
+            "limit": {
+              "type": "integer",
+              "description": "Maximum bounded knowledge records.",
+              "minimum": 1,
+              "maximum": 40
+            }
+          },
+          "additionalProperties": false
+        },
+        "annotations": {
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      },
+      {
+        "op": "inspect_capability_pack_refresh",
+        "title": "Inspect Capability Pack Refresh",
+        "description": "Compare one complete candidate pack against the installed revision. Reject rollback and same-revision equivocation; validate provenance, license metadata, authority, and calibration without downloading or installing anything.",
+        "surfaces": [
+          "browser-session"
+        ],
+        "mutatesProject": false,
+        "mutatesBuilderState": false,
+        "requiresSourceDigestInMcp": false,
+        "coordinationOnly": false,
+        "schemaPrecision": "declared",
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "expectedSourceDigest": {
+              "type": "string",
+              "description": "Project Doctor sourceDigest inspected immediately before this command.",
+              "minLength": 1
+            },
+            "expectedLedgerDigest": {
+              "type": "string",
+              "description": "Shared work-ledger digest inspected immediately before this coordination mutation.",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            },
+            "compact": {
+              "type": "boolean",
+              "description": "Return a compact result without repeating the complete embedded project when the transport supports it."
+            },
+            "candidate": {
+              "type": "object",
+              "description": "Complete declarative looplab-capability-pack/v1 candidate. The operation validates and compares it but never installs it.",
+              "additionalProperties": true
+            }
+          },
+          "required": [
+            "candidate"
+          ],
           "additionalProperties": false
         },
         "annotations": {
@@ -33556,11 +34007,11 @@
   },
   "agentGuideNavigation": {
     "schemaVersion": "looplab-agent-guide-index/v1",
-    "sourceDigest": "sha256:02e79bd55bc39529e1ebbc24f03182183c92fe0381a5806d5fa041ffcc1e24e6",
-    "indexDigest": "sha256:a616ee6b354284f9afc24c38f89a0aadb5c3ff5251bb1a51302675b5a09d6faf",
-    "headingCount": 58,
+    "sourceDigest": "sha256:3a2151aa53777844e14a5df97850030634f5b68326b6a88a4dc5d256160a616c",
+    "indexDigest": "sha256:9a9c6aeea9a2fa2deb612898164fa3831d7fc284f7b33faf0db87a8a5f9a4598",
+    "headingCount": 59,
     "counts": {
-      "sections": 58,
+      "sections": 59,
       "invariants": 16,
       "lifecycle": 10,
       "recoveries": 22
@@ -33589,7 +34040,7 @@
     }
   },
   "mcpServer": {
-    "version": "1.4.0",
+    "version": "1.5.0",
     "transport": "stdio",
     "implementation": "generated-from-commandContracts",
     "profiles": {
@@ -33599,6 +34050,7 @@
     "resources": [
       "looplab://manifest",
       "looplab://agent-playbook",
+      "looplab://capability-packs",
       "looplab://agent-guide",
       "looplab://agent-guide-index",
       "looplab://mcp-setup"
@@ -33609,7 +34061,7 @@
   "companion": {
     "baseUrl": "http://127.0.0.1:4317",
     "expectedCompanionVersion": "1.39.0",
-    "expectedProtocolVersion": "1.108.0",
+    "expectedProtocolVersion": "1.109.0",
     "providers": "/providers",
     "promptDrafts": "/prompt-drafts",
     "agentPresence": "/agent-presence",

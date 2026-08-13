@@ -90,7 +90,7 @@ test("connect_maps authors an inspectable runtime-join contract by default", () 
   assert.deepEqual(headless.result, plan);
 
   const manifest = getAgentManifest();
-  assert.equal(manifest.protocolVersion, "1.108.0");
+  assert.equal(manifest.protocolVersion, "1.109.0");
   assert.equal(manifest.runtimeJoinValidation.planCommand, "get_runtime_join_plan");
   assert.ok(manifest.requiredWorkflow.includes("get_runtime_join_plan"));
   assert.ok(manifest.exportedRuntime.methods.includes("getRuntimeJoinPlan"));

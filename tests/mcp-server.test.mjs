@@ -51,16 +51,16 @@ test("agent manifest publishes one precise contract for every command surface", 
   const contracts = getLooplabCommandContracts();
   const validation = validateLooplabCommandContracts();
 
-  assert.equal(LOOPLAB_PROTOCOL_VERSION, "1.108.0");
+  assert.equal(LOOPLAB_PROTOCOL_VERSION, "1.109.0");
   assert.equal(manifest.agentOperatingModel.headlessFirst, true);
   assert.match(manifest.agentOperatingModel.primaryConsumer, /Codex, Claude/);
   assert.match(manifest.agentOperatingModel.primarySurface, /canonical product surface/);
   assert.match(manifest.agentOperatingModel.humanUiRole, /secondary inspection/);
   assert.equal(validation.valid, true, validation.errors.join("\n"));
   assert.equal(validation.commandCount, LOOPLAB_AGENT_COMMANDS.length);
-  assert.equal(contracts.length, 285);
+  assert.equal(contracts.length, 289);
   assert.equal(LOOPLAB_CORE_COMMANDS.length, 203);
-  assert.equal(LOOPLAB_BROWSER_SESSION_COMMANDS.length, 285);
+  assert.equal(LOOPLAB_BROWSER_SESSION_COMMANDS.length, 289);
   assert.equal(manifest.commandContracts.schemaVersion, LOOPLAB_COMMAND_CONTRACT_SCHEMA);
   assert.deepEqual(manifest.commandContracts.commands, contracts);
   assert.equal(contracts.every((contract) => contract.schemaPrecision === "declared"), true);
@@ -234,7 +234,7 @@ test("core MCP exposes typed resources and enforces optimistic file mutations", 
   const listedResources = await client.listResources();
   assert.deepEqual(
     listedResources.resources.map((resource) => resource.uri).sort(),
-    ["looplab://agent-guide", "looplab://agent-guide-index", "looplab://agent-playbook", "looplab://manifest", "looplab://mcp-setup"],
+    ["looplab://agent-guide", "looplab://agent-guide-index", "looplab://agent-playbook", "looplab://capability-packs", "looplab://manifest", "looplab://mcp-setup"],
   );
   const manifestResource = await client.readResource({ uri: "looplab://manifest" });
   const resourceManifest = JSON.parse(manifestResource.contents[0].text);
@@ -245,6 +245,13 @@ test("core MCP exposes typed resources and enforces optimistic file mutations", 
   assert.equal(resourcePlaybook.schemaVersion, "looplab-agent-playbook/v1");
   assert.equal(resourcePlaybook.policy.autoExecution, false);
   assert.equal(resourcePlaybook.count, 10);
+  const capabilityResource = await client.readResource({ uri: "looplab://capability-packs" });
+  const resourceCapabilityPacks = JSON.parse(capabilityResource.contents[0].text);
+  assert.equal(resourceCapabilityPacks.schemaVersion, "looplab-capability-pack-registry/v1");
+  assert.equal(resourceCapabilityPacks.packCount, 6);
+  assert.equal(resourceCapabilityPacks.capabilityCount, 28);
+  assert.equal(resourceCapabilityPacks.calibration.valid, true);
+  assert.equal(resourceCapabilityPacks.policy.executable, false);
   const guideIndexResource = await client.readResource({ uri: "looplab://agent-guide-index" });
   const resourceGuideIndex = JSON.parse(guideIndexResource.contents[0].text);
   assert.equal(resourceGuideIndex.schemaVersion, "looplab-agent-guide-index/v1");

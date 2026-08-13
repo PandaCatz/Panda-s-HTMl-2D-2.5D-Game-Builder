@@ -1801,6 +1801,46 @@ button:disabled {
   color: #f8f5e9;
 }
 
+.capability-pack-browser .agent-guide-actions {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.capability-refresh-inspector {
+  display: grid;
+  gap: 6px;
+  padding: 8px;
+  border: 1px solid #555550;
+  background: #242422;
+}
+
+.capability-refresh-inspector > summary {
+  cursor: pointer;
+  color: #f8f5e9;
+  font-weight: 850;
+}
+
+.capability-refresh-inspector textarea,
+.capability-refresh-inspector pre {
+  width: 100%;
+  min-height: 92px;
+  max-height: 260px;
+  overflow: auto;
+  resize: vertical;
+  border: 1px solid #77776d;
+  border-radius: 0;
+  padding: 7px;
+  background: #11110e;
+  color: #dedbd2;
+  font: 650 8px/1.4 var(--mono);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.capability-refresh-inspector p[role="alert"] {
+  margin: 0;
+  color: #f0b7b7;
+}
+
 .agent-intent-plan {
   color: #f2efe6;
   font: 700 8px/1.4 var(--mono);

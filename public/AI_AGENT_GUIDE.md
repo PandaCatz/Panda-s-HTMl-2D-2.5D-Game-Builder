@@ -30,6 +30,7 @@ The product scope is strictly **2D HTML games**. Side-scrollers, top-down games,
 - [Mandatory preflight](#mandatory-preflight)
   - [Specialist build roster](#specialist-build-roster)
   - [Select the 2D runtime from one shared policy](#select-the-2d-runtime-from-one-shared-policy)
+  - [Discover native capability packs and inspect refreshes](#discover-native-capability-packs-and-inspect-refreshes)
   - [Reuse-guide architecture contract](#reuse-guide-architecture-contract)
 - [Build an atomic candidate](#build-an-atomic-candidate)
   - [Source-bound Tiled and Aseprite exchange](#source-bound-tiled-and-aseprite-exchange)
@@ -737,6 +738,22 @@ Use `framework: "auto"` for a new game unless the user chose a renderer. The rec
 Read `runtimeSelection.selectedFramework`, `recommendedFramework`, `bestFitFramework`, `selectionSource`, `confidence`, `signals`, `reasons`, `singleFile.delivery`, `adapterAvailability`, `requestedUnavailableFramework`, and `migrationRequiresOptIn`. Canvas, Phaser, PixiJS, and melonJS are release-ready. Use `set_runtime_profile` for any actual runtime change so `runtimeProfile.framework`, exact delivery metadata, embedded-bundle status, and release invariants change atomically. A selected optional adapter must report its pinned version, declared SHA-256, actually loaded version, primary frame owner, and renderer bridge through `getRuntimeAdapterInfo()` and `get_runtime_adapter`.
 
 The same compact receipt is supplied to OpenAI, Anthropic, Codex CLI, and Claude CLI inside `capabilityRoute`. Do not run a provider-specific engine heuristic or a second model call. Compose capabilities, not competing engines: one primary frame/render owner is allowed, while semantic input enters LoopLab's deterministic simulation, snapshots leave it for rendering, DOM owns text-heavy HUD/menu surfaces, authored map geometry owns collision, and Playwright verifies the exact generated artifact. Renderer selection must not change deterministic replay, acceptance, saves, or collision truth.
+
+### Discover native capability packs and inspect refreshes
+
+LoopLab exposes its absorbed, program-owned decision knowledge as `looplab-capability-pack-registry/v1`. Read `looplab://capability-packs`, `/capability-packs.json`, or the visible **Native capability packs** panel when you need broad orientation. For bounded context, prefer the strict browser commands:
+
+```js
+const packs = await api.run({ op: "list_capability_packs", query: "sprite palette", limit: 8 });
+const knowledge = await api.run({ op: "query_capability_knowledge", query: "should this game use Phaser?", limit: 8 });
+const exact = await api.run({ op: "get_capability_pack", packId: "runtime-renderers" });
+```
+
+The six built-in packs cover every current `route_work` capability exactly once. Read `chooseWhen`, `avoidWhen`, `guidance`, `owns`, `specialistOwnerIds`, pack-level `decisionRules`, `sources`, `provenance`, and calibration cases. The registry is provider-free, deterministic, and excluded from project JSON, provider-authored game state, runtime payloads, and one-file exports. It supplements the canonical router; it does not replace `route_work`, make a provider request, or prove that a game implements a routed capability.
+
+Treat every pack as non-executable orientation. It has no project-mutation, collision, evidence, or creative-winner authority. License expressions are declarations with evidence pointers, not proof of rights. Built-in packs currently use `NOASSERTION` because this repository has no published license file; do not infer a commercial-use grant or redistribute third-party source text from a digest.
+
+To examine a proposed update, pass one complete `looplab-capability-pack/v1` document to `inspect_capability_pack_refresh`. A lower revision is rejected as rollback. Different content at the installed revision is rejected as equivocation. A higher revision must preserve strict schema, canonical content/envelope digests, exact immutable source reference, license metadata, unsigned-local provenance claims, non-executable authority, canonical capability ownership, and router calibration coverage. A result of `reviewable-newer-revision` still does **not** install anything: review it in source control, update decision knowledge and calibration deliberately, run `npm run capability-packs:generate`, then require `npm run capability-packs:check` in validation.
 
 `route_work.context.narrative` is a separate `looplab-narrative-routing/v1` receipt. In Auto mode it scores authored story, character/dialogue, quest/lore, environmental-storytelling, branching-choice, narrative-genre, and opening/ending-payoff signals. It also activates for the `narrative` workstream. `narrativeMode: "include"` forces narrative work and `"exclude"` keeps the pass mechanics-first. When `included` is true, the existing single provider invocation gains two ordered stages: the **Narrative Designer** owns causality, continuity, choices, stable state bindings, and ending payoff; the **Narrator & Dialogue Writer** owns narrator voice, dialogue, barks, tutorial copy, line continuity, and readable text equivalents. Both must return specialist receipts, but no second provider call or runtime state store is implied.
 

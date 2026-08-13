@@ -212,7 +212,11 @@ A numeric score cannot excuse a blocker. Visual readiness is reported separately
 
 ## Headless by design
 
-LoopLab currently exposes **203 core project commands** and **284 browser-session commands** through one versioned manifest. Every command carries a JSON Schema 2020-12 input contract, surface ownership, mutation metadata, and MCP safety annotations instead of relying on an agent to infer arguments from prose.
+LoopLab currently exposes **203 core project commands** and **289 browser-session commands** through one versioned manifest. Every command carries a JSON Schema 2020-12 input contract, surface ownership, mutation metadata, and MCP safety annotations instead of relying on an agent to infer arguments from prose.
+
+The native capability-pack registry makes LoopLab's absorbed game-building knowledge independently discoverable instead of requiring Codex or Claude to load an external skill at runtime. Six deterministic packs cover all 28 routed capabilities exactly once, including Canvas, Phaser, PixiJS, melonJS, collision, dimetric depth, sprites, animation, palette handling, narrative, audio, UI, replay, performance, and Playwright QA. Each pack carries exact content and envelope digests, an immutable local source reference, an explicit license declaration/evidence pointer, an honest unsigned-local provenance boundary, specialist ownership, decision rules, and matched router calibration cases. The registry is available in the Agent API, at `/capability-packs.json`, through `looplab://capability-packs`, and through four strict browser commands. It is orientation only: packs cannot execute code, download dependencies, mutate a project, own collision, become verification evidence, or choose a creative winner.
+
+Refresh handling is deliberately fail-closed. `inspect_capability_pack_refresh` rejects a lower revision as rollback, rejects different bytes at the same revision as equivocation, verifies the complete higher-revision schema/digests/source/license/policy/calibration envelope, and still installs nothing. A candidate that survives inspection requires explicit source-controlled review and regeneration. Because this repository currently publishes no license file, built-in pack metadata says `NOASSERTION`; digest or provenance metadata must never be misread as a commercial-use grant or permission to copy third-party skill text.
 
 Codex and Claude can connect through the official MCP stdio protocol in two explicit profiles: a workspace-contained core file profile for deterministic `.loop.json` work, and a persistent Playwright-backed browser profile for project selection, provider jobs, visual review, preview input, and the complete live surface. `get_agent_brief` returns a bounded, campaign-accurate warm start with separate current-authoring and production-release Doctor assessments on the same source digest, so a prototype pass cannot masquerade as release readiness. `get_project_context` then supplies either the campaign index or exact selected map documents without embedded asset bytes, provider prompt bodies, secrets, snapshots, or exported HTML. Every context pack carries the exact Project Doctor source digest and an explicit omission policy. It is orientation—not mutation input or verification evidence—and `get_project` remains the deliberate complete-source fallback.
 
@@ -255,6 +259,10 @@ The Agent Playbook is a small source-controlled registry of recurring, already-s
 Useful entry points:
 
 - `npm run agent -- manifest` — inspect the current protocol and command surfaces;
+- `npm run agent -- capabilities "sprite palette"` — search compact built-in capability packs without a project, provider call, or external skill load;
+- `npm run agent -- capability runtime-renderers` — inspect one complete source-bound pack and its decisions, ownership, licensing, and calibration;
+- `npm run agent -- capability-query "should this game use Phaser?"` — retrieve bounded native decision knowledge for an agent prompt or plan;
+- `npm run agent -- capability-refresh candidate-pack.json` — inspect rollback, equivocation, integrity, policy, license metadata, and calibration without installing anything;
 - `npm run agent -- projects` — list compact companion-owned shared projects and their gameplay source plus full-document revision digests;
 - `npm run agent -- select-project <shared-project-id>` — validate and mount one exact shared project on demand;
 - `npm run agent -- publish-project game.loop.json --id=stable-id --create-only` — create a shared entry; later updates require `--revision-digest=revision-...` from the latest read;

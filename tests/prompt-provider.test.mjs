@@ -99,7 +99,7 @@ test("UI and companion expose one provider-backed Retry Prompt path", async () =
   assert.equal(manifest.gameDirector.headlessSuperset, true);
   assert.equal(manifest.usageReceipts.promptDraftField, "draft.usage");
   assert.equal(manifest.usageReceipts.loopTotalEvent, "loop.completed");
-  assert.equal(manifest.protocolVersion, "1.108.0");
+  assert.equal(manifest.protocolVersion, "1.109.0");
   assert.equal(manifest.commands.includes("set_verb_architecture"), true);
 });
 

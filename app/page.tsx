@@ -55,6 +55,7 @@ import {
 import { analyzeProject, canCollectOfflineVerificationEvidence } from "../lib/looplab-doctor.mjs";
 import { buildAgentProjectContext } from "../lib/looplab-agent-context.mjs";
 import { routeGameStudioWork } from "../lib/looplab-capability-router.mjs";
+import { getCapabilityPack, getCapabilityPackRegistry, inspectCapabilityPackRefresh, listCapabilityPacks, queryCapabilityKnowledge } from "../lib/looplab-capability-packs.mjs";
 import { providerFamilyPaths, resolveProviderRoute } from "../lib/looplab-provider-routing.mjs";
 import { createRuntimeModel } from "../lib/looplab-runtime-instance.mjs";
 import { compileTileRuntimeProgram } from "../lib/looplab-tile-runtime.mjs";
@@ -162,6 +163,34 @@ type ResearchFinding = { id: string; title: string; summary: string; confidence:
 type ResearchSuggestion = { id: string; title: string; rationale: string; promptAddition: string; category: string; confidence: "high" | "medium" | "low"; sourceIds: string[] };
 type ResearchReport = { id: string; query: string; preset: string; depth: ResearchDepth; engine?: ResearchEngineId; provider: AgentProvider; createdAt: string; title: string; executiveSummary: string; confidence: "high" | "medium" | "low"; findings: ResearchFinding[]; suggestions: ResearchSuggestion[]; sources: ResearchSource[]; uncertainties: string[]; reportFile?: string; markdown?: string; usage?: UsageReceipt | null };
 type ResearchEvent = { sequence?: number; type: string; message?: string; detail?: string; error?: string; sourceCount?: number; suggestionCount?: number; receipt?: UsageReceipt; usage?: UsageReceipt };
+type CapabilityPackCapabilityRef = { id: string; label: string; guidance: string; owns: string[]; chooseWhen: string[] };
+type CapabilityPackSourceRef = { licenseExpression: string; rightsBoundary: string; licenseEvidenceUri: string };
+type CapabilityPackRef = {
+  id: string;
+  revision: number;
+  label: string;
+  scope: string;
+  categories: string[];
+  decisionRules: string[];
+  capabilities: CapabilityPackCapabilityRef[];
+  contentDigest: string;
+  digest: string;
+  sources: CapabilityPackSourceRef[];
+  provenance: { claimBoundary: string };
+};
+type CapabilityPackRegistryRef = {
+  schemaVersion: string;
+  digest: string;
+  packCount: number;
+  capabilityCount: number;
+  packs: CapabilityPackRef[];
+  calibration: { valid: boolean; passedCount: number; caseCount: number };
+  policy: Record<string, unknown>;
+};
+type CapabilityPackListRef = { packs: Array<{ id: string }>; total: number };
+type CapabilityKnowledgeRef = {
+  results: Array<{ packId: string; capability: CapabilityPackCapabilityRef; decisionRules: string[] }>;
+};
 type LocalFileHandle = { kind: "file"; name: string; getFile: () => Promise<File> };
 type LocalDirectoryHandle = { kind: "directory"; name: string; values: () => AsyncIterableIterator<LocalFileHandle | LocalDirectoryHandle> };
 type DirectoryPickerWindow = Window & { showDirectoryPicker?: (options?: { mode?: "read" | "readwrite" }) => Promise<LocalDirectoryHandle> };
@@ -3504,6 +3533,7 @@ function StructuralIterationOverlay({ diff }: { diff: StructuralIterationDiff })
 const commandMacroRegistry = listCommandMacros();
 const agentPlaybookRegistry = listAgentRecipes({ status: "all", limit: 50 });
 const builderBenchmarkRegistry = listBuilderBenchmarks({ limit: 24 }) as BuilderBenchmarkRegistryRef;
+const capabilityPackRegistry = getCapabilityPackRegistry() as CapabilityPackRegistryRef;
 
 function defaultCommandMacroParameters(project: GameProject, macroId: string) {
   const maps = project.maps?.length ? project.maps : [{
@@ -3789,6 +3819,11 @@ export default function Home() {
   const [agentCommandRunning, setAgentCommandRunning] = useState(false);
   const [agentGuideQuery, setAgentGuideQuery] = useState("");
   const [agentGuideCategory, setAgentGuideCategory] = useState<AgentGuideCategory>("all");
+  const [agentCapabilityQuery, setAgentCapabilityQuery] = useState("");
+  const [agentCapabilityPackId, setAgentCapabilityPackId] = useState(capabilityPackRegistry.packs[0]?.id ?? "architecture-delivery");
+  const [agentCapabilityRefreshText, setAgentCapabilityRefreshText] = useState("");
+  const [agentCapabilityRefreshResult, setAgentCapabilityRefreshResult] = useState<ReturnType<typeof inspectCapabilityPackRefresh> | null>(null);
+  const [agentCapabilityRefreshError, setAgentCapabilityRefreshError] = useState("");
   const [agentContextView, setAgentContextView] = useState<"campaign" | "map">("campaign");
   const [agentContextMapId, setAgentContextMapId] = useState(() => project.activeMapId ?? "map-main");
   const [agentRecipeQuery, setAgentRecipeQuery] = useState("");
@@ -4086,6 +4121,9 @@ export default function Home() {
   }, [project.presentationProgram, project.resources]);
   const visibleAgentRecipes = useMemo(() => listAgentRecipes({ status: "all", limit: 50, query: agentRecipeQuery }).recipes as AgentRecipeRef[], [agentRecipeQuery]);
   const agentGuideResults = useMemo(() => queryAgentGuideIndex(LOOPLAB_AGENT_GUIDE_INDEX, { query: agentGuideQuery, category: agentGuideCategory, limit: 12 }) as AgentGuideQueryRef, [agentGuideCategory, agentGuideQuery]);
+  const agentCapabilityPackList = useMemo(() => listCapabilityPacks({ query: agentCapabilityQuery, limit: 40 }) as CapabilityPackListRef, [agentCapabilityQuery]);
+  const agentCapabilityKnowledge = useMemo(() => queryCapabilityKnowledge({ query: agentCapabilityQuery, limit: 8 }) as CapabilityKnowledgeRef, [agentCapabilityQuery]);
+  const selectedAgentCapabilityPack = useMemo(() => getCapabilityPack(agentCapabilityPackId).pack as CapabilityPackRef, [agentCapabilityPackId]);
   const visibleAgentRecipeId = visibleAgentRecipes.some((recipe) => recipe.id === agentRecipeId) ? agentRecipeId : visibleAgentRecipes[0]?.id ?? agentRecipeId;
   const selectedAgentRecipe = useMemo(() => getAgentRecipe(visibleAgentRecipeId).recipe as AgentRecipeRef, [visibleAgentRecipeId]);
   const agentWorkLedgerView = useMemo(() => getAgentWorkLedger(project, { query: agentWorkQuery, status: agentWorkStatus, limit: 50, eventLimit: 6 }) as AgentWorkLedgerView, [agentWorkQuery, agentWorkStatus, project]);
@@ -8207,6 +8245,34 @@ export default function Home() {
               }),
             };
           }
+          if (command.op === "list_capability_packs") {
+            return {
+              ok: true,
+              result: listCapabilityPacks({
+                query: typeof command.query === "string" ? command.query : undefined,
+                category: typeof command.category === "string" ? command.category : undefined,
+                limit: typeof command.limit === "number" ? command.limit : undefined,
+                offset: typeof command.offset === "number" ? command.offset : undefined,
+              }),
+            };
+          }
+          if (command.op === "get_capability_pack") {
+            return { ok: true, result: getCapabilityPack(typeof command.packId === "string" ? command.packId : "") };
+          }
+          if (command.op === "query_capability_knowledge") {
+            return {
+              ok: true,
+              result: queryCapabilityKnowledge({
+                query: typeof command.query === "string" ? command.query : undefined,
+                packIds: Array.isArray(command.packIds) ? command.packIds.filter((entry): entry is string => typeof entry === "string") : undefined,
+                capabilityIds: Array.isArray(command.capabilityIds) ? command.capabilityIds.filter((entry): entry is string => typeof entry === "string") : undefined,
+                limit: typeof command.limit === "number" ? command.limit : undefined,
+              }),
+            };
+          }
+          if (command.op === "inspect_capability_pack_refresh") {
+            return { ok: true, result: inspectCapabilityPackRefresh(command.candidate) };
+          }
           if (command.op === "list_projects") {
             const loadedSharedIds = new Set(projectLibraryRef.current.map((entry) => entry.sharedProjectId).filter((id): id is string => Boolean(id)));
             return {
@@ -11754,6 +11820,20 @@ export default function Home() {
       setPlaytestReplayBusy(false);
     }
   };
+  const serializedCapabilityPackState = JSON.stringify({
+    schemaVersion: capabilityPackRegistry.schemaVersion,
+    registryDigest: capabilityPackRegistry.digest,
+    packCount: capabilityPackRegistry.packCount,
+    capabilityCount: capabilityPackRegistry.capabilityCount,
+    calibration: capabilityPackRegistry.calibration,
+    selectedPackId: selectedAgentCapabilityPack.id,
+    selectedPackDigest: selectedAgentCapabilityPack.digest,
+    query: agentCapabilityQuery,
+    matchedPackIds: agentCapabilityPackList.packs.map((pack) => pack.id),
+    matchedCapabilityIds: agentCapabilityKnowledge.results.map((entry) => entry.capability.id),
+    refreshInspection: agentCapabilityRefreshResult,
+    policy: capabilityPackRegistry.policy,
+  }).replace(/</g, "\\u003c");
   const serializedProjectState = JSON.stringify(previewProject).replace(/</g, "\\u003c");
   const serializedProjectLibraryState = JSON.stringify({
     schemaVersion: LOOPLAB_SHARED_PROJECT_STORE_SCHEMA,
@@ -11966,6 +12046,7 @@ export default function Home() {
   return (
     <main className={`studio-shell ${isPlaying && previewFocus ? "preview-focus-shell" : ""}`} data-preview-focus={isPlaying && previewFocus ? "true" : "false"} data-workspace={mapStudioFocused ? "map-studio" : experienceMode}>
       <script id="looplab-project-state" type="application/json" suppressHydrationWarning dangerouslySetInnerHTML={{ __html: serializedProjectState }} />
+      <script id="looplab-capability-pack-state" type="application/json" suppressHydrationWarning dangerouslySetInnerHTML={{ __html: serializedCapabilityPackState }} />
       <script id="looplab-project-library-state" type="application/json" suppressHydrationWarning dangerouslySetInnerHTML={{ __html: serializedProjectLibraryState }} />
       <script id="looplab-director-state" type="application/json" suppressHydrationWarning dangerouslySetInnerHTML={{ __html: serializedDirectorState }} />
       <script id="looplab-agent-presence-state" type="application/json" suppressHydrationWarning dangerouslySetInnerHTML={{ __html: serializedAgentPresenceState }} />
@@ -13164,6 +13245,61 @@ export default function Home() {
               <div className="agent-guide-actions"><a href="/AI_AGENT_GUIDE.md" target="_blank" rel="noreferrer">Open complete guide ↗</a><button type="button" onClick={() => setAgentCommandText(JSON.stringify({ op: "get_agent_guide_index", query: agentGuideQuery, category: agentGuideCategory, limit: 24 }, null, 2))}>Load headless query</button></div>
               <small>Orientation only. The full guide remains authoritative; omitted entries never grant permission, and this navigator cannot execute, mutate, or verify anything.</small>
             </nav>
+            <section id="looplab-capability-pack-browser" className="agent-guide-navigation capability-pack-browser" aria-labelledby="looplab-capability-pack-heading" data-registry-digest={capabilityPackRegistry.digest} data-selected-pack={selectedAgentCapabilityPack.id} data-calibration-valid={capabilityPackRegistry.calibration.valid ? "true" : "false"}>
+              <header><div><strong id="looplab-capability-pack-heading">Native capability packs</strong><small>Decision knowledge LoopLab can use without asking an external agent to load a skill</small></div><span>{capabilityPackRegistry.capabilityCount} capabilities</span></header>
+              <div className="agent-guide-controls">
+                <label htmlFor="looplab-capability-query">Search a problem or capability</label>
+                <input id="looplab-capability-query" type="search" value={agentCapabilityQuery} onChange={(event) => setAgentCapabilityQuery(event.target.value)} maxLength={600} placeholder="renderer choice, collision, sprites, browser QA…" />
+                <label htmlFor="looplab-capability-pack-select">Inspect pack</label>
+                <select id="looplab-capability-pack-select" value={selectedAgentCapabilityPack.id} onChange={(event) => setAgentCapabilityPackId(event.target.value)}>
+                  {capabilityPackRegistry.packs.map((pack) => <option key={pack.id} value={pack.id}>{pack.label} · {pack.capabilities.length}</option>)}
+                </select>
+              </div>
+              <article className="agent-recipe-card" data-pack-id={selectedAgentCapabilityPack.id} data-pack-digest={selectedAgentCapabilityPack.digest}>
+                <div><b>{selectedAgentCapabilityPack.label}</b><span>r{selectedAgentCapabilityPack.revision} · {selectedAgentCapabilityPack.capabilities.length} capabilities</span></div>
+                <p>{selectedAgentCapabilityPack.scope}</p>
+                <small>{selectedAgentCapabilityPack.categories.join(" · ")} · source {selectedAgentCapabilityPack.contentDigest.slice(0, 22)}…</small>
+                <details>
+                  <summary>View decisions, ownership, provenance, and calibration</summary>
+                  <strong>Pack decisions</strong>
+                  <ul>{selectedAgentCapabilityPack.decisionRules.map((rule) => <li key={rule}>{rule}</li>)}</ul>
+                  <strong>Capabilities</strong>
+                  <ol>{selectedAgentCapabilityPack.capabilities.map((capability) => <li key={capability.id}><b>{capability.label}</b><span>{capability.guidance}</span><small>Choose when: {capability.chooseWhen.join(" · ")}</small><code>{capability.id}</code></li>)}</ol>
+                  <strong>Source and rights metadata</strong>
+                  <p>{selectedAgentCapabilityPack.sources[0]?.licenseExpression} · {selectedAgentCapabilityPack.sources[0]?.rightsBoundary}</p>
+                  <a href={selectedAgentCapabilityPack.sources[0]?.licenseEvidenceUri} target="_blank" rel="noreferrer">Open source evidence ↗</a>
+                  <small>{selectedAgentCapabilityPack.provenance.claimBoundary}</small>
+                  <code>{selectedAgentCapabilityPack.digest}</code>
+                </details>
+              </article>
+              <div className="agent-guide-results" aria-live="polite">
+                {agentCapabilityKnowledge.results.map((entry) => <article key={`${entry.packId}:${entry.capability.id}`} data-capability-id={entry.capability.id} data-pack-id={entry.packId}>
+                  <header><span>{entry.packId}</span><b>{entry.capability.label}</b></header>
+                  <p>{entry.capability.guidance}</p>
+                  <small>{entry.capability.owns.join(" · ")}</small>
+                </article>)}
+                {!agentCapabilityKnowledge.results.length && <div className="agent-guide-empty" role="status">No native decision knowledge matches this search. Clear the filter or use the headless query with exact capability IDs.</div>}
+              </div>
+              <div className="agent-guide-actions"><a href="/capability-packs.json" target="_blank" rel="noreferrer">Open complete registry ↗</a><button type="button" onClick={() => setAgentCommandText(JSON.stringify({ op: "query_capability_knowledge", query: agentCapabilityQuery, limit: 12 }, null, 2))}>Load search command</button><button type="button" onClick={() => setAgentCommandText(JSON.stringify({ op: "get_capability_pack", packId: selectedAgentCapabilityPack.id }, null, 2))}>Load pack command</button></div>
+              <details className="capability-refresh-inspector">
+                <summary>Inspect a proposed pack refresh</summary>
+                <label htmlFor="looplab-capability-refresh-candidate">Complete candidate pack JSON</label>
+                <textarea id="looplab-capability-refresh-candidate" value={agentCapabilityRefreshText} onChange={(event) => { setAgentCapabilityRefreshText(event.target.value); setAgentCapabilityRefreshResult(null); setAgentCapabilityRefreshError(""); }} placeholder="Paste looplab-capability-pack/v1 JSON. Nothing is downloaded or installed." spellCheck={false} />
+                <button type="button" disabled={!agentCapabilityRefreshText.trim()} onClick={() => {
+                  try {
+                    const candidate = JSON.parse(agentCapabilityRefreshText);
+                    setAgentCapabilityRefreshResult(inspectCapabilityPackRefresh(candidate));
+                    setAgentCapabilityRefreshError("");
+                  } catch (error) {
+                    setAgentCapabilityRefreshResult(null);
+                    setAgentCapabilityRefreshError(error instanceof Error ? error.message : "Candidate JSON is invalid.");
+                  }
+                }}>Inspect only</button>
+                {agentCapabilityRefreshError && <p role="alert">{agentCapabilityRefreshError}</p>}
+                {agentCapabilityRefreshResult && <pre aria-live="polite">{JSON.stringify(agentCapabilityRefreshResult, null, 2)}</pre>}
+              </details>
+              <small>{capabilityPackRegistry.calibration.passedCount}/{capabilityPackRegistry.calibration.caseCount} deterministic router calibrations pass. Packs are read-only orientation: no execution, download, project mutation, collision ownership, evidence authority, or automatic creative winner.</small>
+            </section>
             <section id="looplab-agent-context-pack" className="agent-context-pack" aria-labelledby="agent-context-heading" data-source-digest={agentProjectContext.sourceDigest} data-context-view={agentProjectContext.view} data-context-fresh={doctorReportFresh ? "true" : "false"}>
               <header><div><strong id="agent-context-heading">Agent context pack</strong><small>{agentContextView === "map" ? "Exact selected-map truth without unrelated map documents" : "Campaign truth without the embedded payload"}</small></div><span>{agentProjectContext.measurements.roughTokenEstimate.toLocaleString()} est. tokens</span></header>
               <div className="agent-context-controls">

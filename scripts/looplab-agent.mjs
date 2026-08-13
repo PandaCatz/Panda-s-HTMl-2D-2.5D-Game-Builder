@@ -23,6 +23,7 @@ import { encodePng } from "../lib/png-node.mjs";
 import { authoredColliderForPlacement, visualBoundsForAsset } from "../lib/looplab-authored-collision.mjs";
 import { analyzeProject, doctorSourceDigest } from "../lib/looplab-doctor.mjs";
 import { routeGameStudioWork } from "../lib/looplab-capability-router.mjs";
+import { getCapabilityPack, inspectCapabilityPackRefresh, listCapabilityPacks, queryCapabilityKnowledge } from "../lib/looplab-capability-packs.mjs";
 import { listInstalledAssetPacks, listInstalledPackAssets, loadInstalledPackAssets } from "../lib/looplab-asset-library-node.mjs";
 import { auditStandaloneHtml } from "../lib/looplab-single-file-audit.mjs";
 import { composeDirectedGameBrief, directedGameSummary } from "../lib/looplab-game-director.mjs";
@@ -80,6 +81,10 @@ function usage() {
     usage: {
       manifest: "npm run agent -- manifest",
       guide: "npm run agent -- guide [query] [--category=all|section|invariant|lifecycle|recovery] [--limit=24]",
+      capabilities: "npm run agent -- capabilities [query] [--category=runtime] [--limit=20]",
+      capability: "npm run agent -- capability <pack-id>",
+      capabilityQuery: "npm run agent -- capability-query <question> [--pack=id,id] [--capability=id,id] [--limit=12]",
+      capabilityRefresh: "npm run agent -- capability-refresh <candidate-pack.json>",
       playbook: "npm run agent -- playbook [query] [--tag=collision] [--issue-code=code] [--status=active|deprecated|all] [--limit=20]",
       recipe: "npm run agent -- recipe <recipe-id>",
       macros: "npm run agent -- macros",
@@ -274,6 +279,36 @@ async function main() {
       category: optionValue("category", "all"),
       limit: Number(optionValue("limit", 24)),
     }) });
+    return;
+  }
+
+  if (operation === "capabilities" || operation === "capability-packs") {
+    const query = args.filter((argument) => !argument.startsWith("--")).join(" ");
+    print({ ok: true, operation, result: listCapabilityPacks({ query, category: optionValue("category"), limit: Number(optionValue("limit", 20)), offset: Number(optionValue("offset", 0)) }) });
+    return;
+  }
+
+  if (operation === "capability") {
+    const packId = args.find((argument) => !argument.startsWith("--"));
+    if (!packId) throw new Error("capability requires an exact capability-pack ID from npm run agent -- capabilities.");
+    print({ ok: true, operation, result: getCapabilityPack(packId) });
+    return;
+  }
+
+  if (operation === "capability-query" || operation === "capability-search") {
+    const query = args.filter((argument) => !argument.startsWith("--")).join(" ");
+    const packIds = String(optionValue("pack", "")).split(",").map((entry) => entry.trim()).filter(Boolean);
+    const capabilityIds = String(optionValue("capability", "")).split(",").map((entry) => entry.trim()).filter(Boolean);
+    print({ ok: true, operation, result: queryCapabilityKnowledge({ query, packIds, capabilityIds, limit: Number(optionValue("limit", 12)) }) });
+    return;
+  }
+
+  if (operation === "capability-refresh") {
+    const candidatePathArgument = args.find((argument) => !argument.startsWith("--"));
+    if (!candidatePathArgument) throw new Error("capability-refresh requires a complete candidate-pack JSON file.");
+    const candidatePath = resolve(candidatePathArgument);
+    const candidate = JSON.parse(await readFile(candidatePath, "utf8"));
+    print({ ok: true, operation, candidatePath, result: inspectCapabilityPackRefresh(candidate) });
     return;
   }
 
