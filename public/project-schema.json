@@ -766,7 +766,10 @@
             "cues": { "type": "array", "maxItems": 32, "items": { "$ref": "#/$defs/presentationMotionCue" } }
           },
           "additionalProperties": false
-        }
+        },
+        "camera": { "$ref": "#/$defs/presentationCamera" },
+        "animation": { "$ref": "#/$defs/presentationAnimation" },
+        "effectPlugins": { "type": "array", "maxItems": 32, "items": { "$ref": "#/$defs/presentationEffectPlugin" } }
       },
       "additionalProperties": false
     },
@@ -815,7 +818,8 @@
               { "$ref": "#/$defs/presentationParticles" },
               { "$ref": "#/$defs/presentationShake" },
               { "$ref": "#/$defs/presentationFlash" },
-              { "$ref": "#/$defs/presentationSquash" }
+              { "$ref": "#/$defs/presentationSquash" },
+              { "$ref": "#/$defs/presentationPluginEffect" }
             ]
           }
         }
@@ -835,7 +839,9 @@
         "direction": { "type": "number", "minimum": -6.283185307179586, "maximum": 6.283185307179586 },
         "lifetimeMs": { "type": "integer", "minimum": 40, "maximum": 2000 },
         "size": { "type": "number", "minimum": 1, "maximum": 32 },
-        "gravity": { "type": "number", "minimum": -2000, "maximum": 2000 }
+        "gravity": { "type": "number", "minimum": -2000, "maximum": 2000 },
+        "assetId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" },
+        "frame": { "type": "integer", "minimum": 0, "maximum": 65535 }
       },
       "additionalProperties": false
     },
@@ -868,6 +874,166 @@
         "scaleX": { "type": "number", "minimum": 0.55, "maximum": 1.8 },
         "scaleY": { "type": "number", "minimum": 0.55, "maximum": 1.8 },
         "durationMs": { "type": "integer", "minimum": 20, "maximum": 800 }
+      },
+      "additionalProperties": false
+    },
+    "presentationPluginEffect": {
+      "type": "object",
+      "required": ["type", "pluginId"],
+      "properties": {
+        "type": { "const": "plugin" },
+        "pluginId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" }
+      },
+      "additionalProperties": false
+    },
+    "presentationPrimitiveEffect": {
+      "oneOf": [
+        { "$ref": "#/$defs/presentationParticles" },
+        { "$ref": "#/$defs/presentationShake" },
+        { "$ref": "#/$defs/presentationFlash" },
+        { "$ref": "#/$defs/presentationSquash" }
+      ]
+    },
+    "presentationTarget": {
+      "type": "object",
+      "required": ["type", "id"],
+      "properties": {
+        "type": { "enum": ["object-id", "object-kind"] },
+        "id": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" }
+      },
+      "additionalProperties": false
+    },
+    "presentationCameraBehavior": {
+      "type": "object",
+      "required": ["mode", "centerX", "centerY", "offsetX", "offsetY", "zoom", "lerpX", "lerpY", "deadzoneWidth", "deadzoneHeight", "transitionMs", "clampToMap"],
+      "properties": {
+        "mode": { "enum": ["follow", "fixed"] },
+        "centerX": { "type": "number" },
+        "centerY": { "type": "number" },
+        "offsetX": { "type": "number" },
+        "offsetY": { "type": "number" },
+        "zoom": { "type": "number", "minimum": 0.25, "maximum": 4 },
+        "lerpX": { "type": "number", "minimum": 0, "maximum": 1 },
+        "lerpY": { "type": "number", "minimum": 0, "maximum": 1 },
+        "deadzoneWidth": { "type": "number", "minimum": 0 },
+        "deadzoneHeight": { "type": "number", "minimum": 0 },
+        "transitionMs": { "type": "integer", "minimum": 0, "maximum": 4000 },
+        "clampToMap": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "presentationCameraZone": {
+      "type": "object",
+      "required": ["id", "mapId", "enabled", "priority", "x", "y", "width", "height", "behavior"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" },
+        "mapId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" },
+        "enabled": { "type": "boolean" },
+        "priority": { "type": "integer", "minimum": -100, "maximum": 100 },
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "width": { "type": "number", "exclusiveMinimum": 0 },
+        "height": { "type": "number", "exclusiveMinimum": 0 },
+        "behavior": { "$ref": "#/$defs/presentationCameraBehavior" },
+        "reducedMotionBehavior": { "$ref": "#/$defs/presentationCameraBehavior" }
+      },
+      "additionalProperties": false
+    },
+    "presentationCamera": {
+      "type": "object",
+      "required": ["enabled", "subject", "defaultBehavior", "zones"],
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "subject": { "$ref": "#/$defs/presentationTarget" },
+        "defaultBehavior": { "$ref": "#/$defs/presentationCameraBehavior" },
+        "zones": { "type": "array", "maxItems": 32, "items": { "$ref": "#/$defs/presentationCameraZone" } }
+      },
+      "additionalProperties": false
+    },
+    "presentationAnimationState": {
+      "type": "object",
+      "required": ["id", "assetId", "frames", "fps", "loop", "interruptMode"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" },
+        "assetId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" },
+        "frames": { "type": "array", "minItems": 1, "maxItems": 64, "items": { "type": "integer", "minimum": 0, "maximum": 65535 } },
+        "fps": { "type": "number", "minimum": 1, "maximum": 60 },
+        "loop": { "type": "boolean" },
+        "interruptMode": { "enum": ["immediate", "frame-end", "cycle-end", "locked"] },
+        "reducedMotionFrame": { "type": "integer", "minimum": 0, "maximum": 65535 }
+      },
+      "additionalProperties": false
+    },
+    "presentationAnimationTransition": {
+      "type": "object",
+      "required": ["id", "from", "to", "trigger", "priority", "queue"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" },
+        "from": { "type": "string", "pattern": "^(\\*|[A-Za-z0-9][A-Za-z0-9._:-]*)$" },
+        "to": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" },
+        "trigger": { "enum": ["event", "action-active", "action-inactive", "moving", "stopped", "grounded", "airborne", "runtime-state", "complete"] },
+        "priority": { "type": "integer", "minimum": -100, "maximum": 100 },
+        "queue": { "type": "boolean" },
+        "event": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" },
+        "actionId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" },
+        "value": { "type": "string", "minLength": 1 }
+      },
+      "allOf": [
+        { "if": { "properties": { "trigger": { "const": "event" } }, "required": ["trigger"] }, "then": { "required": ["event"] } },
+        { "if": { "properties": { "trigger": { "enum": ["action-active", "action-inactive"] } }, "required": ["trigger"] }, "then": { "required": ["actionId"] } },
+        { "if": { "properties": { "trigger": { "const": "runtime-state" } }, "required": ["trigger"] }, "then": { "required": ["value"] } }
+      ],
+      "additionalProperties": false
+    },
+    "presentationAnimationMachine": {
+      "type": "object",
+      "required": ["id", "enabled", "target", "initialState", "states", "transitions"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" },
+        "enabled": { "type": "boolean" },
+        "target": { "$ref": "#/$defs/presentationTarget" },
+        "initialState": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" },
+        "states": { "type": "array", "minItems": 1, "maxItems": 32, "items": { "$ref": "#/$defs/presentationAnimationState" } },
+        "transitions": { "type": "array", "maxItems": 64, "items": { "$ref": "#/$defs/presentationAnimationTransition" } }
+      },
+      "additionalProperties": false
+    },
+    "presentationAnimation": {
+      "type": "object",
+      "required": ["enabled", "machines"],
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "machines": { "type": "array", "maxItems": 32, "items": { "$ref": "#/$defs/presentationAnimationMachine" } }
+      },
+      "additionalProperties": false
+    },
+    "presentationAssetRequirement": {
+      "type": "object",
+      "required": ["assetId", "minimumFrames", "purpose"],
+      "properties": {
+        "assetId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" },
+        "minimumFrames": { "type": "integer", "minimum": 1, "maximum": 65535 },
+        "purpose": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "presentationEffectPlugin": {
+      "type": "object",
+      "required": ["id", "enabled", "effects", "reducedMotion", "assetRequirements"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" },
+        "enabled": { "type": "boolean" },
+        "effects": { "type": "array", "minItems": 1, "maxItems": 8, "items": { "$ref": "#/$defs/presentationPrimitiveEffect" } },
+        "reducedMotion": {
+          "type": "object",
+          "required": ["mode", "effects"],
+          "properties": {
+            "mode": { "enum": ["replace", "omit"] },
+            "effects": { "type": "array", "maxItems": 8, "items": { "$ref": "#/$defs/presentationPrimitiveEffect" } }
+          },
+          "additionalProperties": false
+        },
+        "assetRequirements": { "type": "array", "maxItems": 8, "items": { "$ref": "#/$defs/presentationAssetRequirement" } }
       },
       "additionalProperties": false
     },

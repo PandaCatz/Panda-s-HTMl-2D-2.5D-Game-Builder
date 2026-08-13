@@ -341,9 +341,9 @@ npm run agent -- doctor game.loop.json prototype
 npm run agent -- tuning-search game.loop.json --source-digest=source-...
 ```
 
-## Author sound and motion from gameplay events
+## Author camera, animation, sound, and motion from gameplay truth
 
-Use the presentation program when a game is technically correct but lacks readable response, audio identity, or motion feedback. Do not add sound, particles, shake, flash, or squash directly to simulation code. Author one renderer-neutral, bounded `presentationProgram`; the editor preview, Canvas export, pinned Phaser canvas hook, headless runtime, and Project Doctor all consume the same source.
+Use the presentation program when a game is technically correct but lacks readable camera composition, sprite state, response, audio identity, or motion feedback. Do not add camera rules, animation heuristics, sound, particles, shake, flash, or squash directly to simulation or renderer-specific code. Author one renderer-neutral, bounded `presentationProgram`; the editor preview, every runtime adapter, the exact one-file export, headless runtime, and Project Doctor all consume the same source.
 
 ```js
 const suggestion = (await api.run({
@@ -396,12 +396,58 @@ const current = (await api.run({ op: "get_doctor" })).doctor;
 await api.run({ op: "set_presentation_program", program, expectedSourceDigest: current.sourceDigest });
 ```
 
-The authored contract supports at most 32 audio cues, 32 motion cues, six effects per motion cue, 24 live voices, 320 live particles, and two seconds per cue. Unknown fields, unstable or duplicate IDs, unsupported effect kinds, and invalid limits fail closed. Suggestions use project evidence: platformer jump/land cues are never inferred merely because a top-down or systems game has a player.
+Camera zones, animation machines, and reusable effect plugins live in that same program. Mouse users edit them in Fine Tune; agents should mutate the exact source returned by `get_presentation_program` and save it through `set_presentation_program` with the latest source digest.
+
+```js
+const follow = (zoom, transitionMs = 180) => ({
+  mode: "follow", centerX: 0, centerY: 0, offsetX: 24, offsetY: -12,
+  zoom, lerpX: 0.2, lerpY: 0.16, deadzoneWidth: 128, deadzoneHeight: 72,
+  transitionMs, clampToMap: true,
+});
+const program = structuredClone((await api.run({ op: "get_presentation_program" })).result.program);
+program.camera = {
+  enabled: true,
+  subject: { type: "object-kind", id: "player" },
+  defaultBehavior: follow(1),
+  zones: [{
+    id: "arrival-closeup", mapId: "map-main", enabled: true, priority: 10,
+    x: 640, y: 200, width: 240, height: 220,
+    behavior: follow(1.35, 220),
+    reducedMotionBehavior: { ...follow(1.1, 0), lerpX: 1, lerpY: 1 },
+  }],
+};
+program.animation = {
+  enabled: true,
+  machines: [{
+    id: "player-motion", enabled: true,
+    target: { type: "object-kind", id: "player" }, initialState: "idle",
+    states: [
+      { id: "idle", assetId: "player-strip", frames: [0], fps: 8, loop: true, interruptMode: "immediate", reducedMotionFrame: 0 },
+      { id: "run", assetId: "player-strip", frames: [1, 2, 3, 4], fps: 12, loop: true, interruptMode: "frame-end", reducedMotionFrame: 2 },
+    ],
+    transitions: [
+      { id: "start-running", from: "idle", to: "run", trigger: "moving", priority: 10, queue: true },
+      { id: "stop-running", from: "run", to: "idle", trigger: "stopped", priority: 10, queue: true },
+    ],
+  }],
+};
+program.effectPlugins = [{
+  id: "heavy-impact", enabled: true,
+  effects: [{ type: "shake", intensity: 3, durationMs: 120 }, { type: "particles", count: 8, color: "#eee", secondaryColor: "#777", speed: 180, spread: 6.283, direction: 0, lifetimeMs: 300, size: 3, gravity: 90, assetId: "impact-strip", frame: 0 }],
+  reducedMotion: { mode: "replace", effects: [{ type: "flash", color: "#eee", opacity: 0.08, durationMs: 80 }] },
+  assetRequirements: [{ assetId: "impact-strip", minimumFrames: 1, purpose: "impact particle" }],
+}];
+program.motion.cues.push({ id: "heavy-land", event: "player.landed", enabled: true, target: "event-object", effects: [{ type: "plugin", pluginId: "heavy-impact" }] });
+const current = (await api.run({ op: "get_doctor" })).doctor;
+await api.run({ op: "set_presentation_program", program, expectedSourceDigest: current.sourceDigest });
+```
+
+The authored contract supports at most 32 audio cues, 32 motion cues, six effects per cue, 32 camera zones, 32 animation machines with 32 states and 64 transitions each, 32 effect plugins with eight primitives and eight asset requirements each, 24 live voices, 320 live particles, and two seconds per audio cue. Unknown fields, unstable or duplicate IDs, unsupported effect kinds, nested/arbitrary plugin code, and invalid limits fail closed. Suggestions use project evidence: platformer jump/land cues are never inferred merely because a top-down or systems game has a player.
 
 Follow these boundaries:
 
 1. Map stable runtime or authored `emit` event IDs; never derive collision from art or let presentation mutate gameplay.
-2. Keep `reducedMotion: "respect"` unless the user explicitly requests a different accessible policy. Reduced motion skips particles, shake, and squash while retaining a static flash/status equivalent.
+2. Keep `reducedMotion: "respect"` unless the user explicitly requests a different accessible policy. Approved camera zones require explicit reduced-motion behavior, multi-frame states require a stable reduced-motion frame, and plugins must explicitly replace or omit their normal recipe. Legacy inline effects still skip particles, shake, and squash while retaining a static flash/status equivalent.
 3. Accept input before attempting audio unlock. The runtime creates one `AudioContext` lazily after a real gesture, bounds voices and pending events, and contains unavailable/rejected audio without aborting play. Referenced sample resources decode only after unlock; one failed clip remains a resource-level error while gameplay and other cues continue.
 4. Treat `approved` as an authoring lifecycle state, not proof that the mix, rhythm, intensity, or feel is good. Preview and playtest it.
 5. Run Doctor, deterministic replay, acceptance, completion, semantic-input liveness, and the hostile browser harness after changes. Presentation must leave the deterministic state and replay hashes unchanged.
@@ -1255,7 +1301,7 @@ if (!promotion.ok) throw new Error(promotion.error);
 
 `preview_playtest_replay` is provider-free, read-only, and clone-executes the ordinary `record_replay_case` path. It returns the exact replay specification, immediate pinned-hash result, comparable canonical event-count differences, and source/session/promotion digests. `promote_playtest_replay` recomputes that review and applies only if all three digests still match. Stale source, legacy timing, a non-reset start, zero ticks, dropped semantic input or runtime events, recorder timeout, mid-run reset/map manipulation, unresolved actions, unsafe fixture replacement, replay failure, or event-count mismatch remains a visible blocker. Heatmaps, world samples, source-device labels, feedback, and wall-clock timing never enter the fixture. Once promoted, the result is an ordinary versioned replay case that Project Doctor and release gates rerun normally.
 
-Inputs address zero-based simulation ticks; checkpoint hashes describe state after one-based ticks. Hashes use canonical nested simulation-only state, including active input/action and overlap-contact state that can change the next tick, while excluding artwork, camera, animation playback, audio, particles, shell lifecycle/preferences, and wall-clock values. A mismatch reports the first recorded divergent tick. Do not silently rerecord a changed result: replacing a fixture requires a higher `revision` and a non-empty `changeReason`. Automatic browser QA adds one source-bound replay evidence receipt when fixtures exist. CLI equivalents are `npm run agent -- replay game.loop.json [case-id]` and `<case-json> | npm run agent -- record-replay game.loop.json`. Exported runtime API 2.29 exposes `getSourceDigest()`, `getCollisionGeometry()`, `getTileProgram()`, `getTileRuntime()`, `getMotionBodyStates()`, `getActorStates()`, `getRuntimeAdapterInfo()`, `getInputActionLiveness()`, `getCompletionReport()`, `getCombatState()`, `getNarrativeContract()`, `getNarrativeReport()`, `getPresentationProgram()`, `getPresentationReport()`, `getPresentationStatus()`, `getGameShell()`, `getGameShellReport()`, `getGameShellState()`, `setAudioMuted(boolean)`, `setMasterVolume(number)`, `setReducedMotion(boolean)`, `setTouchControlSize(string)`, `startGame()`, `openGameSettings()`, `closeGameSettings()`, `getAcceptanceTests()`, `runAcceptanceTest(id)`, `runAcceptanceSuite()`, `getReplayCases()`, `runReplayCase(id)`, and `runReplaySuite()` plus matching DOM bridge commands, so the one-file artifact remains independently testable offline.
+Inputs address zero-based simulation ticks; checkpoint hashes describe state after one-based ticks. Hashes use canonical nested simulation-only state, including active input/action and overlap-contact state that can change the next tick, while excluding artwork, camera, animation playback, audio, particles, shell lifecycle/preferences, and wall-clock values. A mismatch reports the first recorded divergent tick. Do not silently rerecord a changed result: replacing a fixture requires a higher `revision` and a non-empty `changeReason`. Automatic browser QA adds one source-bound replay evidence receipt when fixtures exist. CLI equivalents are `npm run agent -- replay game.loop.json [case-id]` and `<case-json> | npm run agent -- record-replay game.loop.json`. Exported runtime API 2.30 exposes `getSourceDigest()`, `getCollisionGeometry()`, `getTileProgram()`, `getTileRuntime()`, `getMotionBodyStates()`, `getActorStates()`, `getRuntimeAdapterInfo()`, `getInputActionLiveness()`, `getCompletionReport()`, `getCombatState()`, `getNarrativeContract()`, `getNarrativeReport()`, `getPresentationProgram()`, `getPresentationReport()`, `getPresentationStatus()`, `getGameShell()`, `getGameShellReport()`, `getGameShellState()`, `setAudioMuted(boolean)`, `setMasterVolume(number)`, `setReducedMotion(boolean)`, `setTouchControlSize(string)`, `startGame()`, `openGameSettings()`, `closeGameSettings()`, `getAcceptanceTests()`, `runAcceptanceTest(id)`, `runAcceptanceSuite()`, `getReplayCases()`, `runReplayCase(id)`, and `runReplaySuite()` plus matching DOM bridge commands, so the one-file artifact remains independently testable offline.
 
 After the real browser playtest, render the complete visual review and pass its receipts unchanged into verification:
 
@@ -1510,7 +1556,7 @@ It performs the same hostile platform checks and additionally writes `initial.pn
 
 melonJS source and releases may be evaluated from its official repository. Awesome Canvas is a discovery catalog only: do not copy its list wholesale or assume linked projects share the catalog's own license. Inspect the original linked repository/site and verify its current license before adopting any implementation.
 
-In the exported game, wait for `looplab-runtime-ready`, then read `window.looplabRuntime` when the page allows new window globals. Runtime API 2.29 also provides a hardened DOM transport for automation sandboxes where that global is unavailable: dispatch `looplab:runtime-command` on `document` and await `looplab:runtime-response`, or open `#looplab-runtime-bridge`, fill `#looplab-runtime-command`, activate `#looplab-runtime-submit`, and read `#looplab-runtime-result`. Read `getSourceDigest()` or send `get_source_digest` before accepting any browser receipt for the artifact; read `getCollisionGeometry()` / `get_collision_geometry` for the active map-owned chain and tile-collision source; read `getTileProgram()` / `get_tile_program` and `getTileRuntime()` / `get_tile_runtime` for canonical tile source and compiled render/collision inspection; read `getRuntimeAdapterInfo()` / `get_runtime_adapter` to prove which primary adapter and pinned vendor version actually booted; use `getInputActionLiveness()` / `get_input_action_liveness` for its exact consumer report, `getCompletionReport()` / `get_completion_report` for its source-bound terminal witness, `getCombatState()` / `get_combat_state` for deterministic health, teams, emitters, and fixed projectile slots, `getActorStates()` / `get_actor_states` for deterministic route, perception, transition, target, and blocker state, and `getNarrativeContract()` / `get_narrative_contract` plus `getNarrativeReport()` / `get_narrative_report` for story structure and current proof; use `getPresentationProgram()` / `get_presentation_program`, `getPresentationReport()` / `get_presentation_report`, `getPresentationStatus()` / `get_presentation_status`, and `setAudioMuted(boolean)` / `set_audio_muted` for event-driven sound and motion. Use `getGameShell()` / `get_game_shell`, `getGameShellReport()` / `get_game_shell_report`, and `getGameShellState()` / `get_game_shell_state` for the authored player lifecycle; control it with `startGame()` / `start_game`, `pause`, `resume`, `restart`, `openGameSettings()` / `open_game_settings`, `closeGameSettings()` / `close_game_settings`, and the explicit preference setters.
+In the exported game, wait for `looplab-runtime-ready`, then read `window.looplabRuntime` when the page allows new window globals. Runtime API 2.30 also provides a hardened DOM transport for automation sandboxes where that global is unavailable: dispatch `looplab:runtime-command` on `document` and await `looplab:runtime-response`, or open `#looplab-runtime-bridge`, fill `#looplab-runtime-command`, activate `#looplab-runtime-submit`, and read `#looplab-runtime-result`. Read `getSourceDigest()` or send `get_source_digest` before accepting any browser receipt for the artifact; read `getCollisionGeometry()` / `get_collision_geometry` for the active map-owned chain and tile-collision source; read `getTileProgram()` / `get_tile_program` and `getTileRuntime()` / `get_tile_runtime` for canonical tile source and compiled render/collision inspection; read `getRuntimeAdapterInfo()` / `get_runtime_adapter` to prove which primary adapter and pinned vendor version actually booted; use `getInputActionLiveness()` / `get_input_action_liveness` for its exact consumer report, `getCompletionReport()` / `get_completion_report` for its source-bound terminal witness, `getCombatState()` / `get_combat_state` for deterministic health, teams, emitters, and fixed projectile slots, `getActorStates()` / `get_actor_states` for deterministic route, perception, transition, target, and blocker state, and `getNarrativeContract()` / `get_narrative_contract` plus `getNarrativeReport()` / `get_narrative_report` for story structure and current proof; use `getPresentationProgram()` / `get_presentation_program`, `getPresentationReport()` / `get_presentation_report`, `getPresentationStatus()` / `get_presentation_status`, and `setAudioMuted(boolean)` / `set_audio_muted` for event-driven sound and motion. Use `getGameShell()` / `get_game_shell`, `getGameShellReport()` / `get_game_shell_report`, and `getGameShellState()` / `get_game_shell_state` for the authored player lifecycle; control it with `startGame()` / `start_game`, `pause`, `resume`, `restart`, `openGameSettings()` / `open_game_settings`, `closeGameSettings()` / `close_game_settings`, and the explicit preference setters.
 
 ```js
 await page.locator("#looplab-runtime-bridge > summary").click();

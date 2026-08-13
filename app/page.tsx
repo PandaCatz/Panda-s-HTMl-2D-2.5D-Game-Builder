@@ -17,6 +17,7 @@ import {
 } from "react";
 import { flushSync } from "react-dom";
 import VisualIdentityPanel, { type VisualIdentityContract, type VisualIdentityRole } from "./visual-identity-panel";
+import PresentationAuthoringPanel from "./presentation-authoring-panel";
 import {
   LOOPLAB_PROTOCOL_VERSION,
   applyAgentCommand,
@@ -1128,6 +1129,7 @@ type RuntimeState = {
   gameplayRevision?: number;
   variables?: Record<string, number | boolean | string>;
   completedRuleIds?: string[];
+  deterministicState?: { activeInputCodes?: string[]; activeActionIds?: string[]; overlapContactIds?: string[]; activeChoicePageId?: string | null; pendingChoiceId?: string | null };
   player?: { id?: string; x: number; y: number; z: number; vx?: number; vy?: number; grounded?: boolean } | null;
   won: boolean;
 };
@@ -3914,7 +3916,7 @@ export default function Home() {
   const motionBodyInspection = doctorReport.motionBodyReport as { present: boolean; bodyCount: number; enabledBodyCount: number; valid: boolean; errors: string[]; warnings: string[]; issues: Array<{ severity: string; code: string; message: string; objectId?: string }> };
   const selectedMotionBodyIssues = motionBodyInspection.issues.filter((issue) => issue.objectId === selected?.id);
   const actorInspection = doctorReport.actorReport as { present: boolean; enabled: boolean; valid: boolean; actorCount: number; patrolCount: number; perceptionCount: number; cutsceneCount: number; errors: string[]; warnings: string[]; issues: Array<{ severity: string; code: string; message: string }> };
-  const presentationInspection = doctorReport.presentationReport as { present: boolean; status: string; errors: string[]; warnings: string[]; issues: Array<{ severity: string; code: string; message: string }>; metrics?: { audioCueCount: number; motionCueCount: number; effectCount: number; mappedEventCount: number; maximumVoices?: number; maximumParticles?: number; referencedAudioResourceCount?: number; encodedAudioBytes?: number; decodedAudioBytes?: number } };
+  const presentationInspection = doctorReport.presentationReport as { present: boolean; status: string; errors: string[]; warnings: string[]; issues: Array<{ severity: string; code: string; message: string }>; metrics?: { audioCueCount: number; motionCueCount: number; effectCount: number; mappedEventCount: number; maximumVoices?: number; maximumParticles?: number; referencedAudioResourceCount?: number; encodedAudioBytes?: number; decodedAudioBytes?: number; cameraZoneCount?: number; animationMachineCount?: number; animationStateCount?: number; animationTransitionCount?: number; effectPluginCount?: number; assetRequirementCount?: number } };
   const embeddedAudioInspections = useMemo(() => new Map((project.resources ?? [])
     .filter((resource) => resource.kind === "audio")
     .map((resource) => [resource.id, inspectEmbeddedAudioResource(resource)])), [project.resources]);
@@ -3939,6 +3941,54 @@ export default function Home() {
         const projection = normalizeProjection(state?.projection ?? snapshot.projection, state ?? snapshot) as ProjectionContract;
         const placement = objectScreenPlacement(object, projection, snapshot.assets ?? []);
         return { x: placement.x + object.width / 2, y: placement.y + object.height, objectId: object.id };
+      },
+      getSnapshot: () => {
+        const snapshot = projectRef.current;
+        const engine = runtimeEngineRef.current;
+        const state = engine?.getState();
+        const objects = engine?.getObjects() ?? snapshot.objects;
+        const width = Number(state?.width ?? snapshot.width);
+        const height = Number(state?.height ?? snapshot.height);
+        const projection = normalizeProjection(state?.projection ?? snapshot.projection, state ?? snapshot) as ProjectionContract;
+        const projectedObjects = objects.map((object) => {
+          const placement = objectScreenPlacement(object, projection, snapshot.assets ?? []);
+          return { ...object, screenX: placement.x + object.width / 2, screenY: placement.y + object.height };
+        });
+        const screenBounds = projection.type === "dimetric-2:1"
+          ? (() => {
+              const points = [
+                worldToScreen({ x: 0, y: 0, z: 0 }, projection),
+                worldToScreen({ x: width, y: 0, z: 0 }, projection),
+                worldToScreen({ x: width, y: height, z: 0 }, projection),
+                worldToScreen({ x: 0, y: height, z: 0 }, projection),
+              ];
+              const xs = points.map((point) => point.x);
+              const ys = points.map((point) => point.y);
+              return { x: Math.min(...xs), y: Math.min(...ys), width: Math.max(...xs) - Math.min(...xs), height: Math.max(...ys) - Math.min(...ys) };
+            })()
+          : { x: 0, y: 0, width, height };
+        return { mapId: state?.activeMapId ?? snapshot.activeMapId, width, height, objects: projectedObjects, activeActionIds: state?.deterministicState?.activeActionIds ?? [], screenBounds };
+      },
+      projectPoint: (point: { x?: number; y?: number; z?: number }) => {
+        const snapshot = projectRef.current;
+        const state = runtimeEngineRef.current?.getState();
+        const projection = normalizeProjection(state?.projection ?? snapshot.projection, state ?? snapshot) as ProjectionContract;
+        return projection.type === "dimetric-2:1" ? worldToScreen({ x: Number(point.x ?? 0), y: Number(point.y ?? 0), z: Number(point.z ?? 0) }, projection) : { x: Number(point.x ?? 0), y: Number(point.y ?? 0) };
+      },
+      getAssetFrame: (assetId: string, requestedFrame: number) => {
+        const asset = projectRef.current.assets?.find((candidate) => candidate.id === assetId);
+        if (!asset) return null;
+        let cached = assetImageCacheRef.current.get(asset.id);
+        if (!cached || cached.source !== asset.dataUrl) {
+          const image = new Image();
+          cached = { source: asset.dataUrl, image };
+          assetImageCacheRef.current.set(asset.id, cached);
+          image.onload = () => setAssetRenderTick((tick) => tick + 1);
+          image.src = asset.dataUrl;
+        }
+        if (!cached.image.complete || !cached.image.naturalWidth) return null;
+        const frame = Math.max(0, Math.min(asset.frames - 1, Number(requestedFrame || 0)));
+        return { image: cached.image, sx: (frame % asset.columns) * asset.frameWidth, sy: Math.floor(frame / asset.columns) * asset.frameHeight, sw: asset.frameWidth, sh: asset.frameHeight };
       },
     });
     presentationRuntimeRef.current = controller;
@@ -8906,7 +8956,9 @@ export default function Home() {
     if (("collected" in object && object.collected) || object.hidden) return;
     context.save();
     context.globalAlpha = Math.max(0, Math.min(1, Number(object.opacity ?? 1)));
-    const asset = object.assetId ? project.assets?.find((candidate) => candidate.id === object.assetId) : null;
+    const authoredAnimation = mode === "play" ? presentationRuntimeRef.current?.getAnimationFrame(object.id, object.assetId ?? null, object.assetFrame ?? 0) : null;
+    const renderedAssetId = authoredAnimation?.assetId ?? object.assetId;
+    const asset = renderedAssetId ? project.assets?.find((candidate) => candidate.id === renderedAssetId) : null;
     const projection = normalizeProjection(mode === "play" ? runtimeState.projection ?? activeProjection : activeProjection, mode === "play" ? runtimeState : project) as ProjectionContract;
     if (!asset && projection.type === "dimetric-2:1" && object.kind === "platform") {
       const sourceTotal = Math.max(1, Number(object.height));
@@ -8969,9 +9021,9 @@ export default function Home() {
         image.src = asset.dataUrl;
       }
       if (cached.image.complete && cached.image.naturalWidth) {
-        let requestedFrame = object.assetFrame ?? 0;
+        let requestedFrame = authoredAnimation?.frame ?? object.assetFrame ?? 0;
         if (mode === "play" && asset.frames > 1 && object.kind === "coin") requestedFrame = Math.floor(runtimeTick / 8) % asset.frames;
-        if (mode === "play" && asset.frames > 1 && object.kind === "player") {
+        if (mode === "play" && !authoredAnimation?.stateId && asset.frames > 1 && object.kind === "player") {
           const velocityX = "vx" in object ? Math.abs(Number(object.vx || 0)) : 0;
           const velocityY = "vy" in object ? Number(object.vy || 0) : 0;
           requestedFrame = runtimeState.activeTraversalPathId ? Math.min(3, asset.frames - 1)
@@ -9128,9 +9180,10 @@ export default function Home() {
     context.fillRect(0, 0, viewWidth, viewHeight);
     const activePresentation = mode === "play" ? presentationRuntimeRef.current : null;
     if (activePresentation) {
-      const offset = activePresentation.getCameraOffset();
+      const camera = activePresentation.getCameraTransform();
       context.save();
-      context.translate(offset.x, offset.y);
+      context.translate(camera.x, camera.y);
+      context.scale(camera.zoom, camera.zoom);
     }
 
     if (mode === "edit") {
@@ -12502,7 +12555,7 @@ export default function Home() {
                   <p className="precision-note">Map stable runtime events to procedural sound or selected embedded samples, plus particles, shake, flash, and squash. These effects follow gameplay truth; they never become collision, completion, or replay state.</p>
                   <div className={`tuning-contract-status ${presentationInspection.errors.length ? "blocked" : presentationInspection.present ? "ready" : "draft"}`}>
                     <span>{presentationInspection.present ? `Program ${presentationInspection.status}` : "No presentation program saved"}</span>
-                    <small>{presentationInspection.metrics ? `${presentationInspection.metrics.audioCueCount} audio cues · ${presentationInspection.metrics.motionCueCount} motion cues · ${presentationInspection.metrics.effectCount} effects · ${presentationInspection.metrics.mappedEventCount} mapped events${presentationInspection.metrics.referencedAudioResourceCount ? ` · ${presentationInspection.metrics.referencedAudioResourceCount} samples · ${formatBytes(presentationInspection.metrics.encodedAudioBytes ?? 0)} encoded / ${formatBytes(presentationInspection.metrics.decodedAudioBytes ?? 0)} decoded` : ""}` : "Prepare an event-aware starter, then edit the exact bounded JSON if desired."}</small>
+                    <small>{presentationInspection.metrics ? `${presentationInspection.metrics.audioCueCount} audio cues · ${presentationInspection.metrics.motionCueCount} motion cues · ${presentationInspection.metrics.effectCount} inline effects · ${presentationInspection.metrics.cameraZoneCount ?? 0} camera zones · ${presentationInspection.metrics.animationMachineCount ?? 0} animation machines / ${presentationInspection.metrics.animationStateCount ?? 0} states · ${presentationInspection.metrics.effectPluginCount ?? 0} effect plugins · ${presentationInspection.metrics.mappedEventCount} mapped events${presentationInspection.metrics.referencedAudioResourceCount ? ` · ${presentationInspection.metrics.referencedAudioResourceCount} samples · ${formatBytes(presentationInspection.metrics.encodedAudioBytes ?? 0)} encoded / ${formatBytes(presentationInspection.metrics.decodedAudioBytes ?? 0)} decoded` : ""}` : "Prepare an event-aware starter, then edit the exact bounded JSON if desired."}</small>
                   </div>
                   {(project.resources ?? []).some((resource) => resource.kind === "audio") && <div className="tuning-findings" aria-label="Embedded audio resources">
                     <strong>Embedded audio resources</strong>
@@ -12520,14 +12573,15 @@ export default function Home() {
                     })}
                     {(project.resources ?? []).filter((resource) => resource.kind === "audio").length > 8 && <small>Showing the first 8 embedded sounds. Use the Asset Library or headless resource list for the rest.</small>}
                   </div>}
-                  <label className="field full tuning-contract-editor"><span>Presentation Program · JSON</span><textarea aria-label="Presentation Program JSON" rows={13} spellCheck={false} placeholder="Prepare a provider-free starter or paste a versioned presentation program." value={presentationProgramDraft} onChange={(event) => setPresentationProgramDraft(event.target.value)} /></label>
+                  <PresentationAuthoringPanel draft={presentationProgramDraft} maps={maps} assets={(project.assets ?? []).map((asset) => ({ id: asset.id, name: asset.name, type: asset.type, frames: asset.frames }))} onDraftChange={setPresentationProgramDraft} />
+                  <details className="tuning-contract-editor"><summary>Advanced · exact Presentation Program JSON</summary><label className="field full"><span>Presentation Program · JSON</span><textarea aria-label="Presentation Program JSON" rows={13} spellCheck={false} placeholder="Prepare a provider-free starter or paste a versioned presentation program." value={presentationProgramDraft} onChange={(event) => setPresentationProgramDraft(event.target.value)} /></label></details>
                   {presentationInspection.issues.length > 0 && <div className="tuning-findings" role="status">{presentationInspection.issues.slice(0, 6).map((issue) => <small key={`${issue.code}-${issue.message}`}>{issue.severity.toUpperCase()} · {issue.message}</small>)}</div>}
                   <div className="tuning-actions">
                     <button onClick={preparePresentationProgram}>{presentationInspection.present ? "Prepare another starter" : "Prepare event-aware starter"}</button>
                     <button disabled={!presentationProgramDraft.trim()} onClick={savePresentationProgram}>Save program</button>
                     {presentationInspection.present && <button className="danger" onClick={removePresentationProgram}>Remove</button>}
                   </div>
-                  <p className="precision-note">Sample insertion edits only the draft. Review the event, duration, and mix before Save. Project Doctor resolves every resource and checks 16 MiB encoded / 32 MiB decoded budgets; it does not claim the result sounds or feels good.</p>
+                  <p className="precision-note">Structured controls and headless commands edit the same canonical draft. Sample insertion also edits only that draft. Save runs Project Doctor across map-bound camera zones, animation interruption and sprite frames, plugin assets, reduced-motion variants, event IDs, and audio budgets; it does not claim the result sounds, looks, or feels good.</p>
                 </div>
               </details>
               <details id="looplab-game-shell" className="precision-card tuning-workbench" open aria-label="Standard game shell authoring" data-source-digest={doctorReport.sourceDigest} data-shell-status={gameShellInspection.status}>

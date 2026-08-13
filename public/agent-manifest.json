@@ -1,6 +1,6 @@
 {
   "name": "Looplab Headless Agent API",
-  "protocolVersion": "1.103.0",
+  "protocolVersion": "1.104.0",
   "agentOperatingModel": {
     "purpose": "LoopLab is an AI capability amplifier and structured game-authoring workstation, not a form the agent is confined to.",
     "headlessFirst": true,
@@ -1791,7 +1791,7 @@
       "reportSchemaVersion": "looplab-presentation-report/v1",
       "simulationBoundary": "Presentation consumes immutable runtime events and never contributes state to simulation, collision, completion, acceptance, or replay hashes.",
       "audioBoundary": "One lazily-created Web Audio context unlocks only after a real user gesture; failures are isolated from input and gameplay.",
-      "accessibilityBoundary": "Reduced-motion preference disables shake, particles, and squash while preserving static flash and DOM status equivalents.",
+      "accessibilityBoundary": "Reduced-motion preference selects authored camera, animation, and effect alternatives; legacy inline motion still disables shake, particles, and squash while preserving static flash and DOM status equivalents.",
       "rendererBoundary": "The authored program is renderer-neutral. Canvas and the pinned Phaser canvas hook consume the same controller; future adapters must preserve the same event semantics.",
       "judgmentBoundary": "Schema validity and event coverage do not prove that sound design, visual rhythm, intensity, or game feel are aesthetically good. Preview and human or agent judgment remain required."
     },
@@ -1803,6 +1803,14 @@
       "maximumAudioCues": 32,
       "maximumMotionCues": 32,
       "maximumEffectsPerCue": 6,
+      "maximumCameraZones": 32,
+      "maximumAnimationMachines": 32,
+      "maximumAnimationStatesPerMachine": 32,
+      "maximumAnimationTransitionsPerMachine": 64,
+      "maximumAnimationFramesPerState": 64,
+      "maximumEffectPlugins": 32,
+      "maximumEffectsPerPlugin": 8,
+      "maximumAssetRequirementsPerPlugin": 8,
       "maximumVoices": 24,
       "maximumParticles": 320,
       "maximumPendingAudioEvents": 32,
@@ -1828,6 +1836,47 @@
       "set_audio_muted"
     ],
     "lifecycle": "Input is accepted before audio unlock is attempted. Blur, visibility loss, pause, mute, reset, and teardown cancel active feedback without affecting gameplay.",
+    "cameraAuthoring": {
+      "source": "presentationProgram.camera",
+      "overlapPolicy": "Enabled zones match authored map-space subject coordinates. Higher priority wins, then smaller area, then stable ID; the decision is deterministic in preview and export.",
+      "reducedMotion": "Every approved camera zone carries an explicit reducedMotionBehavior. Camera state consumes immutable snapshots and never mutates simulation or replay truth.",
+      "runtimeStatus": "get_presentation_status returns the active zone, projected center, zoom, initialization state, and transition count."
+    },
+    "animationAuthoring": {
+      "source": "presentationProgram.animation.machines",
+      "targetPolicy": "Machines bind by stable object ID or kind and select state transitions by priority then stable ID.",
+      "interruptionModes": [
+        "immediate",
+        "frame-end",
+        "cycle-end",
+        "locked"
+      ],
+      "triggers": [
+        "event",
+        "action-active",
+        "action-inactive",
+        "moving",
+        "stopped",
+        "grounded",
+        "airborne",
+        "runtime-state",
+        "complete"
+      ],
+      "assetPolicy": "Every state references an embedded sprite and in-range frames. Approved multi-frame states declare one reduced-motion frame; locked looping states are invalid.",
+      "runtimeStatus": "get_presentation_status returns active machine/object/state/frame records, pending transitions, accepted transitions, and rejected interruptions."
+    },
+    "effectPluginAuthoring": {
+      "source": "presentationProgram.effectPlugins",
+      "primitives": [
+        "particles",
+        "shake",
+        "flash",
+        "squash"
+      ],
+      "reference": "Motion cues use {type:'plugin', pluginId}. Plugins cannot contain scripts, nested plugins, network loaders, or arbitrary fields.",
+      "reducedMotion": "Every plugin explicitly replaces or omits its full-motion recipe.",
+      "assetPolicy": "Sprite-backed effects declare exact embedded asset requirements and minimum frame counts; Project Doctor blocks missing, undeclared, or undersized assets."
+    },
     "embeddedAudio": {
       "cueKind": "sample",
       "resourceField": "resourceId",
@@ -2311,7 +2360,7 @@
         "reportSchemaVersion": "looplab-presentation-report/v1",
         "simulationBoundary": "Presentation consumes immutable runtime events and never contributes state to simulation, collision, completion, acceptance, or replay hashes.",
         "audioBoundary": "One lazily-created Web Audio context unlocks only after a real user gesture; failures are isolated from input and gameplay.",
-        "accessibilityBoundary": "Reduced-motion preference disables shake, particles, and squash while preserving static flash and DOM status equivalents.",
+        "accessibilityBoundary": "Reduced-motion preference selects authored camera, animation, and effect alternatives; legacy inline motion still disables shake, particles, and squash while preserving static flash and DOM status equivalents.",
         "rendererBoundary": "The authored program is renderer-neutral. Canvas and the pinned Phaser canvas hook consume the same controller; future adapters must preserve the same event semantics.",
         "judgmentBoundary": "Schema validity and event coverage do not prove that sound design, visual rhythm, intensity, or game feel are aesthetically good. Preview and human or agent judgment remain required."
       },
@@ -2321,7 +2370,15 @@
       "reportCommand": "get_presentation_report",
       "suggestCommand": "suggest_presentation_program",
       "authorCommand": "set_presentation_program",
-      "removeCommand": "remove_presentation_program"
+      "removeCommand": "remove_presentation_program",
+      "authoringSurfaces": [
+        "structured camera-zone editor",
+        "animation state and interruption editor",
+        "declarative effect-plugin editor",
+        "advanced exact JSON",
+        "headless canonical command"
+      ],
+      "parity": "Mouse and headless agents write the same whole presentationProgram. Preview and one-file export use the same self-contained controller, camera transforms, animation selection, and effect recipes."
     },
     "verbArchitecture": {
       "policy": {
@@ -3973,7 +4030,7 @@
       "harnessSchemaVersion": "looplab-platform-harness/v1",
       "harnessRunner": "playwright-core",
       "harnessRunnerVersion": 2,
-      "runtimeVersion": "2.29.0",
+      "runtimeVersion": "2.30.0",
       "environment": {
         "sandbox": [
           "allow-scripts"
@@ -4113,7 +4170,7 @@
       ],
       "unexpectedCheckPolicy": "reject",
       "visualCaptureRequired": true,
-      "digest": "sha256:4f0a01ceb2a98973f9238a439f117e3a1e7e1629de48b1d47c56becc07063117"
+      "digest": "sha256:bacf9640f1a3e1c4500b759decda5dbdf76625bd144ba495c55940981e280dc0"
     },
     "inspectCommand": "get_release_verification",
     "browserCommand": "verify_release",
@@ -5079,7 +5136,7 @@
     }
   },
   "exportedRuntime": {
-    "version": "2.29.0",
+    "version": "2.30.0",
     "packaging": "single-self-contained-html",
     "uploadFiles": 1,
     "offlinePlayable": true,
@@ -31354,7 +31411,7 @@
   "companion": {
     "baseUrl": "http://127.0.0.1:4317",
     "expectedCompanionVersion": "1.36.0",
-    "expectedProtocolVersion": "1.103.0",
+    "expectedProtocolVersion": "1.104.0",
     "providers": "/providers",
     "promptDrafts": "/prompt-drafts",
     "agentPresence": "/agent-presence",

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import "./visual-identity.css";
+import "./presentation-authoring.css";
 
 export const metadata: Metadata = {
   title: "Looplab — 2D Game Workshop",

@@ -4273,7 +4273,7 @@ kbd {
 .bot-cohort-run-details[open] > summary { border-bottom: 1px solid #b8b8b2; }
 .bot-cohort-run-details > .bot-cohort-runs { margin: 6px; }
 .tuning-workbench { background: #ececea; }
-.tuning-body { display: grid; gap: 8px; padding: 8px; }
+.tuning-body { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; padding: 8px; }
 .tuning-body > p,
 .tuning-body > label { margin: 0; }
 .tuning-metrics { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px; }

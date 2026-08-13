@@ -90,13 +90,13 @@ test("connect_maps authors an inspectable runtime-join contract by default", () 
   assert.deepEqual(headless.result, plan);
 
   const manifest = getAgentManifest();
-  assert.equal(manifest.protocolVersion, "1.103.0");
+  assert.equal(manifest.protocolVersion, "1.104.0");
   assert.equal(manifest.runtimeJoinValidation.planCommand, "get_runtime_join_plan");
   assert.ok(manifest.requiredWorkflow.includes("get_runtime_join_plan"));
   assert.ok(manifest.exportedRuntime.methods.includes("getRuntimeJoinPlan"));
   for (const method of ["beginRuntimeJoinProbe", "commitRuntimeJoinProbe", "finishRuntimeJoinProbe"]) assert.ok(manifest.exportedRuntime.methods.includes(method));
   for (const command of ["begin_runtime_join_probe", "commit_runtime_join_probe", "finish_runtime_join_probe"]) assert.ok(manifest.exportedRuntime.commands.includes(command));
-  assert.equal(manifest.exportedRuntime.version, "2.29.0");
+  assert.equal(manifest.exportedRuntime.version, "2.30.0");
 
   const html = buildStandaloneHtml(project);
   assert.match(html, /const runtimeJoinPlan=\{"schemaVersion":"looplab-runtime-join-plan\/v1"/);
