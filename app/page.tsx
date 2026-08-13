@@ -1242,7 +1242,31 @@ type RuntimeChoiceState = {
   title: string;
   body: string;
   modal: boolean;
+  lineId: string | null;
+  speakerId: string | null;
+  speakerName: string | null;
+  portraitAssetId: string | null;
+  portraitSide: "left" | "right";
+  revealMode: "instant" | "typewriter";
+  charactersPerSecond: number;
+  ariaLabel: string;
   choices: Array<{ id: string; label: string; actionId: string; visible: boolean; enabled: boolean }>;
+};
+
+type RuntimeQuestState = {
+  revision: number;
+  quests: Array<{
+    id: string;
+    title: string;
+    description: string;
+    giverId: string | null;
+    giverName: string | null;
+    statusVariableId: string;
+    statusValue: number;
+    status: "inactive" | "active" | "completed" | "failed" | "invalid";
+    visible: boolean;
+    objectives: Array<{ id: string; label: string; visible: boolean; completed: boolean; progressVariableId: string | null; progress: number | null; target: number | null }>;
+  }>;
 };
 
 type RuntimeHudBinding = { id: string; text: string; ariaLabel: string; region: "primary" | "secondary" | "ticker" };
@@ -1296,6 +1320,7 @@ type RuntimeEngine = {
   getNavigation: () => NavigationModel;
   getGameplayState: () => { revision: number; variables: Record<string, number | boolean | string>; completedRuleIds: string[]; completedMapRuleIds: string[] };
   getChoiceState: () => RuntimeChoiceState | null;
+  getQuestState: () => RuntimeQuestState;
   getHudState: () => RuntimeHudBinding[];
   chooseChoice: (choiceId: string) => boolean;
   renderEntries: () => Array<{ object: RuntimeObject; slice: RuntimeSlice | null; depth: number }>;
@@ -2927,6 +2952,78 @@ const makeObject = (kind: ObjectKind, x: number, y: number): GameObject => {
       solid: false,
       collider: { enabled: true, offsetX: 4, offsetY: 4, width: 40, height: 68, trigger: true, oneWay: false },
     },
+    spring: {
+      name: "Spring",
+      kind,
+      width: 64,
+      height: 18,
+      color: "#3c3f46",
+      solid: false,
+      collider: { enabled: true, offsetX: 0, offsetY: 0, width: 64, height: 18, trigger: true, oneWay: false },
+    },
+    ladder: {
+      name: "Ladder",
+      kind,
+      width: 32,
+      height: 192,
+      color: "#5a5d64",
+      solid: false,
+      collider: { enabled: true, offsetX: 0, offsetY: 0, width: 32, height: 192, trigger: true, oneWay: false },
+    },
+    conveyor: {
+      name: "Conveyor",
+      kind,
+      width: 160,
+      height: 24,
+      color: "#34373d",
+      solid: true,
+      collider: { enabled: true, offsetX: 0, offsetY: 0, width: 160, height: 24, trigger: false, oneWay: true },
+    },
+    "crumble-platform": {
+      name: "Crumble platform",
+      kind,
+      width: 128,
+      height: 24,
+      color: "#55545a",
+      solid: true,
+      collider: { enabled: true, offsetX: 0, offsetY: 0, width: 128, height: 24, trigger: false, oneWay: true },
+    },
+    key: {
+      name: "Key",
+      kind,
+      width: 28,
+      height: 28,
+      color: "#d4ad45",
+      solid: false,
+      collider: { enabled: true, offsetX: 0, offsetY: 0, width: 28, height: 28, trigger: true, oneWay: false },
+    },
+    door: {
+      name: "Door",
+      kind,
+      width: 48,
+      height: 112,
+      color: "#36383d",
+      solid: true,
+      collider: { enabled: true, offsetX: 0, offsetY: 0, width: 48, height: 112, trigger: false, oneWay: false },
+    },
+    "pressure-plate": {
+      name: "Pressure plate",
+      kind,
+      width: 56,
+      height: 12,
+      color: "#696b70",
+      solid: false,
+      collider: { enabled: true, offsetX: 0, offsetY: 0, width: 56, height: 12, trigger: true, oneWay: false },
+    },
+    "one-way-platform": {
+      name: "One-way platform",
+      kind,
+      width: 160,
+      height: 20,
+      color: "#3f4248",
+      solid: true,
+      collider: { enabled: true, offsetX: 0, offsetY: 0, width: 160, height: 20, trigger: false, oneWay: true },
+    },
   };
 
   const object = { id: uid(), x, y, z: 0, supportZ: 0, anchorMode: "ground" as const, collisionOwner: "authored-map" as const, ...presets[kind] };
@@ -3755,6 +3852,8 @@ export default function Home() {
     won: false,
   }));
   const [runtimeChoiceState, setRuntimeChoiceState] = useState<RuntimeChoiceState | null>(null);
+  const [runtimeQuestState, setRuntimeQuestState] = useState<RuntimeQuestState>({ revision: 0, quests: [] });
+  const [runtimeDialogueReveal, setRuntimeDialogueReveal] = useState<{ choiceKey: string; visibleCharacters: number } | null>(null);
   const [runtimeHudState, setRuntimeHudState] = useState<RuntimeHudBinding[]>([]);
   const [previewTransition, setPreviewTransition] = useState<PreviewTransition | null>(null);
   const [assetRenderTick, setAssetRenderTick] = useState(0);
@@ -3889,6 +3988,7 @@ export default function Home() {
   const [agentPlanIntent, setAgentPlanIntent] = useState("Improve the selected 2D game without weakening collision, replay, or one-file export.");
   const [agentIntentPlan, setAgentIntentPlan] = useState<AgentIntentPlanRef | null>(null);
   const [tuningContractDraft, setTuningContractDraft] = useState(() => project.tuningContract ? JSON.stringify(project.tuningContract, null, 2) : "");
+  const [gameplayProgramDraft, setGameplayProgramDraft] = useState(() => project.gameplayProgram ? JSON.stringify(project.gameplayProgram, null, 2) : "");
   const [combatProgramDraft, setCombatProgramDraft] = useState(() => project.combatProgram ? JSON.stringify(project.combatProgram, null, 2) : "");
   const [motionBodyDraftEdit, setMotionBodyDraftEdit] = useState<{ objectId: string | null; source: string; value: string }>({ objectId: null, source: "", value: "" });
   const [interactableTemplateId, setInteractableTemplateId] = useState("spring");
@@ -3917,6 +4017,9 @@ export default function Home() {
   const [historyState, setHistoryState] = useState({ canUndo: false, canRedo: false });
   const [collected, setCollected] = useState(0);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const previewChoiceTitleRef = useRef<HTMLHeadingElement>(null);
+  const previewChoicePreviousFocusRef = useRef<HTMLElement | null>(null);
+  const previewChoiceWasOpenRef = useRef(false);
   const stageViewportRef = useRef<HTMLDivElement>(null);
   const canvasWrapRef = useRef<HTMLDivElement>(null);
   const playHudRef = useRef<HTMLDivElement>(null);
@@ -4072,6 +4175,7 @@ export default function Home() {
   const currentSaveProgram = project.saveProgram ?? null;
   const tuningInspection = doctorReport.tuningReport as TuningContractInspectionRef;
   const spatialLayoutInspection = doctorReport.spatialLayoutReport as SpatialLayoutInspectionRef;
+  const gameplayProgramInspection = doctorReport.gameplayProgram as { present: boolean; errors: string[]; warnings: string[]; metrics: { variableCount: number; ruleCount: number; dialoguePageCount?: number; questCount?: number; questObjectiveCount?: number } };
   const combatInspection = doctorReport.combatReport as { present: boolean; enabled: boolean; valid: boolean; teamCount: number; actorCount: number; emitterCount: number; poolCapacity: number; errors: string[]; warnings: string[]; issues: Array<{ severity: string; code: string; message: string }> };
   const motionBodyInspection = doctorReport.motionBodyReport as { present: boolean; bodyCount: number; enabledBodyCount: number; valid: boolean; errors: string[]; warnings: string[]; issues: Array<{ severity: string; code: string; message: string; objectId?: string }> };
   const selectedMotionBodyIssues = motionBodyInspection.issues.filter((issue) => issue.objectId === selected?.id);
@@ -4083,6 +4187,43 @@ export default function Home() {
   const gameShellInspection = doctorReport.gameShellReport as { present: boolean; valid: boolean; shipReady: boolean; status: string; errors: string[]; warnings: string[]; issues: Array<{ severity: string; code: string; message: string }>; metrics?: { stateCount: number; settingsControlCount: number; terminalCount: number }; proofBoundary?: string };
   const privacyInspection = doctorReport.privacyReport as { schemaVersion: string; status: "clear" | "review-required" | "blocked"; sourceDigest: string | null; digest: string; findingCount: number; errorCount: number; warningCount: number; issues: Array<{ severity: string; code: string; kind: string; path: string; message: string; action: string }>; metrics: { visitedValues: number; scannedStrings: number; scannedCharacters: number; skippedOpaquePayloads: number; truncatedStrings: number; cycleCount: number }; proofBoundary: string };
   const tuningFeel = tuningInspection.feel;
+  const dialogueChoiceId = runtimeChoiceState?.id ?? null;
+  const dialogueBody = runtimeChoiceState?.body ?? "";
+  const dialogueRevealMode = runtimeChoiceState?.revealMode ?? "instant";
+  const dialogueCharactersPerSecond = runtimeChoiceState?.charactersPerSecond ?? 30;
+  const dialogueChoiceKey = dialogueChoiceId ? JSON.stringify([dialogueChoiceId, dialogueBody, dialogueRevealMode, dialogueCharactersPerSecond]) : "";
+  useEffect(() => {
+    const reducedMotion = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    if (!dialogueChoiceId || dialogueRevealMode !== "typewriter" || reducedMotion) {
+      const resetTimer = window.setTimeout(() => setRuntimeDialogueReveal(null), 0);
+      return () => window.clearTimeout(resetTimer);
+    }
+    const speed = Math.max(5, Math.min(120, Number(dialogueCharactersPerSecond || 30)));
+    let visible = 0;
+    const resetTimer = window.setTimeout(() => setRuntimeDialogueReveal({ choiceKey: dialogueChoiceKey, visibleCharacters: 0 }), 0);
+    const timer = window.setInterval(() => {
+      visible = Math.min(dialogueBody.length, visible + Math.max(1, Math.ceil(speed / 20)));
+      setRuntimeDialogueReveal({ choiceKey: dialogueChoiceKey, visibleCharacters: visible });
+      if (visible >= dialogueBody.length) window.clearInterval(timer);
+    }, 50);
+    return () => {
+      window.clearTimeout(resetTimer);
+      window.clearInterval(timer);
+    };
+  }, [dialogueBody, dialogueCharactersPerSecond, dialogueChoiceId, dialogueChoiceKey, dialogueRevealMode]);
+  useEffect(() => {
+    if (dialogueChoiceId) {
+      if (!previewChoiceWasOpenRef.current) previewChoicePreviousFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+      previewChoiceWasOpenRef.current = true;
+      queueMicrotask(() => previewChoiceTitleRef.current?.focus());
+      return;
+    }
+    if (!previewChoiceWasOpenRef.current) return;
+    previewChoiceWasOpenRef.current = false;
+    const target = previewChoicePreviousFocusRef.current?.isConnected ? previewChoicePreviousFocusRef.current : canvasRef.current;
+    previewChoicePreviousFocusRef.current = null;
+    queueMicrotask(() => target?.focus());
+  }, [dialogueChoiceId]);
   useEffect(() => {
     presentationRuntimeRef.current?.destroy();
     const controller = createPresentationRuntime(project.presentationProgram, {
@@ -4950,6 +5091,7 @@ export default function Home() {
     syncDirectedBriefControls(syncedNext.designBrief);
     setTuningContractDraft(syncedNext.tuningContract ? JSON.stringify(syncedNext.tuningContract, null, 2) : "");
     setSpatialLayoutContractDraft(syncedNext.spatialLayoutContract ? JSON.stringify(syncedNext.spatialLayoutContract, null, 2) : "");
+    setGameplayProgramDraft(syncedNext.gameplayProgram ? JSON.stringify(syncedNext.gameplayProgram, null, 2) : "");
     setCombatProgramDraft(syncedNext.combatProgram ? JSON.stringify(syncedNext.combatProgram, null, 2) : "");
     setActorProgramDraft(syncedNext.actorProgram ? JSON.stringify(syncedNext.actorProgram, null, 2) : "");
     setPresentationProgramDraft(syncedNext.presentationProgram ? JSON.stringify(syncedNext.presentationProgram, null, 2) : "");
@@ -5017,6 +5159,7 @@ export default function Home() {
     syncDirectedBriefControls(next.designBrief);
     setTuningContractDraft(next.tuningContract ? JSON.stringify(next.tuningContract, null, 2) : "");
     setSpatialLayoutContractDraft(next.spatialLayoutContract ? JSON.stringify(next.spatialLayoutContract, null, 2) : "");
+    setGameplayProgramDraft(next.gameplayProgram ? JSON.stringify(next.gameplayProgram, null, 2) : "");
     setCombatProgramDraft(next.combatProgram ? JSON.stringify(next.combatProgram, null, 2) : "");
     setActorProgramDraft(next.actorProgram ? JSON.stringify(next.actorProgram, null, 2) : "");
     setPresentationProgramDraft(next.presentationProgram ? JSON.stringify(next.presentationProgram, null, 2) : "");
@@ -6714,6 +6857,7 @@ export default function Home() {
         runtimeRef.current = engine.getObjects();
         setRuntimeState(next);
         setRuntimeChoiceState(engine.getChoiceState());
+        setRuntimeQuestState(engine.getQuestState());
         setRuntimeHudState(engine.getHudState());
         setCollected(next.collectedCount);
         setPreviewWon(next.won);
@@ -7218,6 +7362,7 @@ export default function Home() {
           runtimeRef.current = previous.engine.getObjects();
           setRuntimeState(restoredState);
           setRuntimeChoiceState(previous.engine.getChoiceState());
+          setRuntimeQuestState(previous.engine.getQuestState());
           setRuntimeHudState(previous.engine.getHudState());
           setCollected(restoredState.collectedCount);
           setPreviewWon(restoredState.won);
@@ -7228,6 +7373,7 @@ export default function Home() {
       } else {
         runtimeEngineRef.current = null;
         setRuntimeChoiceState(null);
+        setRuntimeQuestState({ revision: 0, quests: [] });
         setRuntimeHudState([]);
         exitPreview();
         setMobileTab(previous.mobileTab);
@@ -7935,6 +8081,7 @@ export default function Home() {
       runtimeRef.current = engine.getObjects();
       setRuntimeState(next);
       setRuntimeChoiceState(engine.getChoiceState());
+      setRuntimeQuestState(engine.getQuestState());
       setRuntimeHudState(engine.getHudState());
       setCollected(next.collectedCount);
       setPreviewWon(next.won);
@@ -9232,6 +9379,7 @@ export default function Home() {
     const next = engine.getState();
     observePlaytestRuntime(engine, events);
     const nextChoiceState = engine.getChoiceState();
+    const nextQuestState = engine.getQuestState();
     const nextHudState = engine.getHudState();
     runtimeRef.current = engine.getObjects();
     setRuntimeState((current) => (
@@ -9250,6 +9398,7 @@ export default function Home() {
         : next
     ));
     setRuntimeChoiceState((current) => JSON.stringify(current) === JSON.stringify(nextChoiceState) ? current : nextChoiceState);
+    setRuntimeQuestState((current) => JSON.stringify(current) === JSON.stringify(nextQuestState) ? current : nextQuestState);
     setRuntimeHudState((current) => JSON.stringify(current) === JSON.stringify(nextHudState) ? current : nextHudState);
     setCollected((current) => current === next.collectedCount ? current : next.collectedCount);
     setPreviewWon((current) => current === next.won ? current : next.won);
@@ -10969,6 +11118,56 @@ export default function Home() {
     removeInteractableInstance(instanceId);
   };
 
+  const prepareGameplayProgram = () => {
+    const program = project.gameplayProgram ?? {
+      version: 1,
+      variables: [],
+      rules: [],
+      choicePages: [],
+      quests: [],
+      clocks: [],
+      hudBindings: [],
+    };
+    setGameplayProgramDraft(JSON.stringify(program, null, 2));
+    setAgentCommandResult(JSON.stringify({ ok: true, changed: false, result: { program, source: project.gameplayProgram ? "saved-project" : "empty-canonical-starter" } }, null, 2));
+    appendConsole("gameplay.program.prepared", project.gameplayProgram ? "Saved gameplay source loaded into the draft" : "Empty deterministic gameplay source prepared", "Review typed variables, rules, dialogue bindings, quests, objectives, and evidence IDs before saving. No provider tokens were used.", "good");
+    showToast(project.gameplayProgram ? "Gameplay source reloaded" : "Gameplay starter ready for review");
+  };
+
+  const saveGameplayProgram = () => {
+    try {
+      const program: unknown = JSON.parse(gameplayProgramDraft);
+      if (!program || typeof program !== "object" || Array.isArray(program)) throw new Error("The gameplay program must be one JSON object.");
+      const outcome = applyAgentCommand(syncActiveMap(project), { op: "set_gameplay_program", program });
+      const result = outcome.result as { program?: Record<string, unknown>; inspection?: { metrics?: { dialoguePageCount?: number; questCount?: number; questObjectiveCount?: number } } };
+      if (!result?.program) throw new Error("The gameplay program did not pass validation.");
+      setGameplayProgramDraft(JSON.stringify(result.program, null, 2));
+      setAgentCommandResult(JSON.stringify({ ok: true, changed: true, result: outcome.result, validation: outcome.validation }, null, 2));
+      commit(outcome.project as GameProject, "Deterministic gameplay program saved");
+      appendConsole("gameplay.program.saved", "Rules, dialogue, and quests saved", `${result.inspection?.metrics?.dialoguePageCount ?? 0} speaker-bound page(s) · ${result.inspection?.metrics?.questCount ?? 0} quest(s) · ${result.inspection?.metrics?.questObjectiveCount ?? 0} objective(s). Project Doctor rechecked references and evidence.`, "good");
+      showToast("Gameplay program saved · Doctor rechecked it");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setAgentCommandResult(JSON.stringify({ ok: false, error: message }, null, 2));
+      showToast(message);
+    }
+  };
+
+  const removeGameplayProgram = () => {
+    try {
+      const outcome = applyAgentCommand(syncActiveMap(project), { op: "remove_gameplay_program" });
+      setGameplayProgramDraft("");
+      setAgentCommandResult(JSON.stringify({ ok: true, changed: outcome.changed, result: outcome.result, validation: outcome.validation }, null, 2));
+      if (outcome.changed) commit(outcome.project as GameProject, "Deterministic gameplay program removed");
+      appendConsole("gameplay.program.removed", "Deterministic gameplay source removed", "Maps, art, collision, Narrative Contract, and prior evidence remain separate. Undo restores the program.", "neutral");
+      showToast(outcome.changed ? "Gameplay program removed" : "No gameplay program was saved");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setAgentCommandResult(JSON.stringify({ ok: false, error: message }, null, 2));
+      showToast(message);
+    }
+  };
+
   const prepareCombatProgram = () => {
     try {
       const outcome = applyAgentCommand(syncActiveMap(project), { op: "suggest_combat_program", mapId: project.activeMapId ?? activeMap?.id });
@@ -11889,7 +12088,12 @@ export default function Home() {
     ? gameplayProgram.variables
     : [];
   const visibleRuntimeChoiceState = isPlaying ? runtimeChoiceState : null;
+  const visibleRuntimeQuestState = isPlaying ? runtimeQuestState : { revision: 0, quests: [] };
   const visibleRuntimeHudState = isPlaying ? runtimeHudState : [];
+  const visibleDialoguePortrait = visibleRuntimeChoiceState?.portraitAssetId ? project.assets?.find((asset) => asset.id === visibleRuntimeChoiceState.portraitAssetId) ?? null : null;
+  const visibleDialogueChoiceKey = visibleRuntimeChoiceState ? JSON.stringify([visibleRuntimeChoiceState.id, visibleRuntimeChoiceState.body, visibleRuntimeChoiceState.revealMode, visibleRuntimeChoiceState.charactersPerSecond]) : "";
+  const runtimeDialogueTypewriterActive = Boolean(visibleRuntimeChoiceState?.revealMode === "typewriter" && runtimeDialogueReveal?.choiceKey === visibleDialogueChoiceKey);
+  const visibleDialogueBody = visibleRuntimeChoiceState ? runtimeDialogueTypewriterActive ? visibleRuntimeChoiceState.body.slice(0, runtimeDialogueReveal?.visibleCharacters ?? 0) : visibleRuntimeChoiceState.body : "";
   const visibleGameplayState = (gameplayProgram?.hudBindings?.length ? [] : gameplayVariables)
     .filter((variable) => variable.visible)
     .map((variable) => `${variable.label ?? variable.id}: ${String(runtimeState.variables?.[variable.id] ?? "")}`)
@@ -12778,12 +12982,25 @@ export default function Home() {
                   {(["primary", "secondary", "ticker"] as const).map((region) => <div key={region} data-hud-region={region}>{visibleRuntimeHudState.filter((binding) => binding.region === region).map((binding) => <span key={binding.id} aria-label={binding.ariaLabel}>{binding.text}</span>)}</div>)}
                 </div>
               )}
+              {visibleRuntimeQuestState.quests.length > 0 && (
+                <aside className="preview-quest-journal" aria-label="Quest journal" aria-live="polite" aria-atomic="true">
+                  <h2>Quest journal</h2>
+                  {visibleRuntimeQuestState.quests.map((quest) => <section key={quest.id} data-quest-id={quest.id}><strong><span>{quest.title}</span><small>{quest.status}</small></strong>{quest.description && <p>{quest.description}</p>}{quest.objectives.length > 0 && <ul>{quest.objectives.map((objective) => <li key={objective.id} data-objective-id={objective.id} data-complete={objective.completed}>{objective.label}{objective.progress === null ? "" : ` ${objective.progress} / ${objective.target}`}</li>)}</ul>}</section>)}
+                </aside>
+              )}
               {visibleRuntimeChoiceState && (
-                <section className="preview-choice-layer" role="dialog" aria-modal={visibleRuntimeChoiceState.modal} aria-labelledby="preview-choice-title" aria-describedby="preview-choice-body">
+                <section className="preview-choice-layer" role="dialog" aria-modal={visibleRuntimeChoiceState.modal} aria-label={visibleRuntimeChoiceState.ariaLabel} aria-labelledby="preview-choice-title" aria-describedby="preview-choice-body" data-line-id={visibleRuntimeChoiceState.lineId ?? undefined} data-speaker-id={visibleRuntimeChoiceState.speakerId ?? undefined}>
                   <div className="preview-choice-card">
-                    <h2 id="preview-choice-title">{visibleRuntimeChoiceState.title}</h2>
-                    <p id="preview-choice-body">{visibleRuntimeChoiceState.body}</p>
-                    <div>
+                    <div className={`preview-choice-dialogue-grid portrait-${visibleDialoguePortrait ? visibleRuntimeChoiceState.portraitSide : "none"}`}>
+                      {visibleDialoguePortrait && <img src={visibleDialoguePortrait.dataUrl} alt="" aria-hidden="true" />}
+                      <div className="preview-choice-dialogue-copy">
+                        {visibleRuntimeChoiceState.speakerName && <p className="preview-choice-speaker">{visibleRuntimeChoiceState.speakerName}</p>}
+                        <h2 ref={previewChoiceTitleRef} id="preview-choice-title" tabIndex={-1}>{visibleRuntimeChoiceState.title}</h2>
+                        <p id="preview-choice-body" className={runtimeDialogueTypewriterActive ? "visually-hidden" : undefined} aria-live="polite" aria-atomic="true">{visibleRuntimeChoiceState.body}</p>
+                        {runtimeDialogueTypewriterActive && <p className="preview-choice-body-visual" aria-hidden="true">{visibleDialogueBody}</p>}
+                      </div>
+                    </div>
+                    <div className="preview-choice-options">
                       {visibleRuntimeChoiceState.choices.map((choice) => <button key={choice.id} type="button" disabled={!choice.enabled} data-choice-id={choice.id} data-action-id={choice.actionId} onClick={() => { const engine = runtimeEngineRef.current; if (engine?.chooseChoice(choice.id)) { syncRuntimeSnapshot(engine); setRuntimeTick((tick) => tick + 1); } }}>{choice.label}</button>)}
                     </div>
                   </div>
@@ -13145,6 +13362,27 @@ export default function Home() {
                     </div>}
                     <p className="precision-note">{spatialLayoutSearchResult.decisionBoundary}</p>
                   </section>}
+                </div>
+              </details>
+              <details id="looplab-gameplay-program" className="precision-card tuning-workbench" open aria-label="Deterministic dialogue, quest, and gameplay rule authoring" data-source-digest={doctorReport.sourceDigest}>
+                <summary><span>Gameplay · dialogue, quests & rules</span><small>One state store · deterministic evidence · accessible presentation</small></summary>
+                <div className="tuning-body">
+                  <p className="precision-note">Edit the exact gameplay source used by preview, acceptance, replay, saves, headless control, and the one-file export. Dialogue may bind Narrative Contract lines and speakers plus embedded portraits. Quests derive entirely from typed variables and rules—never a second story state store.</p>
+                  <div className={`tuning-contract-status ${gameplayProgramInspection.errors.length ? "blocked" : gameplayProgramInspection.present ? "ready" : "draft"}`}>
+                    <span>{gameplayProgramInspection.present ? gameplayProgramInspection.errors.length ? "Gameplay program blocked" : "Gameplay program valid" : "No gameplay program saved"}</span>
+                    <small>{gameplayProgramInspection.present ? `${gameplayProgramInspection.metrics.variableCount} variables · ${gameplayProgramInspection.metrics.ruleCount} rules · ${gameplayProgramInspection.metrics.dialoguePageCount ?? 0} dialogue pages · ${gameplayProgramInspection.metrics.questCount ?? 0} quests · ${gameplayProgramInspection.metrics.questObjectiveCount ?? 0} objectives` : "Prepare an empty canonical document or paste the exact program authored by an AI agent."}</small>
+                  </div>
+                  <label className="field full tuning-contract-editor"><span>Gameplay Program · JSON</span><textarea aria-label="Gameplay Program JSON" rows={18} spellCheck={false} placeholder="Prepare a canonical starter or paste the gameplayProgram object used by set_gameplay_program." value={gameplayProgramDraft} onChange={(event) => setGameplayProgramDraft(event.target.value)} /></label>
+                  {(gameplayProgramInspection.errors.length > 0 || gameplayProgramInspection.warnings.length > 0) && <div className="tuning-findings" role="status">
+                    {gameplayProgramInspection.errors.slice(0, 6).map((message) => <small key={`error-${message}`}>ERROR · {message}</small>)}
+                    {gameplayProgramInspection.warnings.slice(0, Math.max(0, 8 - gameplayProgramInspection.errors.length)).map((message) => <small key={`warning-${message}`}>WARNING · {message}</small>)}
+                  </div>}
+                  <div className="tuning-actions">
+                    <button onClick={prepareGameplayProgram}>{gameplayProgramInspection.present ? "Reload saved source" : "Prepare empty source"}</button>
+                    <button disabled={!gameplayProgramDraft.trim()} onClick={saveGameplayProgram}>Save gameplay</button>
+                    {gameplayProgramInspection.present && <button className="danger" onClick={removeGameplayProgram}>Remove</button>}
+                  </div>
+                  <p className="precision-note">Claude, Codex, CLI, MCP, and this mouse panel share <code>get_gameplay_program</code> and <code>set_gameplay_program</code>. Exported games expose the derived journal through <code>getQuestState()</code> / <code>get_quest_state</code>. Typewriter reveal is visual only, reduced motion is instant, full readable text is atomic, and dialogue never auto-advances in v1.</p>
                 </div>
               </details>
               <details id="looplab-combat-program" className="precision-card tuning-workbench" open aria-label="Deterministic health and projectile authoring" data-source-digest={doctorReport.sourceDigest}>
@@ -13974,7 +14212,7 @@ export default function Home() {
             <div className={`doctor-narrative-proof narrative-${doctorReport.narrativeReport.status}`}>
               <div><span><b>Narrative Report</b><small>Narrative Designer structure + Narrator/Dialogue Writer delivery, checked against runtime IDs and current evidence.</small></span><strong>{doctorReport.narrativeReport.status.replaceAll("-", " ")}</strong></div>
               {doctorReport.narrativeReport.present ? <>
-                <div className="doctor-narrative-metrics"><span><b>{doctorReport.narrativeReport.metrics.requiredBeatCount}</b> required beats</span><span><b>{doctorReport.narrativeReport.metrics.reachablePageCount}/{doctorReport.narrativeReport.metrics.pageCount}</b> reachable pages</span><span><b>{doctorReport.narrativeReport.metrics.reachableEndingCount}/{doctorReport.narrativeReport.metrics.endingCount}</b> reachable endings</span><span><b>{doctorReport.narrativeReport.metrics.trapCycleCount}</b> trap cycles</span></div>
+                <div className="doctor-narrative-metrics"><span><b>{doctorReport.narrativeReport.metrics.requiredBeatCount}</b> required beats</span><span><b>{doctorReport.narrativeReport.metrics.reachablePageCount}/{doctorReport.narrativeReport.metrics.pageCount}</b> reachable pages</span><span><b>{doctorReport.narrativeReport.metrics.reachableEndingCount}/{doctorReport.narrativeReport.metrics.endingCount}</b> reachable endings</span><span><b>{doctorReport.gameplayProgram.metrics.dialoguePageCount ?? 0}</b> speaker-bound pages</span><span><b>{doctorReport.gameplayProgram.metrics.questCount ?? 0}</b> quests</span><span><b>{doctorReport.gameplayProgram.metrics.questObjectiveCount ?? 0}</b> objectives</span><span><b>{doctorReport.narrativeReport.metrics.trapCycleCount}</b> trap cycles</span></div>
                 {doctorReport.narrativeReport.shortestEndingPaths.length > 0 && <div className="doctor-narrative-paths"><b>Shortest verified structure</b>{doctorReport.narrativeReport.shortestEndingPaths.map((entry: { endingId: string; path: Array<{ id: string }> }) => <small key={entry.endingId}><strong>{entry.endingId}</strong> · {entry.path.map((step: { id: string }) => step.id).join(" → ")}</small>)}</div>}
                 <p>{doctorReport.narrativeReport.proofBoundary}</p>
               </> : <p>{doctorReport.narrativeReport.required ? "Story content is required for this candidate, but no Narrative Contract has been authored yet." : "No material story contract is active. Mechanics-only projects are not penalized."}</p>}

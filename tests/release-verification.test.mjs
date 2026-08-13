@@ -69,7 +69,7 @@ function passingPlatformReceipt(html, sourceDigest) {
       browser: { name: "chromium", version: "fixture-1", launchTarget: "fixture" },
       viewport: { width: 1_280, height: 800 },
     },
-    runtimeVersion: "2.33.0",
+    runtimeVersion: "2.34.0",
     checks: getReleaseVerificationPolicy().requiredChecks.map((check) => ({ id: check.id, status: check.allowedStatuses[0], detail: `${check.id} passed.` })),
     findings: [],
     visualEvidence: {

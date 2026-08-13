@@ -165,7 +165,7 @@ test("production Doctor and the manifest expose executable replay truth", () => 
   assert.ok(manifest.requiredWorkflow.includes("run_replay_suite"));
   assert.ok(manifest.commands.includes("record_replay_case"));
   assert.ok(manifest.exportedRuntime.methods.includes("runReplayCase"));
-  assert.equal(manifest.exportedRuntime.version, "2.33.0");
+  assert.equal(manifest.exportedRuntime.version, "2.34.0");
   assert.equal(manifest.deterministicReplay.currentHashVersion, LOOPLAB_REPLAY_HASH_VERSION);
   assert.equal(manifest.deterministicReplay.legacyHashVersion, 1);
   assert.deepEqual(manifest.deterministicReplay.supportedHashVersions, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]);

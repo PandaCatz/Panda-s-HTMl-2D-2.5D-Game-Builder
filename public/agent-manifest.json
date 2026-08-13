@@ -1,6 +1,6 @@
 {
   "name": "Looplab Headless Agent API",
-  "protocolVersion": "1.110.0",
+  "protocolVersion": "1.111.0",
   "agentOperatingModel": {
     "purpose": "LoopLab is an AI capability amplifier and structured game-authoring workstation, not a form the agent is confined to.",
     "headlessFirst": true,
@@ -1588,7 +1588,7 @@
   },
   "gameplayRules": {
     "policy": {
-      "version": 2,
+      "version": 3,
       "triggers": [
         "event",
         "input",
@@ -1643,11 +1643,44 @@
       "systems": [
         "choice-pages",
         "dialogue",
+        "speaker-and-portrait-metadata",
+        "quest-bindings",
         "clocks",
         "turn-and-day-advancement",
         "integer-formulas",
         "variable-bound-hud"
       ],
+      "dialogue": {
+        "revealModes": [
+          "instant",
+          "typewriter"
+        ],
+        "portraitSides": [
+          "left",
+          "right"
+        ],
+        "typewriterCharactersPerSecond": {
+          "minimum": 5,
+          "maximum": 120
+        },
+        "deterministic": false,
+        "reducedMotion": "instant",
+        "autoAdvance": false
+      },
+      "quests": {
+        "status": {
+          "inactive": 0,
+          "active": 1,
+          "completed": 2,
+          "failed": 3
+        },
+        "maximums": {
+          "quests": 64,
+          "objectivesPerQuest": 32
+        },
+        "runtimeOwner": "gameplayProgram.variables-and-rules",
+        "separateMutableStore": false
+      },
       "objectChangeKeys": [
         "hidden",
         "solid",
@@ -1751,11 +1784,13 @@
     ],
     "runtimeMethods": [
       "getNarrativeContract",
-      "getNarrativeReport"
+      "getNarrativeReport",
+      "getQuestState"
     ],
     "runtimeCommands": [
       "get_narrative_contract",
-      "get_narrative_report"
+      "get_narrative_report",
+      "get_quest_state"
     ],
     "proofBoundary": "The report proves schema/reference validity, bounded structural reachability, and linked acceptance status. It does not claim prose quality, emotional impact, pacing taste, or fun."
   },
@@ -2218,7 +2253,7 @@
     },
     "gameplayProgram": {
       "policy": {
-        "version": 2,
+        "version": 3,
         "triggers": [
           "event",
           "input",
@@ -2273,11 +2308,44 @@
         "systems": [
           "choice-pages",
           "dialogue",
+          "speaker-and-portrait-metadata",
+          "quest-bindings",
           "clocks",
           "turn-and-day-advancement",
           "integer-formulas",
           "variable-bound-hud"
         ],
+        "dialogue": {
+          "revealModes": [
+            "instant",
+            "typewriter"
+          ],
+          "portraitSides": [
+            "left",
+            "right"
+          ],
+          "typewriterCharactersPerSecond": {
+            "minimum": 5,
+            "maximum": 120
+          },
+          "deterministic": false,
+          "reducedMotion": "instant",
+          "autoAdvance": false
+        },
+        "quests": {
+          "status": {
+            "inactive": 0,
+            "active": 1,
+            "completed": 2,
+            "failed": 3
+          },
+          "maximums": {
+            "quests": 64,
+            "objectivesPerQuest": 32
+          },
+          "runtimeOwner": "gameplayProgram.variables-and-rules",
+          "separateMutableStore": false
+        },
         "objectChangeKeys": [
           "hidden",
           "solid",
@@ -2324,7 +2392,8 @@
       "inspectCommand": "get_gameplay_program",
       "authorCommand": "set_gameplay_program",
       "removeCommand": "remove_gameplay_program",
-      "proofBoundary": "A feature-contract description is not implementation. Complex mechanics must resolve to executable deterministic gameplay rules or other runtime-owned IDs."
+      "proofBoundary": "A feature-contract description is not implementation. Complex mechanics must resolve to executable deterministic gameplay rules or other runtime-owned IDs.",
+      "dialogueQuestWorkflow": "Bind choice-page line/speaker IDs to the Narrative Contract and portrait IDs to embedded project assets. Author quests as a derived journal over the same typed gameplay variables and deterministic rules; never create a second mutable quest store. Typewriter reveal is presentation-only, reduced motion is instant, full readable text is exposed atomically, and v1 never auto-advances dialogue."
     },
     "interactableTemplates": {
       "registrySchemaVersion": "looplab-interactable-template-registry/v1",
@@ -4452,7 +4521,7 @@
       "harnessSchemaVersion": "looplab-platform-harness/v1",
       "harnessRunner": "playwright-core",
       "harnessRunnerVersion": 2,
-      "runtimeVersion": "2.33.0",
+      "runtimeVersion": "2.34.0",
       "environment": {
         "sandbox": [
           "allow-scripts"
@@ -4592,7 +4661,7 @@
       ],
       "unexpectedCheckPolicy": "reject",
       "visualCaptureRequired": true,
-      "digest": "sha256:7ec4e87b9a3bb9a7d686bb8d47534913029c68741c2834e159c254466ad65d0b"
+      "digest": "sha256:99a8ba9609f3d4743bcfd6e19fbacd7725e639e004c96d6e336676e6bf95a07e"
     },
     "inspectCommand": "get_release_verification",
     "browserCommand": "verify_release",
@@ -5661,7 +5730,7 @@
     }
   },
   "exportedRuntime": {
-    "version": "2.33.0",
+    "version": "2.34.0",
     "packaging": "single-self-contained-html",
     "uploadFiles": 1,
     "offlinePlayable": true,
@@ -5795,6 +5864,7 @@
       "getNavigation",
       "getGameplayState",
       "getChoiceState",
+      "getQuestState",
       "getHudState",
       "chooseChoice",
       "getRuntimeJoinPlan",
@@ -5845,6 +5915,7 @@
       "get_navigation",
       "get_gameplay_state",
       "get_choice_state",
+      "get_quest_state",
       "get_hud_state",
       "choose_choice",
       "get_runtime_join_plan",
@@ -34616,8 +34687,8 @@
   },
   "agentGuideNavigation": {
     "schemaVersion": "looplab-agent-guide-index/v1",
-    "sourceDigest": "sha256:6608112ead9d897e241b57dfb14d09d124a2d495912686b5d09c455d591b515a",
-    "indexDigest": "sha256:3d9f92895c5fa7e3bf19fff3dd563b57dec6a4309a8599a5a3056e552095cb4b",
+    "sourceDigest": "sha256:be4f16ef2470cf4858daac248d9fb09e0802a222f50f888d4ee90fb1991acb53",
+    "indexDigest": "sha256:fc26c3356bea0888e6ed71b1824ab61d7edf4e517a53434493976ea77be0196c",
     "headingCount": 59,
     "counts": {
       "sections": 59,
@@ -34670,7 +34741,7 @@
   "companion": {
     "baseUrl": "http://127.0.0.1:4317",
     "expectedCompanionVersion": "1.39.0",
-    "expectedProtocolVersion": "1.110.0",
+    "expectedProtocolVersion": "1.111.0",
     "providers": "/providers",
     "promptDrafts": "/prompt-drafts",
     "agentPresence": "/agent-presence",

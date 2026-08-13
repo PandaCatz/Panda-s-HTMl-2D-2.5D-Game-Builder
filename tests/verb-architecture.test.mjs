@@ -300,7 +300,7 @@ test("Director and manifest describe a purpose-first verb system rather than a f
   assert.match(brief.composedPrompt, /prose record is a specification, not passing evidence/i);
   assert.deepEqual(manifest.gameDirector.verbArchitecture.policy, LOOPLAB_VERB_ARCHITECTURE_POLICY);
   assert.equal(manifest.commands.includes("set_verb_architecture"), true);
-  assert.equal(manifest.protocolVersion, "1.110.0");
+  assert.equal(manifest.protocolVersion, "1.111.0");
 });
 
 test("the neutral dimetric starter carries no skating semantics and Doctor requires adaptation", () => {

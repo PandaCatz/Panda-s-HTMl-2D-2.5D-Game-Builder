@@ -6,6 +6,7 @@ import { runInNewContext } from "node:vm";
 import { applyAgentCommand, buildStandaloneArtifact, buildStandaloneHtml, buildStandaloneRuntimePrelude, createTemplate, validateProject } from "../lib/looplab-agent-core.mjs";
 import { runAcceptanceSuite } from "../lib/looplab-acceptance.mjs";
 import { analyzeProject } from "../lib/looplab-doctor.mjs";
+import { normalizeGameplayProgram } from "../lib/looplab-gameplay-rules.mjs";
 import { createRuntimeModel } from "../lib/looplab-runtime-model.mjs";
 import { readGamepadInputCodes } from "../lib/looplab-gamepad.mjs";
 import { canonicalReplaySerialize, LOOPLAB_REPLAY_HASH_VERSION, LOOPLAB_REPLAY_MOTION_HASH_VERSION, replayStateDigest, runReplaySuite } from "../lib/looplab-replay.mjs";
@@ -64,7 +65,46 @@ function continuousWorldProject() {
   return { name: "Continuous World Contract", width: 200, height: 120, background: "#e8e0ca", gravity: 0, grid: 10, controlMode: "topdown", objects: mapAObjects, assets: [], maps, activeMapId: "map-a", worldStream: program };
 }
 
-function executeStandaloneRuntime(html) {
+function questBridgeProject() {
+  const project = createTemplate("systems");
+  project.replay.cases = [];
+  const program = structuredClone(project.gameplayProgram);
+  program.variables.push(
+    { id: "quest-status", label: "Quest status", type: "number", initial: 1, min: 0, max: 3, visible: false },
+    { id: "quest-progress", label: "Quest progress", type: "number", initial: 2, min: 0, max: 3, visible: true },
+  );
+  program.rules.push({
+    id: "complete-bridge-quest",
+    name: "Complete bridge quest",
+    enabled: true,
+    trigger: { type: "state", variableId: "quest-progress", operator: "gte", value: 3 },
+    conditions: [{ variableId: "quest-status", operator: "eq", value: 1 }],
+    once: "run",
+    effects: [{ type: "set-variable", variableId: "quest-status", value: 2 }],
+  });
+  program.quests = [{
+    id: "bridge-quest",
+    title: "Bridge quest",
+    description: "Prove the exported DOM bridge.",
+    statusVariableId: "quest-status",
+    visibleWhen: [],
+    completionRuleId: "complete-bridge-quest",
+    objectives: [{
+      id: "bridge-objective",
+      label: "Make progress",
+      visibleWhen: [],
+      completeWhen: [{ variableId: "quest-progress", operator: "gte", value: 3 }],
+      progressVariableId: "quest-progress",
+      target: 3,
+      acceptanceTestIds: ["market-choice-route"],
+    }],
+    acceptanceTestIds: ["market-choice-route"],
+  }];
+  project.gameplayProgram = normalizeGameplayProgram(program);
+  return project;
+}
+
+function executeStandaloneRuntimeHarness(html) {
   const projectText = html.match(/<script id="looplab-project-data" type="application\/json">([\s\S]*?)<\/script>/i)?.[1];
   const script = html.match(/<script>([\s\S]*?)<\/script>\s*<\/body>/i)?.[1];
   assert.ok(projectText && script, "standalone artifact must expose project metadata and one runtime script");
@@ -116,17 +156,28 @@ function executeStandaloneRuntime(html) {
       Object.assign(this, options);
     }
   }
+  const documentListeners = new Map();
+  let lastRuntimeResponse = null;
+  const documentApi = {
+    hidden: false,
+    hasFocus: () => true,
+    getElementById: element,
+    createElement: (tagName) => ({ tagName: String(tagName).toUpperCase(), dataset: {}, style: {}, disabled: false, textContent: "", addEventListener() {}, append() {}, focus() {}, setAttribute(name, next) { this[name] = String(next); }, removeAttribute(name) { delete this[name]; } }),
+    querySelectorAll: () => [],
+    addEventListener(type, handler) {
+      const handlers = documentListeners.get(type) ?? [];
+      handlers.push(handler);
+      documentListeners.set(type, handlers);
+    },
+    dispatchEvent(event) {
+      if (event?.type === "looplab:runtime-response") lastRuntimeResponse = event.detail ?? null;
+      for (const handler of documentListeners.get(event?.type) ?? []) handler(event);
+      return true;
+    },
+  };
   const sandbox = {
     console,
-    document: {
-      hidden: false,
-      hasFocus: () => true,
-      getElementById: element,
-      createElement: (tagName) => ({ tagName: String(tagName).toUpperCase(), dataset: {}, style: {}, disabled: false, textContent: "", addEventListener() {}, append() {}, focus() {}, setAttribute(name, next) { this[name] = String(next); }, removeAttribute(name) { delete this[name]; } }),
-      querySelectorAll: () => [],
-      addEventListener() {},
-      dispatchEvent() {},
-    },
+    document: documentApi,
     navigator: { getGamepads: () => [] },
     performance: { now: () => 0 },
     requestAnimationFrame: () => 1,
@@ -139,7 +190,20 @@ function executeStandaloneRuntime(html) {
   sandbox.window = sandbox;
   runInNewContext(script, sandbox, { timeout: 5_000 });
   assert.ok(sandbox.window.looplabRuntime, "standalone runtime API must initialize in the artifact scope");
-  return sandbox.window.looplabRuntime;
+  return {
+    runtime: sandbox.window.looplabRuntime,
+    command(command, id = "runtime-test") {
+      lastRuntimeResponse = null;
+      documentApi.dispatchEvent({ type: "looplab:runtime-command", detail: { id, command } });
+      assert.ok(lastRuntimeResponse, "standalone DOM bridge must dispatch a runtime response");
+      assert.equal(lastRuntimeResponse.id, id);
+      return lastRuntimeResponse.result;
+    },
+  };
+}
+
+function executeStandaloneRuntime(html) {
+  return executeStandaloneRuntimeHarness(html).runtime;
 }
 
 test("the exact exported dependency prelude remains import-free and covers every runtime branch in isolation", () => {
@@ -203,6 +267,17 @@ test("the one-file browser runtime crosses a continuous-world seam without fetch
   assert.equal(state.player.id, playerId, "the live player identity must survive chunk residency changes");
   assert.deepEqual(state.worldStream.residentRange, { start: 0, end: 1 });
   assert.equal(runtime.getWorldStreamState().routeDigest, state.worldStream.routeDigest);
+});
+
+test("the one-file DOM bridge returns the same derived quest journal as the exported runtime API", () => {
+  const harness = executeStandaloneRuntimeHarness(buildStandaloneHtml(questBridgeProject()));
+  const direct = JSON.parse(JSON.stringify(harness.runtime.getQuestState()));
+  const bridged = JSON.parse(JSON.stringify(harness.command({ op: "get_quest_state" })));
+
+  assert.deepEqual(bridged, { ok: true, quests: direct });
+  assert.equal(bridged.quests.quests[0].status, "active");
+  assert.equal(bridged.quests.quests[0].objectives[0].progress, 2);
+  assert.equal(bridged.quests.quests[0].objectives[0].target, 3);
 });
 
 test("the built artifact replay and acceptance runners stay identical to the canonical Node runners", () => {
@@ -371,7 +446,7 @@ test("exports the tested runtime model, linked maps, mobile-only touch controls,
   project.release = { externalRequests: [], debugMarkers: [] };
   project.assets = [{ id: "embedded-pixel", name: "Embedded pixel", type: "sprite", dataUrl: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M/wHwAF/gL+X1zGkwAAAABJRU5ErkJggg==", width: 1, height: 1, frameWidth: 1, frameHeight: 1, frames: 1, columns: 1, anchorX: 0.5, anchorY: 1, anchorMode: "ground", collisionPolicy: "authored-only", generator: { kind: "test" } }];
   const html = buildStandaloneHtml(project);
-  assert.match(html, /const runtimeApi=\{version:'2\.33\.0',getSourceDigest/);
+  assert.match(html, /const runtimeApi=\{version:'2\.34\.0',getSourceDigest/);
   assert.match(html, /Object\.isExtensible\(window\)/);
   assert.match(html, /id="looplab-runtime-bridge"/);
   assert.match(html, /id="looplab-runtime-form"/);
@@ -512,7 +587,7 @@ test("manifest declares the generated game as one offline-playable HTML file", a
   assert.equal(manifest.exportedRuntime.offlinePlayable, true);
   assert.deepEqual(manifest.exportedRuntime.externalDependencies, []);
   assert.ok(manifest.exportedRuntime.embeds.includes("selected-assets-as-data-urls"));
-  assert.equal(manifest.exportedRuntime.version, "2.33.0");
+  assert.equal(manifest.exportedRuntime.version, "2.34.0");
   assert.ok(manifest.exportedRuntime.embeds.includes("keyboard-gamepad-and-touch-controls"));
   assert.ok(manifest.exportedRuntime.embeds.includes("deterministic-replay-fixtures"));
   assert.ok(manifest.exportedRuntime.embeds.includes("deterministic-acceptance-fixtures"));

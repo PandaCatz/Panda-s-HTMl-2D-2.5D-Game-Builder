@@ -51,7 +51,7 @@ test("agent manifest publishes one precise contract for every command surface", 
   const contracts = getLooplabCommandContracts();
   const validation = validateLooplabCommandContracts();
 
-  assert.equal(LOOPLAB_PROTOCOL_VERSION, "1.110.0");
+  assert.equal(LOOPLAB_PROTOCOL_VERSION, "1.111.0");
   assert.equal(manifest.agentOperatingModel.headlessFirst, true);
   assert.match(manifest.agentOperatingModel.primaryConsumer, /Codex, Claude/);
   assert.match(manifest.agentOperatingModel.primarySurface, /canonical product surface/);
