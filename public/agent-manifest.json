@@ -1,6 +1,6 @@
 {
   "name": "Looplab Headless Agent API",
-  "protocolVersion": "1.100.0",
+  "protocolVersion": "1.101.0",
   "agentOperatingModel": {
     "purpose": "LoopLab is an AI capability amplifier and structured game-authoring workstation, not a form the agent is confined to.",
     "headlessFirst": true,
@@ -2831,12 +2831,14 @@
     "providerContextField": "capabilityRoute.productionPlan",
     "runtimeSelectionField": "capabilityRoute.runtimeSelection",
     "policy": {
-      "schemaVersion": "looplab-runtime-selection-policy/v1",
+      "schemaVersion": "looplab-runtime-selection-policy/v2",
       "mode": "deterministic-quality-fit",
       "defaultFramework": "canvas",
       "automaticCandidates": [
         "canvas",
-        "phaser"
+        "phaser",
+        "pixi",
+        "melon"
       ],
       "explicitCandidates": [
         "canvas",
@@ -2846,11 +2848,19 @@
       ],
       "releaseReadyAdapters": [
         "canvas",
-        "phaser"
+        "phaser",
+        "pixi",
+        "melon"
       ],
       "phaserThreshold": 3,
+      "adapterThresholds": {
+        "canvas": 0,
+        "phaser": 3,
+        "pixi": 3,
+        "melon": 3
+      },
       "existingProjectPolicy": "Do not silently replace an existing runtime during an improvement pass. Report the better-fit runtime and require an explicit override before an engine migration.",
-      "singleFilePolicy": "Single-file delivery never disqualifies Phaser. Its browser script build and every selected asset must be inlined with no module, CDN, or runtime network dependency.",
+      "singleFilePolicy": "Single-file delivery never disqualifies a release-ready adapter. The exact selected browser bundle and every selected asset must be inlined with no module, CDN, or runtime network dependency.",
       "compositionPolicy": "Compose the useful capabilities, not competing engines. A shipped game has one primary frame/render owner; LoopLab simulation, authored collision, replay, DOM UI, assets, Doctor, and Playwright remain shared services.",
       "authority": "LoopLab computes this receipt locally from the same project, prompt, workstream, and explicit preference for the UI, headless API, Codex, Claude, and durable provider loop."
     },
@@ -2914,8 +2924,8 @@
         ]
       },
       "pixi": {
-        "role": "Renderer-first scene-graph reference knowledge",
-        "adapterStatus": "knowledge-integrated-adapter-pending",
+        "role": "Renderer-first scene-graph adapter",
+        "adapterStatus": "release-ready-pinned-8.19.0",
         "chooseWhen": [
           "large sprite counts",
           "particles",
@@ -2943,8 +2953,8 @@
         ]
       },
       "melon": {
-        "role": "Integrated Tiled-oriented 2D engine reference knowledge",
-        "adapterStatus": "knowledge-integrated-adapter-pending",
+        "role": "Integrated Tiled-oriented 2D engine adapter",
+        "adapterStatus": "release-ready-pinned-17.4.0",
         "chooseWhen": [
           "Tiled or TMX workflow",
           "orthogonal tile layers",
@@ -2996,8 +3006,8 @@
     "adapterStatus": {
       "canvas": "release-ready",
       "phaser": "release-ready-pinned-3.90.0",
-      "pixi": "knowledge-integrated-adapter-pending",
-      "melon": "knowledge-integrated-adapter-pending"
+      "pixi": "release-ready-pinned-8.19.0-strict-csp",
+      "melon": "release-ready-pinned-17.4.0"
     },
     "parity": [
       "mouse UI",
@@ -3077,26 +3087,27 @@
       },
       {
         "id": "pixijs-rendering",
-        "label": "PixiJS capability knowledge",
+        "label": "PixiJS Rendering · strict-CSP inline UMD",
         "owns": [
           "scene-graph-patterns",
           "texture-lifecycle",
           "render-groups",
           "ticker-ownership",
           "pointer-event-patterns",
-          "pending-adapter-boundary"
+          "inline-umd-delivery",
+          "strict-csp-static-sync-polyfills"
         ]
       },
       {
         "id": "melonjs-engine",
-        "label": "melonJS capability knowledge",
+        "label": "melonJS Engine · inline IIFE",
         "owns": [
           "application-and-stage-patterns",
           "tiled-import-validation",
           "pool-lifecycle",
           "sparse-tile-layers",
           "collision-debug-patterns",
-          "pending-adapter-boundary"
+          "tree-shaken-inline-delivery"
         ]
       },
       {
@@ -3373,12 +3384,18 @@
         "sha256": "e92ddef111ba42e92d316979c732311757093688ea1810591cb7aa2858eba7a7"
       },
       "pixi": {
-        "status": "knowledge-integrated-adapter-pending",
-        "targetDelivery": "inline-browser-umd-or-iife"
+        "status": "release-ready",
+        "delivery": "inline-umd-with-official-csp-polyfill",
+        "pinnedVersion": "8.19.0",
+        "sha256": "177fbcd9751a96f37617cb142040b83f25512cc8b2232e3515d7e2643b25d163",
+        "csp": "strict-no-unsafe-eval"
       },
       "melon": {
-        "status": "knowledge-integrated-adapter-pending",
-        "targetDelivery": "tree-shaken-inline-iife"
+        "status": "release-ready",
+        "delivery": "tree-shaken-inline-iife",
+        "pinnedVersion": "17.4.0",
+        "sha256": "15c6d46aee6983a776326889a35ec586ec4923672f11559c288251a325bbf7bf",
+        "integration": "standalone-application-explicit-camera"
       },
       "forbidden": [
         "external-module-import",
@@ -3628,12 +3645,14 @@
     "fullCreationWorkstream": "creation",
     "productionPlanSchema": "looplab-game-studio-plan/v1",
     "runtimeSelectionPolicy": {
-      "schemaVersion": "looplab-runtime-selection-policy/v1",
+      "schemaVersion": "looplab-runtime-selection-policy/v2",
       "mode": "deterministic-quality-fit",
       "defaultFramework": "canvas",
       "automaticCandidates": [
         "canvas",
-        "phaser"
+        "phaser",
+        "pixi",
+        "melon"
       ],
       "explicitCandidates": [
         "canvas",
@@ -3643,11 +3662,19 @@
       ],
       "releaseReadyAdapters": [
         "canvas",
-        "phaser"
+        "phaser",
+        "pixi",
+        "melon"
       ],
       "phaserThreshold": 3,
+      "adapterThresholds": {
+        "canvas": 0,
+        "phaser": 3,
+        "pixi": 3,
+        "melon": 3
+      },
       "existingProjectPolicy": "Do not silently replace an existing runtime during an improvement pass. Report the better-fit runtime and require an explicit override before an engine migration.",
-      "singleFilePolicy": "Single-file delivery never disqualifies Phaser. Its browser script build and every selected asset must be inlined with no module, CDN, or runtime network dependency.",
+      "singleFilePolicy": "Single-file delivery never disqualifies a release-ready adapter. The exact selected browser bundle and every selected asset must be inlined with no module, CDN, or runtime network dependency.",
       "compositionPolicy": "Compose the useful capabilities, not competing engines. A shipped game has one primary frame/render owner; LoopLab simulation, authored collision, replay, DOM UI, assets, Doctor, and Playwright remain shared services.",
       "authority": "LoopLab computes this receipt locally from the same project, prompt, workstream, and explicit preference for the UI, headless API, Codex, Claude, and durable provider loop."
     },
@@ -3732,7 +3759,7 @@
       "harnessSchemaVersion": "looplab-platform-harness/v1",
       "harnessRunner": "playwright-core",
       "harnessRunnerVersion": 2,
-      "runtimeVersion": "2.27.0",
+      "runtimeVersion": "2.28.0",
       "environment": {
         "sandbox": [
           "allow-scripts"
@@ -3872,7 +3899,7 @@
       ],
       "unexpectedCheckPolicy": "reject",
       "visualCaptureRequired": true,
-      "digest": "sha256:a75e2fe9cfe77a1922237d364411dc764298f1811c9b94f7110de05a1f28094d"
+      "digest": "sha256:742a0c7b4d2928392920ae7cb3f8a459d43d1e2ce0b7a7cf3a71c5e90cf1eeb3"
     },
     "inspectCommand": "get_release_verification",
     "browserCommand": "verify_release",
@@ -4836,7 +4863,7 @@
     }
   },
   "exportedRuntime": {
-    "version": "2.27.0",
+    "version": "2.28.0",
     "packaging": "single-self-contained-html",
     "uploadFiles": 1,
     "offlinePlayable": true,
@@ -4870,10 +4897,8 @@
     "catalogBoundary": "The builder's source catalog is not bundled; only assets selected into the project are embedded.",
     "engineDelivery": {
       "canvas": "built-in-inline",
-      "phaser": "inline-script-tag"
-    },
-    "pendingEngineTargets": {
-      "pixi": "inline-browser-umd-or-iife",
+      "phaser": "inline-script-tag",
+      "pixi": "inline-umd-with-official-csp-polyfill",
       "melon": "tree-shaken-inline-iife"
     },
     "artifactGate": [
@@ -13799,7 +13824,7 @@
       {
         "op": "set_runtime_profile",
         "title": "Set Runtime Profile",
-        "description": "Atomically select one release-ready primary 2D runtime adapter and its exact offline delivery metadata. Canvas and the pinned Phaser browser adapter are currently available; knowledge-only adapters cannot be mislabeled as shipped support.",
+        "description": "Atomically select one release-ready primary 2D runtime adapter and its exact offline delivery metadata. Canvas, pinned Phaser, pinned PixiJS, and pinned tree-shaken melonJS adapters are available; exactly one owns presentation while LoopLab retains simulation and authored collision truth.",
         "surfaces": [
           "core",
           "browser-session"
@@ -13831,9 +13856,11 @@
               "type": "string",
               "enum": [
                 "canvas",
-                "phaser"
+                "phaser",
+                "pixi",
+                "melon"
               ],
-              "description": "The single primary 2D runtime adapter. Phaser remains optional and is embedded only when selected."
+              "description": "The single primary 2D runtime adapter. Any selected engine is pinned, embedded, and remains presentation-only."
             },
             "reason": {
               "type": "string",
@@ -30988,8 +31015,8 @@
   },
   "companion": {
     "baseUrl": "http://127.0.0.1:4317",
-    "expectedCompanionVersion": "1.34.0",
-    "expectedProtocolVersion": "1.100.0",
+    "expectedCompanionVersion": "1.35.0",
+    "expectedProtocolVersion": "1.101.0",
     "providers": "/providers",
     "promptDrafts": "/prompt-drafts",
     "agentPresence": "/agent-presence",

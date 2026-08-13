@@ -19,6 +19,7 @@ test("platform wrapper preserves a scripts-only opaque sandbox", () => {
   assert.match(wrapper, /Content-Security-Policy/);
   assert.match(wrapper, /connect-src 'none'/);
   assert.match(wrapper, /img-src data: blob:/);
+  assert.doesNotMatch(wrapper, /script-src[^;]*unsafe-eval/i);
   assert.match(wrapper, /&lt;!doctype html&gt;/);
   const recorderIndex = wrapper.indexOf("__looplabPlatformInstrumentation");
   const artifactScriptIndex = wrapper.indexOf("window.ready=true");
@@ -26,7 +27,7 @@ test("platform wrapper preserves a scripts-only opaque sandbox", () => {
   assert.ok(recorderIndex < artifactScriptIndex, "the instrumentation bootstrap must execute before artifact scripts");
   assert.deepEqual(LOOPLAB_PLATFORM_HARNESS_DEFAULTS, { frameCount: 1_200, frameMs: 16, malformedInputInterval: 8 });
   const manifest = getAgentManifest();
-  assert.equal(manifest.protocolVersion, "1.100.0");
+  assert.equal(manifest.protocolVersion, "1.101.0");
   assert.equal(manifest.platformHarness.schemaVersion, LOOPLAB_PLATFORM_HARNESS_SCHEMA);
   assert.equal(manifest.platformHarness.environment.exactFrameCount, 1_200);
   assert.equal(manifest.platformHarness.cli.operation, "platform-harness");
@@ -84,7 +85,7 @@ test("Pocket Platformer passes the real hostile-platform harness", { timeout: 90
   assert.match(receipt.artifactSha256, /^[a-f0-9]{64}$/);
   assert.deepEqual(receipt.environment.sandbox, ["allow-scripts"]);
   assert.equal(receipt.environment.opaqueOriginRequired, true);
-  assert.equal(receipt.runtimeVersion, "2.27.0");
+  assert.equal(receipt.runtimeVersion, "2.28.0");
   for (const id of ["sandbox-opaque-origin", "source-digest", "game-shell-lifecycle", "portable-save-roundtrip", "input-action-liveness", "real-keyboard-input", "blur-clears-input", "semantic-input", "audio-failure-isolated", "presentation-runtime-isolated", "no-external-requests", "no-unhandled-errors", "frame-soak", "replay-suite", "acceptance-suite", "completion-witness", "terminal-state"]) {
     assert.equal(receipt.checks.find((check) => check.id === id)?.status, "passed", `${id} should pass`);
   }
@@ -101,20 +102,32 @@ test("Pocket Platformer passes the real hostile-platform harness", { timeout: 90
   assert.match(receipt.runtime.presentationStatus.audio.error, /platform harness rejected AudioContext\.resume/i);
 });
 
-test("a Phaser-selected game boots its pinned inline adapter in the real hostile-platform harness", { timeout: 90_000 }, async () => {
-  const project = applyAgentCommand(createTemplate("platformer"), { op: "set_runtime_profile", framework: "phaser", reason: "Use the mature scene and frame lifecycle." }).project;
-  const doctor = analyzeProject(project);
-  const artifact = buildStandaloneArtifact(project, { filename: "pocket-platformer-phaser.html" });
-  const receipt = await runPlatformHarness({ html: artifact.html, expectedSourceDigest: doctor.sourceDigest, frameCount: 48 });
+test("every optional runtime boots its pinned inline adapter in the real hostile-platform harness", { timeout: 180_000 }, async () => {
+  const expectations = {
+    phaser: { owner: "phaser", version: "3.90.0", integration: "canonical-canvas-post-render", cspAdapter: null },
+    pixi: { owner: "pixi", version: "8.19.0", integration: "canonical-canvas-texture", cspAdapter: "pixi-static-sync-polyfills" },
+    melon: { owner: "melon", version: "17.4.0", integration: "standalone-application-explicit-camera", cspAdapter: null },
+  };
+  for (const [framework, expected] of Object.entries(expectations)) {
+    const project = applyAgentCommand(createTemplate("platformer"), { op: "set_runtime_profile", framework, reason: "Use the measured primary frame lifecycle." }).project;
+    const doctor = analyzeProject(project);
+    const artifact = buildStandaloneArtifact(project, { filename: `pocket-platformer-${framework}.html` });
+    const receipt = await runPlatformHarness({ html: artifact.html, expectedSourceDigest: doctor.sourceDigest, frameCount: 48 });
 
-  assert.equal(receipt.status, "passed", JSON.stringify(receipt, null, 2));
-  assert.equal(receipt.runtime.runtimeAdapter.framework, "phaser");
-  assert.equal(receipt.runtime.runtimeAdapter.primaryFrameOwner, "phaser");
-  assert.equal(receipt.runtime.runtimeAdapter.vendor.version, "3.90.0");
-  assert.equal(receipt.runtime.runtimeAdapter.vendor.loadedVersion, "3.90.0");
-  assert.match(receipt.runtime.runtimeAdapter.vendor.sha256, /^[a-f0-9]{64}$/);
-  assert.equal(receipt.checks.find((check) => check.id === "no-external-requests")?.status, "passed");
-  assert.equal(receipt.checks.find((check) => check.id === "no-unhandled-errors")?.status, "passed");
+    assert.equal(receipt.status, "passed", `${framework}: ${JSON.stringify(receipt, null, 2)}`);
+    assert.equal(receipt.runtime.runtimeAdapter.framework, framework);
+    assert.equal(receipt.runtime.runtimeAdapter.primaryFrameOwner, expected.owner);
+    assert.equal(receipt.runtime.runtimeAdapter.integration, expected.integration);
+    assert.equal(receipt.runtime.runtimeAdapter.strictCsp, true);
+    assert.equal(receipt.runtime.runtimeAdapter.cspAdapter, expected.cspAdapter);
+    assert.equal(receipt.runtime.runtimeAdapter.vendor.version, expected.version);
+    assert.equal(receipt.runtime.runtimeAdapter.vendor.loadedVersion, expected.version);
+    assert.match(receipt.runtime.runtimeAdapter.vendor.sha256, /^[a-f0-9]{64}$/);
+    assert.equal(receipt.checks.find((check) => check.id === "no-external-requests")?.status, "passed");
+    assert.equal(receipt.checks.find((check) => check.id === "no-unhandled-errors")?.status, "passed");
+    assert.equal(receipt.checks.find((check) => check.id === "replay-suite")?.status, "passed");
+    assert.equal(receipt.checks.find((check) => check.id === "acceptance-suite")?.status, "passed");
+  }
 });
 
 test("playerless systems games pass the real browser harness with visual evidence through their active choice surface", { timeout: 90_000 }, async (t) => {

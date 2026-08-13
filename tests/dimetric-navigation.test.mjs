@@ -386,7 +386,7 @@ test("headless API authors, validates, exports, and preserves per-map 2.5D data"
   assert.equal(project.maps[0].navigation.nodes.length, 2);
 
   const manifest = getAgentManifest();
-  assert.equal(manifest.protocolVersion, "1.100.0");
+  assert.equal(manifest.protocolVersion, "1.101.0");
   assert.ok(manifest.commands.includes("set_map_projection"));
   assert.ok(manifest.commands.includes("import_path_editor_navigation"));
   assert.ok(manifest.commands.includes("export_path_editor_navigation"));
@@ -397,8 +397,8 @@ test("headless API authors, validates, exports, and preserves per-map 2.5D data"
   assert.ok(manifest.exportedRuntime.methods.includes("getNavigation"));
 
   const html = buildStandaloneHtml(project);
-  assert.match(html, /version:'2\.27\.0'/);
-  assert.match(html, /looplab-runtime-ready'.+version:'2\.27\.0'/);
+  assert.match(html, /version:'2\.28\.0'/);
+  assert.match(html, /looplab-runtime-ready'.+version:'2\.28\.0'/);
   assert.match(html, /get_navigation/);
   assert.match(html, /function worldToScreen/);
   assert.doesNotMatch(html, /<script[^>]+src=/i);

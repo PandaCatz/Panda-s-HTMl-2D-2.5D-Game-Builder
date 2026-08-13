@@ -1,9 +1,11 @@
 #!/usr/bin/env node
 
 import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { lstatSync, readFileSync } from "node:fs";
 import { extname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { LOOPLAB_PIXI_BROWSER_BUNDLE, LOOPLAB_PIXI_BROWSER_SHA256 } from "../lib/generated/looplab-pixi-browser-bundle.mjs";
 
 export const LOOPLAB_PUBLIC_AUDIT_SCHEMA = "looplab-public-audit/v2";
 
@@ -19,6 +21,16 @@ const binaryCredentialPattern = "(sk-(proj-)?[A-Za-z0-9_-]{20,}|sk-ant-[A-Za-z0-
 
 function allowPublicNoreplyEmail(value) {
   return /^(?:noreply@github\.com|[^@\s]+@users\.noreply\.github\.com)$/i.test(String(value).trim());
+}
+
+const authenticatedPixiVendor = createHash("sha256").update(LOOPLAB_PIXI_BROWSER_BUNDLE).digest("hex") === LOOPLAB_PIXI_BROWSER_SHA256;
+const authenticatedPixiVendorEmail = ["jason.mulligan", "avoidwork.com"].join("@");
+
+function allowPublicEmail(value, path) {
+  if (allowPublicNoreplyEmail(value)) return true;
+  return authenticatedPixiVendor
+    && path === "lib/generated/looplab-pixi-browser-bundle.mjs"
+    && String(value).toLowerCase() === authenticatedPixiVendorEmail;
 }
 
 function allowPortableWindowsPath(value, path) {
@@ -38,7 +50,7 @@ const contentRules = Object.freeze([
   { id: "google-api-key", pattern: /\bAIza[0-9A-Za-z_-]{30,}\b/g },
   { id: "private-key", pattern: /-----BEGIN (?:RSA |EC |OPENSSH |DSA )?PRIVATE KEY-----/g },
   { id: "bearer-token", pattern: /\bBearer\s+[A-Za-z0-9._~+/=-]{20,}\b/gi },
-  { id: "email-address", pattern: /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi, allow: allowPublicNoreplyEmail },
+  { id: "email-address", pattern: /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi, allow: allowPublicEmail },
   { id: "windows-user-path", pattern: /C:\\Users\\[^\\\s"']+/gi, allow: allowPortableWindowsPath },
   { id: "absolute-local-path", pattern: /\b[A-Z]:\\[^\r\n`"']+/gi, allow: allowPortableWindowsPath },
 ]);

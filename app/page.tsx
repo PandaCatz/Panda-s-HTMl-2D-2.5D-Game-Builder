@@ -2236,7 +2236,7 @@ const ensureBrowser2DProject = (project: GameProject, options: { migrateLegacyRe
   const currentFramework: Browser2DFramework = ["standalone", "canvas", "phaser", "pixi", "melon"].includes(requestedFramework) ? requestedFramework as Browser2DFramework : "canvas";
   const legacyCanvasMetadata = options.migrateLegacyRenderer && currentFramework === "phaser" && project.release?.engineDelivery == null;
   const framework = legacyCanvasMetadata ? "canvas" : currentFramework ?? "canvas";
-  const delivery = framework === "phaser" ? "inline-script-tag" : framework === "pixi" ? "inline-umd" : framework === "melon" ? "tree-shaken-inline-iife" : "built-in-inline";
+  const delivery = framework === "phaser" ? "inline-script-tag" : framework === "pixi" ? "inline-umd-with-official-csp-polyfill" : framework === "melon" ? "tree-shaken-inline-iife" : "built-in-inline";
   const existingWorkstreams = project.workstreams ?? [];
   const workstreamById = new Map(existingWorkstreams.map((stream) => [stream.id, stream]));
   const knownWorkstreamIds = new Set(DEFAULT_WORKSTREAMS.map((stream) => stream.id));
@@ -2283,6 +2283,8 @@ const ensureBrowser2DProject = (project: GameProject, options: { migrateLegacyRe
   release.allowStorage = exportProfile === "hosted";
   release.moduleImports = [];
   release.externalRequests = [];
+  release.runtimeBundleEmbedded = true;
+  release.engineDelivery = delivery;
   if (exportProfile === "hosted") release.storageWrapper = LOOPLAB_HOSTED_STORAGE_WRAPPER_SCHEMA;
   else delete release.storageWrapper;
   return {
@@ -11202,7 +11204,7 @@ export default function Home() {
                 <div className="director-options">
                   <label><span>Agent connection</span><select value={aiProvider} onChange={(event) => setAiProvider(event.target.value as AgentProvider)}><option value="openai">OpenAI API</option><option value="anthropic">Anthropic API</option><option value="codex">Codex CLI</option><option value="claude">Claude Code CLI</option></select></label>
                   <label><span>Workstream</span><select value={aiTrack} onChange={(event) => setAiTrack(event.target.value)}>{(project.workstreams ?? []).map((stream) => <option key={stream.id} value={stream.id}>{stream.name}</option>)}</select></label>
-                  <label><span>2D runtime</span><select aria-label="2D runtime routing" value={runtimePreference} onChange={(event) => setRuntimePreference(event.target.value as "auto" | "canvas" | "phaser" | "pixi" | "melon")}><option value="auto">Auto · choose for game quality</option><option value="canvas">Canvas · ready · lean / custom</option><option value="phaser">Phaser · ready · scenes / physics</option><option value="pixi">Pixi · knowledge ready · adapter pending</option><option value="melon">melonJS · knowledge ready · adapter pending</option></select></label>
+                  <label><span>2D runtime</span><select aria-label="2D runtime routing" value={runtimePreference} onChange={(event) => setRuntimePreference(event.target.value as "auto" | "canvas" | "phaser" | "pixi" | "melon")}><option value="auto">Auto · choose for game quality</option><option value="canvas">Canvas · ready · lean / custom</option><option value="phaser">Phaser · ready · scenes / physics</option><option value="pixi">PixiJS · ready · renderer / effects</option><option value="melon">melonJS · ready · Tiled / lifecycle</option></select></label>
                 </div>
                 <div className="provider-center" aria-label="AI connection center">
                   <div className="provider-center-title"><div><span className="eyebrow">Connection center</span><strong>Codex + Claude checks</strong></div><button onClick={() => void scanProviderConnections(true)} disabled={providerScanRunning}>{providerScanRunning ? "Scanning…" : "Scan"}</button></div>
@@ -11246,8 +11248,8 @@ export default function Home() {
                   <section className="runtime-decision" aria-label="Runtime selection decision">
                     <div><strong>{agentRoute.runtimeSelection.selectedFramework}</strong><small>{agentRoute.runtimeSelection.selectionSource.replaceAll("-", " ")} · {agentRoute.runtimeSelection.confidence} confidence</small></div>
                     <p>{agentRoute.runtimeSelection.reasons[0]}</p>
-                    {agentRoute.runtimeSelection.bestFitFramework !== agentRoute.runtimeSelection.selectedFramework && <p className="runtime-recommendation">The full four-runtime knowledge model rates {agentRoute.runtimeSelection.bestFitFramework} as the conceptual best fit. LoopLab selected {agentRoute.runtimeSelection.selectedFramework} because only release-ready adapters may own a build.</p>}
-                    {agentRoute.runtimeSelection.migrationRequiresOptIn && <p className="runtime-recommendation">Phaser is the better fit, but this existing project stays on {agentRoute.runtimeSelection.currentProjectFramework} until you choose Phaser explicitly.</p>}
+                    {agentRoute.runtimeSelection.bestFitFramework !== agentRoute.runtimeSelection.selectedFramework && <p className="runtime-recommendation">The full four-runtime knowledge model rates {agentRoute.runtimeSelection.bestFitFramework} as the conceptual best fit. LoopLab kept {agentRoute.runtimeSelection.selectedFramework} because the current project or your explicit runtime choice remains authoritative.</p>}
+                    {agentRoute.runtimeSelection.migrationRequiresOptIn && <p className="runtime-recommendation">{agentRoute.runtimeSelection.recommendedFramework} is the better fit, but this existing project stays on {agentRoute.runtimeSelection.currentProjectFramework} until you choose the migration explicitly.</p>}
                     <small>{agentRoute.runtimeSelection.singleFile.required ? `ONE HTML · ${agentRoute.runtimeSelection.singleFile.delivery}` : agentRoute.runtimeSelection.singleFile.delivery} · Canvas, Phaser, PixiJS, and melonJS decision knowledge is native. Engine code remains optional and one primary adapter owns each build.</small>
                   </section>
                   <div className="ai-agent-plan">{agentRoute.agentPlan.map((agent) => <span key={agent.agentId} title={`${agent.owns.join(", ")} · Produces: ${agent.produces}`}><b>{agent.order}</b><i>{agent.executor === "selected-provider" ? "AI role" : agent.executor === "project-doctor" ? "Doctor gate" : "Browser gate"}</i>{agent.label}</span>)}</div>
