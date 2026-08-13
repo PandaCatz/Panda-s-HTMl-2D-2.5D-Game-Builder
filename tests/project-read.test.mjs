@@ -74,7 +74,7 @@ test("project read contracts are strict, discoverable, and source-bound", () => 
   assert.throws(() => applyAgentCommand(project, { op: "query_project", select: "maps", pointers: ["/maps"] }), /exactly one/);
 
   const manifest = getAgentManifest();
-  assert.equal(manifest.protocolVersion, "1.111.0");
+  assert.equal(manifest.protocolVersion, "1.112.0");
   assert.deepEqual(manifest.agentProjectReads.commands, ["get_project", "query_project"]);
   assert.match(manifest.agentProjectReads.sourceBoundary, /Doctor-authored source projections/);
 });

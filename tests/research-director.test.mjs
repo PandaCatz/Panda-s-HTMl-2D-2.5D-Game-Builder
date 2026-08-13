@@ -279,7 +279,7 @@ test("research file provider writes a cited JSON report and viewable Markdown", 
 
 test("agent manifest advertises directed generation and report-only research", () => {
   const manifest = getAgentManifest();
-  assert.equal(manifest.protocolVersion, "1.111.0");
+  assert.equal(manifest.protocolVersion, "1.112.0");
   assert.equal(manifest.verification.collectCommand, "collect_verification_evidence");
   assert.equal(manifest.verification.visualReviewCommand, "capture_visual_review");
   assert.deepEqual(manifest.verification.requiredEvidence, ["source-bound-deterministic-playtest", "clean-play-map-by-device-screenshot-matrix", "responsive-profile-checks", "actual-runtime-join-receipts-for-enabled-portals"]);

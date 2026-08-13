@@ -1,12 +1,13 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
-import { TextEncoder } from "node:util";
+import { TextDecoder, TextEncoder } from "node:util";
 import { runInNewContext } from "node:vm";
 import { applyAgentCommand, buildStandaloneArtifact, buildStandaloneHtml, buildStandaloneRuntimePrelude, createTemplate, validateProject } from "../lib/looplab-agent-core.mjs";
 import { runAcceptanceSuite } from "../lib/looplab-acceptance.mjs";
 import { analyzeProject } from "../lib/looplab-doctor.mjs";
 import { normalizeGameplayProgram } from "../lib/looplab-gameplay-rules.mjs";
+import { normalizeRunVariationProgram } from "../lib/looplab-run-variation.mjs";
 import { createRuntimeModel } from "../lib/looplab-runtime-model.mjs";
 import { readGamepadInputCodes } from "../lib/looplab-gamepad.mjs";
 import { canonicalReplaySerialize, LOOPLAB_REPLAY_HASH_VERSION, LOOPLAB_REPLAY_MOTION_HASH_VERSION, replayStateDigest, runReplaySuite } from "../lib/looplab-replay.mjs";
@@ -185,6 +186,7 @@ function executeStandaloneRuntimeHarness(html) {
     addEventListener() {},
     Image: StubImage,
     CustomEvent: StubCustomEvent,
+    TextDecoder,
     TextEncoder,
   };
   sandbox.window = sandbox;
@@ -252,7 +254,7 @@ test("the exact exported dependency prelude remains import-free and covers every
   assert.ok(html.includes(prelude), "the export must embed the exact dependency prelude exercised by the isolation test");
   assert.ok(html.includes(`const createRuntimeModelFactory=${createRuntimeModel.toString()};`), "the export must embed the audited factory literally");
   assert.ok(html.includes("const compileWorldStreamRuntime="), "the export must embed the audited deterministic world-stream compiler");
-  assert.ok(html.includes("const createRuntimeModel=(project)=>createRuntimeModelFactory(project,{compileTileRuntimeProgram,compileWorldStreamRuntime});"), "the export must inject the audited tile and world-stream compilers into the runtime factory");
+  assert.ok(html.includes("const createRuntimeModel=(project)=>createRuntimeModelFactory(project,{compileTileRuntimeProgram,compileWorldStreamRuntime,normalizeRunVariationProgram,resolveRunVariation,runVariationProgramDigest});"), "the export must inject the audited tile, world-stream, and run-variation dependencies into the runtime factory");
 });
 
 test("the one-file browser runtime crosses a continuous-world seam without fetch or player replacement", () => {
@@ -446,7 +448,7 @@ test("exports the tested runtime model, linked maps, mobile-only touch controls,
   project.release = { externalRequests: [], debugMarkers: [] };
   project.assets = [{ id: "embedded-pixel", name: "Embedded pixel", type: "sprite", dataUrl: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M/wHwAF/gL+X1zGkwAAAABJRU5ErkJggg==", width: 1, height: 1, frameWidth: 1, frameHeight: 1, frames: 1, columns: 1, anchorX: 0.5, anchorY: 1, anchorMode: "ground", collisionPolicy: "authored-only", generator: { kind: "test" } }];
   const html = buildStandaloneHtml(project);
-  assert.match(html, /const runtimeApi=\{version:'2\.34\.0',getSourceDigest/);
+  assert.match(html, /const runtimeApi=\{version:'2\.35\.0',getSourceDigest/);
   assert.match(html, /Object\.isExtensible\(window\)/);
   assert.match(html, /id="looplab-runtime-bridge"/);
   assert.match(html, /id="looplab-runtime-form"/);
@@ -512,6 +514,55 @@ test("embeds the Narrative Contract and source-bound Narrative Report in the one
   assert.equal(runtime.getNarrativeReport().status, "passed");
   assert.equal(runtime.getNarrativeReport().metrics.reachableEndingCount, 1);
   assert.match(runtime.getNarrativeReport().sourceDigest, /^source-[a-f0-9]{64}$/);
+});
+
+test("exports seeded runs, daily challenges, LR1 codes, ghosts, and matching DOM commands", () => {
+  const project = createTemplate("systems");
+  project.replay.cases = [];
+  project.gameplayProgram = normalizeGameplayProgram({
+    ...project.gameplayProgram,
+    variables: [...project.gameplayProgram.variables, { id: "run-density", label: "Run density", type: "number", initial: 1, min: 1, max: 3, resetPolicy: "run", visible: true }],
+  });
+  project.runVariationProgram = normalizeRunVariationProgram({
+    version: 1,
+    enabled: true,
+    seedNamespace: "export-run-test",
+    defaultSeed: "standard",
+    dailyChallenge: { enabled: true, namespace: "daily" },
+    pools: [{ id: "density", label: "Density", variants: [
+      { id: "calm", label: "Calm", weight: 1, assignments: [{ variableId: "run-density", value: 1 }] },
+      { id: "busy", label: "Busy", weight: 1, assignments: [{ variableId: "run-density", value: 3 }] },
+    ] }],
+    ghosts: [],
+    acceptanceTestIds: [],
+  });
+  const html = buildStandaloneHtml(project);
+  assert.match(html, /id="run-toggle"/);
+  assert.match(html, /id="run-dialog"/);
+  assert.match(html, /function ghostRenderEntries\(\)/);
+  assert.match(html, /\.\.\.ghostRenderEntries\(\)/);
+  assert.match(html, /item\.kind==='ghost'\)drawGhost\(item\.entry\.ghost,item\.entry\.object\)/);
+  assert.doesNotMatch(html, /forEach\(paintTile\);drawGhosts\(\)/);
+  assert.match(html, /start_daily_challenge/);
+  assert.match(html, /export_run_code/);
+  const harness = executeStandaloneRuntimeHarness(html);
+  assert.equal(harness.runtime.getRunVariationReport().program.enabled, true);
+  assert.equal(harness.runtime.previewRunVariation({ seed: "alpha" }).seed, "alpha");
+  const started = harness.command({ op: "start_run", seed: "alpha" });
+  assert.equal(started.ok, true);
+  assert.equal(started.run.seed, "alpha");
+  assert.equal(harness.command({ op: "get_run_variation_state" }).run.simulationTick, 0);
+  const exported = harness.command({ op: "export_run_code" });
+  assert.equal(exported.ok, true);
+  assert.match(exported.code, /^LR1\./);
+  assert.equal(harness.command({ op: "start_run", seed: "beta" }).run.seed, "beta");
+  const restored = harness.command({ op: "import_run_code", code: exported.code });
+  assert.equal(restored.ok, true);
+  assert.equal(harness.runtime.getRunVariationState().seed, "alpha");
+  const daily = harness.command({ op: "start_daily_challenge", utcDay: "2026-08-13" });
+  assert.equal(daily.ok, true);
+  assert.equal(daily.run.utcDay, "2026-08-13");
+  assert.equal(harness.command({ op: "get_ghost_states" }).ghosts.length, 0);
 });
 
 test("returns a source-bound draft receipt from an audited prototype artifact", () => {
@@ -587,7 +638,7 @@ test("manifest declares the generated game as one offline-playable HTML file", a
   assert.equal(manifest.exportedRuntime.offlinePlayable, true);
   assert.deepEqual(manifest.exportedRuntime.externalDependencies, []);
   assert.ok(manifest.exportedRuntime.embeds.includes("selected-assets-as-data-urls"));
-  assert.equal(manifest.exportedRuntime.version, "2.34.0");
+  assert.equal(manifest.exportedRuntime.version, "2.35.0");
   assert.ok(manifest.exportedRuntime.embeds.includes("keyboard-gamepad-and-touch-controls"));
   assert.ok(manifest.exportedRuntime.embeds.includes("deterministic-replay-fixtures"));
   assert.ok(manifest.exportedRuntime.embeds.includes("deterministic-acceptance-fixtures"));
@@ -596,6 +647,11 @@ test("manifest declares the generated game as one offline-playable HTML file", a
   assert.ok(manifest.exportedRuntime.methods.includes("runAcceptanceSuite"));
   assert.ok(manifest.exportedRuntime.methods.includes("runAcceptanceTest"));
   assert.ok(manifest.exportedRuntime.methods.includes("getRuntimeJoinPlan"));
+  assert.ok(manifest.exportedRuntime.methods.includes("startDailyChallenge"));
+  assert.ok(manifest.exportedRuntime.methods.includes("exportRunCode"));
+  assert.ok(manifest.exportedRuntime.methods.includes("getGhostStates"));
+  assert.ok(manifest.exportedRuntime.commands.includes("start_run"));
+  assert.ok(manifest.exportedRuntime.commands.includes("import_run_code"));
   assert.equal(manifest.exportedRuntime.domBridge.form.commandInput, "#looplab-runtime-command");
   assert.equal(manifest.exportReceipt.prepareCommand, "prepare_export");
   assert.equal(manifest.exportReceipt.exportCommand, "export_html");

@@ -83,6 +83,7 @@ import { depthKey as spatialDepthKey, normalizeProjection, projectWorldRect, scr
 import { authoredRoutePreview, createNavigationModel, findNavigationPath, normalizeAuthoredRouteDocument, summarizeAuthoredRouteDocument } from "../lib/looplab-navigation.mjs";
 import { inspectVerbArchitecture, LOOPLAB_VERB_ARCHITECTURE_POLICY } from "../lib/looplab-verb-architecture.mjs";
 import { inspectGameplayProgram, LOOPLAB_GAMEPLAY_RULE_POLICY } from "../lib/looplab-gameplay-rules.mjs";
+import { inspectRunVariationProgram, LOOPLAB_RUN_VARIATION_POLICY } from "../lib/looplab-run-variation.mjs";
 import { inspectMotionBodies, LOOPLAB_MOTION_BODY_POLICY } from "../lib/looplab-motion-bodies.mjs";
 import { LOOPLAB_INTERACTABLE_TEMPLATE_REGISTRY } from "../lib/looplab-interactables.mjs";
 import { inspectCombatProgram, LOOPLAB_COMBAT_POLICY } from "../lib/looplab-combat.mjs";
@@ -961,6 +962,9 @@ type GameProject = {
       changeReason?: string;
       tickRate?: number;
       seed?: number;
+      runSeed?: string;
+      utcDay?: string;
+      hashVersion?: number;
       tickCount: number;
       startMapId?: string;
       startSpawnId?: string;
@@ -999,6 +1003,7 @@ type GameProject = {
   iterationArchive?: { version: 1; lineageId: string; snapshots: Array<{ id: string; sourceDigest: string; createdAt: string; project: Record<string, unknown> }>; assetBlobs: Record<string, string> };
   designBrief?: DirectedBrief;
   gameplayProgram?: Record<string, unknown>;
+  runVariationProgram?: Record<string, unknown>;
   combatProgram?: Record<string, unknown>;
   actorProgram?: Record<string, unknown>;
   narrativeContract?: Record<string, unknown>;
@@ -1309,6 +1314,10 @@ type RuntimeSlice = {
 type RuntimeEngine = {
   update: (dt: number) => RuntimeEvent[];
   reset: () => void;
+  startRun: (options: { seed: string }) => Record<string, unknown>;
+  startDailyChallenge: (options: { utcDay: string }) => Record<string, unknown>;
+  getRunVariationState: () => Record<string, unknown>;
+  getGhostStates: () => Array<{ id: string; label: string; mapId: string; x: number; y: number; z: number; facingX: number; color: string; opacity: number; presentationOnly: true }>;
   loadMap: (mapId: string, spawnId?: string | null) => boolean;
   setInput: (code: string, pressed: boolean) => void;
   drainEvents: () => RuntimeEvent[];
@@ -3989,6 +3998,11 @@ export default function Home() {
   const [agentIntentPlan, setAgentIntentPlan] = useState<AgentIntentPlanRef | null>(null);
   const [tuningContractDraft, setTuningContractDraft] = useState(() => project.tuningContract ? JSON.stringify(project.tuningContract, null, 2) : "");
   const [gameplayProgramDraft, setGameplayProgramDraft] = useState(() => project.gameplayProgram ? JSON.stringify(project.gameplayProgram, null, 2) : "");
+  const [runVariationProgramDraft, setRunVariationProgramDraft] = useState(() => project.runVariationProgram ? JSON.stringify(project.runVariationProgram, null, 2) : "");
+  const [runVariationSeed, setRunVariationSeed] = useState("standard");
+  const [runVariationDay, setRunVariationDay] = useState("");
+  const [runGhostReplayId, setRunGhostReplayId] = useState(() => project.replay?.cases?.[0]?.id ?? "");
+  const [runGhostPreview, setRunGhostPreview] = useState<{ sourceDigest: string; previewDigest: string; ghost: Record<string, unknown> } | null>(null);
   const [combatProgramDraft, setCombatProgramDraft] = useState(() => project.combatProgram ? JSON.stringify(project.combatProgram, null, 2) : "");
   const [motionBodyDraftEdit, setMotionBodyDraftEdit] = useState<{ objectId: string | null; source: string; value: string }>({ objectId: null, source: "", value: "" });
   const [interactableTemplateId, setInteractableTemplateId] = useState("spring");
@@ -4176,6 +4190,7 @@ export default function Home() {
   const tuningInspection = doctorReport.tuningReport as TuningContractInspectionRef;
   const spatialLayoutInspection = doctorReport.spatialLayoutReport as SpatialLayoutInspectionRef;
   const gameplayProgramInspection = doctorReport.gameplayProgram as { present: boolean; errors: string[]; warnings: string[]; metrics: { variableCount: number; ruleCount: number; dialoguePageCount?: number; questCount?: number; questObjectiveCount?: number } };
+  const runVariationInspection = doctorReport.runVariationReport as { present: boolean; valid: boolean; shipReady: boolean; status: string; errors: string[]; warnings: string[]; issues: Array<{ severity: string; code: string; message: string }>; metrics: { poolCount: number; variantCount: number; assignmentCount: number; ghostCount: number; ghostFrameCount: number; acceptanceTestCount: number; coveredSeedCount: number }; programDigest?: string | null; proofBoundary?: string };
   const combatInspection = doctorReport.combatReport as { present: boolean; enabled: boolean; valid: boolean; teamCount: number; actorCount: number; emitterCount: number; poolCapacity: number; errors: string[]; warnings: string[]; issues: Array<{ severity: string; code: string; message: string }> };
   const motionBodyInspection = doctorReport.motionBodyReport as { present: boolean; bodyCount: number; enabledBodyCount: number; valid: boolean; errors: string[]; warnings: string[]; issues: Array<{ severity: string; code: string; message: string; objectId?: string }> };
   const selectedMotionBodyIssues = motionBodyInspection.issues.filter((issue) => issue.objectId === selected?.id);
@@ -4827,6 +4842,7 @@ export default function Home() {
         runtimeProfile: currentProject.runtimeProfile,
         doctor: { profile: currentDoctor.profile, score: currentDoctor.score, errorCount: currentDoctor.errorCount, warningCount: currentDoctor.warningCount, sourceDigest: currentDoctor.sourceDigest, nextActions: currentDoctor.nextActions },
         gameplayProgram: { policy: LOOPLAB_GAMEPLAY_RULE_POLICY, inspection: inspectGameplayProgram(currentProject) },
+        runVariationProgram: { policy: LOOPLAB_RUN_VARIATION_POLICY, inspection: inspectRunVariationProgram(currentProject, currentProject.runVariationProgram, { strict: currentProject.doctorProfile === "production", sourceDigest: currentDoctor.sourceDigest }) },
         motionBodies: { policy: LOOPLAB_MOTION_BODY_POLICY, inspection: inspectMotionBodies(currentProject, { strict: true }) },
         combatProgram: { policy: LOOPLAB_COMBAT_POLICY, inspection: inspectCombatProgram(currentProject) },
         actorProgram: { policy: LOOPLAB_ACTOR_POLICY, inspection: inspectActorProgram(currentProject) },
@@ -5092,6 +5108,8 @@ export default function Home() {
     setTuningContractDraft(syncedNext.tuningContract ? JSON.stringify(syncedNext.tuningContract, null, 2) : "");
     setSpatialLayoutContractDraft(syncedNext.spatialLayoutContract ? JSON.stringify(syncedNext.spatialLayoutContract, null, 2) : "");
     setGameplayProgramDraft(syncedNext.gameplayProgram ? JSON.stringify(syncedNext.gameplayProgram, null, 2) : "");
+    setRunVariationProgramDraft(syncedNext.runVariationProgram ? JSON.stringify(syncedNext.runVariationProgram, null, 2) : "");
+    setRunGhostPreview(null);
     setCombatProgramDraft(syncedNext.combatProgram ? JSON.stringify(syncedNext.combatProgram, null, 2) : "");
     setActorProgramDraft(syncedNext.actorProgram ? JSON.stringify(syncedNext.actorProgram, null, 2) : "");
     setPresentationProgramDraft(syncedNext.presentationProgram ? JSON.stringify(syncedNext.presentationProgram, null, 2) : "");
@@ -5160,6 +5178,8 @@ export default function Home() {
     setTuningContractDraft(next.tuningContract ? JSON.stringify(next.tuningContract, null, 2) : "");
     setSpatialLayoutContractDraft(next.spatialLayoutContract ? JSON.stringify(next.spatialLayoutContract, null, 2) : "");
     setGameplayProgramDraft(next.gameplayProgram ? JSON.stringify(next.gameplayProgram, null, 2) : "");
+    setRunVariationProgramDraft(next.runVariationProgram ? JSON.stringify(next.runVariationProgram, null, 2) : "");
+    setRunGhostPreview(null);
     setCombatProgramDraft(next.combatProgram ? JSON.stringify(next.combatProgram, null, 2) : "");
     setActorProgramDraft(next.actorProgram ? JSON.stringify(next.actorProgram, null, 2) : "");
     setPresentationProgramDraft(next.presentationProgram ? JSON.stringify(next.presentationProgram, null, 2) : "");
@@ -8303,6 +8323,7 @@ export default function Home() {
               projectContext: { name: currentProject.name, activeMapId: currentProject.activeMapId, mapIds: (currentProject.maps ?? []).map((map) => map.id), runtimeProfile: currentProject.runtimeProfile, sourceDigest: currentDoctor.sourceDigest },
               doctor: { profile: currentDoctor.profile, score: currentDoctor.score, errorCount: currentDoctor.errorCount, warningCount: currentDoctor.warningCount, nextActions: currentDoctor.nextActions },
               gameplayProgram: { policy: LOOPLAB_GAMEPLAY_RULE_POLICY, inspection: inspectGameplayProgram(currentProject) },
+              runVariationProgram: { policy: LOOPLAB_RUN_VARIATION_POLICY, inspection: inspectRunVariationProgram(currentProject, currentProject.runVariationProgram, { strict: currentProject.doctorProfile === "production", sourceDigest: currentDoctor.sourceDigest }) },
               motionBodies: { policy: LOOPLAB_MOTION_BODY_POLICY, inspection: inspectMotionBodies(currentProject, { strict: true }) },
               combatProgram: { policy: LOOPLAB_COMBAT_POLICY, inspection: inspectCombatProgram(currentProject) },
               actorProgram: { policy: LOOPLAB_ACTOR_POLICY, inspection: inspectActorProgram(currentProject) },
@@ -8986,6 +9007,28 @@ export default function Home() {
             engine.drainEvents();
             const next = publishPreviewState(engine);
             return { ok: true, state: { ...next, paused: previewPausedRef.current } };
+          }
+          if (command.op === "preview_start_run" || command.op === "preview_start_daily_challenge") {
+            const engine = runtimeEngineRef.current;
+            if (!engine) throw new Error("Preview runtime is not active. Run set_mode with mode play first.");
+            if (activePlaytestRef.current) recordPlaytestReset(activePlaytestRef.current, engine.getState(), performance.now());
+            keysRef.current.forEach((code) => {
+              engine.setInput(code, false);
+              recordPreviewInputForPlaytest(code, false, "lifecycle");
+            });
+            keysRef.current.clear();
+            presentationRuntimeRef.current?.reset();
+            const run = command.op === "preview_start_daily_challenge"
+              ? engine.startDailyChallenge({ utcDay: String(command.utcDay ?? "") })
+              : engine.startRun({ seed: String(command.seed ?? "") });
+            const events = engine.drainEvents();
+            const next = publishPreviewState(engine, events);
+            return { ok: true, run, state: { ...next, paused: previewPausedRef.current }, events, ghosts: engine.getGhostStates() };
+          }
+          if (command.op === "get_preview_ghost_states") {
+            const engine = runtimeEngineRef.current;
+            if (!engine) throw new Error("Preview runtime is not active. Run set_mode with mode play first.");
+            return { ok: true, run: engine.getRunVariationState(), ghosts: engine.getGhostStates() };
           }
           if (command.op === "preview_load_map") {
             const engine = runtimeEngineRef.current;
@@ -9793,8 +9836,32 @@ export default function Home() {
       : objects.flatMap<{ object: GameObject | RuntimeObject; slice: RuntimeSlice | null }>((object) => object.depthSlices?.length
         ? object.depthSlices.map((slice) => ({ object, slice: slice as RuntimeSlice }))
         : [{ object, slice: null }]).map((entry) => ({ kind: "object", id: `${entry.object.id}:${entry.slice?.id ?? "whole"}`, depth: spatialDepthKey(entry.object, activeProjection) + Number(entry.slice?.depthBias ?? 0), object: entry.object, slice: entry.slice }));
+    const runtimePlayer = mode === "play" ? objects.find((object) => object.kind === "player") : null;
+    const ghostEntries: Array<{ kind: "object"; id: string; depth: number; object: GameObject | RuntimeObject; slice: RuntimeSlice | null }> = mode === "play" && runtimeEngineRef.current && runtimePlayer
+      ? runtimeEngineRef.current.getGhostStates().map((ghost) => {
+          const object = {
+            ...runtimePlayer,
+            id: `presentation-ghost:${ghost.id}`,
+            name: ghost.label,
+            x: ghost.x,
+            y: ghost.y,
+            z: ghost.z,
+            supportZ: ghost.z,
+            vx: 0,
+            vy: 0,
+            color: ghost.color,
+            opacity: ghost.opacity,
+            solid: false,
+            collected: false,
+            hidden: false,
+            collider: { ...runtimePlayer.collider, enabled: false },
+          } as RuntimeObject;
+          return { kind: "object" as const, id: object.id, depth: spatialDepthKey(object, tileProjection), object, slice: null };
+        })
+      : [];
     const interleaved: Array<{ kind: "object" | "tile"; id: string; depth: number; object?: GameObject | RuntimeObject; slice?: RuntimeSlice | null; tile?: TileRuntimeEntry }> = [
       ...objectEntries,
+      ...ghostEntries,
       ...tileRuntime.visualEntries.filter((entry) => entry.role === "interleaved").map((entry) => ({ kind: "tile" as const, id: entry.id, depth: entry.depth, tile: entry })),
     ].sort((first, second) => first.depth - second.depth || first.id.localeCompare(second.id));
     interleaved.forEach((entry) => entry.kind === "tile" ? drawTileEntry(context, entry.tile!, tileProjection) : drawObject(context, entry.object!, entry.slice ?? null));
@@ -11161,6 +11228,120 @@ export default function Home() {
       if (outcome.changed) commit(outcome.project as GameProject, "Deterministic gameplay program removed");
       appendConsole("gameplay.program.removed", "Deterministic gameplay source removed", "Maps, art, collision, Narrative Contract, and prior evidence remain separate. Undo restores the program.", "neutral");
       showToast(outcome.changed ? "Gameplay program removed" : "No gameplay program was saved");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setAgentCommandResult(JSON.stringify({ ok: false, error: message }, null, 2));
+      showToast(message);
+    }
+  };
+
+  const prepareRunVariationProgram = () => {
+    try {
+      const outcome = applyAgentCommand(syncActiveMap(project), {
+        op: "suggest_run_variation_program",
+        seedNamespace: project.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "looplab-game",
+        defaultSeed: runVariationSeed.trim() || "standard",
+        dailyEnabled: true,
+      });
+      const suggestion = outcome.result as { program?: Record<string, unknown>; warning?: string };
+      if (!suggestion.program) throw new Error("Declare at least one typed gameplay variable before preparing run variation.");
+      setRunVariationProgramDraft(JSON.stringify(suggestion.program, null, 2));
+      setRunGhostPreview(null);
+      setAgentCommandResult(JSON.stringify({ ok: true, changed: false, result: suggestion }, null, 2));
+      appendConsole("run.variation.prepared", "Seeded-run starter prepared", suggestion.warning ?? "Review authored values and add two explicit seed replay fixtures before production.", "good");
+      showToast("Seeded-run starter ready for review");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setAgentCommandResult(JSON.stringify({ ok: false, error: message }, null, 2));
+      showToast(message);
+    }
+  };
+
+  const saveRunVariationProgram = () => {
+    try {
+      const program: unknown = JSON.parse(runVariationProgramDraft);
+      if (!program || typeof program !== "object" || Array.isArray(program)) throw new Error("The run-variation program must be one JSON object.");
+      const outcome = applyAgentCommand(syncActiveMap(project), { op: "set_run_variation_program", program, profile: project.doctorProfile ?? "prototype" });
+      const result = outcome.result as { program?: Record<string, unknown>; report?: { metrics?: { poolCount?: number; variantCount?: number; ghostCount?: number; coveredSeedCount?: number } } };
+      if (!result.program) throw new Error("The run-variation program did not pass validation.");
+      setRunVariationProgramDraft(JSON.stringify(result.program, null, 2));
+      setRunGhostPreview(null);
+      setAgentCommandResult(JSON.stringify({ ok: true, changed: true, result, validation: outcome.validation }, null, 2));
+      commit(outcome.project as GameProject, "Seeded runs, daily challenges, and ghosts saved");
+      appendConsole("run.variation.saved", "Run variation saved", `${result.report?.metrics?.poolCount ?? 0} pools · ${result.report?.metrics?.variantCount ?? 0} variants · ${result.report?.metrics?.ghostCount ?? 0} ghosts · ${result.report?.metrics?.coveredSeedCount ?? 0} covered seeds`, "good");
+      showToast("Run variation saved · Doctor rechecked it");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setAgentCommandResult(JSON.stringify({ ok: false, error: message }, null, 2));
+      showToast(message);
+    }
+  };
+
+  const removeRunVariationProgram = () => {
+    try {
+      const outcome = applyAgentCommand(syncActiveMap(project), { op: "remove_run_variation_program" });
+      setRunVariationProgramDraft("");
+      setRunGhostPreview(null);
+      setAgentCommandResult(JSON.stringify({ ok: true, changed: outcome.changed, result: outcome.result, validation: outcome.validation }, null, 2));
+      if (outcome.changed) commit(outcome.project as GameProject, "Seeded-run variation removed");
+      appendConsole("run.variation.removed", "Run variation removed", "Gameplay variables, maps, replay fixtures, collision, and art were preserved.", "neutral");
+      showToast(outcome.changed ? "Run variation removed" : "No run variation was saved");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setAgentCommandResult(JSON.stringify({ ok: false, error: message }, null, 2));
+      showToast(message);
+    }
+  };
+
+  const previewRunVariationSelection = (mode: "standard" | "daily") => {
+    try {
+      const command = mode === "daily"
+        ? { op: "preview_run_variation", mode, utcDay: runVariationDay, profile: project.doctorProfile ?? "prototype" }
+        : { op: "preview_run_variation", mode, seed: runVariationSeed.trim() || "standard", profile: project.doctorProfile ?? "prototype" };
+      const outcome = applyAgentCommand(syncActiveMap(project), command);
+      const result = outcome.result as { state?: { seed?: string; utcDay?: string | null; selections?: Array<{ poolId: string; variantId: string }>; selectionDigest?: string } };
+      setAgentCommandResult(JSON.stringify({ ok: true, changed: false, result }, null, 2));
+      appendConsole("run.variation.previewed", `${mode === "daily" ? result.state?.utcDay : result.state?.seed} resolved without mutation`, `${result.state?.selections?.map((entry) => `${entry.poolId}→${entry.variantId}`).join(" · ") || "No pools"} · ${result.state?.selectionDigest ?? "no digest"}`, "good");
+      showToast(`${mode === "daily" ? "Daily" : "Seed"} selection previewed`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setAgentCommandResult(JSON.stringify({ ok: false, error: message }, null, 2));
+      showToast(message);
+    }
+  };
+
+  const previewRunGhost = () => {
+    try {
+      const replayCaseId = runGhostReplayId || project.replay?.cases?.[0]?.id || "";
+      if (!replayCaseId) throw new Error("Record a passing deterministic replay before creating a ghost.");
+      const outcome = applyAgentCommand(syncActiveMap(project), { op: "preview_replay_ghost", replayCaseId });
+      const preview = outcome.result as { sourceDigest?: string; previewDigest?: string; ghost?: Record<string, unknown>; replayResult?: { tickCount?: number; finalHash?: string } };
+      if (!preview.sourceDigest || !preview.previewDigest || !preview.ghost) throw new Error("The replay ghost preview did not return its source-bound receipt.");
+      setRunGhostPreview({ sourceDigest: preview.sourceDigest, previewDigest: preview.previewDigest, ghost: preview.ghost });
+      setAgentCommandResult(JSON.stringify({ ok: true, changed: false, result: preview }, null, 2));
+      appendConsole("run.ghost.previewed", `Ghost previewed from ${replayCaseId}`, `${preview.replayResult?.tickCount ?? 0} ticks · source and trajectory digests locked · presentation only`, "good");
+      showToast("Replay ghost preview ready");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setRunGhostPreview(null);
+      setAgentCommandResult(JSON.stringify({ ok: false, error: message }, null, 2));
+      showToast(message);
+    }
+  };
+
+  const applyRunGhost = () => {
+    try {
+      if (!runGhostPreview) throw new Error("Preview the exact current replay ghost first.");
+      const replayCaseId = runGhostReplayId || project.replay?.cases?.[0]?.id || "";
+      const outcome = applyAgentCommand(syncActiveMap(project), { op: "apply_replay_ghost", replayCaseId, expectedSourceDigest: runGhostPreview.sourceDigest, expectedPreviewDigest: runGhostPreview.previewDigest });
+      const result = outcome.result as { ghost?: Record<string, unknown>; report?: { program?: Record<string, unknown> } };
+      const nextProject = outcome.project as GameProject;
+      setRunVariationProgramDraft(nextProject.runVariationProgram ? JSON.stringify(nextProject.runVariationProgram, null, 2) : "");
+      setRunGhostPreview(null);
+      setAgentCommandResult(JSON.stringify({ ok: true, changed: true, result, validation: outcome.validation }, null, 2));
+      commit(nextProject, "Passing replay added as a presentation-only ghost");
+      appendConsole("run.ghost.applied", `Replay ghost added from ${replayCaseId}`, "It is rendered from replay-derived frames and remains outside objects, collision, saves, completion, and replay hashes.", "good");
+      showToast("Replay ghost added · gameplay truth unchanged");
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       setAgentCommandResult(JSON.stringify({ ok: false, error: message }, null, 2));
@@ -13383,6 +13564,38 @@ export default function Home() {
                     {gameplayProgramInspection.present && <button className="danger" onClick={removeGameplayProgram}>Remove</button>}
                   </div>
                   <p className="precision-note">Claude, Codex, CLI, MCP, and this mouse panel share <code>get_gameplay_program</code> and <code>set_gameplay_program</code>. Exported games expose the derived journal through <code>getQuestState()</code> / <code>get_quest_state</code>. Typewriter reveal is visual only, reduced motion is instant, full readable text is atomic, and dialogue never auto-advances in v1.</p>
+                </div>
+              </details>
+              <details id="looplab-run-variation" className="precision-card tuning-workbench" open aria-label="Seeded runs, daily challenges, and replay ghost authoring" data-source-digest={doctorReport.sourceDigest} data-program-digest={runVariationInspection.programDigest ?? ""}>
+                <summary><span>Runs · seeds, dailies &amp; ghosts</span><small>Stable SHA-256 selection · tick-zero codes · presentation-only ghosts</small></summary>
+                <div className="tuning-body">
+                  <p className="precision-note">Author replayable run variety without hidden randomness. Each pool owns distinct typed gameplay variables; one explicit seed or UTC day resolves every choice before tick zero. LR1 shares that starting identity, while LL1 remains a full mid-run save.</p>
+                  <div className={`tuning-contract-status ${runVariationInspection.errors.length ? "blocked" : runVariationInspection.present ? "ready" : "draft"}`}>
+                    <span>{runVariationInspection.present ? runVariationInspection.valid ? runVariationInspection.shipReady ? "Run variation ship-ready" : "Run variation needs seed evidence" : "Run variation blocked" : "No run variation saved"}</span>
+                    <small>{runVariationInspection.present ? `${runVariationInspection.metrics.poolCount} pools · ${runVariationInspection.metrics.variantCount} variants · ${runVariationInspection.metrics.assignmentCount} assignments · ${runVariationInspection.metrics.ghostCount} ghosts · ${runVariationInspection.metrics.coveredSeedCount} covered seeds` : "Prepare a starter from declared gameplay variables, then tune its authored values and replay evidence."}</small>
+                  </div>
+                  <label className="field full tuning-contract-editor"><span>Run Variation Program · JSON</span><textarea aria-label="Run Variation Program JSON" rows={17} spellCheck={false} placeholder="Prepare a provider-free starter or paste a strict looplab-run-variation-program/v1 document." value={runVariationProgramDraft} onChange={(event) => setRunVariationProgramDraft(event.target.value)} /></label>
+                  {runVariationInspection.issues.length > 0 && <div className="tuning-findings" role="status">{runVariationInspection.issues.slice(0, 8).map((issue) => <small key={`${issue.code}-${issue.message}`}>{issue.severity.toUpperCase()} · {issue.message}</small>)}</div>}
+                  <div className="tuning-actions">
+                    <button onClick={prepareRunVariationProgram}>{runVariationInspection.present ? "Prepare another starter" : "Prepare run starter"}</button>
+                    <button disabled={!runVariationProgramDraft.trim()} onClick={saveRunVariationProgram}>Save run program</button>
+                    {runVariationInspection.present && <button className="danger" onClick={removeRunVariationProgram}>Remove</button>}
+                  </div>
+                  <div className="field-grid">
+                    <label className="field"><span>Seed to inspect</span><input aria-label="Run variation seed" type="text" maxLength={128} value={runVariationSeed} onChange={(event) => setRunVariationSeed(event.target.value)} /></label>
+                    <label className="field"><span>Daily UTC day</span><input aria-label="Daily challenge UTC day" type="date" value={runVariationDay} onChange={(event) => setRunVariationDay(event.target.value)} /></label>
+                  </div>
+                  <div className="tuning-actions">
+                    <button disabled={!runVariationInspection.present || !runVariationInspection.valid || !runVariationSeed.trim()} onClick={() => previewRunVariationSelection("standard")}>Preview seed</button>
+                    <button disabled={!runVariationInspection.present || !runVariationInspection.valid || !runVariationDay} onClick={() => previewRunVariationSelection("daily")}>Preview daily</button>
+                  </div>
+                  <label className="field full"><span>Passing replay for ghost</span><select aria-label="Replay ghost source" value={runGhostReplayId || project.replay?.cases?.[0]?.id || ""} onChange={(event) => { setRunGhostReplayId(event.target.value); setRunGhostPreview(null); }}><option value="">Choose a replay</option>{(project.replay?.cases ?? []).map((replayCase) => <option key={replayCase.id} value={replayCase.id}>{replayCase.name ?? replayCase.id}</option>)}</select></label>
+                  {runGhostPreview && <div className="tuning-preview-receipt ready"><strong>Exact ghost trajectory previewed</strong><small>{String(runGhostPreview.ghost.label ?? runGhostPreview.ghost.id ?? "Ghost")} · source and preview digests locked · no collision or gameplay authority</small></div>}
+                  <div className="tuning-actions">
+                    <button disabled={!(runGhostReplayId || project.replay?.cases?.[0]?.id)} onClick={previewRunGhost}>Preview replay ghost</button>
+                    <button className="variation" disabled={!runGhostPreview} onClick={applyRunGhost}>Apply exact ghost</button>
+                  </div>
+                  <p className="precision-note">Claude, Codex, CLI, MCP, and this panel share <code>get_run_variation_report</code>, <code>preview_run_variation</code>, <code>set_run_variation_program</code>, and source-bound ghost commands. Structural determinism does not prove balance, fairness, fun, or visual quality; those still require matched replay coverage and playtests.</p>
                 </div>
               </details>
               <details id="looplab-combat-program" className="precision-card tuning-workbench" open aria-label="Deterministic health and projectile authoring" data-source-digest={doctorReport.sourceDigest}>

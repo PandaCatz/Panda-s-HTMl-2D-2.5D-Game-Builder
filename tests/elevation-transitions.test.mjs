@@ -371,7 +371,7 @@ test("headless commands, Doctor, manifest, and one-file export expose authored e
   assert.match(html, /getElevationTransitions/);
   assert.match(html, /get_elevation_transitions/);
   assert.match(html, /elevationTransitionId/);
-  assert.match(html, /\[1,2,3,4,5,6,7,8,9,10,11,12,13\]/);
+  assert.match(html, /\[1,2,3,4,5,6,7,8,9,10,11,12,13,14\]/);
 
   const removed = applyAgentCommand(set.project, { op: "remove_elevation_transitions", mapId: active.id });
   assert.equal(removed.changed, true);

@@ -1,6 +1,6 @@
 {
   "name": "Looplab Headless Agent API",
-  "protocolVersion": "1.111.0",
+  "protocolVersion": "1.112.0",
   "agentOperatingModel": {
     "purpose": "LoopLab is an AI capability amplifier and structured game-authoring workstation, not a form the agent is confined to.",
     "headlessFirst": true,
@@ -2395,6 +2395,67 @@
       "proofBoundary": "A feature-contract description is not implementation. Complex mechanics must resolve to executable deterministic gameplay rules or other runtime-owned IDs.",
       "dialogueQuestWorkflow": "Bind choice-page line/speaker IDs to the Narrative Contract and portrait IDs to embedded project assets. Author quests as a derived journal over the same typed gameplay variables and deterministic rules; never create a second mutable quest store. Typewriter reveal is presentation-only, reduced motion is instant, full readable text is exposed atomically, and v1 never auto-advances dialogue."
     },
+    "runVariationProgram": {
+      "programSchemaVersion": "looplab-run-variation-program/v1",
+      "reportSchemaVersion": "looplab-run-variation-report/v1",
+      "ghostSchemaVersion": "looplab-replay-ghost/v1",
+      "runCodeSchemaVersion": "looplab-run-code/v1",
+      "commands": [
+        "get_run_variation_program",
+        "get_run_variation_report",
+        "suggest_run_variation_program",
+        "preview_run_variation",
+        "set_run_variation_program",
+        "remove_run_variation_program",
+        "preview_replay_ghost",
+        "apply_replay_ghost"
+      ],
+      "previewCommands": [
+        "preview_start_run",
+        "preview_start_daily_challenge",
+        "get_preview_ghost_states"
+      ],
+      "exportedRuntimeCommands": [
+        "preview_run_variation",
+        "start_run",
+        "start_daily_challenge",
+        "get_ghost_states",
+        "get_run_code_status",
+        "export_run_code",
+        "inspect_run_code",
+        "import_run_code"
+      ],
+      "limits": {
+        "maximumSeedLength": 128,
+        "maximumNamespaceLength": 96,
+        "maximumPools": 32,
+        "maximumVariantsPerPool": 32,
+        "maximumAssignmentsPerVariant": 64,
+        "maximumGhosts": 8,
+        "maximumGhostFrames": 4096,
+        "maximumAcceptanceTestIds": 64,
+        "maximumWeight": 1000000,
+        "maximumRunCodeCharacters": 4096,
+        "maximumRunCodePayloadBytes": 2048
+      },
+      "policy": {
+        "schemas": {
+          "program": "looplab-run-variation-program/v1",
+          "report": "looplab-run-variation-report/v1",
+          "state": "looplab-run-variation-state/v1",
+          "ghost": "looplab-replay-ghost/v1",
+          "runCode": "looplab-run-code/v1"
+        },
+        "selectionAlgorithm": "canonical-sha256-weighted-stable-id/v1",
+        "seedAuthority": "Simulation resolves authored pools from one explicit seed at run start. Stable-ID order and canonical SHA-256 own selection; Math.random, renderer order, and wall-clock reads never do.",
+        "dailyAuthority": "The shell or agent supplies one validated UTC YYYY-MM-DD input. The deterministic simulation never reads local time or Date.now().",
+        "variableAuthority": "Variation assignments may target only declared typed gameplay variables. Omitted resetPolicy means run; session variables survive startRun but not full reset.",
+        "ghostAuthority": "Ghost trajectories are source-bound replay-derived presentation data. They never become objects, collision, overlap, gameplay, completion, save, or replay-hash truth.",
+        "codeAuthority": "LR1 shares a source-bound tick-zero run identity; LL1 remains the full mid-run resume code. Checksums detect corruption but do not authenticate player state or scores.",
+        "proofBoundary": "Structural determinism and evidence coverage do not prove that variation is balanced, fair, fun, or visually effective."
+      },
+      "parity": "Mouse, DOM bridge, CLI, MCP, Codex, and Claude edit the same canonical runVariationProgram. Preview and every one-file Canvas/Phaser/Pixi/melon export resolve the same source-bound seed identity before tick zero."
+    },
     "interactableTemplates": {
       "registrySchemaVersion": "looplab-interactable-template-registry/v1",
       "instanceSchemaVersion": "looplab-interactable-instance/v1",
@@ -4521,7 +4582,7 @@
       "harnessSchemaVersion": "looplab-platform-harness/v1",
       "harnessRunner": "playwright-core",
       "harnessRunnerVersion": 2,
-      "runtimeVersion": "2.34.0",
+      "runtimeVersion": "2.35.0",
       "environment": {
         "sandbox": [
           "allow-scripts"
@@ -4661,7 +4722,7 @@
       ],
       "unexpectedCheckPolicy": "reject",
       "visualCaptureRequired": true,
-      "digest": "sha256:99a8ba9609f3d4743bcfd6e19fbacd7725e639e004c96d6e336676e6bf95a07e"
+      "digest": "sha256:370253b7d01657435fff5d5d22a8b653e010a2a4ce1b7d32eb3c5c36f247ef59"
     },
     "inspectCommand": "get_release_verification",
     "browserCommand": "verify_release",
@@ -4746,7 +4807,7 @@
       "run_replay_suite",
       "remove_replay_case"
     ],
-    "currentHashVersion": 13,
+    "currentHashVersion": 14,
     "legacyHashVersion": 1,
     "supportedHashVersions": [
       1,
@@ -4761,7 +4822,8 @@
       10,
       11,
       12,
-      13
+      13,
+      14
     ],
     "minimumTickRate": 20,
     "digestAlgorithms": {
@@ -4781,16 +4843,17 @@
         10,
         11,
         12,
-        13
+        13,
+        14
       ],
-      "currentVersion": 13,
+      "currentVersion": 14,
       "current": "SHA-256"
     },
     "digestFormats": {
       "legacy": "replay-<8 lowercase hex>",
       "current": "replay-sha256-<64 lowercase hex>"
     },
-    "hashVersionPolicy": "Fixtures without hashVersion retain the original v1 FNV-1a projection; versions 1 through 12 remain byte-compatible. Every new or explicitly rerecorded fixture writes v13 SHA-256 with exact support-object identity, ladder controller state, interactable target, and conveyor support in addition to v12 world-stream identity, v11 elevation, v10 motion-body, and v9 authored segment-ground state. Visual loading, first-draw timing, camera, and asset readiness remain excluded. Runtime-state additions must add a new projection instead of silently invalidating accepted evidence.",
+    "hashVersionPolicy": "Fixtures without hashVersion retain the original v1 FNV-1a projection; versions 1 through 13 remain byte-compatible. Every new or explicitly rerecorded fixture writes v14 SHA-256 with exact run-variation identity in addition to v13 support-object identity, ladder controller state, interactable target, and conveyor support, v12 world-stream identity, v11 elevation, v10 motion-body, and v9 authored segment-ground state. Visual loading, ghost presentation, first-draw timing, camera, and asset readiness remain excluded. Runtime-state additions must add a new projection instead of silently invalidating accepted evidence.",
     "inputContract": "Semantic input transitions are sampled by zero-based simulation tick and deterministically expose pressed, held, and released action phases; checkpoints bind the state after one-based ticks.",
     "hashContract": "Canonical nested simulation-only snapshots include action/contact state that can affect the next tick and exclude artwork, camera, animation playback, audio, particles, and wall-clock state.",
     "divergencePolicy": "Every recorded checkpoint is compared in tick order and reports the first mismatching tick.",
@@ -5730,7 +5793,7 @@
     }
   },
   "exportedRuntime": {
-    "version": "2.34.0",
+    "version": "2.35.0",
     "packaging": "single-self-contained-html",
     "uploadFiles": 1,
     "offlinePlayable": true,
@@ -5849,6 +5912,17 @@
       "importSaveCode",
       "persistHostedSave",
       "clearHostedSave",
+      "getRunVariationProgram",
+      "getRunVariationReport",
+      "getRunVariationState",
+      "previewRunVariation",
+      "startRun",
+      "startDailyChallenge",
+      "getGhostStates",
+      "getRunCodeStatus",
+      "exportRunCode",
+      "inspectRunCode",
+      "importRunCode",
       "getState",
       "getObjects",
       "getTraversalPaths",
@@ -5900,6 +5974,17 @@
       "import_save_code",
       "persist_hosted_save",
       "clear_hosted_save",
+      "get_run_variation_program",
+      "get_run_variation_report",
+      "get_run_variation_state",
+      "preview_run_variation",
+      "start_run",
+      "start_daily_challenge",
+      "get_ghost_states",
+      "get_run_code_status",
+      "export_run_code",
+      "inspect_run_code",
+      "import_run_code",
       "get_state",
       "get_objects",
       "get_traversal_paths",
@@ -6103,6 +6188,14 @@
     "get_gameplay_program",
     "set_gameplay_program",
     "remove_gameplay_program",
+    "get_run_variation_program",
+    "get_run_variation_report",
+    "suggest_run_variation_program",
+    "preview_run_variation",
+    "set_run_variation_program",
+    "remove_run_variation_program",
+    "preview_replay_ghost",
+    "apply_replay_ghost",
     "get_combat_program",
     "get_combat_report",
     "suggest_combat_program",
@@ -6230,6 +6323,9 @@
     "preview_resume",
     "preview_step",
     "preview_reset",
+    "preview_start_run",
+    "preview_start_daily_challenge",
+    "get_preview_ghost_states",
     "preview_load_map",
     "select_object",
     "replace_project"
@@ -6362,6 +6458,14 @@
       "get_gameplay_program",
       "set_gameplay_program",
       "remove_gameplay_program",
+      "get_run_variation_program",
+      "get_run_variation_report",
+      "suggest_run_variation_program",
+      "preview_run_variation",
+      "set_run_variation_program",
+      "remove_run_variation_program",
+      "preview_replay_ghost",
+      "apply_replay_ghost",
       "get_combat_program",
       "get_combat_report",
       "suggest_combat_program",
@@ -6612,6 +6716,14 @@
       "get_gameplay_program",
       "set_gameplay_program",
       "remove_gameplay_program",
+      "get_run_variation_program",
+      "get_run_variation_report",
+      "suggest_run_variation_program",
+      "preview_run_variation",
+      "set_run_variation_program",
+      "remove_run_variation_program",
+      "preview_replay_ghost",
+      "apply_replay_ghost",
       "get_combat_program",
       "get_combat_report",
       "suggest_combat_program",
@@ -6739,6 +6851,9 @@
       "preview_resume",
       "preview_step",
       "preview_reset",
+      "preview_start_run",
+      "preview_start_daily_challenge",
+      "get_preview_ghost_states",
       "preview_load_map",
       "select_object",
       "replace_project"
@@ -6828,6 +6943,9 @@
       "preview_resume",
       "preview_step",
       "preview_reset",
+      "preview_start_run",
+      "preview_start_daily_challenge",
+      "get_preview_ghost_states",
       "preview_load_map",
       "select_object"
     ],
@@ -20562,6 +20680,492 @@
         }
       },
       {
+        "op": "get_run_variation_program",
+        "title": "Get Run Variation Program",
+        "description": "Read the exact canonical authored pools, daily-challenge policy, replay ghosts, and two-seed evidence links without resolving a hidden random value.",
+        "surfaces": [
+          "core",
+          "browser-session"
+        ],
+        "mutatesProject": false,
+        "mutatesBuilderState": false,
+        "requiresSourceDigestInMcp": false,
+        "coordinationOnly": false,
+        "schemaPrecision": "declared",
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "expectedSourceDigest": {
+              "type": "string",
+              "description": "Project Doctor sourceDigest inspected immediately before this command.",
+              "minLength": 1
+            },
+            "expectedLedgerDigest": {
+              "type": "string",
+              "description": "Shared work-ledger digest inspected immediately before this coordination mutation.",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            },
+            "compact": {
+              "type": "boolean",
+              "description": "Return a compact result without repeating the complete embedded project when the transport supports it."
+            }
+          },
+          "additionalProperties": false
+        },
+        "annotations": {
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      },
+      {
+        "op": "get_run_variation_report",
+        "title": "Get Run Variation Report",
+        "description": "Validate typed variation assignments, stable SHA-256 seed resolution, reset policy, daily UTC semantics, ghost freshness, budgets, and two-seed evidence without claiming balance or fun.",
+        "surfaces": [
+          "core",
+          "browser-session"
+        ],
+        "mutatesProject": false,
+        "mutatesBuilderState": false,
+        "requiresSourceDigestInMcp": false,
+        "coordinationOnly": false,
+        "schemaPrecision": "declared",
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "expectedSourceDigest": {
+              "type": "string",
+              "description": "Project Doctor sourceDigest inspected immediately before this command.",
+              "minLength": 1
+            },
+            "expectedLedgerDigest": {
+              "type": "string",
+              "description": "Shared work-ledger digest inspected immediately before this coordination mutation.",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            },
+            "compact": {
+              "type": "boolean",
+              "description": "Return a compact result without repeating the complete embedded project when the transport supports it."
+            },
+            "profile": {
+              "type": "string",
+              "enum": [
+                "prototype",
+                "production"
+              ],
+              "description": "Project Doctor severity profile."
+            }
+          },
+          "additionalProperties": false
+        },
+        "annotations": {
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      },
+      {
+        "op": "suggest_run_variation_program",
+        "title": "Suggest Run Variation Program",
+        "description": "Prepare one provider-free editable two-variant starter from declared gameplay variables. It never selects or applies creative values automatically.",
+        "surfaces": [
+          "core",
+          "browser-session"
+        ],
+        "mutatesProject": false,
+        "mutatesBuilderState": false,
+        "requiresSourceDigestInMcp": false,
+        "coordinationOnly": false,
+        "schemaPrecision": "declared",
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "expectedSourceDigest": {
+              "type": "string",
+              "description": "Project Doctor sourceDigest inspected immediately before this command.",
+              "minLength": 1
+            },
+            "expectedLedgerDigest": {
+              "type": "string",
+              "description": "Shared work-ledger digest inspected immediately before this coordination mutation.",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            },
+            "compact": {
+              "type": "boolean",
+              "description": "Return a compact result without repeating the complete embedded project when the transport supports it."
+            },
+            "seedNamespace": {
+              "type": "string",
+              "description": "Stable bounded game-specific seed namespace.",
+              "minLength": 1,
+              "maxLength": 96
+            },
+            "defaultSeed": {
+              "type": "string",
+              "description": "Default explicit run seed.",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "dailyEnabled": {
+              "type": "boolean",
+              "description": "Prepare the editable daily-challenge starter."
+            }
+          },
+          "additionalProperties": false
+        },
+        "annotations": {
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      },
+      {
+        "op": "preview_run_variation",
+        "title": "Preview Run Variation",
+        "description": "Resolve one explicit seed or UTC day against the exact saved authored pools without mutating source, starting a runtime, reading wall-clock time, or claiming balance.",
+        "surfaces": [
+          "core",
+          "browser-session"
+        ],
+        "mutatesProject": false,
+        "mutatesBuilderState": false,
+        "requiresSourceDigestInMcp": false,
+        "coordinationOnly": false,
+        "schemaPrecision": "declared",
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "expectedSourceDigest": {
+              "type": "string",
+              "description": "Project Doctor sourceDigest inspected immediately before this command.",
+              "minLength": 1
+            },
+            "expectedLedgerDigest": {
+              "type": "string",
+              "description": "Shared work-ledger digest inspected immediately before this coordination mutation.",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            },
+            "compact": {
+              "type": "boolean",
+              "description": "Return a compact result without repeating the complete embedded project when the transport supports it."
+            },
+            "mode": {
+              "type": "string",
+              "enum": [
+                "standard",
+                "daily"
+              ],
+              "description": "Resolve an explicit seed or UTC daily identity without mutating source."
+            },
+            "seed": {
+              "type": "string",
+              "description": "Explicit standard-run seed.",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "utcDay": {
+              "type": "string",
+              "description": "Explicit real UTC day in YYYY-MM-DD form.",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "profile": {
+              "type": "string",
+              "enum": [
+                "prototype",
+                "production"
+              ],
+              "description": "Project Doctor severity profile."
+            }
+          },
+          "additionalProperties": false
+        },
+        "annotations": {
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      },
+      {
+        "op": "set_run_variation_program",
+        "title": "Set Run Variation Program",
+        "description": "Store one strict renderer-neutral run-variation program shared by preview, replay, saves, Canvas/Phaser/Pixi/melon export, UI, CLI, MCP, Codex, and Claude.",
+        "surfaces": [
+          "core",
+          "browser-session"
+        ],
+        "mutatesProject": true,
+        "mutatesBuilderState": false,
+        "requiresSourceDigestInMcp": true,
+        "coordinationOnly": false,
+        "schemaPrecision": "declared",
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "expectedSourceDigest": {
+              "type": "string",
+              "description": "Project Doctor sourceDigest inspected immediately before this command.",
+              "minLength": 1
+            },
+            "expectedLedgerDigest": {
+              "type": "string",
+              "description": "Shared work-ledger digest inspected immediately before this coordination mutation.",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            },
+            "compact": {
+              "type": "boolean",
+              "description": "Return a compact result without repeating the complete embedded project when the transport supports it."
+            },
+            "program": {
+              "type": "object",
+              "description": "Strict renderer-neutral run-variation program.",
+              "additionalProperties": true
+            },
+            "profile": {
+              "type": "string",
+              "enum": [
+                "prototype",
+                "production"
+              ],
+              "description": "Project Doctor severity profile."
+            }
+          },
+          "required": [
+            "program"
+          ],
+          "additionalProperties": false
+        },
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": true,
+          "idempotentHint": false,
+          "openWorldHint": false
+        }
+      },
+      {
+        "op": "remove_run_variation_program",
+        "title": "Remove Run Variation Program",
+        "description": "Remove authored variation, daily challenges, and presentation ghosts without changing gameplay variables, replay fixtures, maps, collision, or art.",
+        "surfaces": [
+          "core",
+          "browser-session"
+        ],
+        "mutatesProject": true,
+        "mutatesBuilderState": false,
+        "requiresSourceDigestInMcp": true,
+        "coordinationOnly": false,
+        "schemaPrecision": "declared",
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "expectedSourceDigest": {
+              "type": "string",
+              "description": "Project Doctor sourceDigest inspected immediately before this command.",
+              "minLength": 1
+            },
+            "expectedLedgerDigest": {
+              "type": "string",
+              "description": "Shared work-ledger digest inspected immediately before this coordination mutation.",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            },
+            "compact": {
+              "type": "boolean",
+              "description": "Return a compact result without repeating the complete embedded project when the transport supports it."
+            }
+          },
+          "additionalProperties": false
+        },
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": true,
+          "idempotentHint": false,
+          "openWorldHint": false
+        }
+      },
+      {
+        "op": "preview_replay_ghost",
+        "title": "Preview Replay Ghost",
+        "description": "Run one exact passing replay and derive a bounded presentation-only trajectory with source and preview digests; no project mutation occurs.",
+        "surfaces": [
+          "core",
+          "browser-session"
+        ],
+        "mutatesProject": false,
+        "mutatesBuilderState": false,
+        "requiresSourceDigestInMcp": false,
+        "coordinationOnly": false,
+        "schemaPrecision": "declared",
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "expectedSourceDigest": {
+              "type": "string",
+              "description": "Optional current Project Doctor source digest; mismatch fails closed.",
+              "pattern": "^source-[a-f0-9]{64}$"
+            },
+            "expectedLedgerDigest": {
+              "type": "string",
+              "description": "Shared work-ledger digest inspected immediately before this coordination mutation.",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            },
+            "compact": {
+              "type": "boolean",
+              "description": "Return a compact result without repeating the complete embedded project when the transport supports it."
+            },
+            "replayCaseId": {
+              "type": "string",
+              "description": "Exact passing deterministic replay case ID.",
+              "minLength": 1,
+              "maxLength": 160
+            },
+            "id": {
+              "type": "string",
+              "description": "Stable ghost ID.",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+              "maxLength": 160
+            },
+            "label": {
+              "type": "string",
+              "description": "Player-facing ghost label.",
+              "minLength": 1,
+              "maxLength": 160
+            },
+            "sampleEveryTicks": {
+              "type": "integer",
+              "description": "Trajectory sample interval.",
+              "minimum": 1,
+              "maximum": 60
+            },
+            "color": {
+              "type": "string",
+              "description": "Opaque six-digit ghost color.",
+              "pattern": "^#[0-9a-fA-F]{6}$"
+            },
+            "opacity": {
+              "type": "number",
+              "description": "Presentation-only ghost opacity.",
+              "minimum": 0.1,
+              "maximum": 0.9
+            }
+          },
+          "required": [
+            "replayCaseId"
+          ],
+          "additionalProperties": false
+        },
+        "annotations": {
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      },
+      {
+        "op": "apply_replay_ghost",
+        "title": "Apply Replay Ghost",
+        "description": "Apply only the exact current-source replay trajectory reviewed by preview. Ghosts remain outside objects, collision, gameplay, saves, and replay hashes.",
+        "surfaces": [
+          "core",
+          "browser-session"
+        ],
+        "mutatesProject": true,
+        "mutatesBuilderState": false,
+        "requiresSourceDigestInMcp": true,
+        "coordinationOnly": false,
+        "schemaPrecision": "declared",
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "expectedSourceDigest": {
+              "type": "string",
+              "description": "Exact Project Doctor source digest used for preview.",
+              "pattern": "^source-[a-f0-9]{64}$"
+            },
+            "expectedLedgerDigest": {
+              "type": "string",
+              "description": "Shared work-ledger digest inspected immediately before this coordination mutation.",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            },
+            "compact": {
+              "type": "boolean",
+              "description": "Return a compact result without repeating the complete embedded project when the transport supports it."
+            },
+            "replayCaseId": {
+              "type": "string",
+              "description": "Exact passing deterministic replay case ID.",
+              "minLength": 1,
+              "maxLength": 160
+            },
+            "id": {
+              "type": "string",
+              "description": "Stable ghost ID.",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+              "maxLength": 160
+            },
+            "label": {
+              "type": "string",
+              "description": "Player-facing ghost label.",
+              "minLength": 1,
+              "maxLength": 160
+            },
+            "sampleEveryTicks": {
+              "type": "integer",
+              "description": "Trajectory sample interval.",
+              "minimum": 1,
+              "maximum": 60
+            },
+            "color": {
+              "type": "string",
+              "description": "Opaque six-digit ghost color.",
+              "pattern": "^#[0-9a-fA-F]{6}$"
+            },
+            "opacity": {
+              "type": "number",
+              "description": "Presentation-only ghost opacity.",
+              "minimum": 0.1,
+              "maximum": 0.9
+            },
+            "profile": {
+              "type": "string",
+              "enum": [
+                "prototype",
+                "production"
+              ],
+              "description": "Project Doctor severity profile."
+            },
+            "expectedPreviewDigest": {
+              "type": "string",
+              "description": "Exact replay-ghost preview digest.",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            }
+          },
+          "required": [
+            "replayCaseId",
+            "expectedSourceDigest",
+            "expectedPreviewDigest"
+          ],
+          "additionalProperties": false
+        },
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
+          "openWorldHint": false
+        }
+      },
+      {
         "op": "get_combat_program",
         "title": "Get Combat Program",
         "description": "Get Combat Program through LoopLab's canonical validated agent command surface.",
@@ -33724,6 +34328,143 @@
         }
       },
       {
+        "op": "preview_start_run",
+        "title": "Preview Start Run",
+        "description": "Reset the active builder preview into one explicit saved run seed before tick zero; source is not mutated and the preview must already be active.",
+        "surfaces": [
+          "browser-session"
+        ],
+        "mutatesProject": true,
+        "mutatesBuilderState": false,
+        "requiresSourceDigestInMcp": false,
+        "coordinationOnly": false,
+        "schemaPrecision": "declared",
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "expectedSourceDigest": {
+              "type": "string",
+              "description": "Project Doctor sourceDigest inspected immediately before this command.",
+              "minLength": 1
+            },
+            "expectedLedgerDigest": {
+              "type": "string",
+              "description": "Shared work-ledger digest inspected immediately before this coordination mutation.",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            },
+            "compact": {
+              "type": "boolean",
+              "description": "Return a compact result without repeating the complete embedded project when the transport supports it."
+            },
+            "seed": {
+              "type": "string",
+              "description": "Explicit run seed applied before tick zero.",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          },
+          "required": [
+            "seed"
+          ],
+          "additionalProperties": false
+        },
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
+          "openWorldHint": false
+        }
+      },
+      {
+        "op": "preview_start_daily_challenge",
+        "title": "Preview Start Daily Challenge",
+        "description": "Reset the active builder preview into one explicit saved UTC daily identity before tick zero; the simulation never reads wall-clock time.",
+        "surfaces": [
+          "browser-session"
+        ],
+        "mutatesProject": true,
+        "mutatesBuilderState": false,
+        "requiresSourceDigestInMcp": false,
+        "coordinationOnly": false,
+        "schemaPrecision": "declared",
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "expectedSourceDigest": {
+              "type": "string",
+              "description": "Project Doctor sourceDigest inspected immediately before this command.",
+              "minLength": 1
+            },
+            "expectedLedgerDigest": {
+              "type": "string",
+              "description": "Shared work-ledger digest inspected immediately before this coordination mutation.",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            },
+            "compact": {
+              "type": "boolean",
+              "description": "Return a compact result without repeating the complete embedded project when the transport supports it."
+            },
+            "utcDay": {
+              "type": "string",
+              "description": "Explicit real UTC day applied before tick zero.",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            }
+          },
+          "required": [
+            "utcDay"
+          ],
+          "additionalProperties": false
+        },
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
+          "openWorldHint": false
+        }
+      },
+      {
+        "op": "get_preview_ghost_states",
+        "title": "Get Preview Ghost States",
+        "description": "Read presentation-only replay ghost poses from the active builder preview without adding them to objects, collision, saves, completion, or replay truth.",
+        "surfaces": [
+          "browser-session"
+        ],
+        "mutatesProject": false,
+        "mutatesBuilderState": false,
+        "requiresSourceDigestInMcp": false,
+        "coordinationOnly": false,
+        "schemaPrecision": "declared",
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "expectedSourceDigest": {
+              "type": "string",
+              "description": "Project Doctor sourceDigest inspected immediately before this command.",
+              "minLength": 1
+            },
+            "expectedLedgerDigest": {
+              "type": "string",
+              "description": "Shared work-ledger digest inspected immediately before this coordination mutation.",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            },
+            "compact": {
+              "type": "boolean",
+              "description": "Return a compact result without repeating the complete embedded project when the transport supports it."
+            }
+          },
+          "additionalProperties": false
+        },
+        "annotations": {
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      },
+      {
         "op": "preview_load_map",
         "title": "Preview Load Map",
         "description": "Preview Load Map through LoopLab's canonical validated agent command surface.",
@@ -34687,11 +35428,11 @@
   },
   "agentGuideNavigation": {
     "schemaVersion": "looplab-agent-guide-index/v1",
-    "sourceDigest": "sha256:be4f16ef2470cf4858daac248d9fb09e0802a222f50f888d4ee90fb1991acb53",
-    "indexDigest": "sha256:fc26c3356bea0888e6ed71b1824ab61d7edf4e517a53434493976ea77be0196c",
-    "headingCount": 59,
+    "sourceDigest": "sha256:dd580acbce64d98c3dbdcb7846577cf149a3154b7646e685a6f7827b471c1693",
+    "indexDigest": "sha256:5b69528f5de57b602b08dd549ad42de60b562c1548e851fbdb4029991a09005b",
+    "headingCount": 60,
     "counts": {
-      "sections": 59,
+      "sections": 60,
       "invariants": 16,
       "lifecycle": 10,
       "recoveries": 22
@@ -34741,7 +35482,7 @@
   "companion": {
     "baseUrl": "http://127.0.0.1:4317",
     "expectedCompanionVersion": "1.39.0",
-    "expectedProtocolVersion": "1.111.0",
+    "expectedProtocolVersion": "1.112.0",
     "providers": "/providers",
     "promptDrafts": "/prompt-drafts",
     "agentPresence": "/agent-presence",
