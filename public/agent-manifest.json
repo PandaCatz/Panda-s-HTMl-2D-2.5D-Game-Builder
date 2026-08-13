@@ -1,6 +1,6 @@
 {
   "name": "Looplab Headless Agent API",
-  "protocolVersion": "1.109.0",
+  "protocolVersion": "1.110.0",
   "agentOperatingModel": {
     "purpose": "LoopLab is an AI capability amplifier and structured game-authoring workstation, not a form the agent is confined to.",
     "headlessFirst": true,
@@ -1280,7 +1280,15 @@
     "decor",
     "spawn",
     "portal",
-    "goal"
+    "goal",
+    "spring",
+    "ladder",
+    "conveyor",
+    "crumble-platform",
+    "key",
+    "door",
+    "pressure-plate",
+    "one-way-platform"
   ],
   "inputAuthoring": {
     "command": "set_project",
@@ -1650,12 +1658,14 @@
         "active",
         "conducted",
         "cooldownTicks",
+        "dropThroughTicks",
         "durationTicks",
         "elapsedTicks",
         "enabled",
         "energy",
         "health",
         "hp",
+        "interactableStateTicks",
         "locked",
         "maxHp",
         "mode",
@@ -2278,12 +2288,14 @@
           "active",
           "conducted",
           "cooldownTicks",
+          "dropThroughTicks",
           "durationTicks",
           "elapsedTicks",
           "enabled",
           "energy",
           "health",
           "hp",
+          "interactableStateTicks",
           "locked",
           "maxHp",
           "mode",
@@ -2313,6 +2325,177 @@
       "authorCommand": "set_gameplay_program",
       "removeCommand": "remove_gameplay_program",
       "proofBoundary": "A feature-contract description is not implementation. Complex mechanics must resolve to executable deterministic gameplay rules or other runtime-owned IDs."
+    },
+    "interactableTemplates": {
+      "registrySchemaVersion": "looplab-interactable-template-registry/v1",
+      "instanceSchemaVersion": "looplab-interactable-instance/v1",
+      "previewSchemaVersion": "looplab-interactable-template-preview/v1",
+      "reportSchemaVersion": "looplab-interactable-report/v1",
+      "registryRevision": 1,
+      "registryDigest": "sha256:8d0cffad9ae98b4f10701d3723b685d6866823ea15184a2b6c16d4a9d0304ae3",
+      "templateCount": 7,
+      "templates": [
+        {
+          "id": "spring",
+          "revision": 1,
+          "digest": "sha256:c667b7e038a734e860496b4e6f425d90fc10d9e31dc20c2e4d66d44c11272ea1",
+          "label": "Spring / impulse pad",
+          "controlModes": [
+            "platformer",
+            "topdown"
+          ],
+          "roles": [
+            "spring"
+          ],
+          "events": [
+            "spring.launched"
+          ]
+        },
+        {
+          "id": "ladder",
+          "revision": 1,
+          "digest": "sha256:40c5c1c6ee4fcf6bbe9d2dd58f53d90ba89fb37db1382b09c1a7fb2c7b6433bf",
+          "label": "Explicit ladder",
+          "controlModes": [
+            "platformer"
+          ],
+          "roles": [
+            "ladder"
+          ],
+          "events": [
+            "ladder.entered",
+            "ladder.exited"
+          ]
+        },
+        {
+          "id": "conveyor",
+          "revision": 1,
+          "digest": "sha256:1e522f209b6ecb9964d57b85dbbdcacc92274d06e5fa8f378e5d38dc535f3de4",
+          "label": "Support-bound conveyor",
+          "controlModes": [
+            "platformer"
+          ],
+          "roles": [
+            "conveyor"
+          ],
+          "events": [
+            "conveyor.engaged",
+            "conveyor.disengaged"
+          ]
+        },
+        {
+          "id": "crumble-platform",
+          "revision": 1,
+          "digest": "sha256:b1dbb93230774be14f74007fa42f1f0a32f34016eb8261d60d1921131b769e05",
+          "label": "Crumble platform",
+          "controlModes": [
+            "platformer"
+          ],
+          "roles": [
+            "platform"
+          ],
+          "events": [
+            "crumble.armed",
+            "crumble.fell",
+            "crumble.reset"
+          ]
+        },
+        {
+          "id": "key-door",
+          "revision": 1,
+          "digest": "sha256:b4d38a0cda7a99f3d5093804ef94b9270942713e395e6aaab8c1629f8d31bec3",
+          "label": "Key and locked door",
+          "controlModes": [
+            "platformer",
+            "topdown"
+          ],
+          "roles": [
+            "key",
+            "door"
+          ],
+          "events": [
+            "key.collected",
+            "door.opened",
+            "door.locked"
+          ]
+        },
+        {
+          "id": "pressure-plate",
+          "revision": 1,
+          "digest": "sha256:bbabb774b2ed706f76d01a1c6b2bf23a7ba813a1b1b25d3f056b93cf3a991cf0",
+          "label": "Pressure plate and hold gate",
+          "controlModes": [
+            "platformer",
+            "topdown"
+          ],
+          "roles": [
+            "plate",
+            "gate"
+          ],
+          "events": [
+            "plate.pressed",
+            "plate.released",
+            "door.opened",
+            "door.closed"
+          ]
+        },
+        {
+          "id": "one-way-platform",
+          "revision": 1,
+          "digest": "sha256:638f97ecafe171b908a46fb6a7cc68898af51d030d93eb1f9d27261817628aa9",
+          "label": "Drop-through one-way platform",
+          "controlModes": [
+            "platformer"
+          ],
+          "roles": [
+            "platform"
+          ],
+          "events": [
+            "one-way.dropped"
+          ]
+        }
+      ],
+      "objectKinds": [
+        "spring",
+        "ladder",
+        "conveyor",
+        "crumble-platform",
+        "key",
+        "door",
+        "pressure-plate",
+        "one-way-platform"
+      ],
+      "commands": [
+        "list_interactable_templates",
+        "get_interactable_template",
+        "get_interactable_report",
+        "preview_interactable_template",
+        "apply_interactable_template",
+        "remove_interactable_instance"
+      ],
+      "limits": {
+        "maximumInstancesPerMap": 256,
+        "maximumObjectsPerInstance": 4,
+        "maximumCoordinateMagnitude": 1000000,
+        "maximumDimension": 8192,
+        "maximumParameterStringLength": 128,
+        "maximumTicks": 36000,
+        "maximumSpeed": 4000
+      },
+      "policy": {
+        "fixedTick": true,
+        "rendererNeutral": true,
+        "collisionOwner": "authored-map",
+        "artAuthority": false,
+        "providerRequired": false,
+        "implicitProximitySnap": false,
+        "sensorPolicy": "Springs, ladders, keys, and pressure plates use authored trigger colliders. Thin sensors are evaluated with a swept player test so a fast body cannot tunnel through them.",
+        "solidPolicy": "Doors, conveyors, crumble platforms, and one-way platforms use authored solid colliders. Generated artwork never creates or changes collision.",
+        "supportPolicy": "Conveyors and crumble platforms react only to the exact resolved support object, never to visual proximity.",
+        "templatePolicy": "Template defaults are versioned and content-digested. Instance overrides remain explicit and are never silently rewritten by a later template revision.",
+        "evidencePolicy": "Each template ships feature-contract, acceptance, and replay fixture templates. Those templates are starting evidence contracts, not proof that an applied instance already passed."
+      },
+      "workflow": "List or inspect a native template, create a source-bound preview, show the exact objects/colliders/overrides, then apply only the matching source/template/preview digests. Calibrate the supplied acceptance and replay fixture templates before claiming the instance works."
     },
     "narrativeContract": {
       "policy": {
@@ -4269,7 +4452,7 @@
       "harnessSchemaVersion": "looplab-platform-harness/v1",
       "harnessRunner": "playwright-core",
       "harnessRunnerVersion": 2,
-      "runtimeVersion": "2.32.0",
+      "runtimeVersion": "2.33.0",
       "environment": {
         "sandbox": [
           "allow-scripts"
@@ -4409,7 +4592,7 @@
       ],
       "unexpectedCheckPolicy": "reject",
       "visualCaptureRequired": true,
-      "digest": "sha256:072787d94fbbd2d3cf912bb0092cf2873c448c31bfa9d2dcde67308c86108b00"
+      "digest": "sha256:7ec4e87b9a3bb9a7d686bb8d47534913029c68741c2834e159c254466ad65d0b"
     },
     "inspectCommand": "get_release_verification",
     "browserCommand": "verify_release",
@@ -4494,7 +4677,7 @@
       "run_replay_suite",
       "remove_replay_case"
     ],
-    "currentHashVersion": 12,
+    "currentHashVersion": 13,
     "legacyHashVersion": 1,
     "supportedHashVersions": [
       1,
@@ -4508,7 +4691,8 @@
       9,
       10,
       11,
-      12
+      12,
+      13
     ],
     "minimumTickRate": 20,
     "digestAlgorithms": {
@@ -4527,16 +4711,17 @@
         9,
         10,
         11,
-        12
+        12,
+        13
       ],
-      "currentVersion": 12,
+      "currentVersion": 13,
       "current": "SHA-256"
     },
     "digestFormats": {
       "legacy": "replay-<8 lowercase hex>",
       "current": "replay-sha256-<64 lowercase hex>"
     },
-    "hashVersionPolicy": "Fixtures without hashVersion retain the original v1 FNV-1a projection; versions 1 through 11 remain byte-compatible. Every new or explicitly rerecorded fixture writes v12 SHA-256 with deterministic world-stream route, resident-window, and chunk identity in addition to the v11 elevation, v10 motion-body, and v9 authored segment-ground state. Visual loading, first-draw timing, camera, and asset readiness remain excluded. Runtime-state additions must add a new projection instead of silently invalidating accepted evidence.",
+    "hashVersionPolicy": "Fixtures without hashVersion retain the original v1 FNV-1a projection; versions 1 through 12 remain byte-compatible. Every new or explicitly rerecorded fixture writes v13 SHA-256 with exact support-object identity, ladder controller state, interactable target, and conveyor support in addition to v12 world-stream identity, v11 elevation, v10 motion-body, and v9 authored segment-ground state. Visual loading, first-draw timing, camera, and asset readiness remain excluded. Runtime-state additions must add a new projection instead of silently invalidating accepted evidence.",
     "inputContract": "Semantic input transitions are sampled by zero-based simulation tick and deterministically expose pressed, held, and released action phases; checkpoints bind the state after one-based ticks.",
     "hashContract": "Canonical nested simulation-only snapshots include action/contact state that can affect the next tick and exclude artwork, camera, animation playback, audio, particles, and wall-clock state.",
     "divergencePolicy": "Every recorded checkpoint is compared in tick order and reports the first mismatching tick.",
@@ -5476,7 +5661,7 @@
     }
   },
   "exportedRuntime": {
-    "version": "2.32.0",
+    "version": "2.33.0",
     "packaging": "single-self-contained-html",
     "uploadFiles": 1,
     "offlinePlayable": true,
@@ -5749,6 +5934,12 @@
     "get_runtime_join_plan",
     "get_motion_body_report",
     "suggest_motion_body",
+    "list_interactable_templates",
+    "get_interactable_template",
+    "get_interactable_report",
+    "preview_interactable_template",
+    "apply_interactable_template",
+    "remove_interactable_instance",
     "route_work",
     "get_pending_requests",
     "get_asset_library_state",
@@ -6024,6 +6215,12 @@
       "get_runtime_join_plan",
       "get_motion_body_report",
       "suggest_motion_body",
+      "list_interactable_templates",
+      "get_interactable_template",
+      "get_interactable_report",
+      "preview_interactable_template",
+      "apply_interactable_template",
+      "remove_interactable_instance",
       "set_project",
       "set_runtime_profile",
       "set_export_profile",
@@ -6246,6 +6443,12 @@
       "get_runtime_join_plan",
       "get_motion_body_report",
       "suggest_motion_body",
+      "list_interactable_templates",
+      "get_interactable_template",
+      "get_interactable_report",
+      "preview_interactable_template",
+      "apply_interactable_template",
+      "remove_interactable_instance",
       "route_work",
       "get_pending_requests",
       "get_asset_library_state",
@@ -13779,6 +13982,412 @@
           "readOnlyHint": true,
           "destructiveHint": false,
           "idempotentHint": true,
+          "openWorldHint": false
+        }
+      },
+      {
+        "op": "list_interactable_templates",
+        "title": "List Interactable Templates",
+        "description": "Search LoopLab's immutable native interactable vocabulary. Results expose controller compatibility, object roles, emitted events, revisions, and content digests without creating gameplay geometry.",
+        "surfaces": [
+          "core",
+          "browser-session"
+        ],
+        "mutatesProject": false,
+        "mutatesBuilderState": false,
+        "requiresSourceDigestInMcp": false,
+        "coordinationOnly": false,
+        "schemaPrecision": "declared",
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "expectedSourceDigest": {
+              "type": "string",
+              "description": "Project Doctor sourceDigest inspected immediately before this command.",
+              "minLength": 1
+            },
+            "expectedLedgerDigest": {
+              "type": "string",
+              "description": "Shared work-ledger digest inspected immediately before this coordination mutation.",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            },
+            "compact": {
+              "type": "boolean",
+              "description": "Return a compact result without repeating the complete embedded project when the transport supports it."
+            },
+            "query": {
+              "type": "string",
+              "description": "Bounded deterministic filter over template IDs, labels, summaries, roles, kinds, and emitted events.",
+              "maxLength": 240
+            },
+            "controlMode": {
+              "type": "string",
+              "enum": [
+                "platformer",
+                "topdown"
+              ],
+              "description": "Optional exact compatible map controller."
+            },
+            "limit": {
+              "type": "integer",
+              "description": "Maximum compact template summaries.",
+              "minimum": 1,
+              "maximum": 50
+            },
+            "offset": {
+              "type": "integer",
+              "description": "Zero-based deterministic result offset.",
+              "minimum": 0,
+              "maximum": 1024
+            }
+          },
+          "additionalProperties": false
+        },
+        "annotations": {
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      },
+      {
+        "op": "get_interactable_template",
+        "title": "Get Interactable Template",
+        "description": "Read one complete versioned interactable template, including bounded parameters, exact object roles, authority policy, feature-contract starter, and acceptance/replay fixture starters.",
+        "surfaces": [
+          "core",
+          "browser-session"
+        ],
+        "mutatesProject": false,
+        "mutatesBuilderState": false,
+        "requiresSourceDigestInMcp": false,
+        "coordinationOnly": false,
+        "schemaPrecision": "declared",
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "expectedSourceDigest": {
+              "type": "string",
+              "description": "Project Doctor sourceDigest inspected immediately before this command.",
+              "minLength": 1
+            },
+            "expectedLedgerDigest": {
+              "type": "string",
+              "description": "Shared work-ledger digest inspected immediately before this coordination mutation.",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            },
+            "compact": {
+              "type": "boolean",
+              "description": "Return a compact result without repeating the complete embedded project when the transport supports it."
+            },
+            "templateId": {
+              "type": "string",
+              "description": "Exact native interactable-template ID.",
+              "pattern": "^[a-z0-9][a-z0-9-]*$",
+              "maxLength": 120
+            }
+          },
+          "required": [
+            "templateId"
+          ],
+          "additionalProperties": false
+        },
+        "annotations": {
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      },
+      {
+        "op": "get_interactable_report",
+        "title": "Get Interactable Report",
+        "description": "Inspect every authored interactable instance for exact template revision, content digest, parameter inheritance, role completeness, authored collision ownership, references, and optional evidence coverage.",
+        "surfaces": [
+          "core",
+          "browser-session"
+        ],
+        "mutatesProject": false,
+        "mutatesBuilderState": false,
+        "requiresSourceDigestInMcp": false,
+        "coordinationOnly": false,
+        "schemaPrecision": "declared",
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "expectedSourceDigest": {
+              "type": "string",
+              "description": "Project Doctor sourceDigest inspected immediately before this command.",
+              "minLength": 1
+            },
+            "expectedLedgerDigest": {
+              "type": "string",
+              "description": "Shared work-ledger digest inspected immediately before this coordination mutation.",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            },
+            "compact": {
+              "type": "boolean",
+              "description": "Return a compact result without repeating the complete embedded project when the transport supports it."
+            },
+            "requireEvidence": {
+              "type": "boolean",
+              "description": "Also report instances missing their calibrated acceptance/replay evidence pair."
+            }
+          },
+          "additionalProperties": false
+        },
+        "annotations": {
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      },
+      {
+        "op": "preview_interactable_template",
+        "title": "Preview Interactable Template",
+        "description": "Materialize one bounded native interactable bundle against an exact project source without mutation, returning complete objects, colliders, explicit overrides, fixture starters, and a canonical preview digest.",
+        "surfaces": [
+          "core",
+          "browser-session"
+        ],
+        "mutatesProject": false,
+        "mutatesBuilderState": false,
+        "requiresSourceDigestInMcp": false,
+        "coordinationOnly": false,
+        "schemaPrecision": "declared",
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "expectedSourceDigest": {
+              "type": "string",
+              "description": "Project Doctor sourceDigest inspected immediately before this command.",
+              "minLength": 1
+            },
+            "expectedLedgerDigest": {
+              "type": "string",
+              "description": "Shared work-ledger digest inspected immediately before this coordination mutation.",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            },
+            "compact": {
+              "type": "boolean",
+              "description": "Return a compact result without repeating the complete embedded project when the transport supports it."
+            },
+            "templateId": {
+              "type": "string",
+              "description": "Exact native interactable-template ID.",
+              "pattern": "^[a-z0-9][a-z0-9-]*$",
+              "maxLength": 120
+            },
+            "instanceId": {
+              "type": "string",
+              "description": "Stable authored instance ID used by every materialized object and fixture template.",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+              "maxLength": 120
+            },
+            "mapId": {
+              "type": "string",
+              "description": "Exact target map ID; defaults to the active map.",
+              "minLength": 1,
+              "maxLength": 160
+            },
+            "x": {
+              "type": "number",
+              "description": "Authored ground-contact origin x.",
+              "minimum": -1000000,
+              "maximum": 1000000
+            },
+            "y": {
+              "type": "number",
+              "description": "Authored ground-contact origin y.",
+              "minimum": -1000000,
+              "maximum": 1000000
+            },
+            "z": {
+              "type": "number",
+              "description": "Authored support height.",
+              "minimum": -1000000,
+              "maximum": 1000000
+            },
+            "parameters": {
+              "type": "object",
+              "description": "Strict bounded explicit overrides. Omitted fields inherit the versioned native template; unknown fields are rejected.",
+              "additionalProperties": true
+            }
+          },
+          "required": [
+            "templateId",
+            "instanceId",
+            "x",
+            "y"
+          ],
+          "additionalProperties": false
+        },
+        "annotations": {
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      },
+      {
+        "op": "apply_interactable_template",
+        "title": "Apply Interactable Template",
+        "description": "Apply only the exact source-, template-, and preview-digested interactable bundle previously reviewed; duplicate instance and object IDs are rejected atomically.",
+        "surfaces": [
+          "core",
+          "browser-session"
+        ],
+        "mutatesProject": true,
+        "mutatesBuilderState": false,
+        "requiresSourceDigestInMcp": true,
+        "coordinationOnly": false,
+        "schemaPrecision": "declared",
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "expectedSourceDigest": {
+              "type": "string",
+              "description": "Project Doctor sourceDigest inspected immediately before this command.",
+              "minLength": 1
+            },
+            "expectedLedgerDigest": {
+              "type": "string",
+              "description": "Shared work-ledger digest inspected immediately before this coordination mutation.",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            },
+            "compact": {
+              "type": "boolean",
+              "description": "Return a compact result without repeating the complete embedded project when the transport supports it."
+            },
+            "templateId": {
+              "type": "string",
+              "description": "Exact native interactable-template ID.",
+              "pattern": "^[a-z0-9][a-z0-9-]*$",
+              "maxLength": 120
+            },
+            "instanceId": {
+              "type": "string",
+              "description": "Stable authored instance ID used by every materialized object and fixture template.",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+              "maxLength": 120
+            },
+            "mapId": {
+              "type": "string",
+              "description": "Exact target map ID; defaults to the active map.",
+              "minLength": 1,
+              "maxLength": 160
+            },
+            "x": {
+              "type": "number",
+              "description": "Authored ground-contact origin x.",
+              "minimum": -1000000,
+              "maximum": 1000000
+            },
+            "y": {
+              "type": "number",
+              "description": "Authored ground-contact origin y.",
+              "minimum": -1000000,
+              "maximum": 1000000
+            },
+            "z": {
+              "type": "number",
+              "description": "Authored support height.",
+              "minimum": -1000000,
+              "maximum": 1000000
+            },
+            "parameters": {
+              "type": "object",
+              "description": "Strict bounded explicit overrides. Omitted fields inherit the versioned native template; unknown fields are rejected.",
+              "additionalProperties": true
+            },
+            "templateDigest": {
+              "type": "string",
+              "description": "Exact installed template digest returned by preview_interactable_template.",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            },
+            "previewDigest": {
+              "type": "string",
+              "description": "Exact source-bound materialization digest returned by preview_interactable_template.",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            }
+          },
+          "required": [
+            "templateId",
+            "instanceId",
+            "x",
+            "y",
+            "expectedSourceDigest",
+            "templateDigest",
+            "previewDigest"
+          ],
+          "additionalProperties": false
+        },
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
+          "openWorldHint": false
+        }
+      },
+      {
+        "op": "remove_interactable_instance",
+        "title": "Remove Interactable Instance",
+        "description": "Remove every authored object belonging to one exact interactable instance so multi-object mechanics cannot be left partially broken.",
+        "surfaces": [
+          "core",
+          "browser-session"
+        ],
+        "mutatesProject": true,
+        "mutatesBuilderState": false,
+        "requiresSourceDigestInMcp": true,
+        "coordinationOnly": false,
+        "schemaPrecision": "declared",
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "expectedSourceDigest": {
+              "type": "string",
+              "description": "Project Doctor sourceDigest inspected immediately before this command.",
+              "minLength": 1
+            },
+            "expectedLedgerDigest": {
+              "type": "string",
+              "description": "Shared work-ledger digest inspected immediately before this coordination mutation.",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            },
+            "compact": {
+              "type": "boolean",
+              "description": "Return a compact result without repeating the complete embedded project when the transport supports it."
+            },
+            "mapId": {
+              "type": "string",
+              "description": "Exact target map ID; defaults to the active map.",
+              "minLength": 1,
+              "maxLength": 160
+            },
+            "instanceId": {
+              "type": "string",
+              "description": "Exact interactable instance ID; every object in that instance is removed together.",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+              "maxLength": 120
+            }
+          },
+          "required": [
+            "instanceId"
+          ],
+          "additionalProperties": false
+        },
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": true,
+          "idempotentHint": false,
           "openWorldHint": false
         }
       },
@@ -34007,8 +34616,8 @@
   },
   "agentGuideNavigation": {
     "schemaVersion": "looplab-agent-guide-index/v1",
-    "sourceDigest": "sha256:3a2151aa53777844e14a5df97850030634f5b68326b6a88a4dc5d256160a616c",
-    "indexDigest": "sha256:9a9c6aeea9a2fa2deb612898164fa3831d7fc284f7b33faf0db87a8a5f9a4598",
+    "sourceDigest": "sha256:6608112ead9d897e241b57dfb14d09d124a2d495912686b5d09c455d591b515a",
+    "indexDigest": "sha256:3d9f92895c5fa7e3bf19fff3dd563b57dec6a4309a8599a5a3056e552095cb4b",
     "headingCount": 59,
     "counts": {
       "sections": 59,
@@ -34061,7 +34670,7 @@
   "companion": {
     "baseUrl": "http://127.0.0.1:4317",
     "expectedCompanionVersion": "1.39.0",
-    "expectedProtocolVersion": "1.109.0",
+    "expectedProtocolVersion": "1.110.0",
     "providers": "/providers",
     "promptDrafts": "/prompt-drafts",
     "agentPresence": "/agent-presence",

@@ -337,11 +337,11 @@ test("headless commands, Doctor, replay hashes, manifest, and one-file export sh
   const html = buildStandaloneHtml(fixture);
   assert.match(html, /getGameplayState/);
   assert.match(html, /get_gameplay_state/);
-  assert.match(html, /version:'2\.32\.0'/);
+  assert.match(html, /version:'2\.33\.0'/);
 
   const manifest = getAgentManifest();
-  assert.equal(manifest.protocolVersion, "1.109.0");
-  assert.equal(manifest.exportedRuntime.version, "2.32.0");
+  assert.equal(manifest.protocolVersion, "1.110.0");
+  assert.equal(manifest.exportedRuntime.version, "2.33.0");
   assert.deepEqual(manifest.gameplayRules.policy, LOOPLAB_GAMEPLAY_RULE_POLICY);
   assert.equal(manifest.commands.includes("set_gameplay_program"), true);
 });
@@ -412,7 +412,7 @@ test("genre-neutral choice pages, clocks, integer formulas, HUD bindings, and pl
   assert.match(html, /getChoiceState/);
   assert.match(html, /get_hud_state/);
   assert.match(html, /choose_choice/);
-  assert.match(html, /version:'2\.32\.0'/);
+  assert.match(html, /version:'2\.33\.0'/);
 
   const manifest = getAgentManifest();
   assert.equal(manifest.templates.includes("systems"), true);

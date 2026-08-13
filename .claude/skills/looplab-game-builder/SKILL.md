@@ -48,6 +48,14 @@ Keep the product strictly 2D. Side-scrollers, top-down games, connected maps, an
 - Send an exact `looplab-tile-patch/v1` to `preview_tile_patch`. Review validation plus current and production Doctor deltas, then call only the returned `apply_tile_patch` command with unchanged source, tile-program, and patch digests. Stale or locked-layer writes must fail. The visible Map Studio Tiles tool uses this same workflow.
 - Orthographic cells match the authored projection cell dimensions. Dimetric art remains exact 128×64 while logical cell coverage uses the map's reversible world-units-per-tile contract. Inspect `getTileRuntime()` / `get_tile_runtime` in the exported artifact and tile collision inside `getCollisionGeometry()`; Canvas or Phaser may draw the compiled entries, but neither owns terrain or collision truth.
 
+### Place and maintain reusable native interactables
+
+- Use the native registry before inventing per-game physics for springs, ladders, conveyors, crumble platforms, keys/doors, pressure plates, or drop-through one-way platforms. Start with `list_interactable_templates`, inspect the exact revision/digest through `get_interactable_template`, and read `get_interactable_report` for the current project.
+- Call `preview_interactable_template` with a stable instance ID, exact map, bottom-center ground-contact anchor, support z, and only explicit parameter overrides. Review every generated role, object ID, collider, resolved parameter, feature-contract starter, and acceptance/replay fixture starter. Apply only through `apply_interactable_template` with the unchanged source, template, and preview digests.
+- Treat every instance as one indivisible authored behavior bundle. Never duplicate, delete, rename, or detach an individual role. Use `remove_interactable_instance` to remove the whole instance; undo may restore it. In Fine Tune, the selected-object action must say `Remove complete <instanceId> instance`.
+- Springs/keys/plates/ladders use authored swept sensors; doors/conveyors/crumble/one-way platforms use authored solids. Conveyors and crumble platforms require exact resolved support ownership. Ladder entry is a fresh explicit interaction. One-way drop-through disables only the exact supported platform. Generated art never alters these definitions.
+- Production Doctor requires calibrated acceptance and replay evidence rather than accepting starter fixtures as proof. Verify logical inventory/object overrides through portable save, replay v13 exact support/interactable state, and one-file parity under the selected Canvas/Phaser/Pixi/melon renderer. The mouse UI and all headless paths use the same six canonical commands.
+
 ### Exchange exact Tiled and Aseprite source
 
 - Start with `list_community_exchanges` or `get_community_exchange_report`. Imported bytes and hashes are authoring evidence under `authoring.communityExchange`; they are omitted from gameplay digests and the one-file runtime.

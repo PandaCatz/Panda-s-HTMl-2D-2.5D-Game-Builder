@@ -157,7 +157,7 @@ test("headless commands, Doctor, manifest, and one-file export expose collision 
   const html = buildStandaloneHtml(set.project);
   assert.match(html, /groundChainId/);
   assert.match(html, /get_collision_geometry/);
-  assert.match(html, /\[1,2,3,4,5,6,7,8,9,10,11,12\]/);
+  assert.match(html, /\[1,2,3,4,5,6,7,8,9,10,11,12,13\]/);
 
   const removed = applyAgentCommand(set.project, { op: "remove_collision_geometry", mapId: source.activeMapId });
   assert.equal(removed.changed, true);

@@ -4,7 +4,7 @@
     "canonicalPath": "docs/AI_AGENT_GUIDE.md",
     "publicUrl": "/AI_AGENT_GUIDE.md",
     "resourceUri": "looplab://agent-guide",
-    "digest": "sha256:3a2151aa53777844e14a5df97850030634f5b68326b6a88a4dc5d256160a616c",
+    "digest": "sha256:6608112ead9d897e241b57dfb14d09d124a2d495912686b5d09c455d591b515a",
     "headingCount": 59,
     "generatedBlocksExcludedFromDigest": true
   },
@@ -379,7 +379,7 @@
       "resourceUri": "looplab://agent-guide#build-an-atomic-candidate",
       "source": {
         "startLine": 772,
-        "endLine": 1129
+        "endLine": 1140
       }
     },
     {
@@ -393,8 +393,8 @@
       "href": "/AI_AGENT_GUIDE.md#source-bound-tiled-and-aseprite-exchange",
       "resourceUri": "looplab://agent-guide#source-bound-tiled-and-aseprite-exchange",
       "source": {
-        "startLine": 838,
-        "endLine": 915
+        "startLine": 849,
+        "endLine": 926
       }
     },
     {
@@ -408,8 +408,8 @@
       "href": "/AI_AGENT_GUIDE.md#repair-deterministic-doctor-mechanics-without-guessing",
       "resourceUri": "looplab://agent-guide#repair-deterministic-doctor-mechanics-without-guessing",
       "source": {
-        "startLine": 916,
-        "endLine": 954
+        "startLine": 927,
+        "endLine": 965
       }
     },
     {
@@ -423,8 +423,8 @@
       "href": "/AI_AGENT_GUIDE.md#draft-a-source-bound-plan-from-a-short-intent",
       "resourceUri": "looplab://agent-guide#draft-a-source-bound-plan-from-a-short-intent",
       "source": {
-        "startLine": 955,
-        "endLine": 978
+        "startLine": 966,
+        "endLine": 989
       }
     },
     {
@@ -438,8 +438,8 @@
       "href": "/AI_AGENT_GUIDE.md#use-the-living-agent-playbook",
       "resourceUri": "looplab://agent-guide#use-the-living-agent-playbook",
       "source": {
-        "startLine": 979,
-        "endLine": 1000
+        "startLine": 990,
+        "endLine": 1011
       }
     },
     {
@@ -453,8 +453,8 @@
       "href": "/AI_AGENT_GUIDE.md#publish-live-agent-presence-without-confusing-it-with-ownership",
       "resourceUri": "looplab://agent-guide#publish-live-agent-presence-without-confusing-it-with-ownership",
       "source": {
-        "startLine": 1001,
-        "endLine": 1034
+        "startLine": 1012,
+        "endLine": 1045
       }
     },
     {
@@ -468,8 +468,8 @@
       "href": "/AI_AGENT_GUIDE.md#coordinate-codex-and-claude-with-the-shared-work-ledger",
       "resourceUri": "looplab://agent-guide#coordinate-codex-and-claude-with-the-shared-work-ledger",
       "source": {
-        "startLine": 1035,
-        "endLine": 1077
+        "startLine": 1046,
+        "endLine": 1088
       }
     },
     {
@@ -483,8 +483,8 @@
       "href": "/AI_AGENT_GUIDE.md#reuse-a-proven-command-macro",
       "resourceUri": "looplab://agent-guide#reuse-a-proven-command-macro",
       "source": {
-        "startLine": 1078,
-        "endLine": 1129
+        "startLine": 1089,
+        "endLine": 1140
       }
     },
     {
@@ -498,8 +498,8 @@
       "href": "/AI_AGENT_GUIDE.md#open-html-projects-and-work-across-maps",
       "resourceUri": "looplab://agent-guide#open-html-projects-and-work-across-maps",
       "source": {
-        "startLine": 1130,
-        "endLine": 1187
+        "startLine": 1141,
+        "endLine": 1198
       }
     },
     {
@@ -513,8 +513,8 @@
       "href": "/AI_AGENT_GUIDE.md#define-the-player-facing-map-route",
       "resourceUri": "looplab://agent-guide#define-the-player-facing-map-route",
       "source": {
-        "startLine": 1142,
-        "endLine": 1187
+        "startLine": 1153,
+        "endLine": 1198
       }
     },
     {
@@ -528,8 +528,8 @@
       "href": "/AI_AGENT_GUIDE.md#author-25d-dimetric-maps-and-route-layers",
       "resourceUri": "looplab://agent-guide#author-25d-dimetric-maps-and-route-layers",
       "source": {
-        "startLine": 1188,
-        "endLine": 1247
+        "startLine": 1199,
+        "endLine": 1258
       }
     },
     {
@@ -543,8 +543,8 @@
       "href": "/AI_AGENT_GUIDE.md#preserve-timed-authored-routes",
       "resourceUri": "looplab://agent-guide#preserve-timed-authored-routes",
       "source": {
-        "startLine": 1240,
-        "endLine": 1247
+        "startLine": 1251,
+        "endLine": 1258
       }
     },
     {
@@ -558,8 +558,8 @@
       "href": "/AI_AGENT_GUIDE.md#ground-and-raised-surface-attachment",
       "resourceUri": "looplab://agent-guide#ground-and-raised-surface-attachment",
       "source": {
-        "startLine": 1248,
-        "endLine": 1270
+        "startLine": 1259,
+        "endLine": 1281
       }
     },
     {
@@ -573,8 +573,8 @@
       "href": "/AI_AGENT_GUIDE.md#visual-asset-generation",
       "resourceUri": "looplab://agent-guide#visual-asset-generation",
       "source": {
-        "startLine": 1271,
-        "endLine": 1336
+        "startLine": 1282,
+        "endLine": 1347
       }
     },
     {
@@ -588,8 +588,8 @@
       "href": "/AI_AGENT_GUIDE.md#author-and-apply-the-project-visual-identity",
       "resourceUri": "looplab://agent-guide#author-and-apply-the-project-visual-identity",
       "source": {
-        "startLine": 1308,
-        "endLine": 1336
+        "startLine": 1319,
+        "endLine": 1347
       }
     },
     {
@@ -603,8 +603,8 @@
       "href": "/AI_AGENT_GUIDE.md#visual-references",
       "resourceUri": "looplab://agent-guide#visual-references",
       "source": {
-        "startLine": 1337,
-        "endLine": 1347
+        "startLine": 1348,
+        "endLine": 1358
       }
     },
     {
@@ -618,8 +618,8 @@
       "href": "/AI_AGENT_GUIDE.md#installed-commercial-use-asset-packs",
       "resourceUri": "looplab://agent-guide#installed-commercial-use-asset-packs",
       "source": {
-        "startLine": 1348,
-        "endLine": 1360
+        "startLine": 1359,
+        "endLine": 1371
       }
     },
     {
@@ -633,8 +633,8 @@
       "href": "/AI_AGENT_GUIDE.md#standard-game-shell-and-player-lifecycle",
       "resourceUri": "looplab://agent-guide#standard-game-shell-and-player-lifecycle",
       "source": {
-        "startLine": 1361,
-        "endLine": 1383
+        "startLine": 1372,
+        "endLine": 1394
       }
     },
     {
@@ -648,8 +648,8 @@
       "href": "/AI_AGENT_GUIDE.md#project-doctor-and-verification",
       "resourceUri": "looplab://agent-guide#project-doctor-and-verification",
       "source": {
-        "startLine": 1384,
-        "endLine": 1535
+        "startLine": 1395,
+        "endLine": 1546
       }
     },
     {
@@ -663,8 +663,8 @@
       "href": "/AI_AGENT_GUIDE.md#interrogate-design-coverage-without-mistaking-bots-for-players",
       "resourceUri": "looplab://agent-guide#interrogate-design-coverage-without-mistaking-bots-for-players",
       "source": {
-        "startLine": 1411,
-        "endLine": 1512
+        "startLine": 1422,
+        "endLine": 1523
       }
     },
     {
@@ -678,8 +678,8 @@
       "href": "/AI_AGENT_GUIDE.md#read-exact-pixel-color-accessibility-as-bounded-evidence",
       "resourceUri": "looplab://agent-guide#read-exact-pixel-color-accessibility-as-bounded-evidence",
       "source": {
-        "startLine": 1513,
-        "endLine": 1535
+        "startLine": 1524,
+        "endLine": 1546
       }
     },
     {
@@ -693,8 +693,8 @@
       "href": "/AI_AGENT_GUIDE.md#loop-strategies",
       "resourceUri": "looplab://agent-guide#loop-strategies",
       "source": {
-        "startLine": 1536,
-        "endLine": 1574
+        "startLine": 1547,
+        "endLine": 1585
       }
     },
     {
@@ -708,8 +708,8 @@
       "href": "/AI_AGENT_GUIDE.md#frozen-cross-genre-acceptance-profile",
       "resourceUri": "looplab://agent-guide#frozen-cross-genre-acceptance-profile",
       "source": {
-        "startLine": 1540,
-        "endLine": 1552
+        "startLine": 1551,
+        "endLine": 1563
       }
     },
     {
@@ -723,8 +723,8 @@
       "href": "/AI_AGENT_GUIDE.md#improve",
       "resourceUri": "looplab://agent-guide#improve",
       "source": {
-        "startLine": 1553,
-        "endLine": 1556
+        "startLine": 1564,
+        "endLine": 1567
       }
     },
     {
@@ -738,8 +738,8 @@
       "href": "/AI_AGENT_GUIDE.md#explore",
       "resourceUri": "looplab://agent-guide#explore",
       "source": {
-        "startLine": 1557,
-        "endLine": 1560
+        "startLine": 1568,
+        "endLine": 1571
       }
     },
     {
@@ -753,8 +753,8 @@
       "href": "/AI_AGENT_GUIDE.md#cycle",
       "resourceUri": "looplab://agent-guide#cycle",
       "source": {
-        "startLine": 1561,
-        "endLine": 1564
+        "startLine": 1572,
+        "endLine": 1575
       }
     },
     {
@@ -768,8 +768,8 @@
       "href": "/AI_AGENT_GUIDE.md#provider-context-budget-and-bounded-passes",
       "resourceUri": "looplab://agent-guide#provider-context-budget-and-bounded-passes",
       "source": {
-        "startLine": 1565,
-        "endLine": 1574
+        "startLine": 1576,
+        "endLine": 1585
       }
     },
     {
@@ -783,8 +783,8 @@
       "href": "/AI_AGENT_GUIDE.md#iteration-ledger-and-safe-restore",
       "resourceUri": "looplab://agent-guide#iteration-ledger-and-safe-restore",
       "source": {
-        "startLine": 1575,
-        "endLine": 1604
+        "startLine": 1586,
+        "endLine": 1615
       }
     },
     {
@@ -798,8 +798,8 @@
       "href": "/AI_AGENT_GUIDE.md#sprite-and-palette-contract",
       "resourceUri": "looplab://agent-guide#sprite-and-palette-contract",
       "source": {
-        "startLine": 1605,
-        "endLine": 1614
+        "startLine": 1616,
+        "endLine": 1625
       }
     },
     {
@@ -813,8 +813,8 @@
       "href": "/AI_AGENT_GUIDE.md#visual-first-build-loop",
       "resourceUri": "looplab://agent-guide#visual-first-build-loop",
       "source": {
-        "startLine": 1615,
-        "endLine": 1654
+        "startLine": 1626,
+        "endLine": 1665
       }
     },
     {
@@ -828,8 +828,8 @@
       "href": "/AI_AGENT_GUIDE.md#grounded-ai-visual-critique-requires-per-job-consent",
       "resourceUri": "looplab://agent-guide#grounded-ai-visual-critique-requires-per-job-consent",
       "source": {
-        "startLine": 1619,
-        "endLine": 1654
+        "startLine": 1630,
+        "endLine": 1665
       }
     },
     {
@@ -843,8 +843,8 @@
       "href": "/AI_AGENT_GUIDE.md#playtest-evidence",
       "resourceUri": "looplab://agent-guide#playtest-evidence",
       "source": {
-        "startLine": 1655,
-        "endLine": 1685
+        "startLine": 1666,
+        "endLine": 1696
       }
     },
     {
@@ -858,8 +858,8 @@
       "href": "/AI_AGENT_GUIDE.md#deterministic-editor-preview-control",
       "resourceUri": "looplab://agent-guide#deterministic-editor-preview-control",
       "source": {
-        "startLine": 1669,
-        "endLine": 1685
+        "startLine": 1680,
+        "endLine": 1696
       }
     },
     {
@@ -873,8 +873,8 @@
       "href": "/AI_AGENT_GUIDE.md#exported-game-runtime-contract",
       "resourceUri": "looplab://agent-guide#exported-game-runtime-contract",
       "source": {
-        "startLine": 1686,
-        "endLine": 1786
+        "startLine": 1697,
+        "endLine": 1797
       }
     },
     {
@@ -888,8 +888,8 @@
       "href": "/AI_AGENT_GUIDE.md#hostile-platform-emulation",
       "resourceUri": "looplab://agent-guide#hostile-platform-emulation",
       "source": {
-        "startLine": 1710,
-        "endLine": 1786
+        "startLine": 1721,
+        "endLine": 1797
       }
     },
     {
@@ -903,8 +903,8 @@
       "href": "/AI_AGENT_GUIDE.md#completion-response",
       "resourceUri": "looplab://agent-guide#completion-response",
       "source": {
-        "startLine": 1787,
-        "endLine": 1801
+        "startLine": 1798,
+        "endLine": 1812
       }
     }
   ],
@@ -931,8 +931,8 @@
       "href": "/AI_AGENT_GUIDE.md#ground-and-raised-surface-attachment",
       "resourceUri": "looplab://agent-guide#ground-and-raised-surface-attachment",
       "source": {
-        "startLine": 1248,
-        "endLine": 1270
+        "startLine": 1259,
+        "endLine": 1281
       }
     },
     {
@@ -958,7 +958,7 @@
       "resourceUri": "looplab://agent-guide#build-an-atomic-candidate",
       "source": {
         "startLine": 772,
-        "endLine": 1129
+        "endLine": 1140
       }
     },
     {
@@ -983,8 +983,8 @@
       "href": "/AI_AGENT_GUIDE.md#iteration-ledger-and-safe-restore",
       "resourceUri": "looplab://agent-guide#iteration-ledger-and-safe-restore",
       "source": {
-        "startLine": 1575,
-        "endLine": 1604
+        "startLine": 1586,
+        "endLine": 1615
       }
     },
     {
@@ -996,8 +996,8 @@
       "href": "/AI_AGENT_GUIDE.md#project-doctor-and-verification",
       "resourceUri": "looplab://agent-guide#project-doctor-and-verification",
       "source": {
-        "startLine": 1384,
-        "endLine": 1535
+        "startLine": 1395,
+        "endLine": 1546
       }
     },
     {
@@ -1022,8 +1022,8 @@
       "href": "/AI_AGENT_GUIDE.md#interrogate-design-coverage-without-mistaking-bots-for-players",
       "resourceUri": "looplab://agent-guide#interrogate-design-coverage-without-mistaking-bots-for-players",
       "source": {
-        "startLine": 1411,
-        "endLine": 1512
+        "startLine": 1422,
+        "endLine": 1523
       }
     },
     {
@@ -1035,8 +1035,8 @@
       "href": "/AI_AGENT_GUIDE.md#grounded-ai-visual-critique-requires-per-job-consent",
       "resourceUri": "looplab://agent-guide#grounded-ai-visual-critique-requires-per-job-consent",
       "source": {
-        "startLine": 1619,
-        "endLine": 1654
+        "startLine": 1630,
+        "endLine": 1665
       }
     },
     {
@@ -1087,8 +1087,8 @@
       "href": "/AI_AGENT_GUIDE.md#exported-game-runtime-contract",
       "resourceUri": "looplab://agent-guide#exported-game-runtime-contract",
       "source": {
-        "startLine": 1686,
-        "endLine": 1786
+        "startLine": 1697,
+        "endLine": 1797
       }
     },
     {
@@ -1100,8 +1100,8 @@
       "href": "/AI_AGENT_GUIDE.md#coordinate-codex-and-claude-with-the-shared-work-ledger",
       "resourceUri": "looplab://agent-guide#coordinate-codex-and-claude-with-the-shared-work-ledger",
       "source": {
-        "startLine": 1035,
-        "endLine": 1077
+        "startLine": 1046,
+        "endLine": 1088
       }
     },
     {
@@ -1113,8 +1113,8 @@
       "href": "/AI_AGENT_GUIDE.md#provider-context-budget-and-bounded-passes",
       "resourceUri": "looplab://agent-guide#provider-context-budget-and-bounded-passes",
       "source": {
-        "startLine": 1565,
-        "endLine": 1574
+        "startLine": 1576,
+        "endLine": 1585
       }
     }
   ],
@@ -1210,7 +1210,7 @@
       "resourceUri": "looplab://agent-guide#build-an-atomic-candidate",
       "source": {
         "startLine": 772,
-        "endLine": 1129
+        "endLine": 1140
       }
     },
     {
@@ -1226,8 +1226,8 @@
       "href": "/AI_AGENT_GUIDE.md#repair-deterministic-doctor-mechanics-without-guessing",
       "resourceUri": "looplab://agent-guide#repair-deterministic-doctor-mechanics-without-guessing",
       "source": {
-        "startLine": 916,
-        "endLine": 954
+        "startLine": 927,
+        "endLine": 965
       }
     },
     {
@@ -1245,8 +1245,8 @@
       "href": "/AI_AGENT_GUIDE.md#project-doctor-and-verification",
       "resourceUri": "looplab://agent-guide#project-doctor-and-verification",
       "source": {
-        "startLine": 1384,
-        "endLine": 1535
+        "startLine": 1395,
+        "endLine": 1546
       }
     },
     {
@@ -1264,8 +1264,8 @@
       "href": "/AI_AGENT_GUIDE.md#visual-first-build-loop",
       "resourceUri": "looplab://agent-guide#visual-first-build-loop",
       "source": {
-        "startLine": 1615,
-        "endLine": 1654
+        "startLine": 1626,
+        "endLine": 1665
       }
     },
     {
@@ -1283,8 +1283,8 @@
       "href": "/AI_AGENT_GUIDE.md#exported-game-runtime-contract",
       "resourceUri": "looplab://agent-guide#exported-game-runtime-contract",
       "source": {
-        "startLine": 1686,
-        "endLine": 1786
+        "startLine": 1697,
+        "endLine": 1797
       }
     },
     {
@@ -1300,8 +1300,8 @@
       "href": "/AI_AGENT_GUIDE.md#completion-response",
       "resourceUri": "looplab://agent-guide#completion-response",
       "source": {
-        "startLine": 1787,
-        "endLine": 1801
+        "startLine": 1798,
+        "endLine": 1812
       }
     }
   ],
@@ -1319,7 +1319,7 @@
       "resourceUri": "looplab://agent-guide#build-an-atomic-candidate",
       "source": {
         "startLine": 772,
-        "endLine": 1129
+        "endLine": 1140
       }
     },
     {
@@ -1350,8 +1350,8 @@
       "href": "/AI_AGENT_GUIDE.md#coordinate-codex-and-claude-with-the-shared-work-ledger",
       "resourceUri": "looplab://agent-guide#coordinate-codex-and-claude-with-the-shared-work-ledger",
       "source": {
-        "startLine": 1035,
-        "endLine": 1077
+        "startLine": 1046,
+        "endLine": 1088
       }
     },
     {
@@ -1367,7 +1367,7 @@
       "resourceUri": "looplab://agent-guide#build-an-atomic-candidate",
       "source": {
         "startLine": 772,
-        "endLine": 1129
+        "endLine": 1140
       }
     },
     {
@@ -1382,8 +1382,8 @@
       "href": "/AI_AGENT_GUIDE.md#publish-live-agent-presence-without-confusing-it-with-ownership",
       "resourceUri": "looplab://agent-guide#publish-live-agent-presence-without-confusing-it-with-ownership",
       "source": {
-        "startLine": 1001,
-        "endLine": 1034
+        "startLine": 1012,
+        "endLine": 1045
       }
     },
     {
@@ -1398,8 +1398,8 @@
       "href": "/AI_AGENT_GUIDE.md#repair-deterministic-doctor-mechanics-without-guessing",
       "resourceUri": "looplab://agent-guide#repair-deterministic-doctor-mechanics-without-guessing",
       "source": {
-        "startLine": 916,
-        "endLine": 954
+        "startLine": 927,
+        "endLine": 965
       }
     },
     {
@@ -1430,8 +1430,8 @@
       "href": "/AI_AGENT_GUIDE.md#standard-game-shell-and-player-lifecycle",
       "resourceUri": "looplab://agent-guide#standard-game-shell-and-player-lifecycle",
       "source": {
-        "startLine": 1361,
-        "endLine": 1383
+        "startLine": 1372,
+        "endLine": 1394
       }
     },
     {
@@ -1446,8 +1446,8 @@
       "href": "/AI_AGENT_GUIDE.md#project-doctor-and-verification",
       "resourceUri": "looplab://agent-guide#project-doctor-and-verification",
       "source": {
-        "startLine": 1384,
-        "endLine": 1535
+        "startLine": 1395,
+        "endLine": 1546
       }
     },
     {
@@ -1478,8 +1478,8 @@
       "href": "/AI_AGENT_GUIDE.md#iteration-ledger-and-safe-restore",
       "resourceUri": "looplab://agent-guide#iteration-ledger-and-safe-restore",
       "source": {
-        "startLine": 1575,
-        "endLine": 1604
+        "startLine": 1586,
+        "endLine": 1615
       }
     },
     {
@@ -1494,8 +1494,8 @@
       "href": "/AI_AGENT_GUIDE.md#project-doctor-and-verification",
       "resourceUri": "looplab://agent-guide#project-doctor-and-verification",
       "source": {
-        "startLine": 1384,
-        "endLine": 1535
+        "startLine": 1395,
+        "endLine": 1546
       }
     },
     {
@@ -1510,8 +1510,8 @@
       "href": "/AI_AGENT_GUIDE.md#project-doctor-and-verification",
       "resourceUri": "looplab://agent-guide#project-doctor-and-verification",
       "source": {
-        "startLine": 1384,
-        "endLine": 1535
+        "startLine": 1395,
+        "endLine": 1546
       }
     },
     {
@@ -1542,8 +1542,8 @@
       "href": "/AI_AGENT_GUIDE.md#provider-context-budget-and-bounded-passes",
       "resourceUri": "looplab://agent-guide#provider-context-budget-and-bounded-passes",
       "source": {
-        "startLine": 1565,
-        "endLine": 1574
+        "startLine": 1576,
+        "endLine": 1585
       }
     },
     {
@@ -1590,8 +1590,8 @@
       "href": "/AI_AGENT_GUIDE.md#grounded-ai-visual-critique-requires-per-job-consent",
       "resourceUri": "looplab://agent-guide#grounded-ai-visual-critique-requires-per-job-consent",
       "source": {
-        "startLine": 1619,
-        "endLine": 1654
+        "startLine": 1630,
+        "endLine": 1665
       }
     },
     {
@@ -1606,8 +1606,8 @@
       "href": "/AI_AGENT_GUIDE.md#project-doctor-and-verification",
       "resourceUri": "looplab://agent-guide#project-doctor-and-verification",
       "source": {
-        "startLine": 1384,
-        "endLine": 1535
+        "startLine": 1395,
+        "endLine": 1546
       }
     },
     {
@@ -1622,8 +1622,8 @@
       "href": "/AI_AGENT_GUIDE.md#exported-game-runtime-contract",
       "resourceUri": "looplab://agent-guide#exported-game-runtime-contract",
       "source": {
-        "startLine": 1686,
-        "endLine": 1786
+        "startLine": 1697,
+        "endLine": 1797
       }
     },
     {
@@ -1659,5 +1659,5 @@
       }
     }
   ],
-  "indexDigest": "sha256:9a9c6aeea9a2fa2deb612898164fa3831d7fc284f7b33faf0db87a8a5f9a4598"
+  "indexDigest": "sha256:3d9f92895c5fa7e3bf19fff3dd563b57dec6a4309a8599a5a3056e552095cb4b"
 }

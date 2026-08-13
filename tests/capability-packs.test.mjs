@@ -114,7 +114,7 @@ test("router calibration detects exact route drift instead of claiming game qual
 test("headless manifest and strict browser command schemas publish capability packs", async () => {
   const manifest = getAgentManifest();
   const operations = ["list_capability_packs", "get_capability_pack", "query_capability_knowledge", "inspect_capability_pack_refresh"];
-  assert.equal(manifest.protocolVersion, "1.109.0");
+  assert.equal(manifest.protocolVersion, "1.110.0");
   assert.equal(manifest.capabilityPacks.registryDigest, getCapabilityPackRegistry().digest);
   assert.equal(manifest.capabilityPacks.capabilityCount, 28);
   assert.deepEqual(manifest.capabilityPacks.commands, operations);

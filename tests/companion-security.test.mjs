@@ -150,7 +150,7 @@ test("real companion HTTP rejects bad hosts and unauthenticated mutations while 
     assert.equal(alternateHealth.headers.get("access-control-allow-origin"), alternateLoopbackOrigin);
     const alternateHealthPayload = await alternateHealth.json();
     assert.equal(alternateHealthPayload.version, LOOPLAB_COMPANION_VERSION);
-    assert.equal(alternateHealthPayload.protocolVersion, "1.109.0");
+    assert.equal(alternateHealthPayload.protocolVersion, "1.110.0");
     const alternateUnauthorized = await fetch(`http://127.0.0.1:${port}/jobs`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Origin: alternateLoopbackOrigin },

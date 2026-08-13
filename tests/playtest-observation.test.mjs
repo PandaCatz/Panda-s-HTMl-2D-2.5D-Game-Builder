@@ -210,7 +210,7 @@ test("runtime hazard respawns expose exact failure and support coordinates to th
   assert.equal(event.toX, 81);
   assert.equal(event.toY, 404);
   assert.equal(event.toZ, 0);
-  assert.deepEqual(runtime.getState().player, { id: "player", x: 81, y: 404, z: 0, vx: 0, vy: 0, grounded: false, groundChainId: null, groundSegmentId: null, groundNormalX: 0, groundNormalY: -1, slopeSliding: false, elevationTransitionId: null, elevationSegmentId: null, elevationProgress: 0, elevationSupportZ: 0 });
+  assert.deepEqual(runtime.getState().player, { id: "player", x: 81, y: 404, z: 0, vx: 0, vy: 0, grounded: false, groundObjectId: null, groundChainId: null, groundSegmentId: null, groundNormalX: 0, groundNormalY: -1, slopeSliding: false, elevationTransitionId: null, elevationSegmentId: null, elevationProgress: 0, elevationSupportZ: 0, interactableMode: "default", interactableTargetId: null, conveyorObjectId: null });
 });
 test("playtest source binding accepts the exact digest produced by Project Doctor", () => {
   const project = createTemplate("platformer");

@@ -209,7 +209,7 @@ test("acceptance, replay v8, headless commands, Doctor, manifest, and one-file e
   assert.match(html, /get_actor_states/);
   assert.match(html, /actor\.mode-changed/);
   assert.match(html, /looplab-runtime-save-state\/v4/);
-  assert.match(html, /\[1,2,3,4,5,6,7,8,9,10,11,12\]/);
+  assert.match(html, /\[1,2,3,4,5,6,7,8,9,10,11,12,13\]/);
 
   const removed = applyAgentCommand(set.project, { op: "remove_actor_program" });
   assert.equal(removed.changed, true);

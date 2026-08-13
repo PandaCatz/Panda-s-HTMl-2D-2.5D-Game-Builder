@@ -84,6 +84,7 @@ import { authoredRoutePreview, createNavigationModel, findNavigationPath, normal
 import { inspectVerbArchitecture, LOOPLAB_VERB_ARCHITECTURE_POLICY } from "../lib/looplab-verb-architecture.mjs";
 import { inspectGameplayProgram, LOOPLAB_GAMEPLAY_RULE_POLICY } from "../lib/looplab-gameplay-rules.mjs";
 import { inspectMotionBodies, LOOPLAB_MOTION_BODY_POLICY } from "../lib/looplab-motion-bodies.mjs";
+import { LOOPLAB_INTERACTABLE_TEMPLATE_REGISTRY } from "../lib/looplab-interactables.mjs";
 import { inspectCombatProgram, LOOPLAB_COMBAT_POLICY } from "../lib/looplab-combat.mjs";
 import { inspectActorProgram, LOOPLAB_ACTOR_POLICY } from "../lib/looplab-actors.mjs";
 import { LOOPLAB_HOSTED_STORAGE_WRAPPER_SCHEMA, normalizeSaveProgram } from "../lib/looplab-save-state.mjs";
@@ -137,7 +138,7 @@ import {
   LOOPLAB_AGENT_WORK_LEDGER_MUTATIONS,
 } from "../lib/looplab-agent-work-ledger.mjs";
 
-type ObjectKind = "player" | "platform" | "coin" | "hazard" | "decor" | "spawn" | "portal" | "goal";
+type ObjectKind = "player" | "platform" | "coin" | "hazard" | "decor" | "spawn" | "portal" | "goal" | "spring" | "ladder" | "conveyor" | "crumble-platform" | "key" | "door" | "pressure-plate" | "one-way-platform";
 type ControlMode = "platformer" | "topdown";
 type WorkspaceMode = "edit" | "play";
 type ExperienceMode = "director" | "workbench";
@@ -550,6 +551,30 @@ type GameObject = {
   hidden?: boolean;
   opacity?: number;
   runtimeState?: string;
+  interactable?: {
+    schemaVersion: string;
+    instanceId: string;
+    templateId: string;
+    templateRevision: number;
+    templateDigest: string;
+    role: string;
+    parameters: Record<string, unknown>;
+    overrides: Record<string, unknown>;
+  };
+};
+
+type InteractablePreviewView = {
+  sourceDigest: string;
+  mapId: string;
+  instanceId: string;
+  templateId: string;
+  templateDigest: string;
+  previewDigest: string;
+  applicable: boolean;
+  conflicts: { duplicateObjectIds: string[]; duplicateInstance: boolean };
+  objects: GameObject[];
+  featureContractTemplate: Record<string, unknown>;
+  fixtureTemplates: Record<string, unknown>;
 };
 
 type TraversalPath = {
@@ -3058,6 +3083,14 @@ const objectMeta: Record<ObjectKind, { label: string; glyph: string; description
   spawn: { label: "Spawn", glyph: "◎", description: "Player reset position" },
   portal: { label: "Portal", glyph: "↗", description: "Links to another map and spawn" },
   goal: { label: "Goal", glyph: "⚑", description: "Completes the current game" },
+  spring: { label: "Spring", glyph: "↥", description: "Authored swept impulse trigger" },
+  ladder: { label: "Ladder", glyph: "H", description: "Explicit gravity-replacing climb controller" },
+  conveyor: { label: "Conveyor", glyph: "⇢", description: "Exact-support moving belt" },
+  "crumble-platform": { label: "Crumble platform", glyph: "▧", description: "Tick-timed break and reset surface" },
+  key: { label: "Key", glyph: "◆", description: "Logical-ID inventory pickup" },
+  door: { label: "Door / gate", glyph: "▮", description: "Authored solid logical gate" },
+  "pressure-plate": { label: "Pressure plate", glyph: "▱", description: "Swept sensor bound to one exact gate" },
+  "one-way-platform": { label: "One-way platform", glyph: "━", description: "Top-only support with target-specific drop-through" },
 };
 
 const collisionBox = (object: GameObject) => {
@@ -3858,6 +3891,11 @@ export default function Home() {
   const [tuningContractDraft, setTuningContractDraft] = useState(() => project.tuningContract ? JSON.stringify(project.tuningContract, null, 2) : "");
   const [combatProgramDraft, setCombatProgramDraft] = useState(() => project.combatProgram ? JSON.stringify(project.combatProgram, null, 2) : "");
   const [motionBodyDraftEdit, setMotionBodyDraftEdit] = useState<{ objectId: string | null; source: string; value: string }>({ objectId: null, source: "", value: "" });
+  const [interactableTemplateId, setInteractableTemplateId] = useState("spring");
+  const [interactableInstanceId, setInteractableInstanceId] = useState("spring-1");
+  const [interactableAnchor, setInteractableAnchor] = useState({ x: 160, y: 400, z: 0 });
+  const [interactableParametersDraft, setInteractableParametersDraft] = useState("{}");
+  const [interactablePreview, setInteractablePreview] = useState<InteractablePreviewView | null>(null);
   const [actorProgramDraft, setActorProgramDraft] = useState(() => project.actorProgram ? JSON.stringify(project.actorProgram, null, 2) : "");
   const [presentationProgramDraft, setPresentationProgramDraft] = useState(() => project.presentationProgram ? JSON.stringify(project.presentationProgram, null, 2) : "");
   const [gameShellDraft, setGameShellDraft] = useState(() => project.gameShell ? JSON.stringify(project.gameShell, null, 2) : "");
@@ -7443,21 +7481,49 @@ export default function Home() {
     }
   }, [aiProvider, directedPrompt, loopEnabled, loopEvaluationProfile, loopIterations, loopStopScore, project.name, providerContextBudgetTokens, showToast]);
 
+  const removeInteractableInstance = useCallback((instanceId: string) => {
+    try {
+      const outcome = applyAgentCommand(syncActiveMap(project), {
+        op: "remove_interactable_instance",
+        mapId: project.activeMapId,
+        instanceId,
+      });
+      commit(outcome.project as GameProject, `Interactable instance ${instanceId} removed`);
+      setSelectedId(null);
+      setInteractablePreview(null);
+      setAgentCommandResult(JSON.stringify({ ok: true, changed: true, result: outcome.result, validation: outcome.validation }, null, 2));
+      appendConsole("interactable.removed", `Removed complete instance ${instanceId}`, "Every bound role was removed together; undo restores the bundle.", "neutral");
+      showToast("Complete interactable instance removed");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setAgentCommandResult(JSON.stringify({ ok: false, error: message }, null, 2));
+      showToast(message);
+    }
+  }, [appendConsole, commit, project, showToast]);
+
   const deleteSelected = useCallback(() => {
     if (!selected) return;
+    if (selected.interactable?.instanceId) {
+      removeInteractableInstance(selected.interactable.instanceId);
+      return;
+    }
     commit(
       { ...project, objects: project.objects.filter((object) => object.id !== selected.id) },
       `${selected.name} removed`,
     );
     setSelectedId(null);
-  }, [commit, project, selected]);
+  }, [commit, project, removeInteractableInstance, selected]);
 
   const duplicateSelected = useCallback(() => {
     if (!selected) return;
+    if (selected.interactable?.instanceId) {
+      showToast("Native mechanics must be copied as a complete instance from the template preview.");
+      return;
+    }
     const copy = { ...selected, id: uid(), name: `${selected.name} copy`, x: selected.x + project.grid, y: selected.y + project.grid };
     commit({ ...project, objects: [...project.objects, copy] }, "Object duplicated");
     setSelectedId(copy.id);
-  }, [commit, project, selected]);
+  }, [commit, project, selected, showToast]);
 
   useEffect(() => {
     let cancelled = false;
@@ -10834,6 +10900,75 @@ export default function Home() {
     }
   };
 
+  const previewInteractableTemplate = () => {
+    try {
+      const parameters: unknown = JSON.parse(interactableParametersDraft || "{}");
+      if (!parameters || typeof parameters !== "object" || Array.isArray(parameters)) throw new Error("Interactable overrides must be one JSON object.");
+      const outcome = applyAgentCommand(syncActiveMap(project), {
+        op: "preview_interactable_template",
+        templateId: interactableTemplateId,
+        instanceId: interactableInstanceId,
+        mapId: project.activeMapId,
+        x: interactableAnchor.x,
+        y: interactableAnchor.y,
+        z: interactableAnchor.z,
+        parameters,
+      });
+      const preview = outcome.result as InteractablePreviewView;
+      setInteractablePreview(preview);
+      setAgentCommandResult(JSON.stringify({ ok: true, changed: false, result: preview }, null, 2));
+      appendConsole("interactable.preview.ready", `${interactableTemplateId} preview ready`, `${preview.objects.length} exact authored object(s) · ${preview.applicable ? "no ID conflicts" : "resolve conflicts before apply"} · no provider tokens`, preview.applicable ? "good" : "neutral");
+      showToast(preview.applicable ? "Interactable preview ready" : "Preview has an ID conflict");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setInteractablePreview(null);
+      setAgentCommandResult(JSON.stringify({ ok: false, error: message }, null, 2));
+      showToast(message);
+    }
+  };
+
+  const applyInteractableTemplate = () => {
+    try {
+      if (!interactablePreview) throw new Error("Preview the exact interactable bundle first.");
+      const parameters: unknown = JSON.parse(interactableParametersDraft || "{}");
+      if (!parameters || typeof parameters !== "object" || Array.isArray(parameters)) throw new Error("Interactable overrides must be one JSON object.");
+      const outcome = applyAgentCommand(syncActiveMap(project), {
+        op: "apply_interactable_template",
+        templateId: interactableTemplateId,
+        instanceId: interactableInstanceId,
+        mapId: project.activeMapId,
+        x: interactableAnchor.x,
+        y: interactableAnchor.y,
+        z: interactableAnchor.z,
+        parameters,
+        expectedSourceDigest: interactablePreview.sourceDigest,
+        templateDigest: interactablePreview.templateDigest,
+        previewDigest: interactablePreview.previewDigest,
+      });
+      const result = outcome.result as { objectIds?: string[]; instanceId?: string; templateId?: string };
+      commit(outcome.project as GameProject, `${result.templateId ?? interactableTemplateId} instance ${result.instanceId ?? interactableInstanceId} added`);
+      if (result.objectIds?.[0]) setSelectedId(result.objectIds[0]);
+      setInteractablePreview(null);
+      setInteractableInstanceId(`${interactableTemplateId}-${(outcome.project as GameProject).objects.filter((object) => object.interactable?.templateId === interactableTemplateId).length + 1}`);
+      setAgentCommandResult(JSON.stringify({ ok: true, changed: true, result: outcome.result, validation: outcome.validation }, null, 2));
+      appendConsole("interactable.applied", `${result.templateId ?? interactableTemplateId} instance applied`, `${result.objectIds?.length ?? 0} object(s) share one versioned behavior, collision, anchor, and evidence contract.`, "good");
+      showToast("Interactable added · Doctor rechecked it");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setAgentCommandResult(JSON.stringify({ ok: false, error: message }, null, 2));
+      showToast(message);
+    }
+  };
+
+  const removeSelectedInteractable = () => {
+    const instanceId = selected?.interactable?.instanceId;
+    if (!instanceId) {
+      showToast("Select an object belonging to a native interactable instance first.");
+      return;
+    }
+    removeInteractableInstance(instanceId);
+  };
+
   const prepareCombatProgram = () => {
     try {
       const outcome = applyAgentCommand(syncActiveMap(project), { op: "suggest_combat_program", mapId: project.activeMapId ?? activeMap?.id });
@@ -12043,6 +12178,31 @@ export default function Home() {
     </details>
   );
 
+  const selectedNativeTemplate = (LOOPLAB_INTERACTABLE_TEMPLATE_REGISTRY.templates as ReadonlyArray<{ id: string; label: string; summary: string; controlModes: ReadonlyArray<string>; parameters: Record<string, { default: unknown }> }>).find((template) => template.id === interactableTemplateId) ?? LOOPLAB_INTERACTABLE_TEMPLATE_REGISTRY.templates[0];
+  const interactableTemplateControl = (
+    <details id="looplab-interactable-templates" className="precision-card tuning-workbench" open={!selected?.interactable} data-registry-digest={LOOPLAB_INTERACTABLE_TEMPLATE_REGISTRY.digest}>
+      <summary><span>Native mechanics · reusable interactables</span><small>{doctorReport.interactableReport?.instanceCount ?? 0} instances · {LOOPLAB_INTERACTABLE_TEMPLATE_REGISTRY.templates.length} templates · replay v13</small></summary>
+      <div className="tuning-body">
+        <p className="precision-note">Place complete, versioned behavior bundles from a ground-contact anchor. Art, sensors, solid collision, logical state, and presentation stay independent. Preview binds the exact project source and template bytes before Apply can mutate the map.</p>
+        <label className="field full"><span>Mechanic template</span><select value={interactableTemplateId} onChange={(event) => { const id = event.target.value; setInteractableTemplateId(id); setInteractableInstanceId(`${id}-1`); setInteractableParametersDraft("{}"); setInteractablePreview(null); }}>
+          {(LOOPLAB_INTERACTABLE_TEMPLATE_REGISTRY.templates as ReadonlyArray<{ id: string; label: string; controlModes: ReadonlyArray<string> }>).map((template) => <option key={template.id} value={template.id} disabled={!template.controlModes.includes(stageControlMode)}>{template.label}{template.controlModes.includes(stageControlMode) ? "" : ` · ${template.controlModes.join("/")} only`}</option>)}
+        </select></label>
+        <div className="tuning-contract-status draft"><span>{selectedNativeTemplate.label}</span><small>{selectedNativeTemplate.summary}</small></div>
+        <label className="field full"><span>Stable instance ID</span><input value={interactableInstanceId} pattern="[A-Za-z0-9][A-Za-z0-9._:-]*" onChange={(event) => { setInteractableInstanceId(event.target.value); setInteractablePreview(null); }} /></label>
+        <div className="field-grid">
+          <label className="field"><span>Ground anchor X</span><input type="number" value={interactableAnchor.x} onChange={(event) => { setInteractableAnchor((value) => ({ ...value, x: Number(event.target.value) })); setInteractablePreview(null); }} /></label>
+          <label className="field"><span>Ground anchor Y</span><input type="number" value={interactableAnchor.y} onChange={(event) => { setInteractableAnchor((value) => ({ ...value, y: Number(event.target.value) })); setInteractablePreview(null); }} /></label>
+          <label className="field"><span>Support Z</span><input type="number" value={interactableAnchor.z} onChange={(event) => { setInteractableAnchor((value) => ({ ...value, z: Number(event.target.value) })); setInteractablePreview(null); }} /></label>
+        </div>
+        <label className="field full tuning-contract-editor"><span>Explicit parameter overrides · JSON</span><textarea rows={6} spellCheck={false} value={interactableParametersDraft} onChange={(event) => { setInteractableParametersDraft(event.target.value); setInteractablePreview(null); }} /></label>
+        <div className="tuning-actions"><button onClick={previewInteractableTemplate}>Preview exact bundle</button><button disabled={!interactablePreview?.applicable} onClick={applyInteractableTemplate}>Apply reviewed bundle</button>{selected?.interactable && <button className="danger" onClick={removeSelectedInteractable}>Remove selected instance</button>}</div>
+        {interactablePreview && <div className={`tuning-contract-status ${interactablePreview.applicable ? "ready" : "blocked"}`} role="status"><span>{interactablePreview.applicable ? `${interactablePreview.objects.length} objects ready` : "Preview blocked"}</span><small>{interactablePreview.applicable ? interactablePreview.objects.map((object) => `${object.interactable?.role}: ${object.id}`).join(" · ") : `Duplicate instance: ${String(interactablePreview.conflicts.duplicateInstance)} · IDs: ${interactablePreview.conflicts.duplicateObjectIds.join(", ") || "none"}`}</small></div>}
+        {interactablePreview && <details className="authored-route-editor"><summary><span>View feature and evidence starters</span><small>Review before calibrating</small></summary><pre>{JSON.stringify({ featureContract: interactablePreview.featureContractTemplate, fixtures: interactablePreview.fixtureTemplates }, null, 2)}</pre></details>}
+        <p className="precision-note">The same six commands are available to Codex, Claude, CLI, MCP, and the browser bridge: list, inspect, report, preview, apply, and remove. Project Doctor verifies every role and production requires calibrated acceptance plus replay evidence.</p>
+      </div>
+    </details>
+  );
+
   return (
     <main className={`studio-shell ${isPlaying && previewFocus ? "preview-focus-shell" : ""}`} data-preview-focus={isPlaying && previewFocus ? "true" : "false"} data-workspace={mapStudioFocused ? "map-studio" : experienceMode}>
       <script id="looplab-project-state" type="application/json" suppressHydrationWarning dangerouslySetInnerHTML={{ __html: serializedProjectState }} />
@@ -12805,6 +12965,7 @@ export default function Home() {
           </div>
 
           <div className="inspector-scroll-area">
+          {interactableTemplateControl}
           {selected ? (
             <div className="inspector-content">
               {mapArchitectControl}
@@ -12886,10 +13047,21 @@ export default function Home() {
                 <strong>{objectMeta[selected.kind].label}</strong>
                 <p>{objectMeta[selected.kind].description}. This behavior is included automatically in preview and exported HTML.</p>
               </div>
-              <div className="inspector-actions">
-                <button onClick={duplicateSelected}>Duplicate</button>
-                <button className="danger" onClick={deleteSelected}>Delete</button>
-              </div>
+              {selected.interactable?.instanceId ? (
+                <section className="support-contact-card status-attached" aria-label="Native interactable instance integrity">
+                  <div>
+                    <span className="eyebrow">Native mechanic instance</span>
+                    <strong>{selected.interactable.instanceId}</strong>
+                    <small>Every authored role shares one behavior and evidence contract. Individual roles cannot be duplicated or deleted.</small>
+                  </div>
+                  <button className="wide-button danger" onClick={removeSelectedInteractable}>Remove complete {selected.interactable.instanceId} instance</button>
+                </section>
+              ) : (
+                <div className="inspector-actions">
+                  <button onClick={duplicateSelected}>Duplicate</button>
+                  <button className="danger" onClick={deleteSelected}>Delete</button>
+                </div>
+              )}
             </div>
           ) : (
             <div className="inspector-content">
