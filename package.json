@@ -33,7 +33,7 @@
     "public:audit": "node scripts/looplab-public-audit.mjs"
   },
   "dependencies": {
-    "@modelcontextprotocol/server": "2.0.0",
+    "@modelcontextprotocol/server": "2.3.0",
     "melonjs": "17.4.0",
     "phaser": "3.90.0",
     "pixi.js": "8.19.0",
